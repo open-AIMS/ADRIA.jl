@@ -467,8 +467,11 @@ save("tsc_map.png", tsc_map_fig)
 
 ### Rule Induction (using Series Clusters)
 
-After clustering, it is possible to target some specific scenarios based on each cluster
-median outcome temporal variability:
+The SIRUS Rule Induction algorithm ([Bénard et al. 2021](https://doi.org//10.1214/20-EJS1792)) can be used for scenario discovery by summarising scenarios in terms of binary rules, 
+i.e. thresholds below/above which a factor will lead to a specified outcome.
+
+For this example, we cluster scenarios with similar total cover, and then focus on those with high temporal variability in total cover. We explore what intervention characteristics lead to high temporal variability.
+
 
 ```julia
 # Find Time Series Clusters
@@ -476,26 +479,26 @@ s_tac = ADRIA.metrics.scenario_total_cover(rs)
 n_clusters = 6
 clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
-# Target scenarios
+# Identify cluster(s) with highest median temporal variability covering at least 1% of scenarios
+# N.B. different aggregation metrics and size limits could also be specified
 target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
 ```
 
-Using this vector if target clusters, together with the parameters used to generate each
-scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted
-rule as a scatter graph:
+When the SIRUS Rule Induction algorithm produces rules involving two factors, they can be visualised as scatterplots.
 
 ```julia
-# Select features of interest
+# Select features of interest to use in rules.
+# This includes all factors related to interventions and criteria to decide where to perform coral seeding.
 foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
-# Use SIRUS algorithm to extract rules.
+# Use SIRUS algorithm to extract up to 10 rules.
 max_rules = 10
 rules_iv = ADRIA.analysis.cluster_rules(
     rs, target_clusters, scens, foi, max_rules; remove_duplicates=true
 )
 
 
-# Plot scatters for each rule highlighting the area selected them
+# Plot scatterplots for each rule highlighting the area selected by each of them
 rules_scatter_fig = ADRIA.viz.rules_scatter(
     rs,
     scens,
@@ -510,6 +513,26 @@ save("rules_scatter.png", rules_scatter_fig)
 ```
 
 ![Plots of Rule Induction](../assets/imgs/analysis/rules_scatter.png)
+
+When defining binary rules, it is expected that there will be a tradeoff between coverage and density ([Bryant & Lempert 2010](https://dx.doi.org/10.1016/j.techfore.2009.08.002)).
+Not all target scenarios will be captured (low coverage), and not all scenarios captured by the rule will be target scenarios (low density).
+It is possible for a rule to increase coverage by accepting lower density,
+and density can often be increased by accepting lower coverage.
+
+In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in SRM > 3.94 & Years to Shade > 54.0. 
+
+A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., SRM > 3.94 & Years to Shade > 38.0. 
+
+SRM and Years to Shade have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
+
+Rules also suggest that high temporal variability is also obtained when putting high weight on selecting locations with high outgoing connectivity and low coral cover - in combination with high shading. The rule favouring low coral cover has very low coverage - there are many target scenarios that also do not have low coral cover.
+
+For this dataset, according to this analysis:
+
+1) **Ensuring conditions for success**: Temporal variability might be a proxy for high improvement over time, and the scenarios could be visualised or another more specific metric could be used to verify this. It would be unsurprising for high shading to support success.
+2) **Avoiding failure**: Binary rules implicitly define scenarios that are excluded. High temporal variability is rarely achieved without high levels of shade.
+3) **Planning for failure modes**: A recommendation to favour locations with high outgoing connectivity combined with high SRM seems like it would warrant further investigation - the rule includes many target scenarios (high coverage), but also many scenarios with lower temporal variability (high density).
+4) **Further deliberation**: The rules describe very high levels of shading for long periods of time, which may be difficult to achieve. Temporal variability is not directly connected with measures of success - alternative metrics to summarise clusters could be explored. Other algorithms, e.g., PRIM, could also be used to give greater control over coverage and density ([Bryant & Lempert 2010](https://dx.doi.org/10.1016/j.techfore.2009.08.002)).
 
 ### Regional Sensitivity Analysis
 
