@@ -222,8 +222,10 @@ end
 """
     target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{<:Real}; metric=temporal_variability, size_limit=0.01) where {T<:Int64}
 
-Cluster scenarios into target and non target based on median outcome temporal variability of
-previous time series cluster.
+Identify a target group of scenarios by merging scenario clusters with the highest median `temporal_variability` (or another `metric`) 
+until the group includes a minimum of 1% (or `size_limit`) of scenarios.
+
+The median `metric` value for `outcomes` is calculated across scenarios within each cluster.
 
 # Arguments
 - `clusters` : Vector with outcome cluster indexes
@@ -253,7 +255,7 @@ function target_clusters(
     target_index = argmax(clusters_statistics)
     target_indexes = [target_index]
 
-    # Merge target cluster if it is below 1% of size
+    # Merge target cluster if it is below size_limit (default 1%) of size
     sizes = [size(outcomes[:, clusters .== c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
