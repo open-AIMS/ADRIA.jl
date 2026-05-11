@@ -27,19 +27,19 @@ function growth_acceleration_steepness()::Vector{Float64}
 end
 
 function growth_acceleration_height()::Vector{Float64}
-    return [
-        1.5952988993156734,
-        1.7832100877157462,
-        1.1220310688452086,
-        1.4475376403793847,
-        1.7531081632567782,
-        0.6128194769859905,
-        1.693770466602163,
-        1.7126974382099205,
-        1.9716717190691135,
-        1.8879796302427316,
-        1.6094528995868778,
-        0.3826377911360482
+    return [                    # ! Delte this
+        1.5952988993156734,     #  1.7069464690106824
+        1.7832100877157462,     #  0.13327757311686647
+        1.1220310688452086,     #  0.06938495146223728
+        1.4475376403793847,     #  1.9091802669096691
+        1.7531081632567782,     #  1.1612734347453693
+        0.6128194769859905,     #  0.4870627529189771
+        1.693770466602163,      #  0.5622354107101416
+        1.7126974382099205,     #  0.739032075821341
+        1.9716717190691135,     #  0.03667967196234813
+        1.8879796302427316,     #  0.038252983917947986
+        1.6094528995868778,     #  0.2117497257815088
+        0.3826377911360482      #  0.796979838518419
     ]
 end
 
@@ -76,7 +76,8 @@ function _growth_acceleration_struct(field_defs::OrderedDict)::Nothing
 end
 
 function create_growth_acceleration_struct(
-    bounds_var::Float64=0.1
+    bounds_var::Float64=0.1;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
 )::Nothing
     struct_fields = OrderedDict{String,Param}()
 
@@ -88,8 +89,10 @@ function create_growth_acceleration_struct(
     factor_name::String = ""
     for param in growth_accel_params
         for group in cb_calib_groups
-            factor_val = _growth_acceleration_values(param)[group]
             factor_name = "growth_acceleration_cb_group_$(group)_" * String(param)
+            factor_val = get(
+                overrides, factor_name, _growth_acceleration_values(param)[group]
+            )
 
             lower_bound = factor_val - bounds_var * abs(factor_val)
             upper_bound = factor_val + bounds_var * abs(factor_val)
