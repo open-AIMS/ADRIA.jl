@@ -554,3 +554,29 @@ function set_mc_target_locations!(
     domain.mc_target_locations = location_ids
     return nothing
 end
+
+"""
+    set_depth_med!(
+        domain::Domain,
+        new_depth_med::Float64
+    )::Nothing
+
+Set `depth_med` of all reefs to `new_depth_med`.
+
+# Arguments
+- `domain`: Domain to modify
+- `new_depth_med`: Depth to set as default across all reefs
+
+# Example
+```julia
+dom = ADRIA.load_domain("path/to/domain")
+ADRIA.set_depth_med!(dom, 7.0)
+```
+"""
+function set_depth_med!(
+    domain::Domain,
+    new_depth_med::Float64
+)::Nothing
+    domain.loc_data.depth_med .= new_depth_med
+    return nothing
+end
