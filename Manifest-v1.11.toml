@@ -5,9 +5,9 @@ manifest_format = "2.0"
 project_hash = "8e7264f5e17fe8c1bb02d89afbafa975a5b8fe64"
 
 [[deps.ADRIAIndicators]]
-git-tree-sha1 = "18c4d5c27bb21232116f7d10e4b3fb4634c0b8b9"
+git-tree-sha1 = "aaa97fdc8125b525f4b11542cccedc64929826f7"
 uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
-version = "0.2.0"
+version = "0.2.1"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "8b2b045b22740e4be20654175cc38291d48539db"
