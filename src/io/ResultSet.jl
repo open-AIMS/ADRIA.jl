@@ -282,11 +282,7 @@ function combine_results(result_sets...)::ResultSet
             rs_scen_len = isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
 
             if !isnothing(s_log)
-                try
-                    n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
-                catch
-                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
-                end
+                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] = s_log
             end
 
             scen_id = scen_id + rs_scen_len
