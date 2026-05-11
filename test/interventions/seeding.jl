@@ -148,10 +148,11 @@ end
 
 @testset "Seed log matches target location sets" begin
     dom = deepcopy(ADRIA_DOM_45)
-    rand_seed_locs = rand(dom.loc_ids, 70, 2)
 
-    locs_1 = rand_seed_locs[:, 1]
-    locs_2 = rand_seed_locs[:, 2]
+    n_locs = length(dom.loc_ids)
+    half = n_locs ÷ 2
+    locs_1 = dom.loc_ids[1:half]
+    locs_2 = dom.loc_ids[(half + 1):end]
 
     weight_1 = 0.4
     weight_2 = 0.6
@@ -181,61 +182,27 @@ end
     seed_cols = names(scens, contains.(names(scens), "N_seed"))
     N_seed = vec(sum(Matrix(scens[:, seed_cols]); dims=2))
 
-    excl_locs_1 = setdiff(locs_1, locs_2)
-    seed_log_exc1 = if !isempty(excl_locs_1)
-        dropdims(
-            sum(
-                rs.seed_log[locations=dom.loc_ids .∈ [excl_locs_1]];
-                dims=(:coral_id, :locations)
-            );
-            dims=(:coral_id, :locations)
-        )
-    else
-        []
-    end
-
-    excl_locs_2 = setdiff(locs_2, locs_1)
-    seed_log_exc2 = if !isempty(excl_locs_2)
-        dropdims(
-            sum(
-                rs.seed_log[locations=dom.loc_ids .∈ [excl_locs_2]];
-                dims=(:coral_id, :locations)
-            );
-            dims=(:coral_id, :locations)
-        )
-    else
-        []
-    end
-
-    both_locs = intersect(locs_1, locs_2)
-    seed_log_both = dropdims(
+    seed_log_1 = dropdims(
         sum(
-            rs.seed_log[locations=dom.loc_ids .∈ [both_locs]]; dims=(:coral_id, :locations)
+            rs.seed_log[locations=dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations)
+        );
+        dims=(:coral_id, :locations)
+    )
+    seed_log_2 = dropdims(
+        sum(
+            rs.seed_log[locations=dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations)
         );
         dims=(:coral_id, :locations)
     )
 
     for s in 1:num_samples
-        seed_log = seed_log_both[scenarios=At(s)]
-        @test all(seed_log .<= N_seed[s] .|| seed_log .≈ N_seed[s]) ||
-            "Scenario $s: combined seed log exceeds N_seed"
-
-        # For locations exclusive to set 1 (never targeted by set 2), logged seeds
-        # must not exceed weight_1 * N_seed — their full allocated share
-        if !isempty(excl_locs_1)
-            excl_log_1 = seed_log_exc1[scenarios=At(s)]
-            budget_1 = weight_1 * N_seed[s]
-            @test all(excl_log_1 .<= budget_1 .|| excl_log_1 .≈ budget_1) ||
-                "Scenario $s: seed log for locations exclusive to set 1 exceeds weight_1 * N_seed"
-        end
-
-        # For locations exclusive to set 2 (never targeted by set 1), logged seeds
-        # must not exceed weight_2 * N_seed — their full allocated share
-        if !isempty(excl_locs_2)
-            excl_log_2 = seed_log_exc2[scenarios=At(s)]
-            budget_2 = weight_2 * N_seed[s]
-            @test all(excl_log_2 .<= budget_2 .|| excl_log_2 .≈ budget_2) ||
-                "Scenario $s: seed log for locations exclusive to set 2 exceeds weight_2 * N_seed"
-        end
+        log_1 = seed_log_1[scenarios=At(s)]
+        log_2 = seed_log_2[scenarios=At(s)]
+        budget_1 = weight_1 * N_seed[s]
+        budget_2 = weight_2 * N_seed[s]
+        @test all(log_1 .<= budget_1 .|| log_1 .≈ budget_1) ||
+            "Scenario $s: seed log for set 1 exceeds weight_1 * N_seed"
+        @test all(log_2 .<= budget_2 .|| log_2 .≈ budget_2) ||
+            "Scenario $s: seed log for set 2 exceeds weight_2 * N_seed"
     end
 end

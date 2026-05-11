@@ -192,7 +192,11 @@ function coral_spec()::NamedTuple
     return (taxa_names=group_names, param_names=param_names, params=params)
 end
 
-function add_scale_factors!(struct_fields::OrderedDict{String,Param}, bounds)
+function add_scale_factors!(
+    struct_fields::OrderedDict{String,Param},
+    bounds,
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)
     _linear_extension_scale_factors = linear_extension_group_scale_factors()
     _mb_rate_scale_factors = mb_rate_group_scale_factors()
 
@@ -206,10 +210,16 @@ function add_scale_factors!(struct_fields::OrderedDict{String,Param}, bounds)
                 "mb_rate_scale_cb_group_" *
                 "$(cb_calib_group)_$(functional_group)"
 
-            linear_extension_factor_val = _linear_extension_scale_factors[
-                fgroup_idx, cb_calib_group
-            ]
-            mb_rate_factor_val = _mb_rate_scale_factors[fgroup_idx, cb_calib_group]
+            linear_extension_factor_val = get(
+                overrides,
+                linear_extension_factor_name,
+                _linear_extension_scale_factors[fgroup_idx, cb_calib_group]
+            )
+            mb_rate_factor_val = get(
+                overrides,
+                mb_rate_factor_name,
+                _mb_rate_scale_factors[fgroup_idx, cb_calib_group]
+            )
 
             struct_fields[linear_extension_factor_name] = Factor(
                 linear_extension_factor_val;
@@ -299,7 +309,10 @@ create_coral_struct((0.5, 1.5))
 coral = Coral()
 ```
 """
-function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
+function create_coral_struct(
+    bounds::Tuple{Float64,Float64}=(0.9, 1.1);
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Nothing
     functional_group_names, base_coral_factor_names, coral_factors = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
@@ -319,7 +332,8 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
             factor_name::String = coral_factor_id * "_" * base_coral_factor_name
 
             coral_id_math = coral_factors.coral_id .== coral_factor_id
-            factor_val = coral_factors[coral_id_math, base_coral_factor_name][1]
+            default_val = coral_factors[coral_id_math, base_coral_factor_name][1]
+            factor_val = get(overrides, factor_name, default_val)
 
             struct_fields[factor_name] = Factor(
                 factor_val;
@@ -332,7 +346,7 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         end
     end
 
-    add_scale_factors!(struct_fields, bounds)
+    add_scale_factors!(struct_fields, bounds, overrides)
 
     _coral_struct(struct_fields)
 
