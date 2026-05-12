@@ -513,18 +513,36 @@ save("rules_scatter.png", rules_scatter_fig)
 
 ### Regional Sensitivity Analysis
 
-Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid
+Regional Sensitivity Analysis is a Monte Carlo filtering approach. The aim of RSA is to aid
 in identifying which (group of) factors drive model outputs and their active areas of
 factor space.
 
+This implementation divides factors into bins and compares the distribution of a selected outcome 
+within each bin to the distribution outside the bin.
+
 ```julia
+# As outcome, we are looking at total coral cover, averaged over time
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
+# Factors of interest to investigate
+foi = [
+    :dhw_scenario, # All DHW scenarios in the domain data, here scenarios 1-50 in the test dataset
+    :wave_scenario, # All wave scenarios specified in the domain data, here scenarios 1-50 in the test dataset
+    # Interventions
+    :N_seed_TA,  # Number of seeded Tabular Acropora deployed per intervention event
+    :N_seed_CA, # Number of seeded Corymbose Acropora deployed per intervention event
+    :fogging, # Fogging effectiveness on a scale of 0-1
+    :SRM # Reduction in DHW obtained by shading
+]
+
+# Divide factors into 10 bins
+# Test whether each bin has significantly different total cover to rest of the bins
 tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
     rs,
     tac_rs,
-    [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM];
+    foi;
     opts,
     fig_opts
 )
@@ -533,6 +551,16 @@ save("rsa.png", rsa_fig)
 ```
 
 ![Plots of Regional Sensitivities](../assets/imgs/analysis/rsa.png)
+
+For this test data package, the results would suggest that bins that have very different coral cover to those outside that bin include:
+
+- DHW Scenario: The 5 scenarios in the bin around scenario 30
+- Wave Scenario: The first 5 scenarios
+- Seeded Tabular Acropora and Seeded Corymbose Acropora: Low numbers of coral seeded
+- Fogging: Low effectiveness
+- SRM: Low and high levels of SRM. Scenarios with a DHW reduction of about 2.5 are most similar to those outside that bin.
+
+Results are likely to be dependent on how the sample of scenarios was obtained. A different sample might result in different sensitivities. Testing of convergence may be needed.
 
 ### Outcome mapping
 
