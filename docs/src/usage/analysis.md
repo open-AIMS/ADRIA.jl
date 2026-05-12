@@ -381,20 +381,22 @@ save("tsc.png", tsc_fig)
 ### Target clusters
 
 One can also target scenarios that belong to specific clusters (like clusters with higher
-median value for some outcome):
+median value for some outcome).
+
+Here we use clustering to identify groups of time series for sites with low temporal variability in shelter volume across scenarios.
 
 ```julia
-# Extract metric from scenarios
+# Time series for each site summarizing median shelter volume (in cubic metres) across all scenarios
 asv = ADRIA.metrics.absolute_shelter_volume(rs)
-
-# Time series summarizing scenarios for each site
 asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
 
-# Cluster scenarios
+# Cluster sites with similar shelter volume time series
 n_clusters = 6
-asv_clusters = ADRIA.analysis.cluster_scenarios(asv_site_series, n_clusters)
+asv_clusters = ADRIA.analysis.cluster_series(asv_site_series, n_clusters)
 
-# Target scenarios that belong to the two lowest value clusters
+# find_scenarios computes median timeseries for each cluster 
+#   and by default calculates temporal variability of that median timeseries
+# We target sites that belong to the two clusters with lowest temporal variability in shelter volume
 lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
 asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
 
@@ -410,6 +412,16 @@ save("tsc_asv.png", tsc_asc_fig)
 ```
 
 ![Plots of targeted lowest clusters](../assets/imgs/analysis/tsc_asv.png)
+
+As expected, we see the sites in the target group have lower temporal variability. The non-target group has larger temporal variability.
+The sites could then be investigated further.
+
+As the sites were selected using the median timeseries of two clusters, there is still a large range of shelter volume across sites at the start of the time series.
+Focusing on the lowest cluster or splitting into more clusters could produce a more homogeneous group of scenarios.
+
+This can be interpreted as a form of scenario discovery where a target group of timeseries is summarised visually.
+Here the timeseries represent sites rather than scenarios. 
+Using `summarize`, timeseries for scenarios could be obtained by aggregating over sites.
 
 ### Multiple Time Series Clustering
 
