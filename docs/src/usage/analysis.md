@@ -423,6 +423,13 @@ This can be interpreted as a form of scenario discovery where a target group of 
 Here the timeseries represent sites rather than scenarios. 
 Using `summarize`, timeseries for scenarios could be obtained by aggregating over sites.
 
+For this test dataset, findings in terms of scenario discovery suggest:
+
+1) **Ensuring conditions for success**: Low temporal variability in shelter volume involves sites that stay low. Temporal variability would likely not be interpreted as a success metric given that high temporal variability also reflects large declines in shelter volume.
+2) **Avoiding failure**: Both groups show declines across all sites using the median across scenarios. The analysis could be repeated to investigate how behaviour differs across scenarios, particularly in which interventions improve outcomes.
+3) **Planning for failure modes**: The non-target group of sites starts with higher shelter volume. While the median across scenarios declines, further investigation could test whether certain interventions cope better than others with changing conditions.
+4) **Further deliberation**: Discussion would likely further explore performance metrics other than temporal variability, and factors other than sites.
+
 ### Multiple Time Series Clustering
 
 It is possible to perform time series clustering for different metric outcomes and find
