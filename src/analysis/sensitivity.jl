@@ -581,7 +581,10 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
-Dataset
+Dataset with sensitivity `Si` for each bin for each factor, 
+    as calculated by comparing the distribution of a selected outcome 
+    within each bin to the distribution outside the bin using the k-sample Anderson–Darling test.
+    See https://juliastats.org/HypothesisTests.jl/stable/nonparametric/#HypothesisTests.KSampleADTest
 
 # Examples
 ```julia
