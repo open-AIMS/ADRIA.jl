@@ -164,15 +164,16 @@ function run_scenarios(
     parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
 
     # Compute batch size before setting up the store so chunk sizes match the pmap batch
-    # sizes. In parallel mode: ceil(N/P) gives exactly one batch per worker and the fewest
-    # possible chunk files. In serial mode: fall back to the env var (default 32).
+    # sizes. In parallel mode: a small fixed batch keeps the pmap queue deep enough for
+    # dynamic load balancing — ceil(N/P) would create exactly one task per worker, leaving
+    # fast workers idle. In serial mode: fall back to the env var (default 1).
     env_batch = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
     batch_size::Int = if env_batch > 0
         env_batch  # explicit override always wins
     elseif parallel
-        ceil(Int, nrow(scens) / active_cores)
+        max(1, min(4, ceil(Int, nrow(scens) / (active_cores * 4))))
     else
-        32
+        1
     end
     @info "ADRIA_BATCH_SIZE (effective) = $batch_size"
 
@@ -202,13 +203,15 @@ function run_scenarios(
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
     _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
-    functional_groups = [
-        FunctionalGroup.(
-            eachrow(_bin_edges[:, 1:(end - 1)]),
-            eachrow(_bin_edges[:, 2:end]),
-            eachrow(zeros(n_groups, n_sizes))
-        ) for _ in 1:n_locs
-    ]
+    functional_groups = Vector{Vector{FunctionalGroup}}(undef, n_locs)
+    for loc in 1:n_locs
+        functional_groups[loc] =
+            FunctionalGroup.(
+                eachrow(_bin_edges[:, 1:(end - 1)]),
+                eachrow(_bin_edges[:, 2:end]),
+                eachrow(zeros(n_groups, n_sizes))
+            )
+    end
 
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
@@ -330,14 +333,28 @@ function _collect_scenario_results(
     coral_spec::DataFrame = to_coral_spec(scenario)
 
     # 6 location-based metrics — order must match LOC_METRIC_NAMES
-    loc_out = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES))
-    vals = relative_cover(rs_raw);                      vals[vals .< threshold] .= 0.0; loc_out[:, :, 1] .= vals
-    vals = relative_shelter_volume(rs_raw, lk, scenario); vals[vals .< threshold] .= 0.0; loc_out[:, :, 2] .= vals
-    vals = absolute_shelter_volume(rs_raw, lk, scenario); vals[vals .< threshold] .= 0.0; loc_out[:, :, 3] .= vals
-    vals = relative_juveniles(rs_raw);                  vals[vals .< threshold] .= 0.0; loc_out[:, :, 4] .= vals
-    vals = juvenile_indicator(rs_raw, coral_spec, lk);  vals[vals .< threshold] .= 0.0; loc_out[:, :, 5] .= vals
+    loc_out = Array{Float32}(
+        undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES)
+    )
+    vals = relative_cover(rs_raw)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 1] .= vals
+    vals = relative_shelter_volume(rs_raw, lk, scenario)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 2] .= vals
+    vals = absolute_shelter_volume(rs_raw, lk, scenario)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 3] .= vals
+    vals = relative_juveniles(rs_raw)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 4] .= vals
+    vals = juvenile_indicator(rs_raw, coral_spec, lk)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 5] .= vals
     rtc_vals = relative_loc_taxa_cover(rs_raw)
-    vals = coral_evenness(rtc_vals.data);               vals[vals .< threshold] .= 0.0; loc_out[:, :, 6] .= vals
+    vals = coral_evenness(rtc_vals.data)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 6] .= vals
 
     # Taxa cover (groups axis, not locations)
     taxa_vals = relative_taxa_cover(rs_raw, lk)
@@ -347,14 +364,18 @@ function _collect_scenario_results(
     shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
     fog_vals = Matrix{Float32}(result_set.fog_log)
     shade_vals = Matrix{Float32}(result_set.shade_log)
-    fog_vals[fog_vals .< threshold] .= 0f0
-    shade_vals[shade_vals .< threshold] .= 0f0
+    fog_vals[fog_vals .< threshold] .= 0.0f0
+    shade_vals[shade_vals .< threshold] .= 0.0f0
     shading_buf[:, :, 1] .= fog_vals
     shading_buf[:, :, 2] .= shade_vals
 
     # Remaining log arrays — apply threshold where possible
     site_ranks_vals = result_set.site_ranks
-    try; site_ranks_vals[site_ranks_vals .< threshold] .= Float32(0.0); catch err; err isa MethodError ? nothing : rethrow(err); end
+    try
+        site_ranks_vals[site_ranks_vals .< threshold] .= Float32(0.0)
+    catch err
+        err isa MethodError ? nothing : rethrow(err)
+    end
 
     mc_vals = result_set.mc_log
     mc_vals[mc_vals .< threshold] .= Float32(0.0)
@@ -426,13 +447,13 @@ function _write_batch!(
 
     # mc_log and seed_log: (tf, n_groups, n_locs, n)
     _, n_g, n_l = size(results[1].mc_log)
-    mc_batch   = Array{Float32}(undef, tf, n_g, n_l, n)
+    mc_batch = Array{Float32}(undef, tf, n_g, n_l, n)
     seed_batch = Array{Float32}(undef, tf, n_g, n_l, n)
     for (i, r) in enumerate(results)
-        mc_batch[:, :, :, i]   .= r.mc_log
+        mc_batch[:, :, :, i] .= r.mc_log
         seed_batch[:, :, :, i] .= r.seed_log
     end
-    data_store.mc_log[:, :, :, idx_range]   .= mc_batch
+    data_store.mc_log[:, :, :, idx_range] .= mc_batch
     data_store.seed_log[:, :, :, idx_range] .= seed_batch
 
     # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
@@ -1036,10 +1057,23 @@ function run_model(
 
     # Keeps track of the heat tolerance means of juvenilles to use as a base for thermal
     # tolerance enhancement
-    c_mean_reference .= copy(c_mean_t[:, 1, :])
+    c_mean_reference .= c_mean_t[:, 1, :]
 
     cover_transition_lb = 0.05
     cover_transition_ub = 0.80
+
+    # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
+    Δcover_loss_proportion = zeros(n_locs)
+    _is_reactive = any(
+        is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
+    )
+    dhw_p = is_guided ? similar(dhw_scen) : nothing
+    current_loc_cover = zeros(n_locs)
+    _loc_coral_cover = zeros(n_locs)
+    leftover_space_m² = zeros(n_locs)
+    _recruitment_col_sum = zeros(n_locs)
+    _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
+    _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1055,9 +1089,9 @@ function run_model(
         # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
 
-        habitable_max_projected_cover =
-            cache_habitable_max_projected_cover .+
-            dropdims(sum(recruitment; dims=1); dims=1)
+        sum!(_recruitment_col_sum_2d, recruitment)
+        habitable_max_projected_cover .=
+            cache_habitable_max_projected_cover .+ _recruitment_col_sum
 
         relative_habitable_cover_cache[habitable_locs] .=
             loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./
@@ -1175,15 +1209,15 @@ function run_model(
 
             if log_dhw_tols
                 # Log dhw tolerances if requested
+                permutedims!(_permuted_buf, c_mean_t, (2, 1, 3))
                 dhw_tol_mean_log[tstep, :, :] .= reshape(
-                    permutedims(c_mean_t, (2, 1, 3)), size(dhw_tol_mean_log)[2:3]
+                    _permuted_buf, size(dhw_tol_mean_log)[2:3]
                 )
             end
 
             if log_cover
-                cover_log[tstep, :, :] .= reshape(
-                    permutedims(C_cover[tstep, :, :, :], (2, 1, 3)), size(cover_log)[2:3]
-                )
+                permutedims!(_permuted_buf, @view(C_cover[tstep, :, :, :]), (2, 1, 3))
+                cover_log[tstep, :, :] .= reshape(_permuted_buf, size(cover_log)[2:3])
             end
         end
 
@@ -1198,11 +1232,15 @@ function run_model(
 
         for l in 1:n_locs
             s = sum(fec_scope[:, l])
-            prop_fecundity[:, l] .= s > 0.0 ? fec_scope[:, l] ./ s : 0.0
+            if s > 0.0
+                prop_fecundity[:, l] .= fec_scope[:, l] ./ s
+            else
+                prop_fecundity[:, l] .= 0.0
+            end
         end
 
-        _loc_coral_cover = loc_coral_cover(C_cover_t)
-        leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
+        _loc_coral_cover .= loc_coral_cover(C_cover_t)
+        leftover_space_m² .= relative_leftover_space(_loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -1229,7 +1267,8 @@ function run_model(
         # Reset fecundity scope before next run
         fec_scope .= 0.0
 
-        leftover_space_m² .-= dropdims(sum(recruitment; dims=1); dims=1) .* vec_abs_k
+        sum!(_recruitment_col_sum_2d, recruitment)
+        leftover_space_m² .-= _recruitment_col_sum .* vec_abs_k
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
@@ -1259,7 +1298,7 @@ function run_model(
 
         if is_guided
             # Use modified projected DHW (may have been affected by shading)
-            dhw_p = copy(dhw_scen)
+            dhw_p .= dhw_scen
             dhw_p[tstep, :] .= dhw_t
             dhw_projection .= weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
 
@@ -1276,7 +1315,7 @@ function run_model(
             )
 
             # Calculate current location cover
-            current_loc_cover = dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+            current_loc_cover .= dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
         end
 
         # Fogging
@@ -1689,7 +1728,7 @@ function run_model(
         # Apply disturbances
 
         # ΔC_cover_t should only hold changes in cover due to env. disturbances
-        ΔC_cover_t .= copy(C_cover_t)
+        ΔC_cover_t .= C_cover_t
 
         # Store current c_mean before bleaching. This will be used in the next timestep to
         # update the settler's DHW tolerance dists.
@@ -1726,10 +1765,11 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculate survival_rate due to env. disturbances
-        no_mortality_mask = ΔC_cover_t .== 0.0
-        survival_rate_cache[.!no_mortality_mask] .= (C_cover_t ./ ΔC_cover_t)[.!no_mortality_mask]
-        survival_rate_cache[no_mortality_mask] .= 1.0
-        @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
+        @inbounds for i in eachindex(survival_rate_cache)
+            d = ΔC_cover_t[i]
+            survival_rate_cache[i] = d == 0.0 ? 1.0 : C_cover_t[i] / d
+        end
+        @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
 
         for loc in 1:n_locs
             apply_mortality!(
@@ -1742,13 +1782,10 @@ function run_model(
         C_cover[tstep, :, :, :] .= C_cover_t
 
         # Track cover loss for reactive strategies
-        _is_reactive = any(
-            is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
-        )
         if is_guided && _is_reactive && (tstep > 1)
             # Calculate proportional cover loss at each location
             # due to disturbances this timestep
-            Δcover_loss_proportion = zeros(n_locs)
+            Δcover_loss_proportion .= 0.0
             for loc in 1:n_locs
                 cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
                 cover_after = sum(@view(C_cover_t[:, :, loc]))
