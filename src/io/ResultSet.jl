@@ -160,7 +160,7 @@ function _copy_env_data(
 end
 
 """
-    combine(result_sets...)::ResultSet
+    combine_results(result_sets...)::ResultSet
     combine_results(result_set_locs::Array{String})::ResultSet
 
 Combine arbitrary number of ADRIA result sets into a single data store.
@@ -256,7 +256,16 @@ function combine_results(result_sets...)::ResultSet
     n_locs = size(rs1.seed_log, :locations)
     n_groups = size(rs1.seed_log, :coral_id)
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
-    batch_size::Int = min(parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")), nrow(all_inputs))
+    n_cores::Int = parse(Int, get(ENV, "ADRIA_NUM_CORES", "1"))
+    env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
+    n_scenarios = nrow(all_inputs)
+    batch_size::Int = if env_batch > 0
+        min(env_batch, n_scenarios)
+    elseif n_scenarios < n_cores
+        1
+    else
+        n_cores
+    end
     logs = (;
         zip([:ranks, :mc_log, :seed_log, :shading_log, :coral_dhw_tol_log, :coral_cover_log],
             setup_logs(
@@ -300,7 +309,7 @@ function combine_results(result_sets...)::ResultSet
         fill_value=nothing,
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
-        chunks=(loc_dims[1:3]..., 1),
+        chunks=(loc_dims[1:3]..., batch_size),
         attrs=Dict{Symbol,Any}(
             :structure => ("timesteps", "locations", "metrics", "scenarios"),
             :unique_loc_ids => rs1.loc_ids,
@@ -326,7 +335,7 @@ function combine_results(result_sets...)::ResultSet
         fill_value=nothing,
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, string(taxa_name)),
-        chunks=(taxa_dims[1:(end - 1)]..., 1),
+        chunks=(taxa_dims[1:(end - 1)]..., batch_size),
         attrs=Dict{Symbol,Any}(
             :structure => ("timesteps", "groups", "scenarios")
         ),
