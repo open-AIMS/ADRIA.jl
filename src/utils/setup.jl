@@ -14,7 +14,9 @@ function setup()::Nothing
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
         config_operation = config["operation"]
         ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
-        ENV["ADRIA_NUM_CORES"] = config_operation["num_cores"]
+        if haskey(config_operation, "num_cores")
+            @warn "config.toml: `num_cores` is deprecated and has no effect. Control parallelism by launching Julia with `--threads=N` (e.g. `julia --threads=auto`)."
+        end
         ENV["ADRIA_THRESHOLD"] = config_operation["threshold"]
         ENV["ADRIA_DEBUG"] =
             haskey(config_operation, "debug") ? config_operation["debug"] : false
@@ -34,7 +36,6 @@ function setup()::Nothing
 
         # Note: anything stored in ENV will be stored as String.
         ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
-        ENV["ADRIA_NUM_CORES"] = 1
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
         ENV["ADRIA_DEBUG"] = false
         ENV["ADRIA_LOG_DHW_TOLS"] = false

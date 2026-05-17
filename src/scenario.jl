@@ -134,16 +134,15 @@ julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
 ResultSet
 """
 function run_scenarios(
-    dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true
+    dom::Domain, scens::DataFrame, RCP::String; show_progress=true
 )::ResultSet
-    return run_scenarios(dom, scens, [RCP]; show_progress, remove_workers)
+    return run_scenarios(dom, scens, [RCP]; show_progress)
 end
 function run_scenarios(
     dom::Domain,
     scens::DataFrame,
     RCP::Vector{String};
-    show_progress=true,
-    remove_workers=true
+    show_progress=true
 )::ResultSet
     # Initialize ADRIA configuration options
     setup()
@@ -156,27 +155,22 @@ function run_scenarios(
     env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
     @info "ADRIA_DEBUG = $env_debug"
 
-    env_num_cores = ENV["ADRIA_NUM_CORES"]
-    @info "ADRIA_NUM_CORES = $env_num_cores"
+    parallel::Bool = !env_debug && (Threads.nthreads() > 1)
 
-    is_RME_based = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain))
-    para_threshold::Int64 = is_RME_based ? 8 : 20
-    active_cores::Int64 = parse(Int64, env_num_cores)
-    parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
-
-    # Compute batch size before setting up the store so chunk sizes match the pmap batch
-    # sizes. In parallel mode: a small fixed batch keeps the pmap queue deep enough for
-    # dynamic load balancing — ceil(N/P) would create exactly one task per worker, leaving
-    # fast workers idle. In serial mode: fall back to the env var (default 1).
-    env_batch = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
-    batch_size::Int = if env_batch > 0
-        env_batch  # explicit override always wins
+    # chunk_size sets the Zarr chunk size along the scenario axis and controls how many
+    # results the writer accumulates before flushing to disk. Compute scheduling is
+    # per-scenario via a channel, so chunk_size is purely an I/O tuning parameter.
+    # In serial mode: fall back to the env var (default 1).
+    active_threads::Int = Threads.nthreads()
+    env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
+    chunk_size::Int = if env_chunk > 0
+        env_chunk  # explicit override always wins
     elseif parallel
-        max(1, min(4, ceil(Int, nrow(scens) / (active_cores * 4))))
+        ceil(Int, nrow(scens) / active_threads)
     else
         1
     end
-    @info "ADRIA_BATCH_SIZE (effective) = $batch_size"
+    @info "ADRIA_CHUNK_SIZE (effective) = $chunk_size"
 
     # Cross product between rcps and param_df to have every row of param_df for each rcp
     rcps_df = DataFrame(; RCP=parse.(Int64, RCP))
@@ -184,88 +178,105 @@ function run_scenarios(
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, batch_size)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, chunk_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
-    # The idea to initialise the functional groups here is so that each scenario run can
-    # reuse the memory. After a few scenarios runs there will be very few new
-    # allocations as buffers grow larger and are not exceeded
-    #
-    # The problem is that even if a subsequent run only has to reallocate once, the
-    # buffer is so large it takes very long regardless.
-    #
-    # This is also forced me to added an argument to run_model which breaks
-    # encapsulation, so its quite ugly
+    # Pre-allocate FunctionalGroup buffers so each scenario run can reuse memory.
+    # Buffer contents grow over time as size classes accumulate; reusing avoids repeated
+    # large allocations. In the parallel path one buffer set is created per thread to
+    # avoid data races on the mutable CircularBuffer and TerminalClass fields.
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
     _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
-    functional_groups = Vector{Vector{FunctionalGroup}}(undef, n_locs)
-    for loc in 1:n_locs
-        functional_groups[loc] =
-            FunctionalGroup.(
-                eachrow(_bin_edges[:, 1:(end - 1)]),
-                eachrow(_bin_edges[:, 2:end]),
-                eachrow(zeros(n_groups, n_sizes))
-            )
-    end
 
-    if parallel && nworkers() == 1
-        @info "Setting up parallel processing..."
-        spinup_time = @elapsed begin
-            _setup_workers()
-
-            # Load ADRIA on workers. Each pmap task runs _run_batch!, which computes
-            # and writes a full batch directly. Workers write to non-overlapping chunk
-            # ranges (chunk size == batch size) so concurrent Zarr writes are safe.
-            @sync @async @everywhere @eval begin
-                using ADRIA
-            end
-        end
-
-        @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
-    end
+    _make_fg_buffers() = [
+        FunctionalGroup.(
+            eachrow(_bin_edges[:, 1:(end - 1)]),
+            eachrow(_bin_edges[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
+        )
+        for _ in 1:n_locs
+    ]
 
     if parallel
-        # Each pmap task is one batch: workers compute B scenarios and write them
-        # directly. Only `nothing` returns to the main process — no result IPC.
-        batch_func = (batch) -> _run_batch!(batch, functional_groups, data_store)
+        # One buffer set per thread — threadid() can reach maxthreadid() due to Julia's
+        # internal threads, so size to maxthreadid() not nthreads().
+        thread_fg = [_make_fg_buffers() for _ in 1:Threads.maxthreadid()]
 
-        try
-            for rcp in RCP
-                run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
+        # Prevent BLAS internal threads from competing with Julia threads.
+        BLAS.set_num_threads(1)
 
-                dom = switch_RCPs!(dom, rcp)
-                target_rows = findall(
-                    scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
-                )
-                scen_args = collect(
-                    _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
-                )
-                all_batches = [
-                    collect(b) for b in Iterators.partition(scen_args, batch_size)
-                ]
+        for rcp in RCP
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
-                if show_progress
-                    @showprogress desc = run_msg dt = 4 pmap(
-                        batch_func, CachingPool(workers()), all_batches
-                    )
-                else
-                    pmap(batch_func, CachingPool(workers()), all_batches)
+            dom = switch_RCPs!(dom, rcp)
+            target_rows = findall(
+                scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+            )
+            scen_args = collect(
+                _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+            )
+            N_rcp = length(scen_args)
+            first_idx = scen_args[1][2]
+            n_chunks = cld(N_rcp, chunk_size)
+
+            prog =
+                show_progress ?
+                ProgressMeter.Progress(n_chunks; desc=run_msg, dt=4) :
+                nothing
+
+            # Workers push (write_idx, result) to the channel; the single writer task
+            # buffers results and flushes in chunk_size-aligned chunks so all Zarr writes
+            # are chunk-aligned and contention-free, regardless of completion order.
+            ch = Channel{Tuple{Int,NamedTuple}}(2 * Threads.nthreads())
+
+            chunk_start(c) = first_idx + c * chunk_size
+            chunk_len(c) = c < n_chunks - 1 ? chunk_size : N_rcp - (n_chunks - 1) * chunk_size
+
+            writer = Threads.@spawn begin
+                buf = Dict{Int,NamedTuple}()
+                chunk_ready = zeros(Int, n_chunks)
+                next_chunk = 0
+
+                for (idx, result) in ch
+                    buf[idx] = result
+                    c = (idx - first_idx) ÷ chunk_size
+                    chunk_ready[c + 1] += 1
+
+                    while next_chunk < n_chunks &&
+                            chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
+                        s = chunk_start(next_chunk)
+                        n = chunk_len(next_chunk)
+                        results = [buf[s + i] for i in 0:(n - 1)]
+                        for i in 0:(n - 1)
+                            delete!(buf, s + i)
+                        end
+                        _write_batch!(data_store, s, results)
+                        isnothing(prog) || ProgressMeter.next!(prog)
+                        next_chunk += 1
+                    end
                 end
             end
-        catch err
-            # Remove hanging workers if any error occurs
-            _remove_workers()
-            rethrow(err)
+
+            try
+                Threads.@threads :dynamic for i in 1:N_rcp
+                    d, idx, scen = scen_args[i]
+                    result = _collect_scenario_results(d, scen, thread_fg[Threads.threadid()])
+                    put!(ch, (idx, result))
+                end
+            finally
+                close(ch)
+            end
+            wait(writer)
         end
     else
-        # Serial: collect B results then write once (batch write, no IPC overhead)
-        collect_func = (dfx) -> _collect_scenario_results(dfx[1], dfx[3], functional_groups)
+        # Serial: one shared buffer set, collect batch then write.
+        functional_groups = _make_fg_buffers()
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -275,25 +286,27 @@ function run_scenarios(
                 _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
             )
             all_batches = [
-                collect(b) for b in Iterators.partition(scen_args, batch_size)
+                collect(b) for b in Iterators.partition(scen_args, chunk_size)
             ]
 
             if show_progress
                 @showprogress desc = run_msg dt = 4 for batch in all_batches
-                    batch_results = map(collect_func, batch)
+                    batch_results = map(
+                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        batch
+                    )
                     _write_batch!(data_store, first(batch)[2], batch_results)
                 end
             else
                 for batch in all_batches
-                    batch_results = map(collect_func, batch)
+                    batch_results = map(
+                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        batch
+                    )
                     _write_batch!(data_store, first(batch)[2], batch_results)
                 end
             end
         end
-    end
-
-    if parallel && remove_workers
-        _remove_workers()
     end
 
     return load_results(_result_location(dom, RCP))
