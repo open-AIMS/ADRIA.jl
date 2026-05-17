@@ -121,7 +121,8 @@ function ResultSet(
             log_set["coral_dhw_log"],
             Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
         ),
-        haskey(log_set, "coral_cover_log") ? DataCube(
+        haskey(log_set, "coral_cover_log") ?
+        DataCube(
             log_set["coral_cover_log"],
             Symbol.(Tuple(log_set["coral_cover_log"].attrs["structure"]))
         ) : nothing
@@ -267,7 +268,15 @@ function combine_results(result_sets...)::ResultSet
         n_cores
     end
     logs = (;
-        zip([:ranks, :mc_log, :seed_log, :shading_log, :coral_dhw_tol_log, :coral_cover_log],
+        zip(
+            [
+                :ranks,
+                :mc_log,
+                :seed_log,
+                :shading_log,
+                :coral_dhw_tol_log,
+                :coral_cover_log
+            ],
             setup_logs(
                 z_store,
                 rs1.loc_ids,
@@ -288,7 +297,8 @@ function combine_results(result_sets...)::ResultSet
             s_log = getfield(rs, log)
             n_log = getfield(logs, log)
             # coral_cover_log may be nothing for result sets loaded from old stores
-            rs_scen_len = isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
+            rs_scen_len =
+                isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
 
             if !isnothing(s_log)
                 n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] = s_log

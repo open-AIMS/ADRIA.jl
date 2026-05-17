@@ -1133,8 +1133,8 @@ function run_model(
         end
 
         # When cover is between cover_transition_lb and cover_transition_ub use a weighted mean
-        growth_threshold_mask_cache .= (
-            cover_transition_lb .<= relative_habitable_cover_cache .<
+        @. growth_threshold_mask_cache = (
+            cover_transition_lb <= relative_habitable_cover_cache <
             cover_transition_ub
         )
         if sum(growth_threshold_mask_cache) > 0
