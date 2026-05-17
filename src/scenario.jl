@@ -10,7 +10,8 @@ import CoralBlox:
     timestep!,
     coral_cover,
     max_projected_cover,
-    linear_extension_scale_factors
+    linear_extension_scale_factors,
+    LinearExtensionCache
 
 using .metrics:
     relative_cover,
@@ -1025,6 +1026,10 @@ function run_model(
         )
     end
 
+    # Pre-compute Δd matrices once for the entire simulation — _bin_edges is constant,
+    # so this avoids repeated allocation inside linear_extension_scale_factors each timestep.
+    _le_cache = LinearExtensionCache(_bin_edges)
+
     # Preallocate vector for growth constraints
     growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
 
@@ -1105,11 +1110,11 @@ function run_model(
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
             # Only apply linear_extension_scale_factors to locations with high cover
-            growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
+            @views growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
                 C_cover_t[:, :, cover_threshold_mask],
                 vec_abs_k[cover_threshold_mask],
                 biogrp_lin_ext[:, :, idx],
-                _bin_edges,
+                _le_cache,
                 habitable_max_projected_cover[cover_threshold_mask]
             )
         end
@@ -1135,7 +1140,7 @@ function run_model(
                             C_cover_t[:, :, cover_threshold_mask],
                             vec_abs_k[cover_threshold_mask],
                             biogrp_lin_ext[:, :, idx],
-                            _bin_edges,
+                            _le_cache,
                             habitable_max_projected_cover[cover_threshold_mask]
                         )
                     ) .+
