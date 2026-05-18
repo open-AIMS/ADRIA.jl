@@ -23,3 +23,5 @@ graphify-out/
 .graphify_python
 
 .graphify_uncached.txt
+
+ADRIAviz/test/Outputs/
