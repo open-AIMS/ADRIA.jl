@@ -1,6 +1,5 @@
 using Distances
 using Clustering
-using FLoops
 using ADRIA
 using JuliennedArrays
 

@@ -14,8 +14,6 @@ using
     Random
 using HypothesisTests: ApproximateKSTest
 
-using FLoops
-
 using ADRIA: DataCube, ResultSet, model_spec, ZeroDataCube
 
 using ADRIA.analysis: col_normalize, normalize!
