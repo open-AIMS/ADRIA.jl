@@ -18,7 +18,6 @@ using
     CSV,
     DataFrames,
     Distributed,
-    FLoops,
     FileIO,
     GeoInterface,
     Graphs,
