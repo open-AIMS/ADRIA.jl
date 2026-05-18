@@ -15,7 +15,6 @@ end
 
         # Ensure environment variables are set
         @test haskey(ENV, "ADRIA_OUTPUT_DIR")
-        @test haskey(ENV, "ADRIA_NUM_CORES")
         @test haskey(ENV, "ADRIA_THRESHOLD")
     end
 

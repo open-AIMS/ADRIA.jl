@@ -257,16 +257,9 @@ function combine_results(result_sets...)::ResultSet
     n_locs = size(rs1.seed_log, :locations)
     n_groups = size(rs1.seed_log, :coral_id)
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
-    n_cores::Int = parse(Int, get(ENV, "ADRIA_NUM_CORES", "1"))
     env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
     n_scenarios = nrow(all_inputs)
-    batch_size::Int = if env_batch > 0
-        min(env_batch, n_scenarios)
-    elseif n_scenarios < n_cores
-        1
-    else
-        n_cores
-    end
+    batch_size::Int = env_batch > 0 ? min(env_batch, n_scenarios) : 1
     logs = (;
         zip(
             [
