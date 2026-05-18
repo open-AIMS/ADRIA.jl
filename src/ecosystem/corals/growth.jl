@@ -1,6 +1,5 @@
 """Coral growth functions"""
 
-using FLoops
 using Distributions
 using SpecialFunctions
 
@@ -86,7 +85,7 @@ function proportional_adjustment!(
         """
         @debug msg
 
-        @floop for idx in exceeded
+        for idx in exceeded
             @views @. coral_cover[:, :, idx] = (
                 coral_cover[:, :, idx] / loc_cover_cache[idx]'
             )

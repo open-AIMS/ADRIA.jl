@@ -1061,7 +1061,6 @@ function run_model(
     # Preallocate vector for growth constraints
     growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
 
-    FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
 
     # Growth constraints and acceleration caches and masks

@@ -14,7 +14,6 @@ using ADRIA:
     DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, functional_group_names
 using ADRIA: n_sizes, group_indices
 
-using FLoops
 using DataFrames
 
 using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, loc_k_area, loc_area,
