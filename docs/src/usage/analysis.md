@@ -1,5 +1,9 @@
 # Analysis
 
+!!! note
+    This page covers functions provided by `ADRIAAnalysis.jl`. Ensure it is installed
+    before running the examples (see [Getting Started](@ref)).
+
 This section presents tools for analysing model generate data, including functions to
 extract metrics and plot graphs.
 
