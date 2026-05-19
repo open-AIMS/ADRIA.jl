@@ -91,7 +91,9 @@ function find_scenarios(
     for (idx_c, c) in enumerate(unique(clusters))
         cluster_metric = outcomes[:, clusters .== c]
 
-        median_series = vec(median(cluster_metric[timesteps=axes(cluster_metric, :timesteps)], dims=1))
+        tf = axes(cluster_metric, :timesteps)
+        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps=tf], 2)
+        median_series = median.(timesteps_slices)
 
         clusters_summary[idx_c] = aggregation_func(median_series)
     end

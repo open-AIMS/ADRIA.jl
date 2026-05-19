@@ -1,6 +1,5 @@
 using Test
 using ADRIA
-using ADRIA: DataFrames
 using ADRIAanalysis
 
 @testset "ADRIAanalysis" begin
@@ -11,12 +10,6 @@ using ADRIAanalysis
         @test isdefined(ADRIAanalysis, :cluster_rules)
         @test isdefined(ADRIAanalysis, :target_clusters)
         @test isdefined(ADRIAanalysis, :find_scenarios)
-        @test isdefined(ADRIAanalysis, :scenario_types)
-        @test isdefined(ADRIAanalysis, :scenario_rcps)
-        @test isdefined(ADRIAanalysis, :scenario_clusters)
-        @test isdefined(ADRIAanalysis, :find_pareto_optimal)
-        @test isdefined(ADRIAanalysis, :find_robust)
-        @test isdefined(ADRIAanalysis, :screen_scenarios)
     end
 
     # ---------------------------------------------------------------------------
@@ -175,51 +168,6 @@ using ADRIAanalysis
         @test_throws Exception ADRIAanalysis.find_scenarios(
             outcomes_2d, clusters_2d, filter_fn
         )
-    end
-
-    # ---------------------------------------------------------------------------
-    # find_pareto_optimal / find_robust / screen_scenarios
-    # ---------------------------------------------------------------------------
-    @testset "find_pareto_optimal" begin
-        # Scenario 1 dominates scenario 2 for RCP45 (higher is better in both objectives).
-        # Scenarios 3 and 4 are mutually non-dominated for RCP60.
-        scens = DataFrames.DataFrame(RCP=Int[45, 45, 60, 60])
-        y = Float64[0.9 0.9; 0.1 0.1; 0.8 0.2; 0.3 0.7]
-
-        result = ADRIAanalysis.find_pareto_optimal(scens, y, [45, 60])
-
-        @test result isa NamedTuple
-        @test haskey(result, :RCP45)
-        @test haskey(result, :RCP60)
-        @test result.RCP45 == [1]
-        @test sort(result.RCP60) == [3, 4]
-    end
-
-    @testset "find_robust" begin
-        scens = DataFrames.DataFrame(RCP=Int[45, 45, 45])
-        # After col_normalize all three end up on the Pareto front.
-        # y_star = [1.0 0.0; 0.5 0.5; 0.0 1.0]
-        y = Float64[1.0 0.0; 0.5 0.5; 0.0 1.0]
-
-        # Rule: all normalized values >= 0.4 → only scenario 2 ([0.5, 0.5]) passes.
-        rule = x -> all(x .>= 0.4)
-        result = ADRIAanalysis.find_robust(scens, y, rule, [45])
-        @test result isa NamedTuple
-        @test haskey(result, :RCP45)
-        @test result.RCP45 == [2]
-
-        # Rule no scenario satisfies → empty result.
-        result_empty = ADRIAanalysis.find_robust(scens, y, x -> all(x .>= 0.99), [45])
-        @test isempty(result_empty.RCP45)
-    end
-
-    @testset "screen_scenarios" begin
-        # col_normalize([1 3; 2 4]) = [0 0; 1 1]
-        y = Float64[1.0 3.0; 2.0 4.0]
-
-        @test ADRIAanalysis.screen_scenarios(y, x -> x >= 0.5) == [2]
-        @test ADRIAanalysis.screen_scenarios(y, x -> x >= 0.0) == [1, 2]
-        @test isempty(ADRIAanalysis.screen_scenarios(y, x -> x > 1.0))
     end
 
     # ---------------------------------------------------------------------------

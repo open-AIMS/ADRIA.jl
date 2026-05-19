@@ -12,6 +12,7 @@ using
     Distances,
     Distributions,
     HypothesisTests,
+    JuliennedArrays,
     MLJ,
     Random,
     SIRUS,
@@ -21,15 +22,13 @@ using
     StatsBase,
     YAXArrays
 
-import ADRIA.analysis: col_normalize, scenario_types, scenario_rcps
+import ADRIA.analysis: col_normalize
 
 include("analysis/clustering.jl")
 include("analysis/rule_extraction.jl")
 include("analysis/data_envelopment.jl")
 include("analysis/feature_set.jl")
 include("analysis/intervention.jl")
-include("analysis/pareto.jl")
-include("analysis/screening.jl")
 include("analysis/scenario.jl")
 include("sensitivity/sensitivity.jl")
 
