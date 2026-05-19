@@ -733,16 +733,23 @@ end
     outcome_map(rs::ResultSet, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray where {T<:Real}
     outcome_map(rs::ResultSet, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset where {T<:Real}
 
-Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
+Maps the mean outcome obtained in scenarios matching a rule, as a function of factor values discretized into `S` bins.
+
+These methods take a scenario specification (`X`), result set (`rs`), or array of results (`p`), along with a set of outcomes `y`. 
+The outcomes are normalised to [0,1] and a `rule` is applied to determine whether the scenario is kept. 
+For the scenarios retained, the values for `target_factor` are extracted, and discretized into `S` bins.
+For each bin, the mean is calculated, along with a `conf` confidence interval (default 95%) using `n_boot` bootstraps samples of the retained scenarios.
+This process is repeated for each of the specified `target_factors` individually.
 
 Produces a matrix indicating the range of (normalized) outcomes across factor space for
 each dimension (the model inputs). This is similar to a Regional Sensitivity Analysis,
 except that the model outputs are examined directly as opposed to a measure of sensitivity.
 
 Note:
-- `y` is normalized on a per-column basis prior to the analysis
+- `y` is normalized to [0,1] on a per-column basis prior to the analysis
 - Empty areas of factor space (those that do not have any desired outcomes)
   will be assigned `NaN`
+- Categorical variables are also binned. Using fewer bins than there are categories will result in categories being combined.
 
 # Arguments
 - `X` : scenario specification
@@ -750,14 +757,19 @@ Note:
 - `rule` : a callable defining a "desirable" scenario outcome
 - `target_factors` : list of factors of interest to perform analyses on
 - `S` : number of slices of factor space. Higher values equate to finer granularity
-- `n_boot` : number of bootstraps (default: 100)
+- `n_boot` : number of bootstraps (default: 100) to use for calculation of confidence interval of the mean
+  See: https://github.com/juliangehring/Bootstrap.jl
 - `conf` : confidence interval (default: 0.95)
+- `p`: Array of results
+- `X_q` : Factor quantiles for which to calculate bounds. When generated internally, this is of length `S`.
+- `X_f` : Factor values for each scenario
+- `behave`: `BitVector` defining whether each scenario is "behavioural", i.e. satisfies the rule
 
 # Returns
 3-dimensional YAXArray, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
-- boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
+- bootstrapped mean (dim 1) and the lower/upper `conf` confidence interval (95% by default) (dims 2 and 3).
 
 # Examples
 ```julia
@@ -770,7 +782,7 @@ foi = [:SRM, :fogging, :a_adapt]
 # Find scenarios where all metrics are above their median
 rule = y -> all(y .> 0.5)
 
-# Map input values where to their outcomes
+# Map input values where rule is met to their outcomes
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """

@@ -398,17 +398,24 @@ end
     ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
     ADRIA.viz.outcome_map!(ax::Axis, outcomes::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
-Plot outcomes mapped to factor regions for up to 30 factors.
+Plot results of `outcome_map` for up to 30 factors.
+
+For each `factor` in `factors`, plot `outcomes` with a ribbon for the `upper` and `lower` bounds and a line for the `mean`.
 
 # Arguments
 - `rs` : ResultSet
-- `outcomes` : ADRIA Outcome Mapping results
-- `factors` : The factors of interest to display
+- `outcomes` : ADRIA Outcome Mapping results for one or more factors
+- `factors` / `factor` : The factor(s) of interest to display
 - `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
   See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `g` : A `GridLayout` and `GridPosition`
+- `ax` : An Axis
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `ms_factor` : Model specification for one factor
+- `f_vals` : Factor values for one factor, as present in the result set 
 
 # Returns
 Makie figure
