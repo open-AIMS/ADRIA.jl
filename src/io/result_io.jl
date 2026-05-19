@@ -192,7 +192,9 @@ Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
+function setup_logs(
+    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
+)
     # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
@@ -481,7 +483,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
         taxa_dims...;
         fill_value=nothing,
         fill_as_missing=false,
-        path=joinpath(z_store.folder, RESULTS, string(metrics.to_symbol(taxa_cover_metric))),
+        path=joinpath(
+            z_store.folder, RESULTS, string(metrics.to_symbol(taxa_cover_metric))
+        ),
         chunks=(taxa_dims[1:2]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "groups", "scenarios"),

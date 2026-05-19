@@ -236,7 +236,8 @@ function run_scenarios(
             ch = Channel{Tuple{Int,NamedTuple}}(2 * Threads.nthreads())
 
             chunk_start(c) = first_idx + c * chunk_size
-            chunk_len(c) = c < n_chunks - 1 ? chunk_size : N_rcp - (n_chunks - 1) * chunk_size
+            chunk_len(c) =
+                c < n_chunks - 1 ? chunk_size : N_rcp - (n_chunks - 1) * chunk_size
 
             writer = Threads.@spawn begin
                 buf = Dict{Int,NamedTuple}()
@@ -249,7 +250,7 @@ function run_scenarios(
                     chunk_ready[c + 1] += 1
 
                     while next_chunk < n_chunks &&
-                            chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
+                        chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
                         s = chunk_start(next_chunk)
                         n = chunk_len(next_chunk)
                         results = [buf[s + i] for i in 0:(n - 1)]
@@ -266,7 +267,9 @@ function run_scenarios(
             try
                 Threads.@threads :dynamic for i in 1:N_rcp
                     d, idx, scen = scen_args[i]
-                    result = _collect_scenario_results(d, scen, thread_fg[Threads.threadid()])
+                    result = _collect_scenario_results(
+                        d, scen, thread_fg[Threads.threadid()]
+                    )
                     put!(ch, (idx, result))
                 end
             finally
