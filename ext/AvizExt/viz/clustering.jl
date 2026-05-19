@@ -42,7 +42,7 @@ function ADRIA.viz.scenarios!(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    scen_groups = ADRIA.analysis.scenario_clusters(clusters)
+    scen_groups = _scenario_clusters(clusters)
     opts[:histogram] = false
     opts[:legend_labels] = sort(collect(keys(scen_groups)))
 
@@ -145,7 +145,7 @@ function ADRIA.viz.map!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     # Although this function is called scenario_clusters, here we have locations clusters
-    loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)
+    loc_groups::Dict{Symbol,BitVector} = _scenario_clusters(clusters)
 
     group_colors::Dict{Symbol,COLOR_TYPE} = colors(loc_groups)
 

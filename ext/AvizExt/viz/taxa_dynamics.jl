@@ -67,9 +67,9 @@ function ADRIA.viz.taxonomy(
 )::Figure
     _scenarios = copy(scenarios[1:end .∈ [relative_taxa_cover.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
-        ADRIA.analysis.scenario_rcps(_scenarios)
+        _scenario_rcps(_scenarios)
     else
-        ADRIA.analysis.scenario_types(_scenarios)
+        _scenario_types(_scenarios)
     end
 
     by_functional_groups::Bool = get(opts, :by_functional_groups, true)
