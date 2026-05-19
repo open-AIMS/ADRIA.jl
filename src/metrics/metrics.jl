@@ -55,12 +55,22 @@ end
 Makes Metric types callable with arbitrary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
-    if :scenarios in f.in_dims
-        axes = f.in_dims[1:ndims(raw)]
+    if raw isa YAXArray
+        result = f.func(raw, args...; kwargs...)
+        # YAXArrays operations (sum, dropdims, etc.) reset axis values to 1:n.
+        # Restore the original values from raw for any axis that survived (same name + length).
+        raw_names = axes_names(raw)
+        new_dims = Tuple(
+            map(axes_names(result), result.axes) do nm, rd
+                i = findfirst(==(nm), raw_names)
+                (i !== nothing && length(raw.axes[i]) == length(rd)) ? raw.axes[i] : rd
+            end
+        )
+        return fill_metadata!(YAXArray(new_dims, result.data, result.properties), f)
     else
-        axes = f.in_dims
+        axes = :scenarios in f.in_dims ? f.in_dims[1:ndims(raw)] : f.in_dims
+        return fill_metadata!(f.func(DataCube(raw, axes), args...; kwargs...), f)
     end
-    return fill_metadata!(f.func(DataCube(raw, axes), args...; kwargs...), f)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
     return fill_metadata!(f.func(rs, args...; kwargs...), f)

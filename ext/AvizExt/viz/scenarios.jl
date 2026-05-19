@@ -76,6 +76,27 @@ function ADRIA.viz.scenarios!(
     )
 end
 function ADRIA.viz.scenarios(
+    outcomes::YAXArray,
+    scen_groups::Dict{Symbol,BitVector};
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size => (800, 300)),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+
+    ADRIA.viz.scenarios!(
+        g, ax, outcomes, scen_groups;
+        opts=opts, axis_opts=axis_opts, series_opts=series_opts
+    )
+    return f
+end
+function ADRIA.viz.scenarios(
     rs::RMEResultSet,
     outcomes::YAXArray;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
@@ -328,9 +349,10 @@ function _confints(
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
     agg_dim = symdiff(axes_names(outcomes), [:timesteps])[1]
+    outcomes_arr = Array(outcomes)
     for (idx, group) in enumerate(group_names)
         confints[:, idx, :] = series_confint(
-            outcomes.data[:, scen_groups[group]]; agg_dim=agg_dim
+            outcomes_arr[:, scen_groups[group]]; agg_dim=agg_dim
         )
     end
 
@@ -351,7 +373,7 @@ function scenarios_confint!(
     end
 
     series_colors = [_colors[group] for group in ordered_groups]
-    series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
+    series!(ax, x_vals, Matrix(confints[:, :, 2]'); solid_color=series_colors)
 
     return nothing
 end
@@ -362,14 +384,20 @@ function scenarios_confint!(
     group_names::Vector{Symbol}
 )::Nothing
     _colors::Dict{Symbol,COLOR_TYPE} = colors(scen_groups)
-    confints = _confints(outcomes, scen_groups, group_names)
-    return scenarios_confint!(
-        ax,
-        confints,
-        group_names,
-        _colors;
-        x_vals=collect(1:size(confints, 1))
-    )
+    x_vals = collect(1:size(outcomes, 1))
+    outcomes_arr = Array(outcomes)
+
+    single_groups = filter(g -> sum(scen_groups[g]) == 1, group_names)
+    for group in single_groups
+        idx = findfirst(scen_groups[group])
+        lines!(ax, x_vals, outcomes_arr[:, idx]; color=_colors[group])
+    end
+
+    multi_groups = filter(g -> sum(scen_groups[g]) > 1, group_names)
+    isempty(multi_groups) && return nothing
+
+    confints = _confints(outcomes, scen_groups, multi_groups)
+    return scenarios_confint!(ax, confints, multi_groups, _colors; x_vals=x_vals)
 end
 
 function scenarios_series!(
@@ -383,10 +411,11 @@ function scenarios_series!(
     _colors::Dict{Symbol,COLOR_TYPE} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
+    outcomes_arr = Array(outcomes)
     for group in group_names
         color = (_colors[group], _alphas[group])
-        scens = outcomes[:, scen_groups[group]]'
-        series!(ax, x_vals, scens.data; solid_color=color, series_opts...)
+        scens = Matrix(outcomes_arr[:, scen_groups[group]]')
+        series!(ax, x_vals, scens; solid_color=color, series_opts...)
     end
 
     return nothing
@@ -428,10 +457,87 @@ function _render_legend(
     _colors = colors(scen_groups)
     line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n in legend_labels]
 
-    title = pop!(legend_opts, :title, "Intervention scenarios")
+    title = pop!(legend_opts, :title, "Scenarios")
     Legend(g, line_els, labels(legend_labels), title; framevisible=false, legend_opts...)
 
     return nothing
+end
+
+"""
+    ADRIA.viz.scenarios(outcomes::YAXArray; opts=Dict(), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())::Figure
+    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, outcomes::YAXArray; opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+
+Plot scenario outcomes over time directly from a `YAXArray`, without requiring a result set
+or scenario `DataFrame`. All scenarios are treated as a single group.
+
+# Examples
+```julia
+# outcomes is a (timesteps × scenarios) YAXArray, e.g. from an external source
+ADRIA.viz.scenarios(outcomes)
+
+# Plot individual lines instead of the confidence interval band
+ADRIA.viz.scenarios(outcomes; opts=Dict(:summarize => false))
+```
+
+# Arguments
+- `outcomes` : Results of scenario metric, with dimensions `(timesteps, scenarios)`
+- `opts` : Aviz options
+    - `summarize` : plot confidence interval band. Defaults to true.
+    - `legend` : show legend. Defaults to false.
+    - `histogram` : show marginal histogram. Defaults to false.
+- `fig_opts` : Additional options to pass to `Figure`
+- `axis_opts` : Additional options to pass to `Axis`
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `series_opts` : Additional options to pass to `series!`
+  See: https://docs.makie.org/v0.19/api/index.html#series!
+
+# Returns
+Figure or GridPosition
+"""
+function ADRIA.viz.scenarios(
+    outcomes::YAXArray;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size => (800, 300)),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.scenarios!(
+        g, outcomes; opts=opts, axis_opts=axis_opts, series_opts=series_opts
+    )
+    return f
+end
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    outcomes::YAXArray;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Union{GridLayout,GridPosition}
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+
+    if !haskey(axis_opts, :title)
+        axis_opts[:title] = outcome_title(outcomes)
+    end
+
+    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+
+    n_scenarios = size(outcomes, 2)
+    scen_groups = Dict{Symbol,BitVector}(:scenarios => trues(n_scenarios))
+    opts[:legend] = get(opts, :legend, false)
+    opts[:histogram] = get(opts, :histogram, false)
+
+    return ADRIA.viz.scenarios!(
+        g,
+        ax,
+        outcomes,
+        scen_groups;
+        opts=opts,
+        axis_opts=axis_opts,
+        series_opts=series_opts
+    )
 end
 
 """
@@ -459,8 +565,9 @@ function _sort_keys(
         by_RCP && return sort(collect(keys(scenario_types)))
         !isempty(default_names) && return default_names
 
-        default_keys = [:counterfactual, :unguided, :guided]
-        return default_keys[default_keys .∈ [scen_types]]
+        default_keys = [:counterfactual, :interventions, :unguided, :guided]
+        filtered = default_keys[default_keys .∈ [scen_types]]
+        return isempty(filtered) ? scen_types : filtered
     elseif by == :variance
         msg = "When sorting by variance, optional parameter `outcomes` must be provided"
         isempty(outcomes) && throw(ArgumentError(msg))
