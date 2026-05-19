@@ -30,7 +30,7 @@ The following build args and defaults are available to configure the build behav
 
 - ARG ADRIA_VERSION="0.11.0": What version of ADRIA from package registry to install in adria-base
 
-- ARG JULIA_VERSION="1.10.4": See https://hub.docker.com/\*/julia for valid versions.
+- ARG JULIA_VERSION="1.11.5": See https://hub.docker.com/\*/julia for valid versions.
 
 ## adria-base
 

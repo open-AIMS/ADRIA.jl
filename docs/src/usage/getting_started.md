@@ -28,6 +28,16 @@ Similarly, ADRIA can be updated as new releases are made:
 julia> ]up ADRIA
 ```
 
+!!! note
+    Advanced analysis and sensitivity functions (`target_clusters`, `find_scenarios`,
+    `sensitivity.pawn`, `data_envelopment_analysis`, `rules`, etc.) are provided by the
+    separate `ADRIAAnalysis.jl` package. Install it alongside `ADRIA.jl` with:
+
+    ```julia-repl
+    julia> ]
+    pkg> add ADRIAAnalysis
+    ```
+
 If desired, you can create a `config.toml` file inside your project directory.
 This is optional, and the assumed default values are shown below:
 
