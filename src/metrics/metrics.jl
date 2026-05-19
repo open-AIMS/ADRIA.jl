@@ -60,10 +60,12 @@ function (f::Metric)(raw, args...; kwargs...)::YAXArray
         # YAXArrays operations (sum, dropdims, etc.) reset axis values to 1:n.
         # Restore the original values from raw for any axis that survived (same name + length).
         raw_names = axes_names(raw)
-        new_dims = Tuple(map(axes_names(result), result.axes) do nm, rd
-            i = findfirst(==(nm), raw_names)
-            (i !== nothing && length(raw.axes[i]) == length(rd)) ? raw.axes[i] : rd
-        end)
+        new_dims = Tuple(
+            map(axes_names(result), result.axes) do nm, rd
+                i = findfirst(==(nm), raw_names)
+                (i !== nothing && length(raw.axes[i]) == length(rd)) ? raw.axes[i] : rd
+            end
+        )
         return fill_metadata!(YAXArray(new_dims, result.data, result.properties), f)
     else
         axes = :scenarios in f.in_dims ? f.in_dims[1:ndims(raw)] : f.in_dims
