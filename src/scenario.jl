@@ -1514,10 +1514,7 @@ function run_model(
                     if has_mc_locs
                         mc_loc_idx = findall(domain.loc_ids .∈ [selected_mc_ranks])
 
-                        # Discount recruits added via seeding from leftover space
-                        @views available_space =
-                            leftover_space_m²[mc_loc_idx] .-
-                            dropdims(sum(recruitment[:, mc_loc_idx]; dims=1); dims=1)
+                        @views available_space = leftover_space_m²[mc_loc_idx]
 
                         locs_with_space = findall(available_space .> 0.0)
 
@@ -1536,6 +1533,9 @@ function run_model(
 
                             @views recruitment[:, mc_loc_idx] .+=
                                 mc_proportional_increase
+                            leftover_space_m²[mc_loc_idx] .-=
+                                vec(sum(Array(mc_proportional_increase); dims=1)) .*
+                                vec_abs_k[mc_loc_idx]
 
                             # Log estimated number of corals moved
                             Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
@@ -1725,6 +1725,9 @@ function run_model(
 
                             # Add coral seeding to recruitment
                             recruitment[:, seed_loc_idx] .+= proportional_increase
+                            leftover_space_m²[seed_loc_idx] .-=
+                                vec(sum(Array(proportional_increase); dims=1)) .*
+                                vec_abs_k[seed_loc_idx]
 
                             update_tolerance_distribution!(
                                 proportional_increase,
