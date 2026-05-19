@@ -1,15 +1,15 @@
 using Test
 using ADRIA
-using ADRIAAnalysis
+using ADRIAanalysis
 
-@testset "ADRIAAnalysis" begin
+@testset "ADRIAanalysis" begin
     @testset "Package loads" begin
-        @test isdefined(ADRIAAnalysis, :sensitivity)
-        @test isdefined(ADRIAAnalysis, :data_envelopment_analysis)
-        @test isdefined(ADRIAAnalysis, :rules)
-        @test isdefined(ADRIAAnalysis, :cluster_rules)
-        @test isdefined(ADRIAAnalysis, :target_clusters)
-        @test isdefined(ADRIAAnalysis, :find_scenarios)
+        @test isdefined(ADRIAanalysis, :sensitivity)
+        @test isdefined(ADRIAanalysis, :data_envelopment_analysis)
+        @test isdefined(ADRIAanalysis, :rules)
+        @test isdefined(ADRIAanalysis, :cluster_rules)
+        @test isdefined(ADRIAanalysis, :target_clusters)
+        @test isdefined(ADRIAanalysis, :find_scenarios)
     end
 
     # ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ using ADRIAAnalysis
     # ---------------------------------------------------------------------------
     @testset "ADRIA.analysis.cluster_series" begin
         # 8 timesteps × 6 scenarios — two obvious groups
-        low  = [0.1, 0.15, 0.12, 0.11, 0.14, 0.13]'  # 1×6
+        low = [0.1, 0.15, 0.12, 0.11, 0.14, 0.13]'  # 1×6
         high = [0.9, 0.85, 0.88, 0.91, 0.87, 0.89]'  # 1×6
         data = repeat(low, 8) .+ repeat(0.0:0.01:0.07, 1, 6)   # 8×6, gently rising
         # Replace top 3 columns with clearly higher values
@@ -31,7 +31,8 @@ using ADRIAAnalysis
         @test all(1 .<= assignments .<= n_clusters)
         # The two obvious groups should be separated into different clusters
         @test assignments[1:3] == assignments[1:3]          # low group internally consistent
-        @test allunique([assignments[1], assignments[4]]) == false || assignments[1] != assignments[4]
+        @test allunique([assignments[1], assignments[4]]) == false ||
+            assignments[1] != assignments[4]
 
         @testset "hclust method" begin
             h_assignments = ADRIA.analysis.cluster_series(data, n_clusters; method=:hclust)
@@ -40,7 +41,9 @@ using ADRIAAnalysis
         end
 
         @testset "weuclidean distance" begin
-            w_assignments = ADRIA.analysis.cluster_series(data, n_clusters; distance=:weuclidean)
+            w_assignments = ADRIA.analysis.cluster_series(
+                data, n_clusters; distance=:weuclidean
+            )
             @test length(w_assignments) == 6
             @test all(1 .<= w_assignments .<= n_clusters)
         end
@@ -81,7 +84,7 @@ using ADRIAAnalysis
     end
 
     # ---------------------------------------------------------------------------
-    # ADRIAAnalysis.target_clusters
+    # ADRIAanalysis.target_clusters
     # ---------------------------------------------------------------------------
     @testset "target_clusters" begin
         # outcomes: 6 timesteps × 6 scenarios
@@ -97,7 +100,7 @@ using ADRIAAnalysis
         # Two clear clusters
         clusters = Int64[1, 1, 1, 2, 2, 2]
 
-        result = ADRIAAnalysis.target_clusters(clusters, outcomes)
+        result = ADRIAanalysis.target_clusters(clusters, outcomes)
 
         @test result isa Vector{Int64}
         @test length(result) == 6
@@ -118,7 +121,7 @@ using ADRIAAnalysis
         outcomes = Float64[0.9 0.1 0.2]  # 1 timestep × 3 scenarios
         clusters = Int64[1, 2, 2]
 
-        result = ADRIAAnalysis.target_clusters(clusters, outcomes; size_limit=0.4)
+        result = ADRIAanalysis.target_clusters(clusters, outcomes; size_limit=0.4)
         # Even though cluster 1 is "best", it's < 40% of scenarios,
         # so cluster 2 gets merged in. All scenarios should be target.
         @test result isa Vector{Int64}
@@ -143,10 +146,10 @@ using ADRIAAnalysis
             0.1 0.1 0.9 0.9
         ]
         outcomes_yax = ADRIA.DataCube(data; timesteps=1:4, scenarios=1:4)
-        clusters_2d  = Int64[1, 1, 2, 2]
-        filter_fn    = x -> x .>= maximum(x)   # pick the single best cluster
+        clusters_2d = Int64[1, 1, 2, 2]
+        filter_fn = x -> x .>= maximum(x)   # pick the single best cluster
 
-        result = ADRIAAnalysis.find_scenarios(outcomes_yax, clusters_2d, filter_fn)
+        result = ADRIAanalysis.find_scenarios(outcomes_yax, clusters_2d, filter_fn)
 
         @test result isa BitVector
         @test length(result) == 4
@@ -161,8 +164,8 @@ using ADRIAAnalysis
     @testset "find_scenarios 2D plain Matrix — type mismatch" begin
         outcomes_2d = Float64[0.1 0.9; 0.1 0.9; 0.1 0.9; 0.1 0.9]
         clusters_2d = Int64[1, 2]
-        filter_fn   = x -> x .>= maximum(x)
-        @test_throws Exception ADRIAAnalysis.find_scenarios(
+        filter_fn = x -> x .>= maximum(x)
+        @test_throws Exception ADRIAanalysis.find_scenarios(
             outcomes_2d, clusters_2d, filter_fn
         )
     end
@@ -171,9 +174,9 @@ using ADRIAAnalysis
     # Submodule and function existence checks
     # ---------------------------------------------------------------------------
     @testset "Submodule and function presence" begin
-        @test isdefined(ADRIAAnalysis, :sensitivity)
-        @test isdefined(ADRIAAnalysis.sensitivity, :pawn)
-        @test isdefined(ADRIAAnalysis, :rules)
-        @test isdefined(ADRIAAnalysis, :cluster_rules)
+        @test isdefined(ADRIAanalysis, :sensitivity)
+        @test isdefined(ADRIAanalysis.sensitivity, :pawn)
+        @test isdefined(ADRIAanalysis, :rules)
+        @test isdefined(ADRIAanalysis, :cluster_rules)
     end
 end
