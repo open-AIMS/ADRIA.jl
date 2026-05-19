@@ -29,7 +29,7 @@ end
 """
     loc_trajectory(metric, data::YAXArray{D,T,N,A})::YAXArray where {D,T,N,A}
 
-Alias for summarize(data, [:scenarios], metric). Collate trajectory for each location.
+Alias for summarize(data, [:scenarios], metric). Collate trajectory for each location, applying `metric` across values for all scenarios.
 
 # Examples
 ```julia
