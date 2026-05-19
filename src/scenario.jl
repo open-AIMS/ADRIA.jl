@@ -20,7 +20,8 @@ using .metrics:
     relative_juveniles,
     relative_taxa_cover,
     juvenile_indicator,
-    coral_evenness
+    coral_evenness,
+    coral_diversity
 
 using SparseArrays
 using DataStructures: CircularBuffer
@@ -176,7 +177,8 @@ function run_scenarios(
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df[:, Not("option_ts")], chunk_size)
+    scenarios_df_save = hasproperty(scenarios_df, :option_ts) ? scenarios_df[:, Not("option_ts")] : scenarios_df
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df_save, chunk_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
@@ -1691,12 +1693,9 @@ function run_model(
 
                     if is_guided
                         # Compute diversity index
-                        loc_taxa_cover = relative_loc_taxa_cover(
-                            reshape(C_cover_t, (1, n_group_and_size, n_locs)),
-                            vec_abs_k,
-                            n_groups
-                        )
-                        diversity = coral_diversity(loc_taxa_cover.data)[timesteps=1].data
+                        loc_taxa_cover = relative_loc_taxa_cover(reshape(C_cover_t, (1, n_groups, n_sizes, n_locs)))
+                        evenness = coral_evenness(loc_taxa_cover.data)
+                        diversity = coral_diversity(evenness.data)[timesteps=1].data
 
                         # Update decision matrix with current conditions
                         update_criteria_values!(
@@ -1706,13 +1705,15 @@ function run_model(
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
                             in_connectivity=in_conn[share_candidate_loc_idx],
                             out_connectivity=out_conn[share_candidate_loc_idx],
-                            coral_diversity=diversity[candidate_loc_indices]
+                            coral_diversity=diversity[share_candidate_loc_idx]
                         )
 
-                        decision_matrix_log[timesteps=tstep, location=considered_locs] .= decision_mat[location=locs_with_space[_valid_locs]]
+                        decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(share_candidate_locs)]
 
-                        option = param_set[At("option_ts")][tstep]
-                        seed_pref = options[options.option_name .== option, :preference][1]
+                        if "option_ts" in param_set.factors
+                            option = param_set[At("option_ts")][tstep]
+                            seed_pref = options[options.option_name .== option, :preference][1]
+                        end
 
                         # Build state for target locations only
                         selected_seed_ranks = select_locations(

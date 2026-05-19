@@ -10,7 +10,7 @@ function sample_options(
     sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     # Get one guided sample
-    sample = sample_selection(d, 2, sample_method)[1:1, :]
+    sample = sample(d, 2, sample_method)[1:1, :]
 
     # Compute all possible option time series
     options = analysis.option_seed_preference()
@@ -422,7 +422,7 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
 
     # Disable wave decisions if no wave stress is used
     no_wave_scenario = samples.wave_scenario .== 0.0
-    samples[no_wave_scenario, :seed_wave_stress] .= 0.0
+    #samples[no_wave_scenario, :seed_wave_stress] .= 0.0
 
     if size(unique(Matrix(samples); dims=1), 1) < nrow(samples)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(samples)) / nrow(samples))) * 100.0))%"

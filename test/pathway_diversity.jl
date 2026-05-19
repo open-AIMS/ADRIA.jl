@@ -1,7 +1,7 @@
 using ADRIA
 
 @testset "switching_probability returns correct values" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     past_option = :heat_stress
     min_locs = 5  # select at least 10 locations
     valid_locations = dom.loc_data.reef_siteid
@@ -63,7 +63,7 @@ end
 
 @testset "option_similarity returns correct values" begin
     @testset "for standard domain" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
         seleceted_locations_1 = dom.loc_data[4:8, :]
         seleceted_locations_2 = dom.loc_data[6:end, :]
 
