@@ -12,7 +12,8 @@ include("aqua.jl")
 
 include("run_scenarios.jl")
 
-include("analysis.jl")
+# analysis.jl uses ADRIA.sensitivity.* and viz functions that have moved to ADRIAAnalysis.
+# Run it from packages/ADRIAAnalysis/test/ instead.
 include("clustering.jl")
 include("data_loading.jl")
 include("domain.jl")
