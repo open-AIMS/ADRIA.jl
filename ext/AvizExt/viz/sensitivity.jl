@@ -1,6 +1,13 @@
 using Statistics
 using Printf
-using ADRIA.sensitivity: _get_cat_quantile
+function _get_cat_quantile(
+    foi_spec::DataFrame, factor_name::Symbol, steps::AbstractVector{Float64}
+)::Vector{Float64}
+    fact_idx::BitVector = foi_spec.fieldname .== factor_name
+    lb = foi_spec.lower_bound[fact_idx][1] - 1
+    ub = foi_spec.upper_bound[fact_idx][1]
+    return round.(quantile(lb:ub, steps))
+end
 using ADRIA: _is_discrete_factor
 
 """
