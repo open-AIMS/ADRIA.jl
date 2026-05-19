@@ -1,4 +1,4 @@
-module ADRIAAnalysis
+module ADRIAanalysis
 
 using ADRIA
 using ADRIA: ResultSet, ZeroDataCube, DataCube, n_locations, model_spec
