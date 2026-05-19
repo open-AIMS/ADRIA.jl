@@ -141,7 +141,7 @@ function scenario_attributes(
         :RCP => RCP,
         :columns => input_cols,
         :invoke_time => invoke_time,
-        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
+        :ADRIA_VERSION => "v" * string(pkgversion(@__MODULE__)),
         :loc_data_file => env_layer.loc_data_fn,
         :loc_id_col => env_layer.loc_id_col,
         :cluster_id_col => env_layer.cluster_id_col,
@@ -683,7 +683,7 @@ function load_results(result_loc::String)::ResultSet
     model_spec.fieldname .= Symbol.(model_spec.fieldname)
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
-    t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
+    t_vers_id = "v" * string(pkgversion(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).

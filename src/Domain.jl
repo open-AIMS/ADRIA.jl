@@ -34,18 +34,8 @@ Calculate the pairwise distance matrix for a set of location coordinates.
 Matrix of pairwise distances between locations
 """
 function distance_matrix(coords::Vector{Tuple{Float64,Float64}})::Matrix{Float64}
-    n_locs = length(coords)
-    dist_matrix = zeros(n_locs, n_locs)
-
-    for i in 1:n_locs
-        for j in (i + 1):n_locs
-            dist = Distances.haversine(coords[i], coords[j])
-            dist_matrix[i, j] = dist
-            dist_matrix[j, i] = dist
-        end
-    end
-
-    return dist_matrix
+    coord_matrix = reduce(hcat, collect.(coords))  # 2 × n_locs matrix (lon, lat rows)
+    return Distances.pairwise(Distances.Haversine(), coord_matrix; dims=2)
 end
 
 """
@@ -120,28 +110,23 @@ function nearest_neighbor_distances(
     n_neighbors::Int
 )::Vector{Float64}
     n_locs = size(dist_matrix, 1)
-
-    # Adjust n_neighbors if there aren't enough locations
     effective_n = min(n_neighbors, n_locs - 1)
-
-    # Calculate mean distance to n closest neighbors for each location
     mean_distances = zeros(n_locs)
+    buf = Vector{Float64}(undef, n_locs - 1)
     for i in 1:n_locs
-        # Get distances from this location to all others, excluding self
-        other_indices = [j for j in 1:n_locs if j != i]
-        distances = dist_matrix[i, other_indices]
-
-        # Find the n closest neighbors
-        if length(distances) <= effective_n
-            # If we have few locations, use all available
-            mean_distances[i] = mean(distances)
+        k = 0
+        for j in 1:n_locs
+            j == i && continue
+            k += 1
+            buf[k] = dist_matrix[i, j]
+        end
+        if effective_n >= n_locs - 1
+            mean_distances[i] = mean(buf)
         else
-            # Sort and take the effective_n closest
-            sorted_indices = sortperm(distances)[1:effective_n]
-            mean_distances[i] = mean(distances[sorted_indices])
+            partialsort!(buf, effective_n)
+            mean_distances[i] = mean(@view buf[1:effective_n])
         end
     end
-
     return mean_distances
 end
 
@@ -192,7 +177,7 @@ function model_spec(d::Domain)::DataFrame
     return model_spec(d.model)
 end
 function model_spec(d::Domain, filepath::String)::Nothing
-    version = PkgVersion.Version(@__MODULE__)
+    version = pkgversion(@__MODULE__)
     vers_id = "v$(version)"
 
     current_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
