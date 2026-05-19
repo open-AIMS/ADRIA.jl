@@ -7,7 +7,7 @@ import GeoFormatTypes as GFT
 
 using ADRIA: ResultSet, timesteps
 using ADRIA.metrics: total_absolute_cover, relative_cover, relative_loc_taxa_cover,
-    ltmp_cover, relative_shelter_volume, relative_juveniles
+    ltmp_cover, relative_shelter_volume, relative_juveniles, coral_evenness
 using ADRIA: to_coral_spec, Domain, switch_RCPs!
 
 export export_to_rme
@@ -101,6 +101,9 @@ function export_to_rme(
         rs.outcomes[:relative_shelter_volume].data
     )
 
+    # Coral evenness
+    evenness_data = Array(coral_evenness(rs).data)
+
     # Placeholders for cots and rubble
     cots_data = zeros(Float32, n_timesteps, n_locs, n_scens)
     rubble_data = zeros(Float32, n_timesteps, n_locs, n_scens)
@@ -172,6 +175,17 @@ function export_to_rme(
     )
     nccreate(
         nc_path,
+        "evenness",
+        "timesteps",
+        n_timesteps,
+        "locations",
+        n_locs,
+        "scenarios",
+        n_scens;
+        t=NC_FLOAT
+    )
+    nccreate(
+        nc_path,
         "cots",
         "timesteps",
         n_timesteps,
@@ -192,6 +206,7 @@ function export_to_rme(
     ncwrite(juveniles_data, nc_path, "relative_juveniles")
     ncwrite(shelter_volume_data, nc_path, "relative")
     ncwrite(shelter_volume_data, nc_path, "relative_shelter_volume")
+    ncwrite(evenness_data, nc_path, "evenness")
     ncwrite(rubble_data, nc_path, "rubble")
     ncwrite(cots_data, nc_path, "cots")
 
@@ -234,9 +249,24 @@ function export_to_rme(
 
     # Group scenarios by intervention settings to assign IDs and repetitions
     env_cols = intersect(
-        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(inputs)
+        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :cyclone_mortality_scenario, :RCP],
+        propertynames(inputs)
     )
-    iv_cols = setdiff(propertynames(inputs), env_cols)
+
+    # Exclude coral/model parameters from intervention grouping
+    # These are factors that define the biological/physical model rather than the intervention itself
+    iv_cols = filter(
+        c -> !any(
+            p -> occursin(p, string(c)),
+            [
+                "tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora",
+                "small_massives", "large_massives", "scale_cb_group", "steepness",
+                "midpoint", "height", "heritability", "depth_min", "depth_offset",
+                "capacity_mult"
+            ]
+        ),
+        setdiff(propertynames(inputs), env_cols)
+    )
     iv_groups = groupby(inputs, iv_cols)
     iv_id_map = zeros(Int, n_scens)
     rep_map = zeros(Int, n_scens)
@@ -268,6 +298,29 @@ function export_to_rme(
     reefset_registry = Dict{Tuple{String,Set{Int}},String}()
     reefset_counter = 1
 
+    # Helper function to find a similar reefset in the registry (80% overlap)
+    function find_similar_reefset(region::String, loc_set::Set{Int}, registry::Dict)
+        for ((reg, existing_set), name) in registry
+            if reg != region
+                continue
+            end
+
+            # Calculate similarity: size of intersection / max(loc_set, existing_set)
+            # This ensures they are 80% the same set
+            intersection_size = length(intersect(loc_set, existing_set))
+            max_size = max(length(loc_set), length(existing_set))
+            similarity = intersection_size / max_size
+
+            if similarity >= 0.80
+                if similarity < 1.0
+                    @warn "Consolidating similar reefsets (similarity: $(round(similarity * 100, digits=2))%) in region $region. Using existing reefset: $name"
+                end
+                return name
+            end
+        end
+        return nothing
+    end
+
     # Process seed_log: (timesteps, coral_id, locations, scenarios)
     # Sum over coral_id (2nd dim) to find intervened locations
     for scen in 1:n_scens
@@ -292,15 +345,14 @@ function export_to_rme(
 
                 for (region, indices) in regional_groups
                     loc_set = Set(indices)
-                    key = (region, loc_set)
 
-                    # Assign or retrieve reefset name
-                    if !haskey(reefset_registry, key)
+                    # Assign or retrieve reefset name with similarity check
+                    rs_name = find_similar_reefset(region, loc_set, reefset_registry)
+                    if isnothing(rs_name)
                         rs_name = "reefset_$(region)_$(reefset_counter)"
-                        reefset_registry[key] = rs_name
+                        reefset_registry[(region, loc_set)] = rs_name
                         reefset_counter += 1
                     end
-                    rs_name = reefset_registry[key]
 
                     year = start_year + t - 1
 
@@ -338,14 +390,14 @@ function export_to_rme(
 
                 for (region, indices) in regional_groups_mc
                     loc_set_mc = Set(indices)
-                    key = (region, loc_set_mc)
 
-                    if !haskey(reefset_registry, key)
+                    # Assign or retrieve reefset name with similarity check
+                    rs_name_mc = find_similar_reefset(region, loc_set_mc, reefset_registry)
+                    if isnothing(rs_name_mc)
                         rs_name_mc = "reefset_$(region)_$(reefset_counter)"
-                        reefset_registry[key] = rs_name_mc
+                        reefset_registry[(region, loc_set_mc)] = rs_name_mc
                         reefset_counter += 1
                     end
-                    rs_name_mc = reefset_registry[key]
 
                     year = start_year + t - 1
 

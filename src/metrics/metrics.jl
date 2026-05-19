@@ -462,7 +462,7 @@ function _juvenile_indicator(
     mean_diams = permutedims(
         reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)
     )
-    max_juvenile_density = 51.8
+    max_juvenile_density = 15.0
 
     # If calculating over multiple scenario include scenarios
     dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
@@ -476,9 +476,9 @@ function _juvenile_indicator(
 
     return juv_ind
 end
-function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=51.8)
+function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=15.0)
     juv_ind = rs.outcomes[:juvenile_indicator]
-    old_max_density = 51.8
+    old_max_density = 15.0
     if max_juvenile_density == old_max_density
         return juv_ind
     end
