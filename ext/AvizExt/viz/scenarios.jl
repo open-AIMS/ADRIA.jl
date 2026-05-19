@@ -159,9 +159,9 @@ function ADRIA.viz.scenarios!(
 
     _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
-        ADRIA.analysis.scenario_rcps(_scenarios)
+        _scenario_rcps(_scenarios)
     else
-        ADRIA.analysis.scenario_types(_scenarios)
+        _scenario_types(_scenarios)
     end
 
     return ADRIA.viz.scenarios!(
@@ -217,9 +217,9 @@ function ADRIA.viz.scenarios_legend!(
     _scenarios = rs.inputs #copy(@view(scenarios[1:end .∈ [outcomes.scenarios], :]))
     by_RCP::Bool = get(opts, :by_RCP, false)
     scen_groups = if by_RCP
-        ADRIA.analysis.scenario_rcps(_scenarios)
+        _scenario_rcps(_scenarios)
     else
-        ADRIA.analysis.scenario_types(_scenarios)
+        _scenario_types(_scenarios)
     end
     return ADRIA.viz.scenarios_legend!(
         g, scen_groups, outcomes; opts=opts, legend_opts=legend_opts
