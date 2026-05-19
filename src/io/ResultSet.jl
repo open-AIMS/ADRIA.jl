@@ -1,6 +1,6 @@
 using Dates: now
 
-using PkgVersion, Zarr
+using Zarr
 
 using Setfield: @set!
 using DataFrames: DataFrame
@@ -317,7 +317,8 @@ function combine_results(result_sets...)::ResultSet
                 :ranks,
                 :mc_log,
                 :seed_log,
-                :shading_log,
+                :fog_log,
+                :shade_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log
             ],
