@@ -42,15 +42,23 @@ function location_connectivity(
         error("Could not find location: $(file_path)")
     end
 
-    local extracted_TP::Matrix{Float64}
+    local conn_loc_ids::Vector{String}
+    local extracted_conn::Matrix{Float64}
     if isfile(file_path)
-        conn_files::Vector{String} = String[file_path]
-        first_file = conn_files[1]
+        conn_file1 = CSV.read(
+            file_path,
+            DataFrame;
+            comment="#",
+            missingstring="NA",
+            transpose=swap,
+            types=Float64,
+            drop=[1]
+        )
+        conn_loc_ids = names(conn_file1)
+        extracted_conn = Matrix{Float64}(conn_file1)
     elseif isdir(file_path)
         conn_fns = readdir(file_path)
         conn_fns = String[fn for fn in conn_fns if endswith(fn, ".csv")]
-
-        first_file = joinpath.(file_path, conn_fns[1])
 
         # Assume years are always in the second position
         years::Vector{String} = unique(getindex.(split.(conn_fns, "_"), 2))
@@ -60,45 +68,33 @@ function location_connectivity(
         [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
 )
 
-        # Create store for each year
+        # Create store for each year; capture column names from the first file read
         tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
+        first_read = true
         for yr in years
             assoc_files = getfield(year_conn_fns, Symbol.("year_" * yr))
-            conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
-                Matrix(
-                    CSV.read(
-                        fn,
-                        DataFrame;
-                        comment="#",
-                        missingstring="NA",
-                        transpose=swap,
-                        types=Float64,
-                        drop=[1]
-                    )
-                ) for fn in assoc_files
-            ]
-
+            conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[]
+            for fn in assoc_files
+                df = CSV.read(
+                    fn,
+                    DataFrame;
+                    comment="#",
+                    missingstring="NA",
+                    transpose=swap,
+                    types=Float64,
+                    drop=[1]
+                )
+                if first_read
+                    conn_loc_ids = names(df)
+                    first_read = false
+                end
+                push!(conn_data, Matrix(df))
+            end
             push!(tmp_store, agg_func(conn_data))
         end
 
         # Mean across all years
         extracted_conn = agg_func(tmp_store)
-    end
-
-    # Get location ids from first file
-    conn_file1 = CSV.read(
-        first_file,
-        DataFrame;
-        comment="#",
-        missingstring="NA",
-        transpose=swap,
-        types=Float64,
-        drop=[1]
-    )
-
-    conn_loc_ids::Vector{String} = names(conn_file1)
-    if isfile(file_path)
-        extracted_conn = Matrix{Float64}(conn_file1)
     end
 
     # Identify locations that are not found in either conn_loc_ids or loc_ids
