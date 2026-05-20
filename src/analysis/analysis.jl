@@ -1,10 +1,9 @@
 module analysis
 
-using ADRIA: ZeroDataCube, ResultSet, n_locations
+using ADRIA: ZeroDataCube, ResultSet, RMEResultSet, n_locations
 using ADRIA.metrics: nds
 
 using Clustering, Distances
-using JuliennedArrays: Slices
 using Statistics, DataFrames
 using YAXArrays
 
@@ -107,11 +106,14 @@ Confidence interval (lower bound, median and higher bound) for each series step
 """
 function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
     slice_dim = data isa YAXArray ? YAXArrays.findAxis(agg_dim, data) : 2
-    return quantile.(Slices(data, slice_dim), [0.025 0.5 0.975])
+    return [
+        quantile(view(data, (slice_dim, i)), q) for i in axes(data, slice_dim),
+        q in [0.025 0.5 0.975]
+    ]
 end
 
-include("pareto.jl")
-include("screening.jl")
+include("scenario_groups.jl")
+include("annotated_outcomes.jl")
 
 # Clustering
 
@@ -223,7 +225,8 @@ function cluster_scenarios(
     method::Symbol=:kmedoids,
     distance::Symbol=:euclidean
 )::Array{Int64}
-    ndims(data) == 2 && return cluster_series(data, n_clusters; method=method, distance=distance)
+    ndims(data) == 2 &&
+        return cluster_series(data, n_clusters; method=method, distance=distance)
 
     _, n_scenarios, n_metrics = size(data)
 
@@ -236,5 +239,7 @@ function cluster_scenarios(
 
     return clusters
 end
+
+export AnnotatedOutcomes, attach_scenario_metadata
 
 end

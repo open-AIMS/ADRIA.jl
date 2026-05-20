@@ -88,11 +88,15 @@ include("viz/viz.jl")
 
 export
     run_scenario, coral_spec, bin_edges,
-    create_coral_struct, Intervention, SimConstants,
+    create_coral_struct, create_coral_instance,
+    create_growth_acceleration_instance, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
+
+using .analysis: AnnotatedOutcomes, attach_scenario_metadata
+export AnnotatedOutcomes, attach_scenario_metadata
 
 # Interfaces for external models
 export RMEDomain
