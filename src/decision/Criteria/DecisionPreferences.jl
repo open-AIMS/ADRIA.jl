@@ -67,7 +67,16 @@ function update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
 end
 function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
     for (criteria_name, value) in kwargs
-        dm[criteria=At(criteria_name)] .= value
+        # Convert Vector to appropriate format for YAXArray assignment
+        if isa(value, Vector)
+            # For vectors, materialize and assign element-wise to avoid broadcast issues with YAXArrays
+            criteria_slice = dm[criteria=At(criteria_name)]
+            for i in axes(criteria_slice, 1)
+                criteria_slice[i] = value[i]
+            end
+        else
+            dm[criteria=At(criteria_name)] .= value
+        end
     end
 
     return nothing
