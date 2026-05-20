@@ -314,7 +314,7 @@ function export_to_rme(
             max_size = max(length(loc_set), length(existing_set))
             similarity = intersection_size / max_size
 
-            if similarity >= 0.80
+            if similarity >= 0.70
                 if similarity < 1.0
                     @warn "Consolidating similar reefsets (similarity: $(round(similarity * 100, digits=2))%) in region $region. Using existing reefset: $name"
                 end
