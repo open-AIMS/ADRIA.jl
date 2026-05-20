@@ -4,7 +4,6 @@ using ADRIA: ZeroDataCube, ResultSet, RMEResultSet, n_locations
 using ADRIA.metrics: nds
 
 using Clustering, Distances
-using JuliennedArrays: Slices
 using Statistics, DataFrames
 using YAXArrays
 
@@ -113,8 +112,8 @@ function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matri
     ]
 end
 
-include("pareto.jl")
-include("screening.jl")
+include("scenario_groups.jl")
+include("annotated_outcomes.jl")
 
 # Clustering
 
@@ -226,7 +225,8 @@ function cluster_scenarios(
     method::Symbol=:kmedoids,
     distance::Symbol=:euclidean
 )::Array{Int64}
-    ndims(data) == 2 && return cluster_series(data, n_clusters; method=method, distance=distance)
+    ndims(data) == 2 &&
+        return cluster_series(data, n_clusters; method=method, distance=distance)
 
     _, n_scenarios, n_metrics = size(data)
 
@@ -239,5 +239,7 @@ function cluster_scenarios(
 
     return clusters
 end
+
+export AnnotatedOutcomes, attach_scenario_metadata
 
 end
