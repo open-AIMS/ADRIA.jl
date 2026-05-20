@@ -20,15 +20,17 @@ function summarize_env_data(
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
         stats_store = zeros(2, size(baseline_data, 3), size(baseline_data, 2))
-        stats_store[1, :, :] .= dropdims(mean(baseline_data; dims=1); dims=1)'
-        stats_store[2, :, :] .= dropdims(std(baseline_data; dims=1); dims=1)'
+        μ = mean(baseline_data; dims=1)
+        stats_store[1, :, :] .= dropdims(μ; dims=1)'
+        stats_store[2, :, :] .= dropdims(std(baseline_data; mean=μ, dims=1); dims=1)'
         return stats_store
     end
 
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
-    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
-    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
+    μ = mean(data; dims=1)
+    stats_store[1, :, :] .= dropdims(μ; dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; mean=μ, dims=1); dims=1)'
     return stats_store
 end
 

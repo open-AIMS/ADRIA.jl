@@ -185,7 +185,7 @@ Load environmental data layers (DHW, Wave) from netCDF.
 """
 function load_env_data(data_fn::String, attr::String)::YAXArray{Float64}
     _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
-    return Float64.(load_nc_data(data_fn, attr; dim_names=_dim_names))
+    return map(Float64, load_nc_data(data_fn, attr; dim_names=_dim_names))
 end
 function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray{Float64}
     return ZeroDataCube(; T=Float64, timesteps=timeframe, sites=sites, scenarios=1:50)

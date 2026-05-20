@@ -137,24 +137,19 @@ Projection of environmental data for locations present in `env_data` for the nex
 `planning_horizon` timesteps weighted by `decay`.
 """
 function weighted_projection(
-    env_data::AbstractMatrix{T},
+    env_data::AbstractMatrix,
     tstep::Int64,
     planning_horizon::Int64,
     decay::AbstractVector{Float64},
     timeframe::Int64
-)::Vector{Float64} where T<:Real
-    # Determine subset of data to select data for planning horizon
-    horizon::UnitRange{Int64} = tstep:min(tstep + planning_horizon, timeframe)
-    d_s::UnitRange{Int64} = 1:length(horizon)
-
+)::Vector{Float64}
+    horizon = tstep:min(tstep + planning_horizon, timeframe)
     # Put more weight on projected conditions closer to the decision point
-    @views env_horizon = decay[d_s] .* env_data[horizon, :]
-    return summary_stat_env(env_horizon, :timesteps)
+    return summary_stat_env(decay[1:length(horizon)] .* env_data[horizon, :], :timesteps)
 end
 
 """
-    summary_stat_env(env_layer::AbstractArray, dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
-    summary_stat_env(env_layer::Matrix{<:AbstractFloat}, dims::Int64; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::AbstractArray, dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
 
 Calculates weighted combinations of mean and standard deviation for a given environmental
 factor.
@@ -173,26 +168,12 @@ Where the time horizon == 1, the original values are returned.
 """
 function summary_stat_env(
     env_layer::AbstractArray,
-    dims::Union{Symbol,Tuple{Symbol,Symbol}};
+    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
     w=0.5
 )::Vector{Float64}
     if size(env_layer, 1) > 1
-        return vec(
-            (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
-        )
-    end
-
-    return vec(env_layer)
-end
-function summary_stat_env(
-    env_layer::Matrix{<:AbstractFloat},
-    dims::Int64;
-    w=0.5
-)::Vector{Float64}
-    if size(env_layer, 1) > 1
-        return vec(
-            (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
-        )
+        μ = mean(env_layer; dims=dims)
+        return vec(μ .* w .+ std(env_layer; mean=μ, dims=dims) .* (1.0 - w))
     end
 
     return vec(env_layer)
