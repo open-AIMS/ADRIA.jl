@@ -104,11 +104,14 @@ function summarize(
 
     alongs = sort([axis_index(data, axis) for axis in alongs_axis])
 
-    # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
-    # We see a small but still worthwhile improvement in practice.
+    # Use of view and comprehensions to speed up calculation of summary statistics.
     # see: https://stackoverflow.com/a/62040897
-    data_slices = JuliennedArrays.Slices(read(data), alongs...)
-    summarized_data = map(metric, data_slices)
+    data_raw = read(data)
+    ranges = [axes(data_raw, ax) for ax in alongs]
+    summarized_data = [
+        metric(view(data_raw, (slice, indices...))) for
+        indices in Iterators.product(ranges...)
+    ]
 
     new_dims = setdiff(axes_names(data), alongs_axis)
     new_axis = [axis_labels(data, ax) for ax in new_dims]
