@@ -5,7 +5,6 @@ using ADRIAIndicators
 using
     Distributions,
     Interpolations,
-    JuliennedArrays,
     OnlineStats,
     Statistics
 
