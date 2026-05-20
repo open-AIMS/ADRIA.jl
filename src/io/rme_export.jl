@@ -102,7 +102,10 @@ function export_to_rme(
     )
 
     # Coral evenness
-    evenness_data = Array(coral_evenness(rs).data)
+    # Coral evenness computed in ADRIAIndicators is the inverse Simpson's Diversity metric
+    # which is not_normalised. We need to normalise by the number of groups.
+    n_groups = 5
+    evenness_data = Array(coral_evenness(rs).data) ./ n_groups
 
     # Placeholders for cots and rubble
     cots_data = zeros(Float32, n_timesteps, n_locs, n_scens)
