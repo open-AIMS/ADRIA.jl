@@ -1,6 +1,6 @@
-using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
-using ADRIA: axes_names, RMEResultSet
+using ADRIA: axes_names, RMEResultSet, AnnotatedOutcomes
+using OrderedCollections
 
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(by_RCP => false), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
@@ -589,4 +589,188 @@ function _sort_keys(
             )
         )
     end
+end
+
+"""
+    _get_scenario_groups(ao::AnnotatedOutcomes; by_RCP=false) -> OrderedDict{Symbol,BitVector}
+
+Extract scenario group masks from `ao.metadata`, keyed by RCP or scenario type.
+"""
+function _get_scenario_groups(
+    ao::AnnotatedOutcomes; by_RCP::Bool=false
+)::OrderedDict{Symbol,BitVector}
+    if by_RCP
+        groups = get(ao.metadata, :scenario_rcp_groups, nothing)
+        isnothing(groups) && throw(ArgumentError(
+            "RCP grouping is not available for RME-sourced outcomes."
+        ))
+        return groups
+    end
+    haskey(ao.metadata, :scenario_type_groups) || throw(
+        ArgumentError(
+            "AnnotatedOutcomes is missing :scenario_type_groups — was attach_scenario_metadata called?"
+        )
+    )
+    return ao.metadata[:scenario_type_groups]
+end
+
+"""
+    scenario_bands!(ax, data, scen_groups; kwargs...)
+
+Render grouped time-series data as median lines with CI bands, one band per scenario
+group. When `summarize=false`, draws individual member lines instead.
+
+# Arguments
+- `ax`: a Makie `Axis`
+- `data`: `YAXArray` with a scenarios dimension
+- `scen_groups`: `OrderedDict{Symbol,BitVector}` mapping group name to member mask
+
+# Keyword arguments
+- `summarize::Bool=true` — aggregate to median + CI band; `false` draws all member lines
+- `colormap=:tableau_10`
+- `alpha::Float64=0.3` — opacity of CI band fill
+- `legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing` — optional override labels keyed by group name
+"""
+function scenario_bands!(
+    ax,
+    data::YAXArray,
+    scen_groups::OrderedDict{Symbol,BitVector};
+    summarize::Bool=true,
+    colormap=:tableau_10,
+    alpha::Float64=0.3,
+    legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing
+)
+    _colors = categorical_colors(colormap, length(scen_groups))
+    x_vals = collect(1:size(data, 1))
+    _resolve_label =
+        isnothing(legend_labels) ?
+        (label -> string(label)) :
+        (label -> get(legend_labels, label, string(label)))
+    for (i, (label, mask)) in enumerate(scen_groups)
+        display_label = _resolve_label(label)
+        members = Array(data[scenarios=mask])
+        if summarize
+            confints = quantile.(Slices(members, 2), [0.1 0.5 0.9])
+            band!(ax, x_vals, confints[:, 1], confints[:, 3]; color=(_colors[i], alpha))
+            lines!(ax, x_vals, confints[:, 2]; color=_colors[i], label=display_label)
+        else
+            for s in axes(members, 2)
+                lines!(ax, x_vals, members[:, s];
+                    color=(_colors[i], alpha), label=s == 1 ? display_label : nothing)
+            end
+        end
+    end
+end
+
+"""
+    ADRIA.viz.scenarios(ao::AnnotatedOutcomes; kwargs...) -> Figure
+
+Plot scenario outcomes over time from an `AnnotatedOutcomes`, grouping lines by scenario
+type or RCP and optionally rendering a legend panel.
+"""
+function ADRIA.viz.scenarios(
+    ao::AnnotatedOutcomes;
+    by_RCP::Bool=false,
+    summarize::Bool=true,
+    legend::Bool=true,
+    sort_by::Symbol=:default,
+    legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing,
+    size::Tuple{Int,Int}=(800, 300),
+    title::AbstractString="",
+    xlabel::AbstractString="Year",
+    ylabel::AbstractString="",
+    xticks=nothing,
+    xticklabelrotation::Float64=π / 2
+)::Figure
+    scen_groups = _get_scenario_groups(ao; by_RCP)
+    f = Figure(; size)
+    g = f[1, 1] = GridLayout()
+    xtick_vals = isnothing(xticks) ? _time_labels(timesteps(ao.data)) : xticks
+    ax = Axis(g[1, 1];
+        title, xlabel, ylabel,
+        xticks=xtick_vals, xticklabelrotation
+    )
+    scenario_bands!(ax, ao.data, scen_groups;
+        summarize, legend_labels
+    )
+    legend && _scenarios_legend_from_groups!(g[1, 2], scen_groups, ao.data;
+        by_RCP, sort_by, legend_labels
+    )
+    return f
+end
+
+"""
+    ADRIA.viz.scenarios!(g, ao::AnnotatedOutcomes; kwargs...) -> Union{GridLayout,GridPosition}
+
+Render scenario outcome bands from `ao` into an existing grid position `g`.
+"""
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    ao::AnnotatedOutcomes;
+    by_RCP::Bool=false,
+    summarize::Bool=true,
+    legend::Bool=true,
+    sort_by::Symbol=:default,
+    legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing,
+    title::AbstractString="",
+    xlabel::AbstractString="Year",
+    ylabel::AbstractString="",
+    xticks=nothing,
+    xticklabelrotation::Float64=π / 2
+)::Union{GridLayout,GridPosition}
+    scen_groups = _get_scenario_groups(ao; by_RCP)
+    xtick_vals = isnothing(xticks) ? _time_labels(timesteps(ao.data)) : xticks
+    ax = Axis(g[1, 1];
+        title, xlabel, ylabel,
+        xticks=xtick_vals, xticklabelrotation
+    )
+    scenario_bands!(ax, ao.data, scen_groups;
+        summarize, legend_labels
+    )
+    legend && _scenarios_legend_from_groups!(g[1, 2], scen_groups, ao.data;
+        by_RCP, sort_by, legend_labels
+    )
+    return g
+end
+
+"""
+    _scenarios_legend_from_groups!(g, scen_groups, data; kwargs...)
+
+Build a scenario legend panel from pre-computed `scen_groups`, avoiding a redundant
+`_get_scenario_groups` call when groups are already available at the call site.
+"""
+function _scenarios_legend_from_groups!(
+    g::GridPosition,
+    scen_groups::OrderedDict{Symbol,BitVector},
+    data::YAXArray;
+    by_RCP::Bool=false,
+    sort_by::Symbol=:default,
+    legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing,
+    legend_title::AbstractString="Scenarios"
+)
+    opts = Dict{Symbol,Any}(:by_RCP => by_RCP, :sort_by => sort_by)
+    isnothing(legend_labels) || (opts[:legend_labels] = Symbol.(keys(legend_labels)))
+    legend_opts = Dict{Symbol,Any}(:title => legend_title)
+    return ADRIA.viz.scenarios_legend!(g, Dict{Symbol,BitVector}(scen_groups), data;
+        opts=opts, legend_opts=legend_opts
+    )
+end
+
+"""
+    ADRIA.viz.scenarios_legend!(g, ao::AnnotatedOutcomes; kwargs...)
+
+Add a scenario group legend panel to grid position `g` using metadata from `ao`.
+"""
+function ADRIA.viz.scenarios_legend!(
+    g::GridPosition,
+    ao::AnnotatedOutcomes;
+    by_RCP::Bool=false,
+    sort_by::Symbol=:default,
+    legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing,
+    legend_title::AbstractString="Scenarios"
+)
+    scen_groups = _get_scenario_groups(ao; by_RCP)
+    return _scenarios_legend_from_groups!(g, scen_groups, ao.data;
+        by_RCP, sort_by, legend_labels, legend_title
+    )
 end
