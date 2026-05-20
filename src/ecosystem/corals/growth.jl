@@ -286,14 +286,22 @@ function bleaching_mortality!(
     depth_coeff::Vector{Float64},
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
-    prop_mort::SubArray{Float64}
+    bleach_dhw::SubArray{Float64},
+    tol_ceil::AbstractArray{Float64,3}
 )::Nothing
-    n_groups, n_sizes, n_locs = size(cover)
+    n_groups, n_sizes, _ = size(cover)
 
-    non_juveniles = 1:n_sizes
+    # New evidence that all size classes bleach
+    # Álvarez-Noriega et al., 2025.
+    # Challenging Paradigms Around the Role of Colony Size, Taxa, and Environment on
+    # Bleaching Susceptibility.
+    # Global Change Biology 31, e70090.
+    # https://doi.org/10.1111/gcb.70090
+    all_sizes = 1:n_sizes
 
     # Potential bleaching locations (skip locations with no heat stress)
-    active_locs = findall(dhw .> 4.0)
+    # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
+    active_locs = findall(dhw .> HEAT_LB)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -305,18 +313,19 @@ function bleaching_mortality!(
                 continue
             end
 
-            for sc in non_juveniles
+            for sc in all_sizes
                 # Skip location if there is no population
                 if cover[grp, sc, loc] == 0.0
                     continue
                 end
 
                 μ::Float64 = dist_t[grp, sc, loc]
+                μ_ceil::Float64 = tol_ceil[grp, sc, loc]  # initial mean + HEAT_UB (fixed)
                 affected_pop::Float64 = truncated_normal_cdf(
-                    # Use the previous mortality threshold or 4.0 as the minimum,
-                    # whichever is greater
-                    dhw[loc], μ, stdev[grp, sc], max(4.0, prop_mort[1, grp, sc, loc]),
-                    μ + HEAT_UB
+                    # Use the previous bleaching DHW as the distribution lower bound,
+                    # with 4.0 DHW-weeks as the minimum susceptibility threshold
+                    dhw[loc], μ, stdev[grp, sc], max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
+                    μ_ceil
                 )
 
                 mort_pop::Float64 = 0.0
@@ -331,13 +340,21 @@ function bleaching_mortality!(
                     end
                 end
 
-                prop_mort[2, grp, sc, loc] = mort_pop
+                # Store current DHW (DHW-weeks) as the bleaching threshold for this location.
+                # Previously stored mort_pop (a dimensionless fraction 0-1), which caused a
+                # dimensional mismatch: the value was used as a lower bound on the DHW
+                # tolerance distribution (units: DHW-weeks) in the next timestep, making
+                # the truncation effectively identical to truncating at 0.
+                bleach_dhw[2, grp, sc, loc] = dhw[loc]
                 if mort_pop > 0.0
-                    # Re-create distribution
-                    # Use same stdev as target size class to maintain genetic variance
+                    # 1. Re-create distribution truncated at current bleaching DHW: survivors
+                    # must have had tolerance above dhw[loc], so this is the correct lower
+                    # bound.
+                    #
+                    # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], mort_pop, μ + HEAT_UB
+                        μ, stdev[grp, sc], HEAT_LB, μ_ceil
                     )
 
                     # Update population
@@ -473,10 +490,24 @@ function adjust_DHW_distribution!(
 
     return nothing
 end
+"""
+    adjust_DHW_distribution!(cover_t_1, dist_t, growth_rate, tol_ceil)
+
+Adjust critical DHW distributions across all groups and locations as corals mature
+into higher size classes. Applies a hard ceiling so tolerance cannot exceed
+`tol_ceil` (initial population mean + HEAT_UB) regardless of size-class redistribution.
+
+# Arguments
+- `cover_t_1`  : Coral cover at the previous timestep (groups × sizes × locations).
+- `dist_t`     : Tolerance distribution means for the current timestep; updated in place.
+- `growth_rate`: Growth rates per (group, size, location).
+- `tol_ceil`   : Per-(group, size, location) tolerance ceiling (initial mean + HEAT_UB).
+"""
 function adjust_DHW_distribution!(
     cover_t_1::SubArray{T,3},
     dist_t::AbstractArray{T,3},
-    growth_rate::AbstractArray{T,3}
+    growth_rate::AbstractArray{T,3},
+    tol_ceil::AbstractArray{T,3}
 )::Nothing where {T<:Float64}
     groups, _, locs = axes(cover_t_1)
 
@@ -494,6 +525,7 @@ function adjust_DHW_distribution!(
         end
     end
 
+    dist_t .= min.(dist_t, tol_ceil)
     return nothing
 end
 
@@ -520,7 +552,10 @@ absolute units.
 - `tp` : Connectivity matrix.
 - `settlers` : Recruitment cover matrix for each functional group (rows) and locations (cols).
 - `fecundity_per_m²` : Fecundity in number of corals per area (in m²) each functional group.
-- `h²` : Heritability parameter.
+- `h²`      : Heritability parameter.
+- `tol_ceil`: Per-(group, size, location) tolerance ceiling (initial mean + HEAT_UB).
+  Applied as a hard cap to `c_mean_t` after settler tolerances are written, preventing
+  connectivity-driven drift from compounding across timesteps beyond the initial ceiling.
 """
 function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
@@ -530,7 +565,8 @@ function settler_DHW_tolerance!(
     tp::SparseMatrixCSC{F},
     settlers::AbstractMatrix{F},
     fecundity_per_m²::AbstractMatrix{F},
-    h²::F
+    h²::F,
+    tol_ceil::AbstractArray{F,3}
 )::Nothing where {F<:Float64}
     groups, _, locs = axes(c_mean_t_1)
     n_groups = length(groups)
@@ -543,13 +579,11 @@ function settler_DHW_tolerance!(
     # Cache for settlers c_mean for each functional group
     c_mean_per_group::Vector{Float64} = zeros(Float64, n_groups)
 
-    source_loc_idx = 1:sum(dropdims(sum(settlers; dims=1); dims=1) .> 0)
-    for loc in source_loc_idx
+    pos_settlers_loc_idx = findall(dropdims(sum(settlers; dims=1); dims=1) .> 0)
+    for loc in pos_settlers_loc_idx
         for grp in groups
             cover_sum = sum(C_cover_t[grp, fecund_size_mask, loc])
-            if cover_sum == 0
-                continue
-            end
+            (cover_sum == 0) ? continue : 0
             w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
             c_mean_per_group .=
                 breeders.(
@@ -612,6 +646,7 @@ function settler_DHW_tolerance!(
         end
     end
 
+    c_mean_t .= min.(c_mean_t, tol_ceil)
     return nothing
 end
 
@@ -725,10 +760,13 @@ Calculates coral recruitment for each species/group and location.
 # Returns
 λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
-    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
+function recruitment_rate(
+    larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
+    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0, rng=Random.GLOBAL_RNG
+)::Matrix{T} where {T<:Float64}
     sd = settler_density.(α, β, larval_pool) .* A'
-    @views sd[sd .> 0.0] .= rand.(Poisson.(sd[sd .> 0.0]))
+
+    @views sd[sd .> 0.0] .= rand.(rng, Poisson.(sd[sd .> 0.0]))
 
     return sd
 end
@@ -760,7 +798,8 @@ function settler_cover(
     α::V,
     β::V,
     basal_area_per_settler::V,
-    potential_settlers::T
+    potential_settlers::T;
+    rng::AbstractRNG=Random.GLOBAL_RNG
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
@@ -777,7 +816,7 @@ function settler_cover(
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .*
+    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β, rng=rng) .*
            basal_area_per_settler
 end
 

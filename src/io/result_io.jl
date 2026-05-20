@@ -175,9 +175,9 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
 end
 
 """
-    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
+    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
+Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
 
 # Arguments
 - `z_store` : ZArray
@@ -187,10 +187,14 @@ Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
 - `n_locs` : number of location
 - `n_groups` : number of functional groups
 - `n_sizes` : number of size classes
+- `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
+  that each batch write lands in exactly one chunk file per array.
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
+function setup_logs(
+    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
+)
     # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
@@ -198,14 +202,12 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
     # Store ranked location
     n_interventions = length(interventions())
     rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, n_interventions, n_scens)  # locations, location id and rank, no. scenarios
-    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_locs, n_scens)  # timeframe, location, no. scenarios
-
     # tf, no. species to seed, location id and rank, no. scenarios
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
-        :structure => ("timesteps", "locations", "intervention", "scenarios"),
+        :structure => ("timesteps", "locations", "interventions", "scenarios"),
         :unique_loc_ids => unique_loc_ids
     )
     ranks = zcreate(
@@ -215,7 +217,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(rank_dims[1:3]..., 1),
+        chunks=(rank_dims[1:3]..., batch_size),
         attrs=attrs
     )
 
@@ -230,7 +232,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., 1),
+        chunks=(seed_dims[1:3]..., batch_size),
         attrs=attrs
     )
     mc_log = zcreate(
@@ -240,33 +242,24 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., 1),
+        chunks=(seed_dims[1:3]..., batch_size),
         attrs=attrs
     )
 
-    attrs = Dict(
-        :structure => ("timesteps", "locations", "scenarios"),
-        :unique_loc_ids => unique_loc_ids
-    )
-    fog_log = zcreate(
+    shading_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
+    shading_log = zcreate(
         Float32,
-        fog_dims...;
-        name="fog",
+        shading_dims...;
+        name="shading_log",
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(fog_dims[1:2]..., 1),
-        attrs=attrs
-    )
-    shade_log = zcreate(
-        Float32,
-        fog_dims...;
-        name="shade",
-        fill_value=nothing,
-        fill_as_missing=false,
-        path=log_fn,
-        chunks=(fog_dims[1:2]..., 1),
-        attrs=attrs
+        chunks=(shading_dims[1:3]..., batch_size),
+        attrs=Dict(
+            :structure => ("timesteps", "locations", "intervention", "scenarios"),
+            :interventions => ["fog", "shade"],
+            :unique_loc_ids => unique_loc_ids
+        )
     )
 
     # TODO: Could log bleaching mortality
@@ -284,7 +277,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
 
     n_group_and_size = n_groups * n_sizes
     local coral_dhw_log
-    if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
         coral_dhw_log = zcreate(
             Float32,
             tf,
@@ -295,7 +288,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_groups * n_sizes, n_locs, 1),
+            chunks=(tf, n_groups * n_sizes, n_locs, batch_size),
             attrs=attrs
         )
     else
@@ -309,12 +302,43 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=0.0,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_groups * n_sizes, 1, 1),
+            chunks=(tf, n_groups * n_sizes, 1, batch_size),
             attrs=attrs
         )
     end
 
-    return ranks, mc_log, seed_log, fog_log, shade_log, coral_dhw_log
+    local coral_cover_log
+    if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+        coral_cover_log = zcreate(
+            Float32,
+            tf,
+            n_group_and_size,
+            n_locs,
+            n_scens;
+            name="coral_cover_log",
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, n_group_and_size, n_locs, batch_size),
+            attrs=attrs
+        )
+    else
+        coral_cover_log = zcreate(
+            Float32,
+            tf,
+            n_group_and_size,
+            1,
+            n_scens;
+            name="coral_cover_log",
+            fill_value=0.0,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, n_group_and_size, 1, batch_size),
+            attrs=attrs
+        )
+    end
+
+    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log
 end
 
 """
@@ -329,19 +353,17 @@ Sets up an on-disk result store.
 ├───env_stats
 ├───inputs
 ├───logs
-|   ├───coral_dhw_log
-│   ├───fog
+│   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
+│   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
+│   ├───moving_corals
 │   ├───rankings
 │   ├───seed
-│   └───shade
+│   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
 ├───results
-|   ├───absolute_shelter_volume
-|   ├───coral_evenness
-|   ├───juvenile_indicator
-│   ├───relative_cover
-|   ├───relative_juveniles
-│   ├───relative_shelter_volume
+│   ├───loc_outcomes     (relative_cover, relative_shelter_volume, absolute_shelter_volume,
+│   │                     relative_juveniles, juvenile_indicator, coral_evenness combined
+│   │                     along a metrics axis)
 │   └───relative_taxa_cover
 └───spatial
 ```
@@ -353,16 +375,19 @@ Sets up an on-disk result store.
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
 - -9999.0 is used as an arbitrary fill value.
+- `loc_outcomes` is split back into individually named outcomes on load (see `load_results`).
+- `shading_log` has shape `(timesteps, locations, intervention, scenarios)` where the
+  intervention axis holds `["fog", "shade"]` in that order.
 
 # Arguments
 - `domain` : ADRIA scenario domain
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
-juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
+domain, (loc_outcomes, relative_taxa_cover, site_ranks, mc_log, seed_log, shading_log,
+coral_dhw_log, coral_cover_log)
 """
-function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
+function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::Int=0)::Tuple
     @set! domain.scenario_invoke_time = replace(
         string(now()), "T" => "_", ":" => "_", "." => "_"
     )
@@ -414,70 +439,63 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     tf, n_locations, _ = size(domain.dhw_scens)
     n_scenarios = nrow(scen_spec)
 
-    # Set up stores for each metric
-    function dim_lengths(metric_structure::Vector{Symbol})
-        dl = []
-        for d in metric_structure
-            if d == :timesteps
-                append!(dl, tf)
-            elseif d == :groups
-                append!(dl, domain.coral_growth.n_groups)
-            elseif d == :locations
-                append!(dl, n_locations)
-            elseif d == :scenarios
-                append!(dl, n_scenarios)
-            end
-        end
+    _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
+    n_groups = domain.coral_growth.n_groups
+    batch_size = min(
+        batch_size > 0 ? batch_size : parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")),
+        n_scenarios
+    )
 
-        return (dl...,)
-    end
-
-    outcome_metrics::Vector{metrics.Metric} = [
+    # Combined store for the 6 location-based outcome metrics (timesteps × locations × metrics × scenarios)
+    loc_outcome_metrics::Vector{metrics.Metric} = [
         metrics.relative_cover,
         metrics.relative_shelter_volume,
         metrics.absolute_shelter_volume,
         metrics.relative_juveniles,
         metrics.juvenile_indicator,
-        metrics.coral_evenness,
-        metrics.relative_taxa_cover
+        metrics.coral_evenness
     ]
-
-    metric_symbols::Vector{Symbol} = metrics.to_symbol.(outcome_metrics)
-    metric_names::Vector{String} = metrics.to_string.(outcome_metrics; is_titlecase=true)
-    metric_units::Vector{String} = getfield.(outcome_metrics, :unit)
-    axis_names::Vector{Vector{Symbol}} = fill(
-        [:timesteps, :locations, :scenarios], length(outcome_metrics) - 1
-    )
-    # Add axis names relative to the last metric (relative_taxa_cover) separate as they are
-    # different from the other metrics
-    push!(axis_names, [:timesteps, :groups, :scenarios])
-    _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
-
-    outcomes_attrs::Vector{Dict{Symbol,Any}} = [
-        Dict(
+    n_loc_metrics = length(loc_outcome_metrics)
+    loc_dims = (tf, n_locations, n_loc_metrics, n_scenarios)
+    loc_outcomes_store = zcreate(
+        Float32,
+        loc_dims...;
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
+        chunks=(loc_dims[1:3]..., batch_size),
+        attrs=Dict(
+            :structure => ("timesteps", "locations", "metrics", "scenarios"),
             :unique_loc_ids => _unique_loc_ids,
-            :structure => axis_names[idx],
-            :metric_name => metric_names[idx],
-            :metric_unit => metric_units[idx],
-            :axes_names => axis_names[idx],
-            :axes_units => metrics.axes_units(axis_names[idx])
-        ) for (idx, _) in enumerate(metric_symbols)
-    ]
-    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axis_names)
+            :metrics => string.(LOC_METRIC_NAMES),
+            :metric_names => metrics.to_string.(loc_outcome_metrics; is_titlecase=true),
+            :metric_units => getfield.(loc_outcome_metrics, :unit),
+            :axes_units => metrics.axes_units([:timesteps, :locations, :scenarios])
+        ),
+        compressor=COMPRESSOR
+    )
 
-    # Create stores for each metric
-    stores = [
-        zcreate(
-            Float32,
-            result_dims[idx]...;
-            fill_value=nothing,
-            fill_as_missing=false,
-            path=joinpath(z_store.folder, RESULTS, string(m_name)),
-            chunks=(result_dims[idx][1:(end - 1)]..., 1),
-            attrs=outcomes_attrs[idx],
-            compressor=COMPRESSOR
-        ) for (idx, m_name) in enumerate(metric_symbols)
-    ]
+    # Separate store for relative_taxa_cover (timesteps × groups × scenarios)
+    taxa_cover_metric = metrics.relative_taxa_cover
+    taxa_dims = (tf, n_groups, n_scenarios)
+    taxa_cover_store = zcreate(
+        Float32,
+        taxa_dims...;
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=joinpath(
+            z_store.folder, RESULTS, string(metrics.to_symbol(taxa_cover_metric))
+        ),
+        chunks=(taxa_dims[1:2]..., batch_size),
+        attrs=Dict(
+            :structure => ("timesteps", "groups", "scenarios"),
+            :metric_name => metrics.to_string(taxa_cover_metric; is_titlecase=true),
+            :metric_unit => taxa_cover_metric.unit,
+            :axes_names => [:timesteps, :groups, :scenarios],
+            :axes_units => metrics.axes_units([:timesteps, :groups, :scenarios])
+        ),
+        compressor=COMPRESSOR
+    )
 
     # dhw and wave zarrays
     dhw_stats = []
@@ -525,7 +543,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     # Group all data stores
     stores = [
-        stores...,
+        loc_outcomes_store,
+        taxa_cover_store,
         dhw_stats...,
         wave_stats...,
         connectivity...,
@@ -535,8 +554,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             nrow(scen_spec),
             tf,
             n_locations,
-            domain.coral_growth.n_groups,
-            domain.coral_growth.n_sizes
+            n_groups,
+            domain.coral_growth.n_sizes,
+            batch_size
         )...
     ]
 
@@ -544,15 +564,16 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     (;
         zip(
             (
-                metric_symbols...,
+                :loc_outcomes,
+                :relative_taxa_cover,
                 stat_store_names...,
                 conn_names...,
                 :site_ranks,
                 :mc_log,
                 :seed_log,
-                :fog_log,
-                :shade_log,
-                :coral_dhw_log
+                :shading_log,
+                :coral_dhw_log,
+                :coral_cover_log
             ),
             stores
         )...
@@ -697,10 +718,27 @@ function load_results(result_loc::String)::ResultSet
     outcome_properties = [:metric_name, :metric_unit, :axes_names, :axes_units]
     subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
+        sd_name = Symbol(basename(sd))
         data = zopen(sd; fill_as_missing=false)
         data_size = size(data)
 
-        # Construct dimension names and metadata
+        if sd_name == Symbol(LOC_METRICS)
+            # New combined format: split lazily back into individual named outcomes
+            metric_syms = Symbol.(data.attrs["metrics"])
+            combined = DataCube(
+                data;
+                timesteps=input_set.attrs["timeframe"],
+                locations=data.attrs["unique_loc_ids"],
+                metrics=string.(metric_syms),
+                scenarios=1:data_size[4]
+            )
+            for m_name in metric_syms
+                outcomes[m_name] = combined[metrics=At(string(m_name))]
+            end
+            continue
+        end
+
+        # Construct dimension names and metadata (handles relative_taxa_cover and old-format stores)
         dim_names = []
         for (idx, dim_name) in enumerate(data.attrs["structure"])
             if dim_name == "timesteps"
@@ -713,10 +751,11 @@ function load_results(result_loc::String)::ResultSet
         end
 
         try
-            outcomes[Symbol(basename(sd))] = DataCube(
+            outcomes[sd_name] = DataCube(
                 data;
-                properties=Dict(
+                properties=Dict{Symbol,Any}(
                     p => data.attrs[string(p)] for p in outcome_properties
+                    if haskey(data.attrs, string(p))
                 ),
                 zip(Symbol.(data.attrs["structure"]), dim_names)...
             )
@@ -728,7 +767,7 @@ function load_results(result_loc::String)::ResultSet
                 Structure: $(data.attrs["structure"])
                 Generated: $(Array([i[1] for i in size.(dim_names)]))
                 """
-                outcomes[Symbol(basename(sd))] = DataCube(
+                outcomes[sd_name] = DataCube(
                     data;
                     zip(Symbol.(data.attrs["structure"]), [1:s for s in size(data)])...
                 )

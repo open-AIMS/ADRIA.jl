@@ -98,10 +98,11 @@ function load_results(
     input_path = joinpath(result_dir, "scenarios.csv")
     inputs::DataFrame = _get_inputs(input_path)
 
-    # Counterfactual scenario if outplant area and enrichment area are both 0
-    scenario_groups::Dict{Symbol,BitVector} = _construct_scenario_groups(
-        inputs, length(raw_set.scenarios)
-    )
+    scenario_groups::Dict{Symbol,BitVector} = if haskey(raw_set.cubes, :is_counterfactual)
+        _construct_scenario_groups_from_netcdf(raw_set)
+    else
+        _construct_scenario_groups(inputs, length(raw_set.scenarios))
+    end
 
     env_layer_md::EnvLayer = EnvLayer(
         data_dir,
@@ -159,6 +160,22 @@ function _get_inputs(filepath::String)::DataFrame
         return DataFrame()
     end
     return inputs = CSV.read(filepath, DataFrame; header=true)
+end
+
+"""
+    _construct_scenario_groups_from_netcdf(raw_set::Dataset)::Dict{Symbol,BitVector}
+
+Build scenario groups directly from the `is_counterfactual` variable stored in the NetCDF.
+Used for dynamic RME runs where no `scenarios.csv` is available.
+"""
+function _construct_scenario_groups_from_netcdf(raw_set::Dataset)::Dict{Symbol,BitVector}
+    cf_data = raw_set.is_counterfactual.data[:]
+    counterfactual_scens = BitVector(cf_data .== 1)
+    intervened_scens = .!counterfactual_scens
+    groups = Dict{Symbol,BitVector}()
+    any(counterfactual_scens) && (groups[:counterfactual] = counterfactual_scens)
+    any(intervened_scens) && (groups[:interventions] = intervened_scens)
+    return groups
 end
 
 """

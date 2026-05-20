@@ -396,7 +396,7 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     no_wave_scenario = samples.wave_scenario .== 0.0
     samples[no_wave_scenario, :seed_wave_stress] .= 0.0
 
-    if nrow(unique(samples)) < nrow(samples)
+    if size(unique(Matrix(samples); dims=1), 1) < nrow(samples)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(samples)) / nrow(samples))) * 100.0))%"
         @warn "Non-unique samples created: $perc of the samples are duplicates."
     end

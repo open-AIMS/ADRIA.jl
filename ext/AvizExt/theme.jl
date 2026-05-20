@@ -7,6 +7,8 @@ const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :RCP45 => :darkblue,
     :RCP60 => :seagreen,
     :RCP85 => :orangered,
+    :scenarios => :steelblue,
+    :interventions => :steelblue,
     :counterfactual => :red,
     :unguided => :lawngreen,
     :guided => :dodgerblue,
@@ -21,7 +23,7 @@ function colors(
     scen_groups::Dict{Symbol,BitVector}
 )::Dict{Symbol,COLOR_TYPE}
     group_names = keys(scen_groups)
-    if count(group_names .∉ [keys(COLORS)]) > 0
+    if count(group_names .∉ Ref(keys(COLORS))) > 0
         colormap = cgrad(:brg, length(group_names); categorical=true).colors
 
         return Dict{Symbol,COLOR_TYPE}(

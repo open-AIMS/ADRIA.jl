@@ -121,6 +121,9 @@ tolerance enhancement.
 - `seed_locs` : Seeding locations
 - `seed_sc` : Size classes to seed
 - `a_adapt` : Level of assisted adaptation (as DHW tolerance increase)
+- `tol_ceil` : Per-(group, size, location) ceiling on tolerance (initial mean + HEAT_UB).
+  Applied as a hard cap to `c_dist_t` after mixing, so tolerance cannot drift above the
+  initial population ceiling regardless of cumulative seeding.
 """
 function update_tolerance_distribution!(
     scaled_seed::YAXArray,
@@ -130,17 +133,20 @@ function update_tolerance_distribution!(
     stdev::AbstractArray{T},
     seed_locs::Vector{Int64},
     seed_sc::AbstractMatrix{Bool},
-    a_adapt::AbstractVector{T}
+    a_adapt::AbstractVector{T},
+    tol_ceil::AbstractArray{T,3}
 )::Nothing where {T<:Float64}
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
+    # w_taxa[j, i] = fraction of total (cover + seeds) that consists of newly seeded corals
+    # for taxon j at location i. Used as the weight for the seeded distribution (tn).
     # Note: It is entirely possible for a location to be ranked in the top N, but
     #       with no deployments (for a given species). A location with 0 cover
-    #       and no deployments will therefore be NaN due to zero division.
-    #       These are replaced with 1.0 so that the distribution for unseeded
-    #       corals are used.
+    #       and 0 deployments will therefore be NaN due to zero division.
+    #       These are replaced with 0.0 so that the existing distribution is used unchanged.
     w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
-    replace!(w_taxa, NaN => 1.0)
+    # NaN occurs when both cover and scaled_seed are 0 (undeployed taxa at bare locations).
+    replace!(w_taxa, NaN => 0.0)
 
     # Update critical DHW distribution for deployed size classes
     a_adapt_relative = copy(a_adapt)
@@ -149,11 +155,14 @@ function update_tolerance_distribution!(
         # Previous distributions
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
-        # Truncated normal distributions for deployed corals
-        # Assume same stdev and bounds as original
+        # Truncated normal distributions for deployed corals.
+        # Lower bound fixed (HEAT_LB), consistent with bleaching_mortality! which uses the
+        # same floor. Upper bound anchored to initial mean + HEAT_UB (fixed ceiling) shifted
+        # by the a_adapt enhancement, so the cap does not drift with population tolerance.
         tn::Vector{Float64} =
             truncated_normal_mean.(
-                a_adapt_relative, stdev[seed_sc], 0.0, a_adapt_relative .+ HEAT_UB
+                a_adapt_relative, stdev[seed_sc], HEAT_LB,
+                view(tol_ceil, :, :, loc)[seed_sc]
             )
 
         # If seeding an empty location, no need to do any further calculations
@@ -162,12 +171,13 @@ function update_tolerance_distribution!(
             continue
         end
 
-        # Create new distributions by mixing previous and current distributions using
-        # proportional cover as the priors/weights
-        # Priors (weights based on cover for each species)
-        tx::Vector{Weights} = Weights.(eachcol(vcat(w_taxa[:, i]', 1.0 .- w_taxa[:, i]')))
+        # Mix existing and seeded distributions weighted by their proportional cover.
+        # w_taxa = seeds fraction → weights tn (seeded enhanced distribution).
+        # 1 - w_taxa = existing fraction → weights c_dist_ti (pre-seeding distribution).
+        tx::Vector{Weights} = Weights.(eachcol(vcat(1.0 .- w_taxa[:, i]', w_taxa[:, i]')))
         c_dist_t[seed_sc, loc] = sum.(eachcol(vcat(c_dist_ti', tn')), tx)
     end
 
+    c_dist_t .= min.(c_dist_t, tol_ceil)
     return nothing
 end

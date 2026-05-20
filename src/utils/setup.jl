@@ -12,19 +12,34 @@ function setup()::Nothing
     try
         # Load in configuration settings
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
+        config_operation = config["operation"]
         ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
-        ENV["ADRIA_NUM_CORES"] = config["operation"]["num_cores"]
-        ENV["ADRIA_THRESHOLD"] = config["operation"]["threshold"]
+        if haskey(config_operation, "num_cores")
+            @warn "config.toml: `num_cores` is deprecated and has no effect. Control parallelism by launching Julia with `--threads=N` (e.g. `julia --threads=auto`)."
+        end
+        ENV["ADRIA_THRESHOLD"] = config_operation["threshold"]
         ENV["ADRIA_DEBUG"] =
-            haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
+            haskey(config_operation, "debug") ? config_operation["debug"] : false
+
+        ENV["ADRIA_LOG_DHW_TOLS"] =
+            haskey(config_operation, "log_dhw_tols") ?
+            config_operation["log_dhw_tols"] :
+            false
+
+        ENV["ADRIA_LOG_COVER"] =
+            haskey(config_operation, "log_cover") ? config_operation["log_cover"] : false
+
+        ENV["ADRIA_RNG_SEED"] =
+            haskey(config_operation, "rng_seed") ? config_operation["rng_seed"] : false
     catch
         @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
 
         # Note: anything stored in ENV will be stored as String.
         ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
-        ENV["ADRIA_NUM_CORES"] = 1
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
         ENV["ADRIA_DEBUG"] = false
+        ENV["ADRIA_LOG_DHW_TOLS"] = false
+        ENV["ADRIA_LOG_COVER"] = false
     end
 
     return nothing
@@ -72,4 +87,21 @@ end
 
 function is_test_env()::Bool
     return get(ENV, "ADRIA_TEST", "false") == "true"
+end
+
+"""
+    set_random_seed(param_set)::Nothing
+
+Set the RNG seed from `ENV["ADRIA_RNG_SEED"]`. If unset or `"false"`, derives the seed
+from the sum of all non-RCP parameters in `param_set`.
+
+# Arguments
+- `param_set` : YAXArray of scenario parameter values for a single run.
+"""
+function set_random_seed(param_set::YAXArray)::AbstractRNG
+    rnd_seed_val::Int64 =
+        get(ENV, "ADRIA_RNG_SEED", "false") == "false" ?
+        floor(Int64, sum(param_set[Where(x -> x != "RCP")])) : # select everything except RCP
+        parse(Int64, ENV["ADRIA_RNG_SEED"])
+    return Xoshiro(rnd_seed_val)
 end

@@ -210,7 +210,14 @@ function connectivity_strength(
     # If a weighted metric is desired, use `custom_indegree_centrality`.
     C1 = in_method(g)
 
-    C2 = out_method(g)
+    # eigenvector_centrality uses an iterative QR algorithm that may not converge for
+    # degenerate/near-zero matrices (e.g. when coral cover collapses). Fall back to
+    # indegree centrality in that case.
+    C2 = try
+        out_method(g)
+    catch
+        custom_indegree_centrality(g)
+    end
 
     return (in_conn=C1, out_conn=C2, network=g)
 end

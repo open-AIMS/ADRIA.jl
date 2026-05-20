@@ -10,7 +10,8 @@ import CoralBlox:
     timestep!,
     coral_cover,
     max_projected_cover,
-    linear_extension_scale_factors
+    linear_extension_scale_factors,
+    LinearExtensionCache
 
 using .metrics:
     relative_cover,
@@ -51,7 +52,8 @@ function setup_cache(domain::Domain)::NamedTuple
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
         wave_damage=zeros(tf, n_sizes * n_groups, n_locs),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for mean dhw tolerances
+        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs),  # tmp log for mean dhw tolerances
+        cover_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for per-species cover
     )
 
     return cache
@@ -132,16 +134,15 @@ julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
 ResultSet
 """
 function run_scenarios(
-    dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true
+    dom::Domain, scens::DataFrame, RCP::String; show_progress=true
 )::ResultSet
-    return run_scenarios(dom, scens, [RCP]; show_progress, remove_workers)
+    return run_scenarios(dom, scens, [RCP]; show_progress)
 end
 function run_scenarios(
     dom::Domain,
     scens::DataFrame,
     RCP::Vector{String};
-    show_progress=true,
-    remove_workers=true
+    show_progress=true
 )::ResultSet
     # Initialize ADRIA configuration options
     setup()
@@ -151,124 +152,164 @@ function run_scenarios(
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
+    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    @info "ADRIA_DEBUG = $env_debug"
+
+    parallel::Bool = !env_debug && (Threads.nthreads() > 1)
+
+    # chunk_size sets the Zarr chunk size along the scenario axis and controls how many
+    # results the writer accumulates before flushing to disk. Compute scheduling is
+    # per-scenario via a channel, so chunk_size is purely an I/O tuning parameter.
+    # In serial mode: fall back to the env var (default 1).
+    active_threads::Int = Threads.nthreads()
+    env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
+    chunk_size::Int = if env_chunk > 0
+        env_chunk  # explicit override always wins
+    elseif parallel
+        ceil(Int, nrow(scens) / active_threads)
+    else
+        1
+    end
+    @info "ADRIA_CHUNK_SIZE (effective) = $chunk_size"
+
     # Cross product between rcps and param_df to have every row of param_df for each rcp
     rcps_df = DataFrame(; RCP=parse.(Int64, RCP))
     scenarios_df = crossjoin(scens, rcps_df)
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, chunk_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
-    # The idea to initialise the functional groups here is so that each scenario run can
-    # reuse the memory. After a few scenarios runs there will be very few new
-    # allocations as buffers grow larger and are not exceeded
-    #
-    # The problem is that even if a subsequent run only has to reallocate once, the
-    # buffer is so large it takes very long regardless.
-    #
-    # This is also forced me to added an argument to run_model which breaks
-    # encapsulation, so its quite ugly
+    # Pre-allocate FunctionalGroup buffers so each scenario run can reuse memory.
+    # Buffer contents grow over time as size classes accumulate; reusing avoids repeated
+    # large allocations. In the parallel path one buffer set is created per thread to
+    # avoid data races on the mutable CircularBuffer and TerminalClass fields.
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
     _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
-    functional_groups = [
+
+    _make_fg_buffers() = [
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
             eachrow(_bin_edges[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
-        ) for _ in 1:n_locs
+        )
+        for _ in 1:n_locs
     ]
 
-    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == false
-    @info "ADRIA_DEBUG = $env_debug"
-
-    env_num_cores = ENV["ADRIA_NUM_CORES"]
-    @info "ADRIA_NUM_CORES = $env_num_cores"
-
-    para_threshold::Int64 =
-        ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
-    active_cores::Int64 = parse(Int64, env_num_cores)
-    parallel::Bool = env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
-    if parallel && nworkers() == 1
-        @info "Setting up parallel processing..."
-        spinup_time = @elapsed begin
-            _setup_workers()
-
-            # Load ADRIA on workers and define helper function
-            # Note: Workers do not share the same cache in parallel workloads.
-            #       Previously, cache would be reserialized so each worker has access to
-            #       a separate cache.
-            #       Using CachingPool() resolves the the repeated reserialization but it
-            #       seems each worker was then attempting to use the same cache, causing the
-            #       Julia kernel to crash in multi-processing contexts.
-            #       Getting each worker to create its own cache reduces serialization time
-            #       (at the cost of increased run time) but resolves the kernel crash issue.
-            @sync @async @everywhere @eval begin
-                using ADRIA
-                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
-            end
-        end
-
-        @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
-    end
-
     if parallel
-        # Define local helper
-        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
+        # One buffer set per thread — threadid() can reach maxthreadid() due to Julia's
+        # internal threads, so size to maxthreadid() not nthreads().
+        thread_fg = [_make_fg_buffers() for _ in 1:Threads.maxthreadid()]
 
-        try
-            for rcp in RCP
-                run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
-
-                # Switch RCPs so correct data is loaded
-                dom = switch_RCPs!(dom, rcp)
-                target_rows = findall(
-                    scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
-                )
-                scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
-
-                if show_progress
-                    @showprogress desc = run_msg dt = 4 pmap(
-                        func, CachingPool(workers()), scen_args
-                    )
-                else
-                    pmap(func, CachingPool(workers()), scen_args)
-                end
-            end
-        catch err
-            # Remove hanging workers if any error occurs
-            _remove_workers()
-            rethrow(err)
-        end
-    else
-        # Define local helper
-        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
+        # Prevent BLAS internal threads from competing with Julia threads.
+        BLAS.set_num_threads(1)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
-            # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            scen_args = _scenario_args(
-                dom, scenarios_matrix, rcp, size(scenarios_matrix, 1)
+            target_rows = findall(
+                scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
             )
+            scen_args = collect(
+                _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+            )
+            N_rcp = length(scen_args)
+            first_idx = scen_args[1][2]
+            n_chunks = cld(N_rcp, chunk_size)
+
+            prog =
+                show_progress ?
+                ProgressMeter.Progress(n_chunks; desc=run_msg, dt=4) :
+                nothing
+
+            # Workers push (write_idx, result) to the channel; the single writer task
+            # buffers results and flushes in chunk_size-aligned chunks so all Zarr writes
+            # are chunk-aligned and contention-free, regardless of completion order.
+            ch = Channel{Tuple{Int,NamedTuple}}(2 * Threads.nthreads())
+
+            chunk_start(c) = first_idx + c * chunk_size
+            chunk_len(c) =
+                c < n_chunks - 1 ? chunk_size : N_rcp - (n_chunks - 1) * chunk_size
+
+            writer = Threads.@spawn begin
+                buf = Dict{Int,NamedTuple}()
+                chunk_ready = zeros(Int, n_chunks)
+                next_chunk = 0
+
+                for (idx, result) in ch
+                    buf[idx] = result
+                    c = (idx - first_idx) ÷ chunk_size
+                    chunk_ready[c + 1] += 1
+
+                    while next_chunk < n_chunks &&
+                        chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
+                        s = chunk_start(next_chunk)
+                        n = chunk_len(next_chunk)
+                        results = [buf[s + i] for i in 0:(n - 1)]
+                        for i in 0:(n - 1)
+                            delete!(buf, s + i)
+                        end
+                        _write_batch!(data_store, s, results)
+                        isnothing(prog) || ProgressMeter.next!(prog)
+                        next_chunk += 1
+                    end
+                end
+            end
+
+            try
+                Threads.@threads :dynamic for i in 1:N_rcp
+                    d, idx, scen = scen_args[i]
+                    result = _collect_scenario_results(
+                        d, scen, thread_fg[Threads.threadid()]
+                    )
+                    put!(ch, (idx, result))
+                end
+            finally
+                close(ch)
+            end
+            wait(writer)
+        end
+    else
+        # Serial: one shared buffer set, collect batch then write.
+        functional_groups = _make_fg_buffers()
+
+        for rcp in RCP
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
+
+            dom = switch_RCPs!(dom, rcp)
+            scen_args = collect(
+                _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
+            )
+            all_batches = [
+                collect(b) for b in Iterators.partition(scen_args, chunk_size)
+            ]
 
             if show_progress
-                @showprogress desc = run_msg dt = 4 map(func, scen_args)
+                @showprogress desc = run_msg dt = 4 for batch in all_batches
+                    batch_results = map(
+                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        batch
+                    )
+                    _write_batch!(data_store, first(batch)[2], batch_results)
+                end
             else
-                map(func, scen_args)
+                for batch in all_batches
+                    batch_results = map(
+                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        batch
+                    )
+                    _write_batch!(data_store, first(batch)[2], batch_results)
+                end
             end
         end
-    end
-
-    if parallel && remove_workers
-        _remove_workers()
     end
 
     return load_results(_result_location(dom, RCP))
@@ -288,6 +329,198 @@ function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     return zip(
         rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
     )
+end
+
+"""
+    _collect_scenario_results(domain, scenario, functional_groups)
+
+Run one scenario and return all computed metric arrays without writing to disk.
+Called by `run_scenario` (single write) and by the batched pmap path in `run_scenarios`.
+"""
+function _collect_scenario_results(
+    domain::Domain,
+    scenario::Union{AbstractVector,DataFrameRow},
+    functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
+    result_set = run_model(domain, scenario, functional_groups)
+    threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
+
+    rs_raw::Array{Float64} = result_set.raw
+    lk = loc_k_area(domain)
+    coral_spec::DataFrame = to_coral_spec(scenario)
+
+    # 6 location-based metrics — order must match LOC_METRIC_NAMES
+    loc_out = Array{Float32}(
+        undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES)
+    )
+    vals = relative_cover(rs_raw)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 1] .= vals
+    vals = relative_shelter_volume(rs_raw, lk, scenario)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 2] .= vals
+    vals = absolute_shelter_volume(rs_raw, lk, scenario)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 3] .= vals
+    vals = relative_juveniles(rs_raw)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 4] .= vals
+    vals = juvenile_indicator(rs_raw, coral_spec, lk)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 5] .= vals
+    rtc_vals = relative_loc_taxa_cover(rs_raw)
+    vals = coral_evenness(rtc_vals.data)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 6] .= vals
+
+    # Taxa cover (groups axis, not locations)
+    taxa_vals = relative_taxa_cover(rs_raw, lk)
+    taxa_vals[taxa_vals .< threshold] .= 0.0
+
+    # Fog and shade combined into a single (tf, n_locs, 2) buffer
+    shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
+    fog_vals = Matrix{Float32}(result_set.fog_log)
+    shade_vals = Matrix{Float32}(result_set.shade_log)
+    fog_vals[fog_vals .< threshold] .= 0.0f0
+    shade_vals[shade_vals .< threshold] .= 0.0f0
+    shading_buf[:, :, 1] .= fog_vals
+    shading_buf[:, :, 2] .= shade_vals
+
+    # Remaining log arrays — apply threshold where possible
+    site_ranks_vals = result_set.site_ranks
+    try
+        site_ranks_vals[site_ranks_vals .< threshold] .= Float32(0.0)
+    catch err
+        err isa MethodError ? nothing : rethrow(err)
+    end
+
+    mc_vals = result_set.mc_log
+    mc_vals[mc_vals .< threshold] .= Float32(0.0)
+
+    seed_vals = result_set.seed_log
+    seed_vals[seed_vals .< threshold] .= Float32(0.0)
+
+    # coral_dhw_log / coral_cover_log are false when their env var is disabled
+    dhw_vals = result_set.coral_dhw_log
+    cover_vals = result_set.coral_cover_log
+
+    return (
+        loc_out=loc_out,
+        taxa_cover=taxa_vals,
+        shading=shading_buf,
+        site_ranks=site_ranks_vals,
+        mc_log=mc_vals,
+        seed_log=seed_vals,
+        coral_dhw_log=dhw_vals,
+        coral_cover_log=cover_vals
+    )
+end
+
+"""
+    _write_batch!(data_store, start_idx, results)
+
+Write a contiguous batch of collected scenario results to the Zarr data store.
+All arrays in the batch are stacked into a single in-memory buffer and written in one
+Zarr call per array, so the entire batch lands in a single chunk file per array.
+"""
+function _write_batch!(
+    data_store::NamedTuple, start_idx::Int, results::AbstractVector
+)::Nothing
+    n = length(results)
+    idx_range = start_idx:(start_idx + n - 1)
+
+    # loc_outcomes: (tf, n_locs, n_metrics, n)
+    tf, n_locs, n_metrics = size(results[1].loc_out)
+    loc_batch = Array{Float32}(undef, tf, n_locs, n_metrics, n)
+    for (i, r) in enumerate(results)
+        loc_batch[:, :, :, i] .= r.loc_out
+    end
+    data_store.loc_outcomes[:, :, :, idx_range] .= loc_batch
+
+    # relative_taxa_cover: (tf, n_groups, n)
+    _, n_groups = size(results[1].taxa_cover)
+    taxa_batch = Array{Float32}(undef, tf, n_groups, n)
+    for (i, r) in enumerate(results)
+        taxa_batch[:, :, i] .= r.taxa_cover
+    end
+    data_store.relative_taxa_cover[:, :, idx_range] .= taxa_batch
+
+    # shading_log: (tf, n_locs, 2, n)
+    shading_batch = Array{Float32}(undef, tf, n_locs, 2, n)
+    for (i, r) in enumerate(results)
+        shading_batch[:, :, :, i] .= r.shading
+    end
+    data_store.shading_log[:, :, :, idx_range] .= shading_batch
+
+    # site_ranks: (tf, n_locs, n_interventions, n)
+    if !isnothing(data_store.site_ranks)
+        _, _, n_ivs = size(results[1].site_ranks)
+        ranks_batch = Array{Float32}(undef, tf, n_locs, n_ivs, n)
+        for (i, r) in enumerate(results)
+            ranks_batch[:, :, :, i] .= r.site_ranks
+        end
+        data_store.site_ranks[:, :, :, idx_range] .= ranks_batch
+    end
+
+    # mc_log and seed_log: (tf, n_groups, n_locs, n)
+    _, n_g, n_l = size(results[1].mc_log)
+    mc_batch = Array{Float32}(undef, tf, n_g, n_l, n)
+    seed_batch = Array{Float32}(undef, tf, n_g, n_l, n)
+    for (i, r) in enumerate(results)
+        mc_batch[:, :, :, i] .= r.mc_log
+        seed_batch[:, :, :, i] .= r.seed_log
+    end
+    data_store.mc_log[:, :, :, idx_range] .= mc_batch
+    data_store.seed_log[:, :, :, idx_range] .= seed_batch
+
+    # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
+    if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
+        dhw_r = results[1].coral_dhw_log
+        if dhw_r !== false && !isnothing(dhw_r)
+            _, n_sp, n_ld = size(dhw_r)
+            dhw_batch = Array{Float32}(undef, tf, n_sp, n_ld, n)
+            for (i, r) in enumerate(results)
+                dhw_batch[:, :, :, i] .= r.coral_dhw_log
+            end
+            data_store.coral_dhw_log[:, :, :, idx_range] .= dhw_batch
+        end
+    end
+
+    # coral_cover_log (conditional on ADRIA_LOG_COVER)
+    if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+        cc_r = results[1].coral_cover_log
+        if cc_r !== false && !isnothing(cc_r)
+            _, n_sp_c, n_lc = size(cc_r)
+            cc_batch = Array{Float32}(undef, tf, n_sp_c, n_lc, n)
+            for (i, r) in enumerate(results)
+                cc_batch[:, :, :, i] .= r.coral_cover_log
+            end
+            data_store.coral_cover_log[:, :, :, idx_range] .= cc_batch
+        end
+    end
+
+    return nothing
+end
+
+"""
+    _run_batch!(batch_args, functional_groups, data_store)
+
+Compute and write a contiguous batch of scenarios entirely on the calling worker.
+Each pmap task gets one batch, so result arrays never travel back to the main process.
+Workers write to non-overlapping chunk ranges, so concurrent writes are safe.
+"""
+function _run_batch!(
+    batch_args::AbstractVector,
+    functional_groups::Vector{Vector{FunctionalGroup}},
+    data_store::NamedTuple
+)::Nothing
+    start_idx = batch_args[1][2]
+    results = [
+        _collect_scenario_results(args[1], args[3], functional_groups)
+        for args in batch_args
+    ]
+    _write_batch!(data_store, start_idx, results)
+    return nothing
 end
 
 """
@@ -331,79 +564,8 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario, functional_groups)
-
-    # Capture results to disk
-    # Set values below threshold to 0 to save space
-    threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
-
-    # rs_raw has dimensions [timesteps ⋅ group ⋅ sizes ⋅ locations]
-    rs_raw::Array{Float64} = result_set.raw
-    vals = relative_cover(rs_raw)
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_cover[:, :, idx] .= vals
-
-    vals = absolute_shelter_volume(rs_raw, loc_k_area(domain), scenario)
-    vals[vals .< threshold] .= 0.0
-    data_store.absolute_shelter_volume[:, :, idx] .= vals
-    vals = relative_shelter_volume(rs_raw, loc_k_area(domain), scenario)
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_shelter_volume[:, :, idx] .= vals
-
-    coral_spec::DataFrame = to_coral_spec(scenario)
-    vals = relative_juveniles(rs_raw)
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_juveniles[:, :, idx] .= vals
-
-    vals = juvenile_indicator(rs_raw, coral_spec, loc_k_area(domain))
-    vals[vals .< threshold] .= 0.0
-    data_store.juvenile_indicator[:, :, idx] .= vals
-
-    vals = relative_taxa_cover(rs_raw, loc_k_area(domain))
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_taxa_cover[:, :, idx] .= vals
-
-    vals = relative_loc_taxa_cover(rs_raw)
-
-    vals = coral_evenness(vals.data)
-    vals[vals .< threshold] .= 0.0
-    data_store.coral_evenness[:, :, idx] .= vals
-
-    # Store logs
-    c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
-    for k in log_stores
-        if k == :seed_log || k == :site_ranks
-            concat_dim = c_dim
-        else
-            concat_dim = c_dim - 1
-        end
-
-        vals = getfield(result_set, k)
-
-        try
-            vals[vals .< threshold] .= Float32(0.0)
-        catch err
-            err isa MethodError ? nothing : rethrow(err)
-        end
-
-        if k == :seed_log || k == :mc_log
-            getfield(data_store, k)[:, :, :, idx] .= vals
-        elseif k == :site_ranks
-            if !isnothing(data_store.site_ranks)
-                # Squash site ranks down to average rankings over environmental repeats
-                data_store.site_ranks[:, :, :, idx] .= vals
-            end
-        elseif k == :coral_dhw_log
-            # Only log coral DHW tolerances if in debug mode
-            if parse(Bool, ENV["ADRIA_DEBUG"]) == true
-                getfield(data_store, k)[:, :, :, idx] .= vals
-            end
-        else
-            getfield(data_store, k)[:, :, idx] .= vals
-        end
-    end
-
+    result = _collect_scenario_results(domain, scenario, functional_groups)
+    _write_batch!(data_store, idx, [result])
     return nothing
 end
 function run_scenario(
@@ -433,7 +595,7 @@ NamedTuple of collated results
 - `fog_log` : Array, Log of fogged locations
 - `shade_log` : Array, Log of shaded locations
 - `site_ranks` : Array, Log of location rankings
-- `bleaching_mortality` : Array, Log of mortalities caused by bleaching
+- `bleaching_mortality` : Array, Log of bleaching DHW (DHW-weeks) per location/group/size class — used as the lower bound of the tolerance distribution in the following timestep
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
 function run_model(
@@ -489,10 +651,7 @@ function run_model(
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
 
-    # Set random seed using intervention values
-    # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
-    Random.seed!(rnd_seed_val)
+    rng = set_random_seed(param_set)
 
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
@@ -590,6 +749,8 @@ function run_model(
     end
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
+    log_dhw_tols = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "true")) == true
+    log_cover = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -731,6 +892,7 @@ function run_model(
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
+
     seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
     mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
 
@@ -775,11 +937,23 @@ function run_model(
     # Store means before mortality and growth events to use during update
     c_mean_t_1 = copy(c_mean_t)
 
+    # Hard ceiling: tolerance cannot increase more than HEAT_UB DHW-weeks above initial values
+    c_mean_tol_ceil = c_mean_t .+ HEAT_UB
+
+    # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE seeding.
+    # Used as the reference base for a_adapt enhancement (c_mean_reference).
+    # Storing the post-seeding state would cause a_adapt to compound year-over-year,
+    # driving unrealistic tolerance values (>100 DHW-weeks over long runs).
+    c_mean_pre_seed = zeros(n_groups, n_locs)
+
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
+    cover_log = cache.cover_log  # tmp log for per-species cover
 
-    # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_groups, n_sizes, n_locs)
+    # Cache for per-location bleaching DHW (DHW-weeks) used as the lower bound of the
+    # tolerance distribution in the following timestep. Sliding window over two timesteps:
+    # dim-1 index 1 = previous timestep's bleaching DHW, 2 = current (being written).
+    bleach_dhw = zeros(tf, n_groups, n_sizes, n_locs)
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
@@ -868,6 +1042,10 @@ function run_model(
         )
     end
 
+    # Pre-compute Δd matrices once for the entire simulation — _bin_edges is constant,
+    # so this avoids repeated allocation inside linear_extension_scale_factors each timestep.
+    _le_cache = LinearExtensionCache(_bin_edges)
+
     # Preallocate vector for growth constraints
     growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
 
@@ -875,7 +1053,6 @@ function run_model(
     habitable_loc_idxs = findall(habitable_locs)
 
     # Growth constraints and acceleration caches and masks
-    LIN_EXT_SCALE_FACTOR_THRESHOLD = 0.5
     relative_habitable_cover_cache = zeros(n_locs)
     growth_threshold_mask_cache::BitVector = trues(n_locs)
     cover_threshold_mask::BitVector = falses(n_locs)
@@ -901,7 +1078,23 @@ function run_model(
 
     # Keeps track of the heat tolerance means of juvenilles to use as a base for thermal
     # tolerance enhancement
-    c_mean_reference .= copy(c_mean_t[:, 1, :])
+    c_mean_reference .= c_mean_t[:, 1, :]
+
+    cover_transition_lb = 0.05
+    cover_transition_ub = 0.80
+
+    # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
+    Δcover_loss_proportion = zeros(n_locs)
+    _is_reactive = any(
+        is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
+    )
+    dhw_p = is_guided ? similar(dhw_scen) : nothing
+    current_loc_cover = zeros(n_locs)
+    _loc_coral_cover = zeros(n_locs)
+    leftover_space_m² = zeros(n_locs)
+    _recruitment_col_sum = zeros(n_locs)
+    _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
+    _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -917,9 +1110,9 @@ function run_model(
         # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
 
-        habitable_max_projected_cover =
-            cache_habitable_max_projected_cover .+
-            dropdims(sum(recruitment; dims=1); dims=1)
+        sum!(_recruitment_col_sum_2d, recruitment)
+        habitable_max_projected_cover .=
+            cache_habitable_max_projected_cover .+ _recruitment_col_sum
 
         relative_habitable_cover_cache[habitable_locs] .=
             loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./
@@ -927,22 +1120,59 @@ function run_model(
 
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .>= LIN_EXT_SCALE_FACTOR_THRESHOLD
+            relative_habitable_cover_cache .>= cover_transition_ub
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
             # Only apply linear_extension_scale_factors to locations with high cover
-            growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
+            @views growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
                 C_cover_t[:, :, cover_threshold_mask],
                 vec_abs_k[cover_threshold_mask],
                 biogrp_lin_ext[:, :, idx],
-                _bin_edges,
+                _le_cache,
                 habitable_max_projected_cover[cover_threshold_mask]
             )
         end
+
+        # When cover is between cover_transition_lb and cover_transition_ub use a weighted mean
+        @. growth_threshold_mask_cache = (
+            cover_transition_lb <= relative_habitable_cover_cache <
+            cover_transition_ub
+        )
+        if sum(growth_threshold_mask_cache) > 0
+            for idx in 1:n_cb_calib_groups
+                cover_threshold_mask .=
+                    growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
+                transition_scale =
+                    (
+                        relative_habitable_cover_cache[cover_threshold_mask] .-
+                        cover_transition_lb
+                    ) ./ (cover_transition_ub - cover_transition_lb)
+                growth_constraints[cover_threshold_mask] .=
+                    (
+                        transition_scale .*
+                        linear_extension_scale_factors(
+                            C_cover_t[:, :, cover_threshold_mask],
+                            vec_abs_k[cover_threshold_mask],
+                            biogrp_lin_ext[:, :, idx],
+                            _le_cache,
+                            habitable_max_projected_cover[cover_threshold_mask]
+                        )
+                    ) .+
+                    (
+                        (1 .- transition_scale) .*
+                        growth_acceleration.(
+                            growth_acc_height[idx],
+                            growth_acc_midpoint[idx],
+                            growth_acc_steepness[idx],
+                            relative_habitable_cover_cache[cover_threshold_mask]
+                        )
+                    )
+            end
+        end
         growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .< LIN_EXT_SCALE_FACTOR_THRESHOLD
+            relative_habitable_cover_cache .< cover_transition_lb
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
@@ -956,14 +1186,16 @@ function run_model(
         end
 
         @inbounds for i in habitable_loc_idxs
+            cb_idx::Int64 = loc_cb_calib_group_idxs[i]
             net_growth_rates[:, :, i] .=
-                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .*
+                @view(biogrp_lin_ext[:, :, cb_idx]) .*
                 growth_constraints[i]
-            @views timestep!(
+
+            timestep!(
                 functional_groups[i],
-                recruitment[:, i],
-                net_growth_rates[:, :, i],
-                biogrp_survival[:, :, loc_cb_calib_group_idxs[i]]
+                @view(recruitment[:, i]),
+                @view(net_growth_rates[:, :, i]),
+                @view(biogrp_survival[:, :, cb_idx])
             )
 
             # Write to the cover matrix
@@ -992,16 +1224,28 @@ function run_model(
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
+                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates,
+                c_mean_tol_ceil
             )
 
-            if in_debug_mode
-                # Log dhw tolerances if in debug mode
+            if log_dhw_tols
+                # Log dhw tolerances if requested
+                permutedims!(_permuted_buf, c_mean_t, (2, 1, 3))
                 dhw_tol_mean_log[tstep, :, :] .= reshape(
-                    mean.(c_mean_t), size(dhw_tol_mean_log)[2:3]
+                    _permuted_buf, size(dhw_tol_mean_log)[2:3]
                 )
             end
+
+            if log_cover
+                permutedims!(_permuted_buf, @view(C_cover[tstep, :, :, :]), (2, 1, 3))
+                cover_log[tstep, :, :] .= reshape(_permuted_buf, size(cover_log)[2:3])
+            end
         end
+
+        # Snapshot juvenile tolerance after natural adaptation, before seeding modifies it.
+        # This is the correct baseline for a_adapt enhancement: using the post-seeding state
+        # here would cause the enhancement to compound each deployment year.
+        c_mean_pre_seed .= c_mean_t[:, 1, :]
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
@@ -1009,11 +1253,15 @@ function run_model(
 
         for l in 1:n_locs
             s = sum(fec_scope[:, l])
-            prop_fecundity[:, l] .= s > 0.0 ? fec_scope[:, l] ./ s : 0.0
+            if s > 0.0
+                prop_fecundity[:, l] .= fec_scope[:, l] ./ s
+            else
+                prop_fecundity[:, l] .= 0.0
+            end
         end
 
-        _loc_coral_cover = loc_coral_cover(C_cover_t)
-        leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
+        _loc_coral_cover .= loc_coral_cover(C_cover_t)
+        leftover_space_m² .= relative_leftover_space(_loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -1031,7 +1279,8 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers
+                potential_settlers;
+                rng=rng
             )[
                 :, habitable_loc_idxs
             ] ./ habitable_areas[:, habitable_loc_idxs]
@@ -1039,7 +1288,8 @@ function run_model(
         # Reset fecundity scope before next run
         fec_scope .= 0.0
 
-        leftover_space_m² .-= dropdims(sum(recruitment; dims=1); dims=1) .* vec_abs_k
+        sum!(_recruitment_col_sum_2d, recruitment)
+        leftover_space_m² .-= _recruitment_col_sum .* vec_abs_k
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
@@ -1069,7 +1319,7 @@ function run_model(
 
         if is_guided
             # Use modified projected DHW (may have been affected by shading)
-            dhw_p = copy(dhw_scen)
+            dhw_p .= dhw_scen
             dhw_p[tstep, :] .= dhw_t
             dhw_projection .= weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
 
@@ -1086,7 +1336,7 @@ function run_model(
             )
 
             # Calculate current location cover
-            current_loc_cover = dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+            current_loc_cover .= dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
         end
 
         # Fogging
@@ -1204,9 +1454,12 @@ function run_model(
 
                 # mc_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
                 for mc_share in domain.mc_target_locations
-                    share_candidate_locs = intersect(candidate_locs, mc_share.target_locs)
+                    share_candidate_locs = intersect(
+                        candidate_locs, mc_share.target_locs
+                    )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "mc") == PeriodicStrategy
+                        if ADRIA.decision.strategy_type(param_set, "mc") ==
+                            PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
                                 $(length(mc_share.target_locs)) reefs with weight
@@ -1249,7 +1502,8 @@ function run_model(
                     end
                     if !isempty(selected_mc_ranks)
                         log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .= log_val
+                        log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .=
+                            log_val
                         last_mc_deployment[share_candidate_loc_idx] .= tstep
                     end
 
@@ -1260,10 +1514,7 @@ function run_model(
                     if has_mc_locs
                         mc_loc_idx = findall(domain.loc_ids .∈ [selected_mc_ranks])
 
-                        # Discount recruits added via seeding from leftover space
-                        @views available_space =
-                            leftover_space_m²[mc_loc_idx] .-
-                            dropdims(sum(recruitment[:, mc_loc_idx]; dims=1); dims=1)
+                        @views available_space = leftover_space_m²[mc_loc_idx]
 
                         locs_with_space = findall(available_space .> 0.0)
 
@@ -1280,7 +1531,11 @@ function run_model(
                                 prop_fecundity[:, mc_loc_idx]
                             )
 
-                            @views recruitment[:, mc_loc_idx] .+= mc_proportional_increase
+                            @views recruitment[:, mc_loc_idx] .+=
+                                mc_proportional_increase
+                            leftover_space_m²[mc_loc_idx] .-=
+                                vec(sum(Array(mc_proportional_increase); dims=1)) .*
+                                vec_abs_k[mc_loc_idx]
 
                             # Log estimated number of corals moved
                             Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
@@ -1302,7 +1557,8 @@ function run_model(
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fecundity_per_m²,
-            param_set[At("heritability")]
+            param_set[At("heritability")],
+            c_mean_tol_ceil
         )
 
         # Seeding
@@ -1383,7 +1639,9 @@ function run_model(
 
                 # seed_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
                 for seed_share in domain.seed_target_locations
-                    share_candidate_locs = intersect(candidate_locs, seed_share.target_locs)
+                    share_candidate_locs = intersect(
+                        candidate_locs, seed_share.target_locs
+                    )
                     if isempty(share_candidate_locs)
                         if ADRIA.decision.strategy_type(param_set, "seed") ==
                             PeriodicStrategy
@@ -1467,6 +1725,9 @@ function run_model(
 
                             # Add coral seeding to recruitment
                             recruitment[:, seed_loc_idx] .+= proportional_increase
+                            leftover_space_m²[seed_loc_idx] .-=
+                                vec(sum(Array(proportional_increase); dims=1)) .*
+                                vec_abs_k[seed_loc_idx]
 
                             update_tolerance_distribution!(
                                 proportional_increase,
@@ -1476,7 +1737,8 @@ function run_model(
                                 c_std,
                                 seed_loc_idx,
                                 _seed_size_groups,
-                                a_adapt
+                                a_adapt,
+                                c_mean_tol_ceil
                             )
                         end
 
@@ -1490,7 +1752,7 @@ function run_model(
         # Apply disturbances
 
         # ΔC_cover_t should only hold changes in cover due to env. disturbances
-        ΔC_cover_t .= copy(C_cover_t)
+        ΔC_cover_t .= C_cover_t
 
         # Store current c_mean before bleaching. This will be used in the next timestep to
         # update the settler's DHW tolerance dists.
@@ -1509,14 +1771,17 @@ function run_model(
             depth_coeff,
             c_std,
             c_mean_t,
-            @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
+            @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
+            c_mean_tol_ceil
         )
 
-        # Store current means to be used in future timesteps
+        # Store current means to be used in future timesteps.
+        # Use pre-seeding snapshot so that a_adapt enhancement is not compounded
+        # into the reference year-over-year.
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
         end
-        c_mean_reference[:, :, 1] .= c_mean_t[:, 1, :]
+        c_mean_reference[:, :, 1] .= c_mean_pre_seed
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
@@ -1524,10 +1789,11 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculate survival_rate due to env. disturbances
-        no_mortality_mask = ΔC_cover_t .== 0.0
-        survival_rate_cache[.!no_mortality_mask] .= (C_cover_t ./ ΔC_cover_t)[.!no_mortality_mask]
-        survival_rate_cache[no_mortality_mask] .= 1.0
-        @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
+        @inbounds for i in eachindex(survival_rate_cache)
+            d = ΔC_cover_t[i]
+            survival_rate_cache[i] = d == 0.0 ? 1.0 : C_cover_t[i] / d
+        end
+        @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
 
         for loc in 1:n_locs
             apply_mortality!(
@@ -1540,13 +1806,10 @@ function run_model(
         C_cover[tstep, :, :, :] .= C_cover_t
 
         # Track cover loss for reactive strategies
-        _is_reactive = any(
-            is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
-        )
         if is_guided && _is_reactive && (tstep > 1)
             # Calculate proportional cover loss at each location
             # due to disturbances this timestep
-            Δcover_loss_proportion = zeros(n_locs)
+            Δcover_loss_proportion .= 0.0
             for loc in 1:n_locs
                 cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
                 cover_after = sum(@view(C_cover_t[:, :, loc]))
@@ -1567,7 +1830,7 @@ function run_model(
     # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
     # collated_dhw_tol_log = DataCube(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3);
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
-    if in_debug_mode
+    if log_dhw_tols
         collated_dhw_tol_log = DataCube(
             dhw_tol_mean_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )
@@ -1575,10 +1838,19 @@ function run_model(
         collated_dhw_tol_log = false
     end
 
+    if log_cover
+        collated_cover_log = DataCube(
+            cover_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
+        )
+    else
+        collated_cover_log = false
+    end
+
     # Set variables to nothing so garbage collector clears them
     # Leads to memory leak issues in multiprocessing contexts without these.
     wave_scen = nothing
     dhw_tol_mean_log = nothing
+    cover_log = nothing
 
     return (
         raw=C_cover,
@@ -1587,7 +1859,8 @@ function run_model(
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,
-        bleaching_mortality=bleaching_mort,
-        coral_dhw_log=collated_dhw_tol_log
+        bleaching_mortality=bleach_dhw,
+        coral_dhw_log=collated_dhw_tol_log,
+        coral_cover_log=collated_cover_log
     )
 end
