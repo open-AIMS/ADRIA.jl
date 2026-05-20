@@ -15,6 +15,8 @@ include("run_scenarios.jl")
 # analysis.jl uses ADRIA.sensitivity.* and viz functions that have moved to ADRIAAnalysis.
 # Run it from packages/ADRIAAnalysis/test/ instead.
 include("clustering.jl")
+include("annotated_outcomes.jl")
+include("scenario_groups.jl")
 include("data_loading.jl")
 include("domain.jl")
 include("calib_params_loading.jl")
@@ -42,6 +44,7 @@ include("utils/text_display.jl")
 
 include("viz/taxa_dynamics.jl")
 include("viz/spatial.jl")
+include("viz/annotated_outcomes.jl")
 
 # TODO Fix spatial_clustering and site_selection tests
 # include("site_selection.jl")
