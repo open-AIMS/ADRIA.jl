@@ -317,8 +317,7 @@ function combine_results(result_sets...)::ResultSet
                 :ranks,
                 :mc_log,
                 :seed_log,
-                :fog_log,
-                :shade_log,
+                :shading_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log
             ],
