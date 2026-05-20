@@ -46,7 +46,3 @@ const MOCK_CALIB_PARAMS_PATH = joinpath(TEST_DATA_DIR, "mock_calibrated_params.n
         @test ms_dict["growth_acceleration_cb_group_$(bg_ids[12])_midpoint"] ≈ ga[12, 3]
     end
 end
-
-# Reset coral structs to defaults so subsequent tests are not affected by calibrated overrides
-ADRIA.create_coral_struct()
-ADRIA.create_growth_acceleration_struct()

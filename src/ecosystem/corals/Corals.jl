@@ -293,27 +293,10 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
     return nothing
 end
 
-"""
-    create_coral_struct(bounds=(0.9, 1.1))
-
-Generates Coral struct using the default parameter spec.
-
-# Example
-```julia
-# Define coral struct with auto-generated parameter ranges
-# (default in ADRIA is ± 10%, triangular distribution with peak at 0.5)
-create_coral_struct()
-coral = Coral()
-
-# Recreate coral spec ± 50% from nominal values
-create_coral_struct((0.5, 1.5))
-coral = Coral()
-```
-"""
-function create_coral_struct(
+function _build_coral_fields(
     bounds::Tuple{Float64,Float64}=(0.9, 1.1);
     overrides::Dict{String,Float64}=Dict{String,Float64}()
-)::Nothing
+)::OrderedDict{String,Param}
     functional_group_names, base_coral_factor_names, coral_factors = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
@@ -349,9 +332,47 @@ function create_coral_struct(
 
     add_scale_factors!(struct_fields, bounds, overrides)
 
-    _coral_struct(struct_fields)
+    return struct_fields
+end
 
+"""
+    create_coral_struct(bounds=(0.9, 1.1))
+
+Generates Coral struct using the default parameter spec.
+
+# Example
+```julia
+# Define coral struct with auto-generated parameter ranges
+# (default in ADRIA is ± 10%, triangular distribution with peak at 0.5)
+create_coral_struct()
+coral = Coral()
+
+# Recreate coral spec ± 50% from nominal values
+create_coral_struct((0.5, 1.5))
+coral = Coral()
+```
+"""
+function create_coral_struct(
+    bounds::Tuple{Float64,Float64}=(0.9, 1.1);
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Nothing
+    _coral_struct(_build_coral_fields(bounds; overrides=overrides))
     return nothing
+end
+
+"""
+    create_coral_instance(bounds=(0.9, 1.1); overrides=Dict())
+
+Construct a `Coral` instance with calibrated field values without redefining the struct.
+Use this instead of `create_coral_struct` when only an instance (not a struct redefinition)
+is needed.
+"""
+function create_coral_instance(
+    bounds::Tuple{Float64,Float64}=(0.9, 1.1);
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Coral
+    fields = _build_coral_fields(bounds; overrides=overrides)
+    return Coral(; (Symbol(k) => v for (k, v) in fields)...)
 end
 
 function new_bounds(value::Float64, bounds::Tuple{Float64,Float64})

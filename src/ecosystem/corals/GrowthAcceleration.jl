@@ -75,10 +75,10 @@ function _growth_acceleration_struct(field_defs::OrderedDict)::Nothing
     return nothing
 end
 
-function create_growth_acceleration_struct(
+function _build_growth_acceleration_fields(
     bounds_var::Float64=0.1;
     overrides::Dict{String,Float64}=Dict{String,Float64}()
-)::Nothing
+)::OrderedDict{String,Param}
     struct_fields = OrderedDict{String,Param}()
 
     growth_accel_params = [:steepness, :midpoint, :height]
@@ -108,9 +108,25 @@ function create_growth_acceleration_struct(
         end
     end
 
-    _growth_acceleration_struct(struct_fields)
+    return struct_fields
+end
 
+function create_growth_acceleration_struct(
+    bounds_var::Float64=0.1;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Nothing
+    _growth_acceleration_struct(
+        _build_growth_acceleration_fields(bounds_var; overrides=overrides)
+    )
     return nothing
+end
+
+function create_growth_acceleration_instance(
+    bounds_var::Float64=0.1;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::GrowthAcceleration
+    fields = _build_growth_acceleration_fields(bounds_var; overrides=overrides)
+    return GrowthAcceleration(; (Symbol(k) => v for (k, v) in fields)...)
 end
 
 create_growth_acceleration_struct()
