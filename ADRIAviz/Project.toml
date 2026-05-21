@@ -37,7 +37,7 @@ ADRIAvizMakieExt  = ["Makie", "GeoMakie", "GraphMakie"]
 ADRIAvizPlotlyExt = ["PlotlyLight"]
 
 [compat]
-ADRIA              = "0.15"
+ADRIA              = "0.16"
 Bootstrap          = "2"
 DataFrames         = "1"
 DimensionalData    = "0.29, 0.30"
@@ -56,12 +56,13 @@ YAXArrays          = "0.5, 0.6"
 julia              = "1.11"
 
 [extras]
-CairoMakie     = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-GLMakie        = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-PlotlyLight    = "ca7969ec-10b3-423e-8d99-40f33abb42bf"
-ReferenceTests = "324d217c-45ce-4292-8b31-75d076f53baf"
-Test           = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-WGLMakie       = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
+CairoMakie  = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+GeoMakie    = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+GLMakie     = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+GraphMakie  = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+PlotlyLight = "ca7969ec-10b3-423e-8d99-40f33abb42bf"
+Test        = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+WGLMakie    = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [targets]
-test = ["CairoMakie", "GLMakie", "PlotlyLight", "ReferenceTests", "Test", "WGLMakie"]
+test = ["CairoMakie", "GeoMakie", "GLMakie", "GraphMakie", "PlotlyLight", "Test", "WGLMakie"]
