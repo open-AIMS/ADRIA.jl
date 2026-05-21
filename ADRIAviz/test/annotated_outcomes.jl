@@ -26,7 +26,7 @@ function _scenario_ao(; n_timesteps=10, n_scenarios=12)
     return AnnotatedOutcomes(data, metadata)
 end
 
-function _taxonomy_ao(; n_timesteps=10, n_groups=6, n_scenarios=12)
+function _taxonomy_ao(; n_timesteps=10, n_groups=5, n_scenarios=12)
     data = DataCube(
         rand(n_timesteps, n_groups, n_scenarios);
         timesteps=1:n_timesteps,
@@ -98,7 +98,8 @@ end
 
         @testset "scenarios figure has scene plots" begin
             fig = ADRIA.viz.scenarios(ao; legend=false)
-            @test !isempty(fig.scene.plots)
+            ax = fig.content[1]
+            @test ax isa Axis && !isempty(ax.scene.plots)
         end
     end
 
