@@ -1,4 +1,5 @@
 using ADRIA.analysis: col_normalize
+using OrderedCollections: OrderedDict
 
 const _ADRIA_ANALYSIS_PKG_ID = Base.PkgId(
     Base.UUID("bc4d0ea8-6565-4397-854d-28474bf8c6b3"), "ADRIAanalysis"
@@ -40,4 +41,27 @@ function outcome_probability(data::AbstractVector)::NamedTuple
             "Very Low\n< 20%"
         ]
     )
+end
+
+"""
+    _get_scenario_groups(ao::AnnotatedOutcomes; by_RCP=false) -> OrderedDict{Symbol,BitVector}
+
+Extract scenario group masks from `ao.metadata`, keyed by RCP or scenario type.
+"""
+function _get_scenario_groups(
+    ao::AnnotatedOutcomes; by_RCP::Bool=false
+)::OrderedDict{Symbol,BitVector}
+    if by_RCP
+        groups = get(ao.metadata, :scenario_rcp_groups, nothing)
+        isnothing(groups) && throw(ArgumentError(
+            "RCP grouping is not available for RME-sourced outcomes."
+        ))
+        return groups
+    end
+    haskey(ao.metadata, :scenario_type_groups) || throw(
+        ArgumentError(
+            "AnnotatedOutcomes is missing :scenario_type_groups — was attach_scenario_metadata called?"
+        )
+    )
+    return ao.metadata[:scenario_type_groups]
 end

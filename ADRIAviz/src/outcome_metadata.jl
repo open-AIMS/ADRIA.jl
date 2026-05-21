@@ -1,4 +1,4 @@
-function outcome_title(outcomes::YAXArray)::String
+function outcome_title(outcomes::YAXArrays.YAXArray)::String
     return get(outcomes.properties, :metric_name, "")
 end
 
@@ -9,7 +9,7 @@ function set_plot_opts!(
     metadata_key::Symbol=:metric_feature,
     label_case=titlecase
 )
-    if !haskey(opts, opts_key) && (outcomes isa YAXArray)
+    if !haskey(opts, opts_key) && (outcomes isa YAXArrays.YAXArray)
         opts[opts_key] = outcome_label(
             outcomes; metadata_key=metadata_key, label_case=label_case
         )
@@ -17,7 +17,7 @@ function set_plot_opts!(
 end
 
 function outcome_label(
-    outcomes::YAXArray; metadata_key::Symbol=:metric_feature, label_case=titlecase
+    outcomes::YAXArrays.YAXArray; metadata_key::Symbol=:metric_feature, label_case=titlecase
 )::String
     outcome_metadata = outcomes.properties
 

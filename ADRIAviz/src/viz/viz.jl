@@ -1,19 +1,17 @@
-using
-    GeoMakie,
-    GeoMakie.Colors
-
-using
-    DataFrames,
-    DimensionalData,
-    YAXArrays
-
-using ADRIA: axes_names, ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
-using .AvizExt
+using DataFrames, DimensionalData, YAXArrays
+using ADRIA: axes_names, ResultSet, model_spec
 
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
-const COLORMAP_TYPE = Union{Symbol,RGB,RGBA,Vector{Symbol},Vector{RGBA},Vector{RGB}}
+function _no_backend_error()
+    error(
+        "No visualization backend loaded. Load a backend before calling viz functions:\n" *
+        "  using GLMakie      # interactive desktop\n" *
+        "  using WGLMakie     # Pluto / browser\n" *
+        "  using CairoMakie   # static PNG/SVG"
+    )
+end
 
 """
     _time_labels(labels)
@@ -27,7 +25,6 @@ function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
     tick_position = collect(1:label_step:labels_length)
     tick_label = collect(labels_strings[1:label_step:end])
 
-    # Prevent missing last label
     if (labels_length - 1) % label_step != 0
         return vcat(tick_position, labels_length), vcat(tick_label, labels_strings[end])
     end
@@ -39,14 +36,8 @@ end
     timesteps(outcomes::YAXArray)::Array{Int64}
 
 Extract time step labels from outcome arrays.
-
-# Arguments
-- `outcomes` : Results to extract metadata from
-
-# Returns
-Array of time steps (years)
 """
-function timesteps(outcomes::YAXArray)::Array{Int64}
+function timesteps(outcomes::YAXArrays.YAXArray)::Array{Int64}
     axis_labels = axes_names(outcomes)
 
     if :timesteps in axis_labels
@@ -59,17 +50,7 @@ end
 """
     _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
 
-Calculates a "nice" number of rows and columns from a given number of factors to display.
-The number of rows for subplots are calculated based on the number of desired columns.
-
-Note: `n_factors` == 1 is displayed as a single figure.
-      `n_factors` <= 4 are always displayed with 2 columns.
-
-# Arguments
-- `n_factors` : Number of factors to organize in a grid.
-
-# Returns
-Number of rows and columns
+Calculates a "nice" number of rows and columns from a given number of factors.
 """
 function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     if n_factors <= 4
@@ -88,13 +69,3 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
 end
 
 include("../outcome_metadata.jl")
-include("scenarios.jl")
-include("sensitivity.jl")
-include("clustering.jl")
-include("rule_extraction.jl")
-include("location_selection.jl")
-include("spatial.jl")
-include("taxa_dynamics.jl")
-include("environment/dhw.jl")
-include("environment/cyclones.jl")
-include("data_envelopment.jl")
