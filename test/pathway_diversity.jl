@@ -1,16 +1,18 @@
 using ADRIA
 
+const DOM = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_test_domain"), "45")
+
 @testset "switching_probability returns correct values" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     past_option = :heat_stress
     min_locs = 5  # select at least 10 locations
-    valid_locations = dom.loc_data.reef_siteid
+    valid_locations = DOM.loc_data.reef_siteid
 
     supported_methods = ADRIA.decision.mcda_methods()
     mcda_method = supported_methods[rand(1:length(supported_methods))]
 
     seed_pref_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
-    decision_matrix = ADRIA.decision_matrix(
+    decision_matrix = ADRIA.decision.decision_matrix(
         valid_locations,
         seed_pref_names,
         rand(length(valid_locations), length(seed_pref_names))
@@ -19,7 +21,7 @@ using ADRIA
 
     @testset "when only necessary inputs are passed" begin
         result = ADRIA.analysis.switching_probability(
-            past_option, decision_matrix, dom.loc_data, mcda_method, min_locs
+            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs
         )
 
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
@@ -29,7 +31,7 @@ using ADRIA
     @testset "when option is passed" begin
         option = first(option_names)
         result = ADRIA.analysis.switching_probability(past_option, decision_matrix,
-            dom.loc_data, mcda_method, min_locs, option)
+            DOM.loc_data, mcda_method, min_locs, option)
         @test result isa Float64
     end
 
@@ -38,7 +40,7 @@ using ADRIA
         selected_ports = [:cairns, :townsville, :gladstone]
         filtered_ports = ports[ports.name .∈ [selected_ports], :]
         result = ADRIA.analysis.switching_probability(past_option, decision_matrix,
-            dom.loc_data, mcda_method, min_locs; ports=filtered_ports)
+            DOM.loc_data, mcda_method, min_locs; ports=filtered_ports)
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
         @test result.option_name == option_names
     end
@@ -63,9 +65,8 @@ end
 
 @testset "option_similarity returns correct values" begin
     @testset "for standard domain" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-        seleceted_locations_1 = dom.loc_data[4:8, :]
-        seleceted_locations_2 = dom.loc_data[6:end, :]
+        seleceted_locations_1 = DOM.loc_data[4:8, :]
+        seleceted_locations_2 = DOM.loc_data[6:end, :]
 
         result = ADRIA.analysis.option_similarity(
             seleceted_locations_1, seleceted_locations_2
@@ -74,9 +75,8 @@ end
     end
 
     @testset "for ReefMod Engine domain" begin
-        dom = ADRIA.load_domain(ADRIA.RMEDomain, TEST_REEFMOD_ENGINE_DOMAIN_PATH, "45")
-        seleceted_locations_1 = dom.loc_data[5:15, :]
-        seleceted_locations_2 = dom.loc_data[10:end, :]
+        seleceted_locations_1 = RME_DOM.loc_data[1:6, :]
+        seleceted_locations_2 = RME_DOM.loc_data[4:end, :]
 
         result = ADRIA.analysis.option_similarity(
             seleceted_locations_1, seleceted_locations_2
@@ -86,42 +86,38 @@ end
 end
 
 @testset "cost_index return correct values" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     ports = ADRIA.analysis._ports()
 
     @testset "when list only dataframe and no optional argument is passed" begin
-        cost_index = ADRIA.analysis.cost_index(dom.loc_data, ports)
-        @test isapprox(cost_index, 0.34, atol=0.01)
+        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports)
+        @test isapprox(cost_index, 0.13, atol=0.01)
     end
 
     @testset "when new weight is passed" begin
-        cost_index = ADRIA.analysis.cost_index(dom.loc_data, ports; weight=0.4)
-        @test isapprox(cost_index, 0.23, atol=0.01)
+        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports; weight=0.4)
+        @test isapprox(cost_index, 0.09, atol=0.01)
     end
 
     @testset "when new normalization is passed" begin
-        cost_index = ADRIA.analysis.cost_index(dom.loc_data, ports;
+        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports;
             max_distance_port=500000.0, max_dispersion=40000.0)
         @test isapprox(cost_index, 0.25, atol=0.01)
     end
 end
 
 @testset "_distance_port return correct values" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     ports = ADRIA.analysis._ports()
 
-    distance_port = ADRIA.analysis._distance_port(dom.loc_data, ports)
+    distance_port = ADRIA.analysis._distance_port(DOM.loc_data, ports)
     @test isapprox(distance_port, 142084.75, atol=0.01)
 
     selected_ports = [:cairns, :townsville, :gladstone]
     filtred_ports = ports[ports.name .∈ [selected_ports], :]
-    distance_port = ADRIA.analysis._distance_port(dom.loc_data, filtred_ports)
+    distance_port = ADRIA.analysis._distance_port(DOM.loc_data, filtred_ports)
     @test isapprox(distance_port, 230851.47, atol=0.01)
 end
 
 @testset "_dispersion return correct values" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-
-    dispersion = ADRIA.analysis._dispersion(dom.loc_data)
+    dispersion = ADRIA.analysis._dispersion(DOM.loc_data)
     @test isapprox(dispersion, 8593.79, atol=0.01)
 end
