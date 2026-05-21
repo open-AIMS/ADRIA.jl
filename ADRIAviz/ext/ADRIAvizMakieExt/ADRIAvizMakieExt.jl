@@ -27,7 +27,7 @@ using ADRIAviz:
     relative_sensitivities, outcome_probability,
     outcome_title, outcome_label, set_plot_opts!,
     OPT_TYPE, DEFAULT_OPT_TYPE,
-    _time_labels, _calc_gridsize
+    _time_labels, _calc_gridsize, timesteps
 
 import ADRIA: timesteps as AD_timesteps
 import ADRIA.viz: explore
@@ -512,7 +512,6 @@ function ADRIA.viz.explore(rs::ResultSet)
         [t.active for t in t_toggles]...,
         [sld.interval for sld in interv_sliders]...
     ) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs...
-
         left_year_val[] = "$(Int(floor(time_val[1])))"
         right_year_val[] = "$(Int(ceil(time_val[2])))"
         tac_bot_val[] = tac_val[1]
