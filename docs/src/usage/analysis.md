@@ -34,10 +34,15 @@ To install the `WGLMakie` backend:
 ]add WGLMakie
 ```
 
-To trigger compilation of the visualization extension, we must **always** import the following dependencies in our analysis script(s), regardless of your backend selection;
+To trigger compilation of the visualization extension, call `ADRIAviz.activate` with your
+chosen backend after importing ADRIAviz:
 
 ```julia
-using ADRIAviz, GeoMakie, GraphMakie
+using ADRIA, ADRIAviz
+ADRIAviz.activate()             # defaults to WGLMakie
+ADRIAviz.activate("GLMakie")    # for VS Code plots pane
+ADRIAviz.activate("CairoMakie") # non-interactive / CI
+```
 
 Alternatively, load backends explicitly:
 
@@ -50,8 +55,7 @@ The example scripts below assume the following imports
 
 ```julia
 using ADRIA, ADRIAviz
-# Always imported regardless of backend
-using GeoMakie, GraphMakie
+ADRIAviz.activate()  # or your preferred backend
 
 # Statistics library used later in this doc
 using Statistics

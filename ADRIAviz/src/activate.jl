@@ -4,52 +4,6 @@ const _BACKEND_UUIDS = Dict{String,Base.UUID}(
     "CairoMakie" => Base.UUID("13f3f980-e62b-5c42-98c6-ff1f3baf88f0")
 )
 
-const _PLOTLY_PKG_ID = Base.PkgId(
-    Base.UUID("a03496cd-edff-5a9b-9e67-9cda94a718b5"), "PlotlyBase"
-)
-
-const _KALEIDO_PKG_ID = Base.PkgId(
-    Base.UUID("f2990250-8cf9-495f-b13a-cce12b45703c"), "PlotlyKaleido"
-)
-
-"""
-    activate(backend::Symbol)
-
-Convenience method. The only supported symbol is `:plotly`.
-
-Loads `PlotlyBase` (required) and `PlotlyKaleido` (optional — enables
-`ADRIA.viz.savefig`). If `PlotlyKaleido` is not installed, a warning is printed
-and only the interactive backend is activated.
-
-```julia
-using ADRIA, ADRIAviz
-ADRIAviz.activate(:plotly)   # loads PlotlyBase + PlotlyKaleido (if installed)
-```
-"""
-function activate(backend::Symbol)
-    backend in (:plotly,) || throw(
-        ArgumentError(
-            "Symbol shorthand only supports :plotly. " *
-            "For Makie backends use `activate(\"WGLMakie\")` etc."
-        )
-    )
-    isnothing(Base.find_package("PlotlyBase")) && throw(
-        ArgumentError(
-            "PlotlyBase is not installed. Install it first:\n\n    pkg> add PlotlyBase\n"
-        )
-    )
-    Base.require(_PLOTLY_PKG_ID)
-
-    if isnothing(Base.find_package("PlotlyKaleido"))
-        @warn "PlotlyKaleido is not installed — `ADRIA.viz.savefig` will not be available.\n" *
-            "To enable static export: pkg> add PlotlyKaleido"
-    else
-        Base.require(_KALEIDO_PKG_ID)
-    end
-
-    return nothing
-end
-
 """
     activate(backend::AbstractString="WGLMakie")
 
@@ -74,11 +28,6 @@ ADRIAviz.activate("CairoMakie")   # non-interactive / CI
 ```
 """
 function activate(backend::AbstractString="WGLMakie")
-    # Convenience alias — delegate to Symbol overload
-    if lowercase(backend) == "plotly"
-        return activate(:plotly)
-    end
-
     haskey(_BACKEND_UUIDS, backend) || throw(
         ArgumentError(
             "Unknown backend \"$(backend)\". Supported: $(join(sort(collect(keys(_BACKEND_UUIDS))), ", "))"
