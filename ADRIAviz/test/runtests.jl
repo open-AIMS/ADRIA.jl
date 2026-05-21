@@ -13,7 +13,7 @@ using ADRIAviz
 
     @testset "No Makie in loaded modules" begin
         makie_loaded = any(
-            contains(string(v.name), "Makie") for v in values(Base.loaded_modules)
+            contains(k.name, "Makie") for k in keys(Base.loaded_modules)
         )
         @test !makie_loaded
     end

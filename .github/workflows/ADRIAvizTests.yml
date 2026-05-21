@@ -31,4 +31,4 @@ jobs:
           ADRIA_RUN_VIZ_TESTS: "1"
         run: |
           cd ADRIAviz
-          julia --project=. -e 'using Pkg; Pkg.test()'
+          julia --project=. -e 'using Pkg; Pkg.add(["WGLMakie", "GeoMakie", "GraphMakie"]); Pkg.test()'
