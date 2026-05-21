@@ -3,22 +3,6 @@ import GeoMakie: alpha
 
 COLOR_TYPE = Union{RGBA,String,Symbol}
 
-const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
-    :RCP45 => :darkblue,
-    :RCP60 => :seagreen,
-    :RCP85 => :orangered,
-    :scenarios => :steelblue,
-    :interventions => :steelblue,
-    :counterfactual => :red,
-    :unguided => :lawngreen,
-    :guided => :dodgerblue,
-    :target => "#1f78b4",
-    :non_target => "#ff7f00",
-    :order => :dodgerblue,
-    :topsis => :deepskyblue4,
-    :vikor => :midnightblue
-)
-
 function colors(
     scen_groups::Dict{Symbol,BitVector}
 )::Dict{Symbol,COLOR_TYPE}
@@ -71,10 +55,6 @@ end
 function alpha(scens::BitVector)::Float64
     base_alpha::Float64 = 1.0 / (count(scens) * 0.05)
     return max(min(base_alpha, 0.6), 0.1)
-end
-
-function labels(group_names::Vector{Symbol})::Vector{String}
-    return [uppercasefirst(replace(string(name), '_' => ' ')) for name in group_names]
 end
 
 """
