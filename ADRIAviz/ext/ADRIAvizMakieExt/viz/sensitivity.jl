@@ -71,7 +71,7 @@ function ADRIA.viz.pawn!(
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si[Si=At(sort_by)]; rev=true), :]
+    Si = Si[sortperm(collect(Si[Si=At(sort_by)]); rev=true), :]
 
     y, x = Si.axes
     ax = Axis(
