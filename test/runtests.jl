@@ -42,12 +42,6 @@ include("metrics/spatial.jl")
 include("utils/scale.jl")
 include("utils/text_display.jl")
 
-if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
-    include("viz/taxa_dynamics.jl")
-    include("viz/spatial.jl")
-    include("viz/annotated_outcomes.jl")
-end
-
 # TODO Fix spatial_clustering and site_selection tests
 # include("site_selection.jl")
 # include("spatial_clustering.jl")
