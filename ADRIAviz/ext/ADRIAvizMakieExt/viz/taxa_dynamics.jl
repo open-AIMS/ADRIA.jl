@@ -1,3 +1,4 @@
+using YAXArrays
 using ADRIA.analysis: series_confint
 using ADRIA: functional_group_names, human_readable_name, AnnotatedOutcomes
 using OrderedCollections
