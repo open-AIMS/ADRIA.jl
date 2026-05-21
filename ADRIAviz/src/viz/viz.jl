@@ -5,7 +5,7 @@ const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
 function _no_backend_error()
-    return error(
+    error(
         "No visualization backend loaded. Load a backend before calling viz functions:\n" *
         "  using GLMakie      # interactive desktop\n" *
         "  using WGLMakie     # Pluto / browser\n" *
@@ -33,14 +33,18 @@ function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
 end
 
 """
-    timesteps(outcomes::YAXArray)::Vector{Int64}
+    timesteps(outcomes::YAXArray)::Array{Int64}
 
-Extract time step labels from outcome arrays. Delegates to `ADRIA.timesteps`.
+Extract time step labels from outcome arrays.
 """
-timesteps(outcomes::YAXArrays.YAXArray) = ADRIA.timesteps(outcomes)
+function timesteps(outcomes::YAXArrays.YAXArray)::Array{Int64}
+    axis_labels = axes_names(outcomes)
 
-function timesteps(outcomes::AbstractMatrix)::UnitRange{Int64}
-    return 1:size(outcomes, 1)
+    if :timesteps in axis_labels
+        return Array(outcomes.timesteps)
+    end
+
+    return Int64[]
 end
 
 """

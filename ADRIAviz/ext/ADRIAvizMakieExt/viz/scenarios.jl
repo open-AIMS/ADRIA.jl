@@ -88,7 +88,7 @@ function ADRIA.viz.scenarios(
     g = f[1, 1] = GridLayout()
 
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / Ï€)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     ADRIA.viz.scenarios!(
@@ -109,7 +109,7 @@ function ADRIA.viz.scenarios(
     g = f[1, 1] = GridLayout()
 
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / Ï€)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
     scen_groups = rs.scenario_groups
 
@@ -150,7 +150,7 @@ function ADRIA.viz.scenarios!(
 )::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / Ï€)
 
     if !haskey(axis_opts, :title)
         axis_opts[:title] = outcome_title(outcomes)
@@ -158,7 +158,7 @@ function ADRIA.viz.scenarios!(
 
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
+    _scenarios = copy(scenarios[1:end .âˆˆ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
         _scenario_rcps(_scenarios)
     else
@@ -215,7 +215,7 @@ function ADRIA.viz.scenarios_legend!(
     g::GridPosition, rs::ResultSet, outcomes::YAXArray; opts::OPT_TYPE=Dict{Symbol,Any}(),
     legend_opts::OPT_TYPE=Dict{Symbol,Any}()
 )
-    _scenarios = rs.inputs #copy(@view(scenarios[1:end .∈ [outcomes.scenarios], :]))
+    _scenarios = rs.inputs #copy(@view(scenarios[1:end .âˆˆ [outcomes.scenarios], :]))
     by_RCP::Bool = get(opts, :by_RCP, false)
     scen_groups = if by_RCP
         _scenario_rcps(_scenarios)
@@ -473,7 +473,7 @@ or scenario `DataFrame`. All scenarios are treated as a single group.
 
 # Examples
 ```julia
-# outcomes is a (timesteps × scenarios) YAXArray, e.g. from an external source
+# outcomes is a (timesteps Ã— scenarios) YAXArray, e.g. from an external source
 ADRIA.viz.scenarios(outcomes)
 
 # Plot individual lines instead of the confidence interval band
@@ -517,7 +517,7 @@ function ADRIA.viz.scenarios!(
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / Ï€)
 
     if !haskey(axis_opts, :title)
         axis_opts[:title] = outcome_title(outcomes)
@@ -567,7 +567,7 @@ function _sort_keys(
         !isempty(default_names) && return default_names
 
         default_keys = [:counterfactual, :interventions, :unguided, :guided]
-        filtered = default_keys[default_keys .∈ [scen_types]]
+        filtered = default_keys[default_keys .âˆˆ [scen_types]]
         return isempty(filtered) ? scen_types : filtered
     elseif by == :variance
         msg = "When sorting by variance, optional parameter `outcomes` must be provided"
@@ -592,6 +592,14 @@ function _sort_keys(
     end
 end
 
+    haskey(ao.metadata, :scenario_type_groups) || throw(
+        ArgumentError(
+            "AnnotatedOutcomes is missing :scenario_type_groups â€” was attach_scenario_metadata called?"
+        )
+    )
+    return ao.metadata[:scenario_type_groups]
+end
+
 """
     scenario_bands!(ax, data, scen_groups; kwargs...)
 
@@ -604,10 +612,10 @@ group. When `summarize=false`, draws individual member lines instead.
 - `scen_groups`: `OrderedDict{Symbol,BitVector}` mapping group name to member mask
 
 # Keyword arguments
-- `summarize::Bool=true` — aggregate to median + CI band; `false` draws all member lines
+- `summarize::Bool=true` â€” aggregate to median + CI band; `false` draws all member lines
 - `colormap=:tableau_10`
-- `alpha::Float64=0.3` — opacity of CI band fill
-- `legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing` — optional override labels keyed by group name
+- `alpha::Float64=0.3` â€” opacity of CI band fill
+- `legend_labels::Union{AbstractDict{Symbol,String},Nothing}=nothing` â€” optional override labels keyed by group name
 """
 function scenario_bands!(
     ax,
@@ -666,7 +674,7 @@ function ADRIA.viz.scenarios(
     xlabel::AbstractString="Year",
     ylabel::AbstractString="",
     xticks=nothing,
-    xticklabelrotation::Float64=π / 2
+    xticklabelrotation::Float64=Ï€ / 2
 )::Figure
     scen_groups = _get_scenario_groups(ao; by_RCP)
     f = Figure(; size)
@@ -702,7 +710,7 @@ function ADRIA.viz.scenarios!(
     xlabel::AbstractString="Year",
     ylabel::AbstractString="",
     xticks=nothing,
-    xticklabelrotation::Float64=π / 2
+    xticklabelrotation::Float64=Ï€ / 2
 )::Union{GridLayout,GridPosition}
     scen_groups = _get_scenario_groups(ao; by_RCP)
     xtick_vals = isnothing(xticks) ? _time_labels(timesteps(ao.data)) : xticks
@@ -760,3 +768,4 @@ function ADRIA.viz.scenarios_legend!(
         by_RCP, sort_by, legend_labels, legend_title
     )
 end
+

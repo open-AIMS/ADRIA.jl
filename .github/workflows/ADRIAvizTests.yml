@@ -1,8 +1,7 @@
 name: ADRIAviz Tests
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   pull_request:
     paths:
       - 'ADRIAviz/**'
@@ -18,7 +17,7 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.11'
-      - uses: julia-actions/cache@v3
+      - uses: julia-actions/cache@v2
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
@@ -32,12 +31,4 @@ jobs:
           ADRIA_RUN_VIZ_TESTS: "1"
         run: |
           cd ADRIAviz
-          julia --project=. -e 'using Pkg; Pkg.add(["CairoMakie", "GeoMakie", "GraphMakie"]); Pkg.test()'
-      - name: Test ADRIAviz (Plotly backend)
-        # Run in a fresh Julia process so that no Makie package is loaded.
-        # The Makie and Plotly extensions are mutually exclusive per session.
-        env:
-          ADRIA_RUN_PLOTLY_TESTS: "1"
-        run: |
-          cd ADRIAviz
-          julia --project=. -e 'using Pkg; Pkg.add("PlotlyBase"); Pkg.test()'
+          julia --project=. -e 'using Pkg; Pkg.test()'
