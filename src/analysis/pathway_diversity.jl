@@ -26,14 +26,15 @@ end
 function pathway_diversity(
     rs::ResultSet, scens::DataFrame, idx_scens::Vector{Int64}, option::Symbol
 )::Vector{Float64}
-    start_time::Int64 = rs.inputs.seed_year_start[1] + rs.inputs.pd_frequency[1]
+    idx_scen = idx_scens[1] # index of scenario used to extract model parameters
+    start_time::Int64 = rs.inputs.seed_year_start[idx_scen] + rs.inputs.pd_frequency[idx_scen]
     end_time::Int64 =
-        rs.inputs.seed_year_start[1] + rs.inputs.seed_years[1] - rs.inputs.pd_frequency[1]
-    min_locs::Int64 = rs.inputs.min_iv_locations[1]
-    mcda_method = ADRIA.mcda_methods()[Int64(rs.inputs.guided[1])]
+        rs.inputs.seed_year_start[idx_scen] + rs.inputs.seed_years[idx_scen] - rs.inputs.pd_frequency[idx_scen]
+    min_locs::Int64 = rs.inputs.min_iv_locations[idx_scen]
+    mcda_method = ADRIA.mcda_methods()[Int64(rs.inputs.guided[idx_scen])]
 
     idx_option_scens = findall(
-        option_ts -> option_ts[Int64(rs.inputs.seed_year_start[1])] == option,
+        option_ts -> option_ts[Int64(rs.inputs.seed_year_start[idx_scen])] == option,
         scens.option_ts
     )
     idx_scens = intersect(idx_scens, idx_option_scens)
@@ -41,7 +42,7 @@ function pathway_diversity(
 
     for (idx_prob, idx_scen) in enumerate(idx_scens)
         option_ts = scens.option_ts[idx_scen]
-        for tstep in start_time:Int64(rs.inputs.pd_frequency[1]):end_time
+        for tstep in start_time:Int64(rs.inputs.pd_frequency[idx_scen]):end_time
             decision_matrix = rs.decision_matrix_log[timesteps=tstep, scenarios=idx_scen]
             probs[idx_prob] *= ADRIA.analysis.switching_probability(
                 option_ts[tstep - 1], decision_matrix, rs.loc_data, mcda_method, min_locs,
