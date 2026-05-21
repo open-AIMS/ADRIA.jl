@@ -5,6 +5,7 @@ authors = ["open-AIMS contributors"]
 
 [deps]
 ADRIA              = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
+ArchGDAL           = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 Bootstrap          = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 DataFrames         = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DimensionalData    = "0703355e-b756-11e9-17c0-8b28908087d0"
@@ -38,6 +39,7 @@ ADRIAvizPlotlyExt = ["PlotlyLight"]
 
 [compat]
 ADRIA              = "0.16"
+ArchGDAL           = "0.10"
 Bootstrap          = "2"
 DataFrames         = "1"
 DimensionalData    = "0.29, 0.30"
