@@ -43,18 +43,13 @@ function ADRIA.viz.scenarios!(
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     scen_groups = _scenario_clusters(clusters)
-    opts[:histogram] = false
-    opts[:legend_labels] = sort(collect(keys(scen_groups)))
+    legend_labels = sort(collect(keys(scen_groups)))
 
-    return ADRIA.viz.scenarios!(
-        g,
-        ax,
-        outcomes,
-        scen_groups;
-        opts=opts,
-        axis_opts=axis_opts,
-        series_opts=series_opts
-    )
+    scenario_bands!(ax, outcomes, scen_groups;
+        summarize=get(opts, :summarize, true))
+    _render_legend(g[1, 2], scen_groups, legend_labels)
+
+    return g
 end
 
 """
@@ -80,7 +75,8 @@ function ADRIA.viz.clustered_scenarios(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     if !haskey(axis_opts, :title)
-        axis_opts[:title] = "$(outcome_title(outcomes)) Clusters"
+        title_str = outcomes isa YAXArrays.YAXArray ? outcome_title(outcomes) : ""
+        axis_opts[:title] = isempty(title_str) ? "Clusters" : "$(title_str) Clusters"
     end
 
     return ADRIA.viz.scenarios(
