@@ -177,10 +177,10 @@ function ResultSet(
                 )
             end : nothing
         ),
-        DataCube(
+        haskey(log_set, "decision_matrix") ? DataCube(
             log_set["decision_matrix"],
             Symbol.(Tuple(log_set["decision_matrix"].attrs["structure"]))
-        )
+        ) : nothing
     )
 end
 

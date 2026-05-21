@@ -490,12 +490,14 @@ function _write_batch!(
     data_store.seed_log[:, :, :, idx_range] .= seed_batch
 
     # decision_matrix_log: (tf, n_locs, n_criteria, n)
-    _, n_l, n_c = size(results[1].decision_matrix_log)
-    dm_batch = Array{Float64}(undef, tf, n_l, n_c, n)
-    for (i, r) in enumerate(results)
-        dm_batch[:, :, :, i] .= r.decision_matrix_log
+    if parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
+        _, n_l, n_c = size(results[1].decision_matrix_log)
+        dm_batch = Array{Float64}(undef, tf, n_l, n_c, n)
+        for (i, r) in enumerate(results)
+            dm_batch[:, :, :, i] .= r.decision_matrix_log
+        end
+        data_store.decision_matrix_log[:, :, :, idx_range] .= dm_batch
     end
-    data_store.decision_matrix_log[:, :, :, idx_range] .= dm_batch
 
     # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
     if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
@@ -779,6 +781,7 @@ function run_model(
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
     log_dhw_tols = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "true")) == true
     log_cover = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+    log_dm = parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -1125,8 +1128,12 @@ function run_model(
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
     # Decision matrix log
-    decision_matrix_log = ZeroDataCube(; T=Float64, timesteps=1:tf,
-        location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
+    if log_dm
+        decision_matrix_log = ZeroDataCube(; T=Float64, timesteps=1:tf,
+            location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
+    else
+        decision_matrix_log = false
+    end
 
     for tstep::Int64 in 2:(param_set[At("seed_year_start")] + param_set[At("seed_years")])
         # Convert cover to absolute values to use within CoralBlox model
@@ -1708,7 +1715,9 @@ function run_model(
                             coral_diversity=diversity[share_candidate_loc_idx]
                         )
 
-                        decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(share_candidate_locs)]
+                        if log_dm
+                            decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(share_candidate_locs)]
+                        end
 
                         if "option_ts" in param_set.factors
                             option = param_set[At("option_ts")][tstep]

@@ -29,6 +29,9 @@ function setup()::Nothing
         ENV["ADRIA_LOG_COVER"] =
             haskey(config_operation, "log_cover") ? config_operation["log_cover"] : false
 
+        ENV["ADRIA_LOG_DM"] =
+            haskey(config_operation, "log_dm") ? config_operation["log_dm"] : false
+
         ENV["ADRIA_RNG_SEED"] =
             haskey(config_operation, "rng_seed") ? config_operation["rng_seed"] : false
     catch
@@ -40,6 +43,7 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
         ENV["ADRIA_LOG_DHW_TOLS"] = false
         ENV["ADRIA_LOG_COVER"] = false
+        ENV["ADRIA_LOG_DM"] = false
     end
 
     return nothing

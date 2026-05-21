@@ -375,16 +375,33 @@ function setup_logs(
         :structure => ("timesteps", "location", "criteria", "scenarios"),
         :unique_loc_ids => unique_loc_ids
     )
-    decision_matrix_log = zcreate(
-        Float32,
-        decision_matrix_dims...;
-        name="decision_matrix",
-        fill_value=nothing,
-        fill_as_missing=false,
-        path=log_fn,
-        chunks=(decision_matrix_dims[1:3]..., 1),
-        attrs=attrs
-    )
+    local decision_matrix_log
+    if parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
+        decision_matrix_log = zcreate(
+            Float32,
+            decision_matrix_dims...;
+            name="decision_matrix",
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(decision_matrix_dims[1:3]..., 1),
+            attrs=attrs
+        )
+    else
+        decision_matrix_log = zcreate(
+            Float32,
+            decision_matrix_dims[1],
+            1,
+            decision_matrix_dims[3],
+            decision_matrix_dims[4];
+            name="decision_matrix",
+            fill_value=0.0,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(decision_matrix_dims[1], 1, decision_matrix_dims[3], 1),
+            attrs=attrs
+        )
+    end
     return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log, decision_matrix_log
 end
 
@@ -402,6 +419,7 @@ Sets up an on-disk result store.
 ├───logs
 │   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
 │   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
+│   ├───decision_matrix  (full shape when ADRIA_LOG_DM=true, 1-location dummy otherwise)
 │   ├───moving_corals
 │   ├───rankings
 │   ├───seed
