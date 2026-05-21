@@ -1,4 +1,5 @@
-﻿using ADRIA.analysis: series_confint
+using YAXArrays
+using ADRIA.analysis: series_confint
 using ADRIA: axes_names, RMEResultSet, AnnotatedOutcomes
 using OrderedCollections
 
@@ -610,8 +611,8 @@ group. When `summarize=false`, draws individual member lines instead.
 """
 function scenario_bands!(
     ax,
-    data::YAXArray,
-    scen_groups::OrderedDict{Symbol,BitVector};
+    data::AbstractArray,
+    scen_groups::AbstractDict{Symbol,BitVector};
     summarize::Bool=true,
     colormap=:tableau_10,
     alpha::Float64=0.3,
@@ -625,7 +626,7 @@ function scenario_bands!(
         (label -> get(legend_labels, label, string(label)))
     for (i, (label, mask)) in enumerate(scen_groups)
         display_label = _resolve_label(label)
-        members = Array(data[scenarios=mask])
+        members = data isa YAXArray ? Array(data[scenarios=mask]) : data[:, mask]
         if summarize
             probs = [0.025, 0.5, 0.975]
             n_t = size(members, 1)
@@ -759,4 +760,3 @@ function ADRIA.viz.scenarios_legend!(
         by_RCP, sort_by, legend_labels, legend_title
     )
 end
-
