@@ -5,7 +5,7 @@ const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
 function _no_backend_error()
-    error(
+    return error(
         "No visualization backend loaded. Load a backend before calling viz functions:\n" *
         "  using GLMakie      # interactive desktop\n" *
         "  using WGLMakie     # Pluto / browser\n" *
@@ -45,6 +45,10 @@ function timesteps(outcomes::YAXArrays.YAXArray)::Array{Int64}
     end
 
     return Int64[]
+end
+
+function timesteps(outcomes::AbstractMatrix)::UnitRange{Int64}
+    return 1:size(outcomes, 1)
 end
 
 """
