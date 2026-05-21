@@ -5,7 +5,7 @@ using OrderedCollections
 
 Makie.inline!(false)
 
-function _taxonomy_ao_3d(; n_timesteps=10, n_groups=6, n_scenarios=12)
+function _taxonomy_ao_3d(; n_timesteps=10, n_groups=5, n_scenarios=12)
     data = DataCube(
         rand(n_timesteps, n_groups, n_scenarios);
         timesteps=1:n_timesteps, groups=1:n_groups, scenarios=1:n_scenarios

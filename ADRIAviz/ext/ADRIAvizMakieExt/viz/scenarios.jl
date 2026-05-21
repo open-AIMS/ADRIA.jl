@@ -760,4 +760,3 @@ function ADRIA.viz.scenarios_legend!(
         by_RCP, sort_by, legend_labels, legend_title
     )
 end
-
