@@ -124,8 +124,7 @@ Use the visualization tools to plot the results. The Makie package ecosystem is 
 producing plots:
 
 ```julia
-using ADRIA, ADRIAviz
-ADRIAviz.activate("GLMakie")  # or "WGLMakie" / "CairoMakie"
+using ADRIAviz, GLMakie, GeoMakie, GraphMakie
 
 # Plot a quick scenario overview
 fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel=>"Absolute Cover"))
