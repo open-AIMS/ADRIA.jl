@@ -20,5 +20,9 @@ using ADRIAviz
 
     if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
         include("annotated_outcomes.jl")
+        include("taxa_dynamics.jl")
+        include("sensitivity.jl")
+        include("clustering.jl")
+        # spatial.jl deferred -- requires real domain geometry
     end
 end
