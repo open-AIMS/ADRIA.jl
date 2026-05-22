@@ -7,7 +7,7 @@ using RelocatableFolders
 @reexport using GeoMakie
 
 using Statistics, Distributions, Random
-using DataFrames, Bootstrap
+using DataFrames
 
 using ImageIO, GeoInterface
 
