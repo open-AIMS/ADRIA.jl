@@ -8,9 +8,6 @@ as extensions are expected to provide additional functionality
 for existing functions/methods.
 """
 
-# GUI
-function explore() end
-
 # Scenario plotting methods
 function scenarios() end
 function scenarios!() end
