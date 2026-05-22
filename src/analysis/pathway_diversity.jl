@@ -82,30 +82,32 @@ function switching_probability(
 )::DataFrame
     options = option_seed_preference()
     options.probability = zeros(size(options, 1))
+    options.selected_locations = options.selected_locations = [Vector{String}() for _ in 1:size(options, 1)]
     valid_locs = collect(1:size(loc_data, 1))
 
     if ports == nothing
         ports = _ports()
     end
 
-    past_locations = ADRIA.select_locations(
-        options[options.option_name .== past_option, :preference][1], decision_matrix,
-        mcda_method, valid_locs, min_locs
+    for row in eachrow(options)
+        row.selected_locations = ADRIA.select_locations(
+            row.preference, decision_matrix, mcda_method, valid_locs, min_locs
+        )
+    end
+
+    past_locations = _filter_locations(
+        loc_data, options[options.option_name .== past_option, :selected_locations][1]
     )
-    past_locations = _filter_locations(loc_data, past_locations)
 
     for row in eachrow(options)
-        if row.option_name == past_option
-            option_locations = past_locations
-        else
-            option_locations = ADRIA.select_locations(
-                row.preference, decision_matrix, mcda_method, valid_locs, min_locs
-            )
-            option_locations = _filter_locations(loc_data, option_locations)
-        end
-        row.probability += (1 - cost_index(option_locations, ports)) * weight
-        row.probability +=
-            option_similarity(option_locations, past_locations) * (1 - weight)
+        option_locations = _filter_locations(loc_data, row.selected_locations)
+
+        common_ids = intersect(option_locations.UNIQUE_ID, past_locations.UNIQUE_ID)
+        unique_option_locs = option_locations[option_locations.UNIQUE_ID .∉ [common_ids], :]
+        unique_past_locs = past_locations[past_locations.UNIQUE_ID .∉ [common_ids], :]
+
+        row.probability += (1 - cost_index(unique_option_locs, ports)) * weight
+        row.probability += option_similarity(unique_option_locs, unique_past_locs) * (1 - weight)
     end
 
     # Normalize probabilities
@@ -152,8 +154,8 @@ function option_similarity(
     selected_locations2::DataFrame,
     max_distance::Float64=1500000.0
 )::Float64
-    if selected_locations1 == selected_locations2
-        return 1
+    if isempty(selected_locations1) || isempty(selected_locations2)
+        return 1.0
     end
 
     locations1_coord = ADRIA.centroids(selected_locations1)
@@ -194,6 +196,10 @@ function cost_index(
     max_distance_port::Float64=700000.0,
     max_dispersion::Float64=990000.0
 )
+    if isempty(locations)
+        return 0.0
+    end
+
     distance_port = _distance_port(locations, ports)
     if distance_port > max_distance_port
         @warn "distance_port bigger than max_distance_port: distance_port: $(distance_port)."
