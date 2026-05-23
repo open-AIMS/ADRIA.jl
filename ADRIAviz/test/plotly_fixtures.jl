@@ -11,7 +11,6 @@ using ADRIA: DataCube, AnnotatedOutcomes
 using OrderedCollections
 using DataFrames
 using Random
-import ArchGDAL as AG
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AnnotatedOutcomes fixtures
@@ -332,71 +331,5 @@ function _plotly_scenarios_df(; n_scenarios=20)
         N_mc_settlers=zeros(Int, n_scenarios),
         mcb_duration=zeros(Int, n_scenarios),
         RCP=rand([45, 60], n_scenarios)
-    )
-end
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Spatial fixtures
-# ─────────────────────────────────────────────────────────────────────────────
-
-"""
-    _plotly_spatial_gdf(; n_sites=5) -> DataFrame
-
-Synthetic GeoDataFrame with small square WGS84 polygon "reef patches" around
-GBR coordinates. Includes `:site_id`, `:k`, and `:geometry` columns.
-ArchGDAL is safe to import here — it does not trigger any Makie extension.
-"""
-# ─────────────────────────────────────────────────────────────────────────────
-# Environment fixtures
-# ─────────────────────────────────────────────────────────────────────────────
-
-"""
-    _plotly_cyclone_scens(; n_timesteps=10, n_locs=5, n_species=3, n_scens=4)
-    -> YAXArray{Float64,4}
-
-Synthetic cyclone mortality scenarios: `(timesteps × locations × species × scenarios)`.
-Values are in [0, 1] (fractional mortality); the viz function multiplies by 100.
-"""
-function _plotly_cyclone_scens(; n_timesteps=10, n_locs=5, n_species=3, n_scens=4)
-    return DataCube(
-        rand(n_timesteps, n_locs, n_species, n_scens);
-        timesteps=1:n_timesteps,
-        locations=1:n_locs,
-        species=1:n_species,
-        scenarios=1:n_scens
-    )
-end
-
-"""
-    _plotly_dhw_scens(; n_timesteps=10, n_sites=5, n_scens=4) -> YAXArray{Float64,3}
-
-Synthetic DHW scenarios: `(timesteps × sites × scenarios)`.
-"""
-function _plotly_dhw_scens(; n_timesteps=10, n_sites=5, n_scens=4)
-    return DataCube(
-        rand(n_timesteps, n_sites, n_scens) .* 8.0;   # DHW values typically 0–8
-        timesteps=1:n_timesteps,
-        sites=1:n_sites,
-        scenarios=1:n_scens
-    )
-end
-
-function _plotly_spatial_gdf(; n_sites::Int=5)
-    h = 0.01  # half-side ~1 km at GBR latitudes
-    geoms = map(1:n_sites) do i
-        cx = 147.0 + i * 0.05
-        cy = -18.0 + i * 0.05
-        wkt = (
-            "POLYGON((" *
-            "$(cx - h) $(cy - h), $(cx + h) $(cy - h), " *
-            "$(cx + h) $(cy + h), $(cx - h) $(cy + h), " *
-            "$(cx - h) $(cy - h)))"
-        )
-        return AG.fromWKT(wkt)
-    end
-    return DataFrame(;
-        site_id=string.(1:n_sites),
-        k=fill(0.3, n_sites),
-        geometry=geoms
     )
 end
