@@ -25,4 +25,12 @@ using ADRIAviz
         include("clustering.jl")
         # spatial.jl deferred -- requires real domain geometry
     end
+
+    # Plotly backend tests.
+    # Gate: ADRIA_RUN_PLOTLY_TESTS=1
+    # Constraint: must run in a separate process / before any Makie `using`
+    #             statement (Plotly and Makie extensions are mutually exclusive).
+    if get(ENV, "ADRIA_RUN_PLOTLY_TESTS", "0") == "1"
+        include("plotly.jl")
+    end
 end
