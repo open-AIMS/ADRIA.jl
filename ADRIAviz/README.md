@@ -60,12 +60,16 @@ using WGLMakie, GeoMakie, GraphMakie
 
 | Backend | Trigger packages | Supported functions |
 |---------|-----------------|---------------------|
-| Makie   | `Makie` + `GeoMakie` + `GraphMakie` | All `ADRIA.viz.*` functions, `explore()` GUI |
-| PlotlyBase | `PlotlyBase` | `scenarios`, `clustered_scenarios`, `taxonomy`, `pawn`, `tsa`, `rsa`, `outcome_map`, `convergence`, `data_envelopment_analysis`, `rules_scatter` |
+| Makie   | `Makie` + `GeoMakie` + `GraphMakie` | All `ADRIA.viz.*` functions |
+| PlotlyBase | `PlotlyBase` | `scenarios`, `clustered_scenarios`, `taxonomy`, `pawn`, `tsa`, `rsa`, `outcome_map`, `convergence`, `data_envelopment_analysis`, `rules_scatter`, `map`, `connectivity`, `ranks_to_frequencies`, `selection_criteria_map`, `cyclone_scenario`, `dhw_scenario`, `dhw_scenarios` |
 | PlotlyBase + PlotlyKaleido | `PlotlyBase` + `PlotlyKaleido` | All PlotlyBase functions + `savefig` to PNG/SVG/PDF |
 
 Load any compatible Makie backend (`WGLMakie`, `GLMakie`, `CairoMakie`) alongside the
 trigger packages to activate the full Makie extension.
+
+> **Mutual exclusion:** Do **not** load Makie and PlotlyBase in the same Julia session.
+> Both backends extend the same `ADRIA.viz` methods and will cause method-ambiguity errors.
+> Use separate scripts or processes (e.g., separate CI steps) for each backend.
 
 ### PlotlyBase backend
 
@@ -94,6 +98,20 @@ ADRIA.viz.rsa(Si, factor_values)
 # Clustering
 ADRIA.viz.clustered_scenarios(outcomes_matrix, cluster_labels)
 ADRIA.viz.rules_scatter(scenarios_df, clusters, rules)
+
+# Spatial maps (no Mapbox token required — uses GeoJSON choropleth)
+ADRIA.viz.map(geodataframe)                     # outline-only
+ADRIA.viz.map(geodataframe; color=cover_vals)   # choropleth
+ADRIA.viz.connectivity(geodataframe, conn_matrix)
+
+# Location selection
+ADRIA.viz.ranks_to_frequencies(rs)
+ADRIA.viz.selection_criteria_map(rs)
+
+# Environmental forcing (Domain-level)
+ADRIA.viz.dhw_scenarios(dom)                    # all DHW scenarios with CI band
+ADRIA.viz.dhw_scenario(dom, scen_id)            # single DHW scenario
+ADRIA.viz.cyclone_scenario(dom, scen_id)        # single cyclone mortality scenario
 
 # Static export (requires PlotlyKaleido)
 ADRIA.viz.savefig(p, "output.png")
