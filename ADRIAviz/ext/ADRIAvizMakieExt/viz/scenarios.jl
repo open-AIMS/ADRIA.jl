@@ -626,7 +626,7 @@ function scenario_bands!(
         (label -> get(legend_labels, label, string(label)))
     for (i, (label, mask)) in enumerate(scen_groups)
         display_label = _resolve_label(label)
-        members = data isa YAXArray ? Array(data[scenarios = mask]) : data[:, mask]
+        members = data isa YAXArray ? Array(data[scenarios=mask]) : data[:, mask]
         if summarize
             probs = [0.025, 0.5, 0.975]
             n_t = size(members, 1)
