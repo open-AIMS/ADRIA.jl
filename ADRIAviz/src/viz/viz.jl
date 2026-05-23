@@ -33,19 +33,11 @@ function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
 end
 
 """
-    timesteps(outcomes::YAXArray)::Array{Int64}
+    timesteps(outcomes::YAXArray)::Vector{Int64}
 
-Extract time step labels from outcome arrays.
+Extract time step labels from outcome arrays. Delegates to `ADRIA.timesteps`.
 """
-function timesteps(outcomes::YAXArrays.YAXArray)::Array{Int64}
-    axis_labels = axes_names(outcomes)
-
-    if :timesteps in axis_labels
-        return Array(outcomes.timesteps)
-    end
-
-    return Int64[]
-end
+timesteps(outcomes::YAXArrays.YAXArray) = ADRIA.timesteps(outcomes)
 
 function timesteps(outcomes::AbstractMatrix)::UnitRange{Int64}
     return 1:size(outcomes, 1)

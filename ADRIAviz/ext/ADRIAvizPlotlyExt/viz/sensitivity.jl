@@ -198,7 +198,7 @@ function ADRIA.viz.outcome_map(
         color = fallback_colors[mod1(i, length(fallback_colors))]
         axis_sfx = i == 1 ? "" : string(i)
 
-        fill_x = vcat(vec(fv_range), reverse(vec(fv_range)))
+        fill_x = vcat(fv_range, reverse(fv_range))
         fill_y = vcat(hi, reverse(lo))
         push!(
             traces,
