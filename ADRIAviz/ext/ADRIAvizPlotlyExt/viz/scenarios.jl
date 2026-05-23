@@ -25,7 +25,7 @@ function ADRIA.viz.scenarios(
 )::PlotlyBase.Plot
     groups = _get_scenario_groups(ao; by_RCP=by_RCP)
     data = ao.data
-    x_vals = collect(data.timesteps)
+    x_vals = vec(data.timesteps)
     tickvals, ticktext = _year_ticks(x_vals)
     colors = _group_colors(groups)
     mat = collect(data)  # (timesteps × scenarios) — avoids repeated YAXArray cat calls
@@ -95,7 +95,7 @@ function ADRIA.viz.scenarios(
     by_RCP::Bool=false,
     kwargs...
 )::PlotlyBase.Plot
-    _scens = scenarios[collect(outcomes.scenarios), :]
+    _scens = scenarios[vec(outcomes.scenarios), :]
     groups = if by_RCP
         _scenario_rcps(_scens)
     else
