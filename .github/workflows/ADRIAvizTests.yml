@@ -32,3 +32,11 @@ jobs:
         run: |
           cd ADRIAviz
           julia --project=. -e 'using Pkg; Pkg.add(["WGLMakie", "GeoMakie", "GraphMakie"]); Pkg.test()'
+      - name: Test ADRIAviz (Plotly backend)
+        # Run in a fresh Julia process so that no Makie package is loaded.
+        # The Makie and Plotly extensions are mutually exclusive per session.
+        env:
+          ADRIA_RUN_PLOTLY_TESTS: "1"
+        run: |
+          cd ADRIAviz
+          julia --project=. -e 'using Pkg; Pkg.add("PlotlyBase"); Pkg.test()'
