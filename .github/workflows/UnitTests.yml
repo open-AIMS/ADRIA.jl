@@ -1,9 +1,9 @@
 name: UnitTests
 on:
-  # Trigger manually or on merge to main
+  # Trigger manually or on version tags
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   # Run in PR when packages updated
   pull_request:
     paths:
