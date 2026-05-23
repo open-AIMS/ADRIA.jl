@@ -962,3 +962,158 @@ end
     @test_throws ErrorException ADRIA.viz.ranks_to_frequencies!(nothing)
     @test_throws ErrorException ADRIA.viz.selection_criteria_map!(nothing)
 end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 16. cyclone_scenario(cyclone_scens, scen_id)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "cyclone_scenario(cyclone_scens, scen_id)" begin
+    cyc = _plotly_cyclone_scens(; n_timesteps=10, n_locs=5, n_species=3, n_scens=4)
+
+    @testset "return type is PlotlyBase.Plot" begin
+        @test ADRIA.viz.cyclone_scenario(cyc, 1) isa PlotlyBase.Plot
+    end
+
+    @testset "has n_locs + 1 traces (per-location + mean)" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 1)
+        @test length(p.data) == 6   # 5 locs + 1 mean
+    end
+
+    @testset "all traces are scatter type" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 1)
+        @test all(t.type == "scatter" for t in p.data)
+    end
+
+    @testset "last trace is the cross-location mean, named 'Scenario Mean'" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 1)
+        @test string(p.data[end].name) == "Scenario Mean"
+    end
+
+    @testset "x-values span n_timesteps" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 1)
+        @test length(p.data[end].x) == 10
+    end
+
+    @testset "y-axis label mentions mortality or cyclone" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 1)
+        ylab = lowercase(
+            string(
+                get(p.layout.yaxis, :title_text,
+                    get(get(p.layout.yaxis, :title, Dict()), :text, ""))
+            )
+        )
+        @test contains(ylab, "mortality") || contains(ylab, "cyclone") ||
+            contains(ylab, "%")
+    end
+
+    @testset "custom title is applied" begin
+        p = ADRIA.viz.cyclone_scenario(cyc, 2; title="My Title")
+        @test get(p.layout, :title_text, "") == "My Title"
+    end
+
+    @testset "all scen_ids in range are accepted without error" begin
+        for sid in 1:4
+            @test_nowarn ADRIA.viz.cyclone_scenario(cyc, sid)
+        end
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 17. dhw_scenario(dhw_scens, scen_id)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "dhw_scenario(dhw_scens, scen_id)" begin
+    dhw = _plotly_dhw_scens(; n_timesteps=10, n_sites=6, n_scens=4)
+
+    @testset "return type is PlotlyBase.Plot" begin
+        @test ADRIA.viz.dhw_scenario(dhw, 1) isa PlotlyBase.Plot
+    end
+
+    @testset "has n_sites + 1 traces (per-site + mean)" begin
+        p = ADRIA.viz.dhw_scenario(dhw, 1)
+        @test length(p.data) == 7   # 6 sites + 1 mean
+    end
+
+    @testset "all traces are scatter type" begin
+        p = ADRIA.viz.dhw_scenario(dhw, 1)
+        @test all(t.type == "scatter" for t in p.data)
+    end
+
+    @testset "last trace is named 'Scenario Mean'" begin
+        p = ADRIA.viz.dhw_scenario(dhw, 1)
+        @test string(p.data[end].name) == "Scenario Mean"
+    end
+
+    @testset "x-values span n_timesteps when no timeframe provided" begin
+        p = ADRIA.viz.dhw_scenario(dhw, 1)
+        @test length(p.data[end].x) == 10
+    end
+
+    @testset "custom timeframe is used as x-values" begin
+        tf = collect(2025:2034)
+        p = ADRIA.viz.dhw_scenario(dhw, 1; timeframe=tf)
+        @test p.data[end].x == tf
+    end
+
+    @testset "all scen_ids in range are accepted without error" begin
+        for sid in 1:4
+            @test_nowarn ADRIA.viz.dhw_scenario(dhw, sid)
+        end
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 18. dhw_scenarios(dhw_scens)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "dhw_scenarios(dhw_scens)" begin
+    dhw = _plotly_dhw_scens(; n_timesteps=10, n_sites=5, n_scens=8)
+
+    @testset "return type is PlotlyBase.Plot" begin
+        @test ADRIA.viz.dhw_scenarios(dhw) isa PlotlyBase.Plot
+    end
+
+    @testset "has n_scens + 2 traces (per-scenario + CI band + mean)" begin
+        p = ADRIA.viz.dhw_scenarios(dhw)
+        @test length(p.data) == 10   # 8 scens + 1 CI band + 1 mean
+    end
+
+    @testset "all traces are scatter type" begin
+        p = ADRIA.viz.dhw_scenarios(dhw)
+        @test all(t.type == "scatter" for t in p.data)
+    end
+
+    @testset "CI band trace uses fill='toself'" begin
+        p = ADRIA.viz.dhw_scenarios(dhw)
+        ci_traces = [t for t in p.data if get(t, :fill, "") == "toself"]
+        @test length(ci_traces) == 1
+    end
+
+    @testset "mean trace is named 'Mean'" begin
+        p = ADRIA.viz.dhw_scenarios(dhw)
+        @test string(p.data[end].name) == "Mean"
+    end
+
+    @testset "custom timeframe replaces default x-values" begin
+        tf = collect(2025:2034)
+        p = ADRIA.viz.dhw_scenarios(dhw; timeframe=tf)
+        @test p.data[end].x == tf
+    end
+
+    @testset "ci_level=0.90 produces a CI band labelled '90% CI'" begin
+        p = ADRIA.viz.dhw_scenarios(dhw; ci_level=0.90)
+        ci_traces = [t for t in p.data if get(t, :fill, "") == "toself"]
+        @test !isempty(ci_traces)
+        @test contains(string(ci_traces[1].name), "90")
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 19. environment !-variant stubs
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "environment !-variant stubs raise errors" begin
+    @test_throws ErrorException ADRIA.viz.cyclone_scenario!(nothing)
+    @test_throws ErrorException ADRIA.viz.dhw_scenario!(nothing)
+    @test_throws ErrorException ADRIA.viz.dhw_scenarios!(nothing)
+end
