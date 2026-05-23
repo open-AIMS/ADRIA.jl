@@ -16,6 +16,7 @@ include("viz/data_envelopment.jl")
 include("viz/rule_extraction.jl")
 include("viz/spatial.jl")
 include("viz/location_selection.jl")
+include("viz/environment.jl")
 
 # ── !-variant stubs ───────────────────────────────────────────────────────────
 function ADRIA.viz.scenarios!(f, args...; kwargs...)
@@ -100,6 +101,24 @@ function ADRIA.viz.selection_criteria_map!(f, args...; kwargs...)
     return error(
         "The PlotlyBase backend does not support mutating (!) operations. " *
         "Use `selection_criteria_map(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.cyclone_scenario!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `cyclone_scenario(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.dhw_scenario!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `dhw_scenario(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.dhw_scenarios!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `dhw_scenarios(...)` to obtain a new Plot."
     )
 end
 

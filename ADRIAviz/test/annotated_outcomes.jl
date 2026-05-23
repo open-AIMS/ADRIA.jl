@@ -1,4 +1,4 @@
-using WGLMakie, GeoMakie, GraphMakie
+using CairoMakie, GeoMakie, GraphMakie
 
 using ADRIA
 using ADRIA: DataCube, AnnotatedOutcomes
