@@ -14,6 +14,8 @@ include("viz/sensitivity.jl")
 include("viz/clustering.jl")
 include("viz/data_envelopment.jl")
 include("viz/rule_extraction.jl")
+include("viz/spatial.jl")
+include("viz/location_selection.jl")
 
 # ── !-variant stubs ───────────────────────────────────────────────────────────
 function ADRIA.viz.scenarios!(f, args...; kwargs...)
@@ -74,6 +76,30 @@ function ADRIA.viz.data_envelopment_analysis!(f, args...; kwargs...)
     return error(
         "The PlotlyBase backend does not support mutating (!) operations. " *
         "Use `data_envelopment_analysis(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.map!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `map(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.connectivity!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `connectivity(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.ranks_to_frequencies!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `ranks_to_frequencies(...)` to obtain a new Plot."
+    )
+end
+function ADRIA.viz.selection_criteria_map!(f, args...; kwargs...)
+    return error(
+        "The PlotlyBase backend does not support mutating (!) operations. " *
+        "Use `selection_criteria_map(...)` to obtain a new Plot."
     )
 end
 
