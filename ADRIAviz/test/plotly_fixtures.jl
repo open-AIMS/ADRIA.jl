@@ -11,6 +11,7 @@ using ADRIA: DataCube, AnnotatedOutcomes
 using OrderedCollections
 using DataFrames
 using Random
+import ArchGDAL as AG
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AnnotatedOutcomes fixtures
@@ -331,5 +332,36 @@ function _plotly_scenarios_df(; n_scenarios=20)
         N_mc_settlers=zeros(Int, n_scenarios),
         mcb_duration=zeros(Int, n_scenarios),
         RCP=rand([45, 60], n_scenarios)
+    )
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Spatial fixtures
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+    _plotly_spatial_gdf(; n_sites=5) -> DataFrame
+
+Synthetic GeoDataFrame with small square WGS84 polygon "reef patches" around
+GBR coordinates. Includes `:site_id`, `:k`, and `:geometry` columns.
+ArchGDAL is safe to import here — it does not trigger any Makie extension.
+"""
+function _plotly_spatial_gdf(; n_sites::Int=5)
+    h = 0.01  # half-side ~1 km at GBR latitudes
+    geoms = map(1:n_sites) do i
+        cx = 147.0 + i * 0.05
+        cy = -18.0 + i * 0.05
+        wkt = (
+            "POLYGON((" *
+            "$(cx - h) $(cy - h), $(cx + h) $(cy - h), " *
+            "$(cx + h) $(cy + h), $(cx - h) $(cy + h), " *
+            "$(cx - h) $(cy - h)))"
+        )
+        return AG.fromWKT(wkt)
+    end
+    return DataFrame(;
+        site_id=string.(1:n_sites),
+        k=fill(0.3, n_sites),
+        geometry=geoms
     )
 end
