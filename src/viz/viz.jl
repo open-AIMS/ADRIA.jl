@@ -59,4 +59,8 @@ function taxonomy!() end
 function data_envelopment_analysis() end
 function data_envelopment_analysis!() end
 
+# Export / serialisation
+function savefig() end
+function show_in_browser() end
+
 end  # module
