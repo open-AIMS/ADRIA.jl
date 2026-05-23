@@ -1,7 +1,8 @@
 name: ADRIAviz Tests
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
   pull_request:
     paths:
       - 'ADRIAviz/**'
@@ -17,7 +18,7 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.11'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
