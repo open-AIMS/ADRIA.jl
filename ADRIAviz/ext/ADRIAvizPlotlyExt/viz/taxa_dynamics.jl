@@ -43,14 +43,14 @@ function ADRIA.viz.taxonomy(
     title::String="",
     kwargs...
 )::PlotlyBase.Plot
-    _scens = scenarios[vec(relative_taxa_cover.scenarios), :]
+    _scens = scenarios[collect(relative_taxa_cover.scenarios), :]
     scen_groups = if by_RCP
         _scenario_rcps(_scens)
     else
         _scenario_types(_scens)
     end
 
-    x_vals = vec(relative_taxa_cover.timesteps)
+    x_vals = collect(relative_taxa_cover.timesteps)
     tickvals, ticktext = _year_ticks(x_vals)
     n_groups = length(relative_taxa_cover.groups)
     mat_3d = collect(relative_taxa_cover)  # (timesteps × groups × scenarios) — avoids repeated cat
