@@ -751,7 +751,7 @@ function load_results(result_loc::String)::ResultSet
             metric_syms = Symbol.(data.attrs["metrics"])
             combined = DataCube(
                 data;
-                timesteps=input_set.attrs["timeframe"],
+                timesteps=Int.(input_set.attrs["timeframe"]),
                 locations=data.attrs["unique_loc_ids"],
                 metrics=string.(metric_syms),
                 scenarios=1:data_size[4]
@@ -766,7 +766,7 @@ function load_results(result_loc::String)::ResultSet
         dim_names = []
         for (idx, dim_name) in enumerate(data.attrs["structure"])
             if dim_name == "timesteps"
-                push!(dim_names, input_set.attrs["timeframe"])
+                push!(dim_names, Int.(input_set.attrs["timeframe"]))
             elseif dim_name == "locations"
                 push!(dim_names, data.attrs["unique_loc_ids"])
             else

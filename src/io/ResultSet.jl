@@ -317,8 +317,7 @@ function combine_results(result_sets...)::ResultSet
                 :ranks,
                 :mc_log,
                 :seed_log,
-                :fog_log,
-                :shade_log,
+                :shading_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log
             ],
@@ -532,6 +531,16 @@ Retrieve the time steps represented in the result set.
 """
 function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
+end
+
+"""
+    timesteps(outcomes::YAXArray)::Vector{Int64}
+
+Extract time step labels from a YAXArray. Returns an empty `Vector{Int64}` if
+the array has no `:timesteps` dimension.
+"""
+function timesteps(outcomes::YAXArray)::Vector{Int64}
+    return :timesteps in axes_names(outcomes) ? Int.(outcomes.timesteps) : Int64[]
 end
 
 @deprecate site_k_area(rs::ResultSet) loc_k_area(rs)
