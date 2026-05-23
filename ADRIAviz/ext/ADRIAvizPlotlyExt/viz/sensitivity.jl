@@ -62,7 +62,7 @@ function ADRIA.viz.tsa(
     kwargs...
 )::PlotlyBase.Plot
     factor_names = collect(Si.factors)
-    timesteps_vals = collect(Si.timesteps)
+    timesteps_vals = vec(Si.timesteps)
     tickvals, ticktext = _year_ticks(timesteps_vals)
 
     fallback_colors = ["#377eb8", "#ff7f00", "#4daf4a", "#984ea3", "#e41a1c",
@@ -198,7 +198,7 @@ function ADRIA.viz.outcome_map(
         color = fallback_colors[mod1(i, length(fallback_colors))]
         axis_sfx = i == 1 ? "" : string(i)
 
-        fill_x = vcat(fv_range, reverse(fv_range))
+        fill_x = vcat(vec(fv_range), reverse(vec(fv_range)))
         fill_y = vcat(hi, reverse(lo))
         push!(
             traces,
