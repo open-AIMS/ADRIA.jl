@@ -14,8 +14,6 @@ GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
-PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -28,6 +26,8 @@ YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 
 [extensions]
 ADRIAvizMakieExt = ["Makie", "GeoMakie", "GraphMakie"]
