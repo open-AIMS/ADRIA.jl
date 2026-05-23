@@ -38,5 +38,5 @@ jobs:
       - uses: codecov/codecov-action@v6
         with:
           verbose: true
-          file: lcov.info
+          files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
