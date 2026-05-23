@@ -346,6 +346,41 @@ Synthetic GeoDataFrame with small square WGS84 polygon "reef patches" around
 GBR coordinates. Includes `:site_id`, `:k`, and `:geometry` columns.
 ArchGDAL is safe to import here — it does not trigger any Makie extension.
 """
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment fixtures
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+    _plotly_cyclone_scens(; n_timesteps=10, n_locs=5, n_species=3, n_scens=4)
+    -> YAXArray{Float64,4}
+
+Synthetic cyclone mortality scenarios: `(timesteps × locations × species × scenarios)`.
+Values are in [0, 1] (fractional mortality); the viz function multiplies by 100.
+"""
+function _plotly_cyclone_scens(; n_timesteps=10, n_locs=5, n_species=3, n_scens=4)
+    return DataCube(
+        rand(n_timesteps, n_locs, n_species, n_scens);
+        timesteps=1:n_timesteps,
+        locations=1:n_locs,
+        species=1:n_species,
+        scenarios=1:n_scens
+    )
+end
+
+"""
+    _plotly_dhw_scens(; n_timesteps=10, n_sites=5, n_scens=4) -> YAXArray{Float64,3}
+
+Synthetic DHW scenarios: `(timesteps × sites × scenarios)`.
+"""
+function _plotly_dhw_scens(; n_timesteps=10, n_sites=5, n_scens=4)
+    return DataCube(
+        rand(n_timesteps, n_sites, n_scens) .* 8.0;   # DHW values typically 0–8
+        timesteps=1:n_timesteps,
+        sites=1:n_sites,
+        scenarios=1:n_scens
+    )
+end
+
 function _plotly_spatial_gdf(; n_sites::Int=5)
     h = 0.01  # half-side ~1 km at GBR latitudes
     geoms = map(1:n_sites) do i
