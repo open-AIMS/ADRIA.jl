@@ -880,3 +880,85 @@ end
         end
     end
 end
+# ─────────────────────────────────────────────────────────────────────────────
+# 14. Spatial — map(gdf)
+#
+# Tests the GeoDataFrame-level API which does not require a ResultSet.
+# Fixtures build synthetic ArchGDAL polygons in WGS84 (GBR region).
+# ResultSet/Domain-level overloads are integration-tested manually.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "map(gdf)" begin
+    gdf = _plotly_spatial_gdf(; n_sites=5)
+
+    @testset "outline-only (color=nothing) returns PlotlyBase.Plot" begin
+        p = ADRIA.viz.map(gdf)
+        @test p isa PlotlyBase.Plot
+    end
+
+    @testset "has exactly one choropleth trace" begin
+        p = ADRIA.viz.map(gdf)
+        @test length(p.data) == 1
+        @test p.data[1].type == "choropleth"
+    end
+
+    @testset "choropleth locations match site_id column" begin
+        p = ADRIA.viz.map(gdf)
+        @test length(p.data[1].locations) == nrow(gdf)
+        @test p.data[1].locations == string.(gdf.site_id)
+    end
+
+    @testset "layout has geo attribute with fitbounds=locations" begin
+        p = ADRIA.viz.map(gdf)
+        geo = get(p.layout, :geo, nothing)
+        @test !isnothing(geo)
+        @test get(geo, :fitbounds, nothing) == "locations"
+    end
+
+    @testset "color=values produces choropleth with z matching input" begin
+        values = collect(Float64, 1:nrow(gdf))
+        p = ADRIA.viz.map(gdf; color=values)
+        @test p isa PlotlyBase.Plot
+        @test p.data[1].z == values
+    end
+
+    @testset "colorbar_label is set when color is provided" begin
+        p = ADRIA.viz.map(gdf; color=rand(nrow(gdf)), colorbar_label="Cover [%]")
+        @test p isa PlotlyBase.Plot
+    end
+
+    @testset "title kwarg is applied to layout" begin
+        p = ADRIA.viz.map(gdf; title="My Map")
+        @test get(p.layout, :title_text, "") == "My Map"
+    end
+
+    @testset "width and height kwargs are applied" begin
+        p = ADRIA.viz.map(gdf; width=800, height=1000)
+        @test get(p.layout, :width, 0) == 800
+        @test get(p.layout, :height, 0) == 1000
+    end
+
+    @testset "gdf without site_id falls back to row indices" begin
+        _tmp = _plotly_spatial_gdf()
+        gdf_no_id = DataFrame(; k=_tmp.k, geometry=_tmp.geometry)
+        p = ADRIA.viz.map(gdf_no_id)
+        @test p isa PlotlyBase.Plot
+        @test length(p.data[1].locations) == nrow(gdf_no_id)
+    end
+
+    @testset "gdf with no geometry column raises ArgumentError" begin
+        bad_gdf = DataFrame(; site_id=["a", "b"], k=[0.3, 0.4])
+        @test_throws ArgumentError ADRIA.viz.map(bad_gdf)
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 15. Spatial !-variant stubs
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "spatial !-variant stubs raise errors" begin
+    @test_throws ErrorException ADRIA.viz.map!(nothing)
+    @test_throws ErrorException ADRIA.viz.connectivity!(nothing)
+    @test_throws ErrorException ADRIA.viz.ranks_to_frequencies!(nothing)
+    @test_throws ErrorException ADRIA.viz.selection_criteria_map!(nothing)
+end
