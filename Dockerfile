@@ -142,3 +142,129 @@ COPY sandbox .
 # Run the sandbox application at startup, ensuring that Julia picks up
 # the parent directory and precompiled packages as the Julia project base.
 CMD [ "--project=@.", "dev.jl" ]
+
+#------------------------------------------------------------------------------
+# sysimage-builder-sim build target
+#
+# Compiles adria_sim.so (ADRIA + ADRIAviz/CairoMakie) using PackageCompiler.
+# This stage is not a useful standalone image; its sole product is the .so
+# file which is COPY'd into the lean runtime stages below.
+#
+# Build:
+#   docker build --target sysimage-builder-sim -t adria/sysimage-builder-sim .
+#------------------------------------------------------------------------------
+FROM adria-dev AS sysimage-builder-sim
+
+ARG JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
+ENV JULIA_CPU_TARGET=${JULIA_CPU_TARGET}
+
+WORKDIR /build/sim
+COPY build/sim/Project.toml ./Project.toml
+
+# Instantiate build env: develop ADRIA + ADRIAviz, add PackageCompiler + CairoMakie
+RUN julia --project=/build/sim -e '\
+    using Pkg; \
+    Pkg.develop(PackageSpec(path="/usr/local/src/adria")); \
+    Pkg.develop(PackageSpec(path="/usr/local/src/adria/ADRIAviz")); \
+    Pkg.instantiate(); \
+    Pkg.precompile();'
+
+COPY build/sim/precompile_sim.jl ./precompile_sim.jl
+COPY build/sim/make.jl            ./make.jl
+
+RUN mkdir -p /sysimage && \
+    SYSIMAGE_OUT=/sysimage/adria_sim.so \
+    julia --project=/build/sim make.jl
+
+
+#------------------------------------------------------------------------------
+# sysimage-builder-analysis build target
+#
+# Compiles adria_analysis.so (ADRIA + ADRIAviz + ADRIAanalysis, no MLJ/SIRUS).
+# MLJ and SIRUS are installed (hard deps of ADRIAanalysis) but are NOT included
+# in the sysimage package list or precompile execution file.  Once the planned
+# MLJ/SIRUS weak-dep extension is merged they can be fully excluded from the
+# build environment as well.
+#
+# Build:
+#   docker build --target sysimage-builder-analysis -t adria/sysimage-builder-analysis .
+#------------------------------------------------------------------------------
+FROM adria-dev AS sysimage-builder-analysis
+
+ARG JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
+ENV JULIA_CPU_TARGET=${JULIA_CPU_TARGET}
+
+WORKDIR /build/analysis
+COPY build/analysis/Project.toml ./Project.toml
+
+RUN julia --project=/build/analysis -e '\
+    using Pkg; \
+    Pkg.develop(PackageSpec(path="/usr/local/src/adria")); \
+    Pkg.develop(PackageSpec(path="/usr/local/src/adria/ADRIAviz")); \
+    Pkg.develop(PackageSpec(path="/usr/local/src/adria/ADRIAanalysis")); \
+    Pkg.instantiate(); \
+    Pkg.precompile();'
+
+COPY build/analysis/precompile_analysis.jl ./precompile_analysis.jl
+COPY build/analysis/make.jl                ./make.jl
+
+RUN mkdir -p /sysimage && \
+    SYSIMAGE_OUT=/sysimage/adria_analysis.so \
+    julia --project=/build/analysis make.jl
+
+
+#------------------------------------------------------------------------------
+# adria-sim-runtime build target
+#
+# Lean production image for simulation jobs (EC2 Batch / ECS).
+# The sysimage is baked in; `using ADRIA` cold-starts in ~3 s instead of ~75 s.
+#
+# The sysimage .so can be supplied in two ways:
+#   1. Built in-tree: COPY --from=sysimage-builder-sim (default, shown below)
+#   2. Pre-built artifact: pass --build-arg SYSIMAGE_SRC=path/to/adria_sim.so
+#      and place the file in the Docker build context before building.
+#
+# Build:
+#   docker build --target adria-sim-runtime -t adria/sim:latest .
+# Run:
+#   docker run --rm adria/sim:latest -e 'using ADRIA; println("ready")'
+#------------------------------------------------------------------------------
+FROM internal-base AS adria-sim-runtime
+
+# Copy the full Julia depot from the dev stage so all packages are available
+# at runtime (the sysimage speeds up loading; the depot provides source).
+COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
+
+# Accept a pre-built sysimage from the build context as an alternative to
+# copying from the builder stage (useful when CI downloads it from S3).
+ARG SYSIMAGE_SRC=""
+COPY --from=sysimage-builder-sim /sysimage/adria_sim.so /sysimage/adria_sim.so
+
+ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
+
+LABEL au.gov.aims.adria.sysimage="sim" \
+      au.gov.aims.adria.usecase="batch-simulation"
+
+# S3 credentials / region injected at runtime via IAM role; no secrets baked in.
+ENTRYPOINT ["julia", "-J", "/sysimage/adria_sim.so", "--project=@adria"]
+
+
+#------------------------------------------------------------------------------
+# adria-analysis-runtime build target
+#
+# Lean production image for analysis workloads (ECS Fargate / long-lived EC2).
+#
+# Build:
+#   docker build --target adria-analysis-runtime -t adria/analysis:latest .
+#------------------------------------------------------------------------------
+FROM internal-base AS adria-analysis-runtime
+
+COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
+COPY --from=sysimage-builder-analysis /sysimage/adria_analysis.so /sysimage/adria_analysis.so
+
+ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
+
+LABEL au.gov.aims.adria.sysimage="analysis" \
+      au.gov.aims.adria.usecase="analysis-ecs"
+
+ENTRYPOINT ["julia", "-J", "/sysimage/adria_analysis.so", "--project=@adria"]
