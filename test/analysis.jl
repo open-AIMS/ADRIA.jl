@@ -1,15 +1,13 @@
 # NOTE: This is a manual demonstration script, NOT part of the automated test suite.
 # It is NOT included in test/runtests.jl.
 #
-# cluster_rules now lives in ADRIAanalysis (not ADRIA.analysis) and requires
-# SIRUS and MLJ to be loaded:
-#
-#   using ADRIAanalysis, SIRUS, MLJ
-#   rules_iv = ADRIAanalysis.cluster_rules(rs, clusters, scens, factors, max_rules)
-#
-# The ADRIA.analysis.cluster_rules path referenced below does not exist.
+# Requires a real ResultSet (TEST_RS) created by test_rs() before running.
+# The functions target_clusters, find_scenarios, cluster_rules and print_rules
+# live in ADRIAanalysis (added to imports below). cluster_rules also requires
+# SIRUS and MLJ to be loaded.
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
+using ADRIAanalysis, SIRUS, MLJ
 using ADRIA.metrics: total_absolute_cover
 using ADRIA.YAXArrays, ADRIA.Statistics, ADRIA.Distributions
 
@@ -179,7 +177,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
 
     # Target scenarios that belong to the two lowest value clusters
     lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
-    asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+    asv_target = ADRIAanalysis.find_scenarios(asv_site_series, asv_clusters, lowest)
 
     # Plot targeted scenarios
     axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
@@ -209,7 +207,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
 
     # Filter scenarios that belong to on of the 4 high value clusters for all outcomes
     highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
-    robust_scens = ADRIA.analysis.find_scenarios(
+    robust_scens = ADRIAanalysis.find_scenarios(
         outcomes, outcomes_clusters, highest_clusters
     )
 
@@ -242,7 +240,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     clusters = ADRIA.analysis.cluster_scenarios(s_tac, num_clusters)
 
     # Target scenarios
-    target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
+    target_clusters = ADRIAanalysis.target_clusters(clusters, s_tac)
 
     # Select only desired features
     fields_iv =
@@ -253,14 +251,14 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # Use SIRUS algorithm to extract rules
 
     max_rules = 10
-    rules_iv = ADRIA.analysis.cluster_rules(
+    rules_iv = ADRIAanalysis.cluster_rules(
         rs, target_clusters, scens, fields_iv, max_rules; remove_duplicates=true
     )
-    rules_iv_duplicates = ADRIA.analysis.cluster_rules(
+    rules_iv_duplicates = ADRIAanalysis.cluster_rules(
         rs, target_clusters, scens, fields_iv, max_rules; remove_duplicates=false
     )
-    ADRIA.analysis.print_rules(rules_iv)
-    ADRIA.analysis.print_rules(rules_iv_duplicates)
+    ADRIAanalysis.print_rules(rules_iv)
+    ADRIAanalysis.print_rules(rules_iv_duplicates)
 
     # Plot scatters for each rule highlighting the area selected them
     rules_scatter_fig = ADRIA.viz.rules_scatter(
@@ -340,30 +338,9 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # save("outcome_map.png", tf)
 
     ## Data Envelopement Analysis
-    n_scens = size(scens, 1)
-
-    # Get cost of deploying corals in each scenario, with user-specified function
-    cost = YAXArray(
-        collect(range(100; stop=1000000, length=n_scens)) .+
-        rand(Uniform(1000, 2000), n_scens)
-    )
-
-    # Get mean coral cover and shelter volume for each scenario
-    s_tac = dropdims(
-        mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
-    )
-    s_sv = dropdims(
-        mean(
-            mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps);
-            dims=:locations
-        );
-        dims=(:timesteps, :locations)
-    )
-
-    # Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
-    # deployment cost.
-    DEA_scens = ADRIA.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
-    dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
+    # NOTE: data_envelopment_analysis was never implemented and has been removed.
+    # The DataEnvelopmentAnalysis.jl package is available in ADRIAanalysis's deps
+    # for a future implementation.
 
     return rs
 end
