@@ -1,3 +1,13 @@
+# NOTE: This is a manual demonstration script, NOT part of the automated test suite.
+# It is NOT included in test/runtests.jl.
+#
+# cluster_rules now lives in ADRIAanalysis (not ADRIA.analysis) and requires
+# SIRUS and MLJ to be loaded:
+#
+#   using ADRIAanalysis, SIRUS, MLJ
+#   rules_iv = ADRIAanalysis.cluster_rules(rs, clusters, scens, factors, max_rules)
+#
+# The ADRIA.analysis.cluster_rules path referenced below does not exist.
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
 using ADRIA.metrics: total_absolute_cover
