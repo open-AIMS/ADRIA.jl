@@ -3,6 +3,11 @@ using ADRIA
 using ADRIA: DataFrames
 using ADRIAanalysis
 
+@testset "Regression: MLJ/SIRUS not auto-loaded" begin
+    @test !any(string(k.name) == "SIRUS" for k in keys(Base.loaded_modules)) &&
+        !any(string(k.name) == "MLJ" for k in keys(Base.loaded_modules))
+end
+
 @testset "ADRIAanalysis" begin
     pkg_ts = @testset "Package loads" begin
         @test isdefined(ADRIAanalysis, :sensitivity)
@@ -232,9 +237,12 @@ using ADRIAanalysis
     # Submodule and function existence checks
     # ---------------------------------------------------------------------------
     @testset "Submodule and function presence" begin
-        @test isdefined(ADRIAanalysis, :sensitivity)
-        @test isdefined(ADRIAanalysis.sensitivity, :pawn)
         @test isdefined(ADRIAanalysis, :rules)
         @test isdefined(ADRIAanalysis, :cluster_rules)
     end
+
+    include("unit_rule_core.jl")
+    include("negative_cluster_rules.jl")
+    include("ext_activation.jl")
+    include("integration_cluster_rules.jl")
 end
