@@ -195,14 +195,14 @@ end
         dims=(:coral_id, :locations)
     )
 
+    # seed_log is persisted as Float32; use Float32 rtol regardless of in-memory eltype
+    fp32_rtol = sqrt(eps(Float32))
     for s in 1:num_samples
         log_1 = seed_log_1[scenarios=At(s)]
         log_2 = seed_log_2[scenarios=At(s)]
         budget_1 = weight_1 * N_seed[s]
         budget_2 = weight_2 * N_seed[s]
-        @test all(log_1 .<= budget_1 .|| log_1 .≈ budget_1) ||
-            "Scenario $s: seed log for set 1 exceeds weight_1 * N_seed"
-        @test all(log_2 .<= budget_2 .|| log_2 .≈ budget_2) ||
-            "Scenario $s: seed log for set 2 exceeds weight_2 * N_seed"
+        @test all(log_1 .<= budget_1 .|| isapprox.(log_1, budget_1; rtol=fp32_rtol))
+        @test all(log_2 .<= budget_2 .|| isapprox.(log_2, budget_2; rtol=fp32_rtol))
     end
 end

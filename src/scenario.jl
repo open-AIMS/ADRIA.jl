@@ -495,7 +495,7 @@ function _write_batch!(
             for (i, r) in enumerate(results)
                 cc_batch[:, :, :, i] .= r.coral_cover_log
             end
-            data_store.coral_cover_log[:, :, :, idx_range] .= cc_batch
+            data_store.coral_cover_log[:, :, :, idx_range] .= round.(UInt16, clamp.(cc_batch, 0f0, 1f0) .* 65535f0)
         end
     end
 

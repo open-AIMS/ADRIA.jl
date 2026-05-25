@@ -46,11 +46,24 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     # raw::AbstractArray
     outcomes::D2
     ranks::A
-    mc_log::B  # Values stored in m^2
-    seed_log::B  # Values stored in m^2
+    mc_log::B  # Number of individuals deployed per functional group per location
+    seed_log::B  # Number of individuals deployed per functional group per location
     shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
+end
+
+"""
+    _log_attrs_to_props(attrs)::Dict{Symbol,Any}
+
+Extract `units` and `description` from a Zarr array's `.attrs` dict into a
+`Dict{Symbol,Any}` suitable for passing as `properties` to `DataCube`.
+"""
+function _log_attrs_to_props(attrs)::Dict{Symbol,Any}
+    props = Dict{Symbol,Any}()
+    haskey(attrs, "units") && (props[:units] = attrs["units"])
+    haskey(attrs, "description") && (props[:description] = attrs["description"])
+    return props
 end
 
 """
@@ -59,9 +72,13 @@ Load shading log from a Zarr log group, handling both the new combined format
 """
 function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
     if haskey(log_set, "shading_log")
+        arr = log_set["shading_log"]
+        ax_names = Symbol.(Tuple(arr.attrs["structure"]))
+        ax_labels = [1:s for s in size(arr)]
         return DataCube(
-            log_set["shading_log"],
-            Symbol.(Tuple(log_set["shading_log"].attrs["structure"]))
+            arr;
+            properties=_log_attrs_to_props(arr.attrs),
+            NamedTuple{ax_names}(ax_labels)...
         )
     end
 
@@ -110,22 +127,25 @@ function ResultSet(
         input_set.attrs["sim_constants"],
         model_spec,
         outcomes,
-        _rankings_data(log_set["rankings"]),
-        DataCube(
-            log_set["moving_corals"],
-            Symbol.(Tuple(log_set["moving_corals"].attrs["structure"]))
-        ),
-        DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
-        _load_shading_log(log_set),
-        DataCube(
-            log_set["coral_dhw_log"],
-            Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
-        ),
+        map(Float64, _rankings_data(log_set["rankings"])),
+        let arr = log_set["moving_corals"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+        end,
+        let arr = log_set["seed"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+        end,
+        map(Float64, _load_shading_log(log_set)),
+        let arr = log_set["coral_dhw_log"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+        end,
         haskey(log_set, "coral_cover_log") ?
-        DataCube(
-            log_set["coral_cover_log"],
-            Symbol.(Tuple(log_set["coral_cover_log"].attrs["structure"]))
-        ) : nothing
+        let arr = log_set["coral_cover_log"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(x -> Float64(x) / 65535.0, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+        end : nothing
     )
 end
 
@@ -138,7 +158,11 @@ function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
     intervention_idx = findfirst(x -> x == :interventions, ax_names)
     !isnothing(intervention_idx) && (ax_labels[intervention_idx] = interventions())
 
-    return DataCube(rankings_set; NamedTuple{ax_names}(ax_labels)...)
+    return DataCube(
+        rankings_set;
+        properties=_log_attrs_to_props(rankings_set.attrs),
+        NamedTuple{ax_names}(ax_labels)...
+    )
 end
 
 """
@@ -259,7 +283,13 @@ function combine_results(result_sets...)::ResultSet
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
     env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
     n_scenarios = nrow(all_inputs)
-    batch_size::Int = env_batch > 0 ? min(env_batch, n_scenarios) : 1
+    batch_size::Int = if env_batch > 0
+        min(env_batch, n_scenarios)
+    else
+        # Match the heuristic used in run_scenarios: one chunk per thread.
+        # Larger chunks compress much better than chunk-per-scenario (default was 1).
+        ceil(Int, n_scenarios / max(1, Threads.nthreads()))
+    end
     logs = (;
         zip(
             [
@@ -294,7 +324,13 @@ function combine_results(result_sets...)::ResultSet
                 isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
 
             if !isnothing(s_log)
-                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] = s_log
+                if log == :coral_cover_log
+                    # s_log is Float64 in [0,1] (unscaled); n_log is UInt16 — must rescale
+                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] =
+                        round.(UInt16, clamp.(Array(s_log), 0.0, 1.0) .* 65535.0)
+                else
+                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] = s_log
+                end
             end
 
             scen_id = scen_id + rs_scen_len
@@ -309,7 +345,7 @@ function combine_results(result_sets...)::ResultSet
     loc_store = zcreate(
         Float32,
         loc_dims...;
-        fill_value=nothing,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
         chunks=(loc_dims[1:3]..., batch_size),
@@ -324,7 +360,7 @@ function combine_results(result_sets...)::ResultSet
         scen_id = 1
         for rs in result_sets
             rs_scen_len = size(rs.outcomes[m_name], :scenarios)
-            loc_store[:, :, m_idx, scen_id:(scen_id + rs_scen_len - 1)] .= rs.outcomes[m_name]
+            loc_store[:, :, m_idx, scen_id:(scen_id + rs_scen_len - 1)] = Array(rs.outcomes[m_name])
             scen_id += rs_scen_len
         end
     end
@@ -335,7 +371,7 @@ function combine_results(result_sets...)::ResultSet
     taxa_store = zcreate(
         Float32,
         taxa_dims...;
-        fill_value=nothing,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, string(taxa_name)),
         chunks=(taxa_dims[1:(end - 1)]..., batch_size),
@@ -347,7 +383,7 @@ function combine_results(result_sets...)::ResultSet
     scen_id = 1
     for rs in result_sets
         rs_scen_len = size(rs.outcomes[taxa_name], :scenarios)
-        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] .= rs.outcomes[taxa_name]
+        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = Array(rs.outcomes[taxa_name])
         scen_id += rs_scen_len
     end
 
