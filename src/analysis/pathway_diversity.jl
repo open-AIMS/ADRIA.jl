@@ -65,8 +65,7 @@ Compute switching probability for all defined pathway diversity options.
 - `mcda_method` : MCDA method used in selec_locations.
 - `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
 - `ports` : Dataframe with name and coordinate of ports.
-- `weight` : Weigh used to cost_index. The complementary is used to weight the option_similarity.
-Defaults to 0.5
+- `weights` : Tuple of weights for `(distance_to_port, dispersion, option_similarity)`. Defaults to `(0.3, 0.2, 0.5)`.
 
 # Returns
 DataFrame with probability of switching to each option or the probability value for one option if the option is passed.
@@ -78,7 +77,7 @@ function switching_probability(
     mcda_method::Union{Function,DataType},
     min_locs::Int64;
     ports::Union{DataFrame,Nothing}=nothing,
-    weight::Float64=0.5
+    weights::NTuple{3,Float64}=(0.3, 0.3, 0.4)
 )::DataFrame
     options = option_seed_preference()
     options.probability = zeros(size(options, 1))
@@ -106,8 +105,9 @@ function switching_probability(
         unique_option_locs = option_locations[option_locations.UNIQUE_ID .∉ [common_ids], :]
         unique_past_locs = past_locations[past_locations.UNIQUE_ID .∉ [common_ids], :]
 
-        row.probability += (1 - cost_index(unique_option_locs, ports)) * weight
-        row.probability += option_similarity(unique_option_locs, unique_past_locs) * (1 - weight)
+        row.probability += distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[1]
+        row.probability += dispersion_score(option_locations, past_locations) * weights[2]
+        row.probability += option_similarity(unique_option_locs, unique_past_locs) * weights[3]
     end
 
     # Normalize probabilities
@@ -124,10 +124,10 @@ function switching_probability(
     min_locs::Int64,
     option::Symbol;
     ports::Union{DataFrame,Nothing}=nothing,
-    weight::Float64=0.5
+    weights::NTuple{3,Float64}=(0.3, 0.2, 0.5)
 )::Float64
     result = switching_probability(
-        past_option, decision_matrix, loc_data, mcda_method, min_locs; ports, weight
+        past_option, decision_matrix, loc_data, mcda_method, min_locs; ports, weights
     )
     return first(result[result.option_name .== option, :probability])
 end
@@ -171,50 +171,6 @@ function option_similarity(
     end
 
     return 1 - distance / max_distance
-end
-
-"""
-    cost_index(locations::DataFrame, ports::DataFrame; weight::Float64=0.6, max_distance_port::Float64=250000.0, max_dispersion::Float64=800000.0)
-Compute a simplified cost index of intervening in selected locations. The cost index is a value between zero and one,
-considering the distance to the closest port for each given location and the average dispersion of the locations.
-
-# Arguments
-- `locations` : Dataframe with locations that will receive intervention.
-- `ports` : Dataframe with name and coordinate of ports.
-- `weight` : Weight for the distance to port compared with dispersion. If weight=1 only distance to port is considered,
-and if weight=0 only dispersion is considered. Defaults to 0.6.
-- `max_distance_port` : Value used to normalize the distance to port measure. Defaults to 200000.0.
-- `max_dispersion` : Value used to normalize dispersion of locations. Defaults to 10000.0.
-
-# Returns
-Cost index of intervening in selected locations.
-"""
-function cost_index(
-    locations::DataFrame,
-    ports::DataFrame;
-    weight::Float64=0.6,
-    max_distance_port::Float64=700000.0,
-    max_dispersion::Float64=990000.0
-)
-    if isempty(locations)
-        return 0.0
-    end
-
-    distance_port = _distance_port(locations, ports)
-    if distance_port > max_distance_port
-        @warn "distance_port bigger than max_distance_port: distance_port: $(distance_port)."
-        max_distance_port = distance_port
-    end
-    distance_port /= max_distance_port
-
-    dispersion = _dispersion(locations)
-    if dispersion > max_dispersion
-        @warn "Dispersion bigger than max_dispersion: dispersion: $(dispersion)"
-        max_dispersion = dispersion
-    end
-    dispersion /= max_dispersion
-
-    return distance_port * weight + dispersion * (1 - weight)
 end
 
 """
@@ -266,17 +222,46 @@ function _filter_locations(loc_data::DataFrame, selected_locations::Vector{Int64
 end
 
 """
-    _distance_port(locations::DataFrame, ports::Dict{Symbol, Tuple{Float64, Float64}})
+    _distance_port(locations::DataFrame, ports::DataFrame)
 
-Compute the mean distance to the closest port across all locations in a given GeoDataFrame.
+Compute the mean distance (meters) to the closest port across all locations.
 """
-function _distance_port(locations::DataFrame, ports::DataFrame)
+function _distance_port(locations::DataFrame, ports::DataFrame)::Float64
+    if isempty(locations)
+        return 0.0
+    end
+
     locations_coord = ADRIA.centroids(locations)
     distances = [
-        minimum(Distances.haversine.([location_coord], ports.coordinates))
-        for location_coord in locations_coord
+        minimum(Distances.haversine.([loc], ports.coordinates))
+        for loc in locations_coord
     ]
     return mean(distances)
+end
+
+"""
+    distance_port_score(option_locs, past_locs, ports; amplify_ranges=true)
+
+Scale-invariant score in [0, 1] comparing how close option locations are to port relative to past
+locations. Values above 0.5 mean option is closer to port than past; below 0.5 means farther.
+If `amplify_ranges=true` (default), uses `(d²_past − d²_option)/(d²_past + d²_option)` which
+amplifies moderate ratios; otherwise uses the basic `(d_past − d_option)/(d_past + d_option)`.
+Returns 0.5 when both distances are zero.
+"""
+function distance_port_score(
+    option_locs::DataFrame, past_locs::DataFrame, ports::DataFrame; amplify_ranges::Bool=true
+)::Float64
+    d_option = _distance_port(option_locs, ports)
+    d_past = _distance_port(past_locs, ports)
+    if d_option + d_past == 0.0
+        return 0.5
+    end
+    if amplify_ranges
+        score = (d_past^2 - d_option^2) / (d_past^2 + d_option^2)
+    else
+        score = (d_past - d_option) / (d_past + d_option)
+    end
+    return (score + 1) / 2
 end
 
 """
@@ -302,10 +287,34 @@ end
 """
     _dispersion(locations::DataFrame)
 
-Compute the mean pairwise distance across locations in a given GeoDataFrame.
+Compute the mean pairwise distance (meters) across locations.
 """
-function _dispersion(locations::DataFrame)
-    return mean(ADRIA.mean_distance(locations))
+function _dispersion(locations::DataFrame)::Float64
+    if isempty(locations)
+        return 0.0
+    else
+        return mean(ADRIA.mean_distance(locations))
+    end
+end
+
+"""
+    dispersion_score(option_locs, past_locs; amplify_ranges=true)
+
+Scale-invariant score in [0, 1] comparing the dispersion of option locations relative to past
+locations. Values above 0.5 mean option is less dispersed than past; below 0.5 means more dispersed.
+If `amplify_ranges=true` (default), uses `(d²_past − d²_option)/(d²_past + d²_option)` which
+amplifies moderate ratios; otherwise uses the basic `(d_past − d_option)/(d_past + d_option)`.
+Returns 0.5 when both dispersions are zero.
+"""
+function dispersion_score(option_locs::DataFrame, past_locs::DataFrame; amplify_ranges::Bool=true)::Float64
+    d_option = _dispersion(option_locs)
+    d_past = _dispersion(past_locs)
+    if amplify_ranges
+        score = (d_past^2 - d_option^2) / (d_past^2 + d_option^2)
+    else
+        score = (d_past - d_option) / (d_past + d_option)
+    end
+    return (score + 1) / 2
 end
 
 """

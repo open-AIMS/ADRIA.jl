@@ -45,6 +45,15 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         @test result.option_name == option_names
     end
 
+    @testset "when custom weights are passed" begin
+        result = ADRIA.analysis.switching_probability(
+            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs;
+            weights=(0.5, 0.3, 0.2)
+        )
+        @test isapprox(sum(result.probability), 1.0, atol=0.01)
+        @test result.option_name == option_names
+    end
+
     @testset "option_seed_preference return correctly" begin
         options = ADRIA.analysis.option_seed_preference(; include_weights=true)
 
@@ -85,25 +94,6 @@ end
     end
 end
 
-@testset "cost_index return correct values" begin
-    ports = ADRIA.analysis._ports()
-
-    @testset "when list only dataframe and no optional argument is passed" begin
-        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports)
-        @test isapprox(cost_index, 0.13, atol=0.01)
-    end
-
-    @testset "when new weight is passed" begin
-        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports; weight=0.4)
-        @test isapprox(cost_index, 0.09, atol=0.01)
-    end
-
-    @testset "when new normalization is passed" begin
-        cost_index = ADRIA.analysis.cost_index(DOM.loc_data, ports;
-            max_distance_port=500000.0, max_dispersion=40000.0)
-        @test isapprox(cost_index, 0.25, atol=0.01)
-    end
-end
 
 @testset "_distance_port return correct values" begin
     ports = ADRIA.analysis._ports()
@@ -120,4 +110,37 @@ end
 @testset "_dispersion return correct values" begin
     dispersion = ADRIA.analysis._dispersion(DOM.loc_data)
     @test isapprox(dispersion, 8593.79, atol=0.01)
+end
+
+@testset "distance_port_score return correct values" begin
+    ports = ADRIA.analysis._ports()
+    locs1 = DOM.loc_data[1:5, :]
+    locs2 = DOM.loc_data[6:end, :]
+
+    score = ADRIA.analysis.distance_port_score(locs1, locs2, ports)
+    @test 0.0 <= score <= 1.0
+
+    @testset "equal locations return 0.5" begin
+        score_eq = ADRIA.analysis.distance_port_score(locs1, locs1, ports)
+        @test isapprox(score_eq, 0.5, atol=1e-10)
+    end
+
+    @testset "both empty return 0.5" begin
+        empty_locs = DOM.loc_data[[], :]
+        score_empty = ADRIA.analysis.distance_port_score(empty_locs, empty_locs, ports)
+        @test isapprox(score_empty, 0.5, atol=1e-10)
+    end
+end
+
+@testset "dispersion_score return correct values" begin
+    locs1 = DOM.loc_data[1:5, :]
+    locs2 = DOM.loc_data[6:end, :]
+
+    score = ADRIA.analysis.dispersion_score(locs1, locs2)
+    @test 0.0 <= score <= 1.0
+
+    @testset "equal locations return 0.5" begin
+        score_eq = ADRIA.analysis.dispersion_score(locs1, locs1)
+        @test isapprox(score_eq, 0.5, atol=1e-10)
+    end
 end
