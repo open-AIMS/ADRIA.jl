@@ -57,6 +57,7 @@ include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/cyclones.jl")
+include("ecosystem/cots.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")

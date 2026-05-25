@@ -1096,6 +1096,35 @@ function run_model(
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
+    # --- COTS Submodel Initialization ---
+    cots_prey_map = CotsPreyMap([1, 2, 3], [4, 5])  # Fast: Acropora spp; Slow: Massives
+
+    # Hardcoded COTS parameters (re-tuned for relative cover units 0.0–1.0)
+    # TODO: Add these to the ADRIA parameter table for scenario sampling
+    cots_params = (
+        a = 1.5,        # Beverton-Holt recruitment parameter
+        b = 0.5,        # Beverton-Holt density dependence
+        IMM = 0.002,    # Background immigration rate
+        p_tilde = 0.85, # Maximum starvation mortality fraction
+        C_max = 0.8,    # Coral cover at which starvation mortality is zero (relative)
+        m1 = 0.4,       # Age-0 mortality rate
+        m2 = 0.2,       # Age-1 mortality rate
+        m3 = 0.1,       # Adult mortality rate
+        a_F = 0.6,      # Fast coral consumption rate (relative cover units)
+        a_S = 0.15      # Slow coral consumption rate (relative cover units)
+    )
+
+    # Initialize COTS at ~25% of locations with moderate populations
+    # TODO: Replace with empirical COTS distribution data when available
+    cots_models = init_cots_populations(n_locs, cots_params; rng=rng)
+
+    # Get connectivity for COTS larval dispersal
+    # TODO: Replace coral connectivity with COTS-specific connectivity when available
+    cots_conn = sparse(domain.conn.data)
+
+    # COTS population log: [timesteps, 3 age classes, locations]
+    Ycots = zeros(tf, 3, n_locs)
+
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -1788,6 +1817,17 @@ function run_model(
         # TODO: Update cyclone data to hold data for relevant functional groups
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
+        # COTS predation mortality (operates on relative cover)
+        cots_mortality!(C_cover_t, cots_models, cots_prey_map)
+
+        # Disperse COTS larvae between locations via connectivity
+        disperse_cots_larvae!(cots_models, cots_conn)
+
+        # Log COTS populations
+        for loc in 1:n_locs
+            Ycots[tstep, :, loc] .= cots_models[loc].N
+        end
+
         # Calculate survival_rate due to env. disturbances
         @inbounds for i in eachindex(survival_rate_cache)
             d = ΔC_cover_t[i]
@@ -1861,6 +1901,7 @@ function run_model(
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
-        coral_cover_log=collated_cover_log
+        coral_cover_log=collated_cover_log,
+        cots_log=Ycots
     )
 end
