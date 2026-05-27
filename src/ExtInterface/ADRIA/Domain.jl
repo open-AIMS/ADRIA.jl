@@ -461,7 +461,11 @@ end
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
 function load_domain(
-    ::Type{ADRIADomain}, path::String, rcp::String; calib_params_fn::String=""
+    ::Type{ADRIADomain},
+    path::String,
+    rcp::String;
+    calib_params_fn::String="",
+    timeframe::Union{Nothing,Tuple}=nothing
 )::ADRIADomain
     isdir(path) ? true : error("Path does not exist or is not a directory.")
 
@@ -489,10 +493,17 @@ function load_domain(
         @assert md_timeframe[1] < md_timeframe[2] "Start date/year specified in data package must be < end date/year"
         # If only two elements, assume a range is specified.
         # Collate the time steps as a full list if necessary
-        timeframe::Vector{Int64} = collect(md_timeframe[1]:md_timeframe[2])
+        tf::Vector{Int64} = collect(md_timeframe[1]:md_timeframe[2])
     else
         # Otherwise assume entry specifies yearly timesteps
-        timeframe = parse.(Int64, md_timeframe)
+        tf = parse.(Int64, md_timeframe)
+    end
+
+    if !isnothing(timeframe)
+        @assert timeframe[1] >= md_timeframe[1] && timeframe[2] <= md_timeframe[end] (
+            "Requested timeframe $(timeframe) is outside the data package range $(md_timeframe)."
+        )
+        tf = collect(Int64(timeframe[1]):Int64(timeframe[2]))
     end
 
     conn_path::String = joinpath(path, "connectivity/")
@@ -509,7 +520,7 @@ function load_domain(
         domain_name,
         path,
         rcp,
-        timeframe,
+        tf,
         gpkg_path,
         location_id_col,
         cluster_id_col,
@@ -523,11 +534,15 @@ function load_domain(
         calib_params_fn=calib_params_fn
     )
 end
-function load_domain(path::String, rcp::String; calib_params_fn::String="")::ADRIADomain
-    return load_domain(ADRIADomain, path, rcp; calib_params_fn=calib_params_fn)
+function load_domain(
+    path::String, rcp::String; calib_params_fn::String="", timeframe::Union{Nothing,Tuple}=nothing
+)::ADRIADomain
+    return load_domain(ADRIADomain, path, rcp; calib_params_fn, timeframe)
 end
-function load_domain(path::String, rcp::Int64; calib_params_fn::String="")::ADRIADomain
-    return load_domain(ADRIADomain, path, string(rcp); calib_params_fn=calib_params_fn)
+function load_domain(
+    path::String, rcp::Int64; calib_params_fn::String="", timeframe::Union{Nothing,Tuple}=nothing
+)::ADRIADomain
+    return load_domain(ADRIADomain, path, string(rcp); calib_params_fn, timeframe)
 end
 
 """Get the path to the DHW data associated with the domain."""
