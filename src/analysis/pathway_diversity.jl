@@ -93,7 +93,7 @@ function switching_probability(
     options = option_seed_preference()
     options.probability = zeros(size(options, 1))
     options.selected_locations = [
-        Vector{String}() for _ in 1:size(options, 1)
+        Vector{eltype(decision_matrix.location)}() for _ in 1:size(options, 1)
     ]
     valid_locs = collect(1:size(loc_data, 1))
 
