@@ -754,7 +754,8 @@ function run_model(
     options = ADRIA.analysis.option_seed_preference()
 
     # Decode option_ts once from its base-5 integer encoding (if present)
-    _option_ts = ("option_ts" ∈ factor_names && "pd_frequency" ∈ factor_names) ?
+    _option_ts =
+        ("option_ts" ∈ factor_names && "pd_frequency" ∈ factor_names) ?
         ADRIA.analysis.decode_option_ts(
             param_set[At("option_ts")], param_set[At("seed_year_start")],
             param_set[At("seed_years")], param_set[At("pd_frequency")], tf
@@ -1706,7 +1707,9 @@ function run_model(
 
                     if is_guided
                         # Compute diversity index
-                        loc_taxa_cover = relative_loc_taxa_cover(reshape(C_cover_t, (1, n_groups, n_sizes, n_locs)))
+                        loc_taxa_cover = relative_loc_taxa_cover(
+                            reshape(C_cover_t, (1, n_groups, n_sizes, n_locs))
+                        )
                         evenness = coral_evenness(loc_taxa_cover.data)
                         diversity = coral_diversity(evenness.data)[timesteps=1].data
 
@@ -1722,12 +1725,16 @@ function run_model(
                         )
 
                         if log_dm
-                            decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(share_candidate_locs)]
+                            decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(
+                                share_candidate_locs
+                            )]
                         end
 
                         if !isnothing(_option_ts)
                             option = _option_ts[tstep]
-                            seed_pref = options[options.option_name .== option, :preference][1]
+                            seed_pref = options[
+                                options.option_name .== option, :preference
+                            ][1]
                         end
 
                         # Build state for target locations only

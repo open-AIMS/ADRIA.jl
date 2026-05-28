@@ -27,16 +27,19 @@ function pathway_diversity(
     rs::ResultSet, scens::DataFrame, idx_scens::Vector{Int64}, option::Symbol
 )::Vector{Float64}
     idx_scen = idx_scens[1] # index of scenario used to extract model parameters
-    start_time::Int64 = rs.inputs.seed_year_start[idx_scen] + rs.inputs.pd_frequency[idx_scen]
+    start_time::Int64 =
+        rs.inputs.seed_year_start[idx_scen] + rs.inputs.pd_frequency[idx_scen]
     end_time::Int64 =
-        rs.inputs.seed_year_start[idx_scen] + rs.inputs.seed_years[idx_scen] - rs.inputs.pd_frequency[idx_scen]
+        rs.inputs.seed_year_start[idx_scen] + rs.inputs.seed_years[idx_scen] -
+        rs.inputs.pd_frequency[idx_scen]
     min_locs::Int64 = rs.inputs.min_iv_locations[idx_scen]
     mcda_method = ADRIA.mcda_methods()[Int64(rs.inputs.guided[idx_scen])]
 
     # Find scenarios that start with $option on first seeding step
     idx_option_scens = findall(eachindex(scens.option_ts)) do i
         option_ts = decode_option_ts(
-            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i], rs.inputs.seed_years[i], rs.inputs.pd_frequency[i],
+            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i],
+            rs.inputs.seed_years[i], rs.inputs.pd_frequency[i],
             size(rs.seed_log, :timesteps)
         )
         option_ts[Int(rs.inputs.seed_year_start[i])] == option
@@ -46,7 +49,8 @@ function pathway_diversity(
 
     for (idx_prob, idx_scen) in enumerate(idx_scens)
         option_ts = decode_option_ts(
-            rs.inputs.option_ts[idx_scen], rs.inputs.seed_year_start[idx_scen], rs.inputs.seed_years[idx_scen],
+            rs.inputs.option_ts[idx_scen], rs.inputs.seed_year_start[idx_scen],
+            rs.inputs.seed_years[idx_scen],
             rs.inputs.pd_frequency[idx_scen], size(rs.seed_log, :timesteps)
         )
         for tstep in start_time:Int64(rs.inputs.pd_frequency[idx_scen]):end_time
@@ -88,7 +92,9 @@ function switching_probability(
 )::DataFrame
     options = option_seed_preference()
     options.probability = zeros(size(options, 1))
-    options.selected_locations = options.selected_locations = [Vector{String}() for _ in 1:size(options, 1)]
+    options.selected_locations = [
+        Vector{String}() for _ in 1:size(options, 1)
+    ]
     valid_locs = collect(1:size(loc_data, 1))
 
     if ports == nothing
@@ -112,9 +118,11 @@ function switching_probability(
         unique_option_locs = option_locations[option_locations.UNIQUE_ID .∉ [common_ids], :]
         unique_past_locs = past_locations[past_locations.UNIQUE_ID .∉ [common_ids], :]
 
-        row.probability += distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[1]
+        row.probability +=
+            distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[1]
         row.probability += dispersion_score(option_locations, past_locations) * weights[2]
-        row.probability += option_similarity(unique_option_locs, unique_past_locs) * weights[3]
+        row.probability +=
+            option_similarity(unique_option_locs, unique_past_locs) * weights[3]
     end
 
     # Normalize probabilities
@@ -256,7 +264,8 @@ amplifies moderate ratios; otherwise uses the basic `(d_past − d_option)/(d_pa
 Returns 0.5 when both distances are zero.
 """
 function distance_port_score(
-    option_locs::DataFrame, past_locs::DataFrame, ports::DataFrame; amplify_ranges::Bool=true
+    option_locs::DataFrame, past_locs::DataFrame, ports::DataFrame;
+    amplify_ranges::Bool=true
 )::Float64
     d_option = _distance_port(option_locs, ports)
     d_past = _distance_port(past_locs, ports)
@@ -313,7 +322,9 @@ If `amplify_ranges=true` (default), uses `(d²_past − d²_option)/(d²_past + 
 amplifies moderate ratios; otherwise uses the basic `(d_past − d_option)/(d_past + d_option)`.
 Returns 0.5 when both dispersions are zero.
 """
-function dispersion_score(option_locs::DataFrame, past_locs::DataFrame; amplify_ranges::Bool=true)::Float64
+function dispersion_score(
+    option_locs::DataFrame, past_locs::DataFrame; amplify_ranges::Bool=true
+)::Float64
     d_option = _dispersion(option_locs)
     d_past = _dispersion(past_locs)
     if amplify_ranges
@@ -355,7 +366,8 @@ Decode a base-5 integer back into a full option time-series vector of length `ma
 Positions outside the seeding window `[seed_year_start, seed_year_start+seed_years)` are `:nothing`.
 """
 function decode_option_ts(
-    encoded::Real, seed_year_start::Real, seed_years::Real, pd_frequency::Real, max_time::Real
+    encoded::Real, seed_year_start::Real, seed_years::Real, pd_frequency::Real,
+    max_time::Real
 )::Vector{Symbol}
     encoded, seed_year_start, seed_years, pd_frequency, max_time =
         Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
@@ -368,4 +380,3 @@ function decode_option_ts(
     end
     return ts
 end
-
