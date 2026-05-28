@@ -1142,7 +1142,7 @@ function run_model(
         decision_matrix_log = false
     end
 
-    for tstep::Int64 in 2:(param_set[At("seed_year_start")] + param_set[At("seed_years")])
+    for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
