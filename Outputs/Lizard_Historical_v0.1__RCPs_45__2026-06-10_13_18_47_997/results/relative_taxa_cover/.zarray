@@ -1,0 +1,1 @@
+{"dtype":"<f4","filters":null,"shape":[500,5,40],"order":"C","zarr_format":2,"chunks":[23,5,40],"fill_value":null,"compressor":{"blocksize":0,"id":"blosc","clevel":5,"cname":"zstd","shuffle":1}}
