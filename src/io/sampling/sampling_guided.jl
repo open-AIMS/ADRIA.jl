@@ -42,7 +42,7 @@ function sample_options(
     # Compute all possible option time series
     options = analysis.option_seed_preference()
     number_changes::Int64 = scens.seed_years[1] ÷ pd_frequency
-    max_time::Int64 = size(d.dhw_scens[:, :, 1], 1)
+    max_time::Int64 = size(d.dhw_scens, :timesteps)
     combinations = options_combinations(options.option_name, number_changes)
     options_ts = options_series(combinations, scens[1, :], pd_frequency, max_time)
 
@@ -55,3 +55,26 @@ function sample_options(
     return scens
 end
 
+"""
+    options_combinations(options_name::Vector, number_repetitions::Int64)::Vector{Tuple}
+
+Generate all combinations with repetition and considering order of pathway diversity options.
+"""
+#
+function options_combinations(options_name::Vector, number_repetitions::Int64)::Vector{Tuple}
+    mat = collect(ADRIA.Iterators.product(ADRIA.Iterators.repeated(options_name, number_repetitions)...))
+    return vec(mat)
+end
+
+"""
+    options_series(combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64, max_time::Int64)::Vector{Int}
+
+Encode each option combination as a base-5 integer. Use `decode_option_ts` to recover the
+full time-series at model-run time.
+"""
+function options_series(
+    combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64, max_time::Int64
+)::Vector{Int}
+    @assert length(combinations[1]) == scen.seed_years / pd_frequency
+    return [ADRIA.analysis.encode_option_ts(combination) for combination in combinations]
+end

@@ -1,34 +1,6 @@
 using ADRIA.decision: is_reactive
 
 """
-    sample_options(d::Domain, pd_frequency::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32)))::DataFrame
-
-Generate sample where all default parameters are fixed and only option_ts varies.
-"""
-function sample_options(
-    d::Domain, pd_frequency::Int64,
-    sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
-)::DataFrame
-    # Get one guided sample
-    sample = sample(d, 2, sample_method)[1:1, :]
-
-    # Compute all possible option time series
-    options = analysis.option_seed_preference()
-    number_changes::Int64 = sample.seed_years[1] ÷ pd_frequency
-    max_time::Int64 = sample.seed_year_start[1] + sample.seed_years[1]
-    combinations = options_combinations(options.option_name, number_changes)
-    options_ts = options_series(combinations, sample[1, :], pd_frequency, max_time)
-
-    # Add decision frequency to scenario
-    sample.pd_frequency = [pd_frequency]
-
-    # Copy initial sample and only change option_ts
-    sample = vcat([sample for _ in 1:length(combinations)]...)
-    sample.option_ts = options_ts
-    return sample
-end
-
-"""
     _adjust_guided_lower_bound!(guided_spec::DataFrame, lower::Int64)::DataFrame
 
 Adjust lower bound of guided parameter spec to alter sampling range.
@@ -590,40 +562,3 @@ function max_maindiag(df::DataFrame)
     return max_maindiag(cov(Matrix(df)))
 end
 
-"""
-    options_combinations(options_name::Vector, number_repetitions::Int64)::Vector{Tuple}
-
-Generate all combinations with repetition and considering order of pathway diversity options.
-"""
-#
-function options_combinations(
-    options_name::Vector, number_repetitions::Int64
-)::Vector{Tuple}
-    mat = collect(
-        ADRIA.Iterators.product(
-            ADRIA.Iterators.repeated(options_name, number_repetitions)...
-        )
-    )
-    return vec(mat)
-end
-
-"""
-    options_series(combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64, max_time::Int64)::Vector{Vector{Symbol}}
-
-Generate timeseries of options considering option sequence, and scenario informations.
-"""
-function options_series(
-    combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64,
-    max_time::Int64
-)::Vector{Vector{Symbol}}
-    @assert length(combinations[1]) == scen.seed_years / pd_frequency
-
-    result = [Vector{Symbol}() for _ in 1:length(combinations)]
-    for (idx, combination) in enumerate(combinations)
-        result[idx] = fill(:nothing, max_time)
-        for t::Int64 in (scen.seed_year_start):(scen.seed_year_start + scen.seed_years - 1)
-            result[idx][t] = combination[(t - scen.seed_year_start) ÷ pd_frequency + 1]
-        end
-    end
-    return result
-end

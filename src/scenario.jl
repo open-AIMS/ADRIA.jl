@@ -177,8 +177,7 @@ function run_scenarios(
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    scenarios_df_save = hasproperty(scenarios_df, :option_ts) ? scenarios_df[:, Not("option_ts")] : scenarios_df
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df_save, chunk_size)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, chunk_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
@@ -753,6 +752,13 @@ function run_model(
     end
 
     options = ADRIA.analysis.option_seed_preference()
+
+    # Decode option_ts once from its base-5 integer encoding (if present)
+    _option_ts = ("option_ts" ∈ factor_names && "pd_frequency" ∈ factor_names) ?
+        ADRIA.analysis.decode_option_ts(
+            param_set[At("option_ts")], param_set[At("seed_year_start")],
+            param_set[At("seed_years")], param_set[At("pd_frequency")], tf
+        ) : nothing
 
     wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
     if wave_idx > 0.0
@@ -1719,8 +1725,8 @@ function run_model(
                             decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(share_candidate_locs)]
                         end
 
-                        if "option_ts" in param_set.factors
-                            option = param_set[At("option_ts")][tstep]
+                        if !isnothing(_option_ts)
+                            option = _option_ts[tstep]
                             seed_pref = options[options.option_name .== option, :preference][1]
                         end
 

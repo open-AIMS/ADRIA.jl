@@ -33,15 +33,22 @@ function pathway_diversity(
     min_locs::Int64 = rs.inputs.min_iv_locations[idx_scen]
     mcda_method = ADRIA.mcda_methods()[Int64(rs.inputs.guided[idx_scen])]
 
-    idx_option_scens = findall(
-        option_ts -> option_ts[Int64(rs.inputs.seed_year_start[idx_scen])] == option,
-        scens.option_ts
-    )
+    # Find scenarios that start with $option on first seeding step
+    idx_option_scens = findall(eachindex(scens.option_ts)) do i
+        option_ts = decode_option_ts(
+            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i], rs.inputs.seed_years[i], rs.inputs.pd_frequency[i],
+            size(rs.seed_log, :timesteps)
+        )
+        option_ts[Int(rs.inputs.seed_year_start[i])] == option
+    end
     idx_scens = intersect(idx_scens, idx_option_scens)
     probs = ones(length(idx_scens))
 
     for (idx_prob, idx_scen) in enumerate(idx_scens)
-        option_ts = scens.option_ts[idx_scen]
+        option_ts = decode_option_ts(
+            rs.inputs.option_ts[idx_scen], rs.inputs.seed_year_start[idx_scen], rs.inputs.seed_years[idx_scen],
+            rs.inputs.pd_frequency[idx_scen], size(rs.seed_log, :timesteps)
+        )
         for tstep in start_time:Int64(rs.inputs.pd_frequency[idx_scen]):end_time
             decision_matrix = rs.decision_matrix_log[timesteps=tstep, scenarios=idx_scen]
             probs[idx_prob] *= ADRIA.analysis.switching_probability(
@@ -328,3 +335,37 @@ function _entropy(x::Float64)::Float64
     end
     return -x * log(x)
 end
+
+"""
+    encode_option_ts(combination::Tuple)::Int
+
+Encode a tuple of option symbols as a base-5 integer.
+Each position maps to an index 0–4 matching the order of `option_seed_preference()`.
+"""
+function encode_option_ts(combination::Tuple)::Int
+    option_names = ADRIA.analysis.option_seed_preference().option_name
+    option_to_idx = Dict(name => i - 1 for (i, name) in enumerate(option_names))
+    return sum(option_to_idx[opt] * 5^(i - 1) for (i, opt) in enumerate(combination))
+end
+
+"""
+    decode_option_ts(encoded, seed_year_start, seed_years, pd_frequency, max_time)
+
+Decode a base-5 integer back into a full option time-series vector of length `max_time`.
+Positions outside the seeding window `[seed_year_start, seed_year_start+seed_years)` are `:nothing`.
+"""
+function decode_option_ts(
+    encoded::Real, seed_year_start::Real, seed_years::Real, pd_frequency::Real, max_time::Real
+)::Vector{Symbol}
+    encoded, seed_year_start, seed_years, pd_frequency, max_time =
+        Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
+    option_names = ADRIA.analysis.option_seed_preference().option_name
+    number_changes = seed_years ÷ pd_frequency
+    decoded_combo = [option_names[(encoded ÷ 5^(i - 1)) % 5 + 1] for i in 1:number_changes]
+    ts = fill(:nothing, max_time)
+    for t in seed_year_start:(seed_year_start + seed_years - 1)
+        ts[t] = decoded_combo[(t - seed_year_start) ÷ pd_frequency + 1]
+    end
+    return ts
+end
+
