@@ -1097,26 +1097,45 @@ function run_model(
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
     # --- COTS Submodel Initialization ---
+    # Toggle COTS via ENV["ADRIA_COTS_ENABLED"] (default: "true")
+    cots_enabled = get(ENV, "ADRIA_COTS_ENABLED", "true") == "true"
+
     cots_prey_map = CotsPreyMap([1, 2, 3], [4, 5])  # Fast: Acropora spp; Slow: Massives
 
-    # Hardcoded COTS parameters (re-tuned for relative cover units 0.0–1.0)
-    # TODO: Add these to the ADRIA parameter table for scenario sampling
+    # COTS parameters — read from ENV overrides if available, else use defaults
+    # This allows tuning from test scripts without editing scenario.jl
+    _env_float(key, default) = parse(Float64, get(ENV, key, string(default)))
     cots_params = (
-        a = 1.5,        # Beverton-Holt recruitment parameter
-        b = 0.5,        # Beverton-Holt density dependence
-        IMM = 0.002,    # Background immigration rate
-        p_tilde = 0.85, # Maximum starvation mortality fraction
-        C_max = 0.8,    # Coral cover at which starvation mortality is zero (relative)
-        m1 = 0.4,       # Age-0 mortality rate
-        m2 = 0.2,       # Age-1 mortality rate
-        m3 = 0.1,       # Adult mortality rate
-        a_F = 0.6,      # Fast coral consumption rate (relative cover units)
-        a_S = 0.15      # Slow coral consumption rate (relative cover units)
+        a = _env_float("COTS_a", 1.5),
+        b = _env_float("COTS_b", 0.5),
+        IMM = cots_enabled ? _env_float("COTS_IMM", 0.002) : 0.0,
+        p_tilde = _env_float("COTS_p_tilde", 0.97),
+        C_max = _env_float("COTS_C_max", 0.8),
+        m1 = _env_float("COTS_m1", 0.4),
+        m2 = _env_float("COTS_m2", 0.2),
+        m3 = _env_float("COTS_m3", 0.1),
+        a_F = _env_float("COTS_a_F", 0.6),
+        a_S = _env_float("COTS_a_S", 0.15),
+        h = _env_float("COTS_h", 0.0),
+        eta_F = _env_float("COTS_eta_F", 1.0),
+        eta_S = _env_float("COTS_eta_S", 1.0),
+        eta_starve = _env_float("COTS_eta_starve", 2.0),
+        eta_imm = _env_float("COTS_eta_imm", 2.0),
+        imm_threshold = _env_float("COTS_imm_threshold", 0.35),
+        fecundity_gate = get(ENV, "COTS_fecundity_gate", "false") == "true",
+        a_ricker = _env_float("COTS_a_ricker", 6.0),
+        b_ricker = _env_float("COTS_b_ricker", 0.1),
+        tau_condition = _env_float("COTS_tau_condition", 5.0),
+        allee_threshold = _env_float("COTS_allee_threshold", 1.0)
     )
 
-    # Initialize COTS at ~25% of locations with moderate populations
+    # Initialize COTS populations (zero if disabled)
     # TODO: Replace with empirical COTS distribution data when available
-    cots_models = init_cots_populations(n_locs, cots_params; rng=rng)
+    if cots_enabled
+        cots_models = init_cots_populations(n_locs, cots_params; rng=rng)
+    else
+        cots_models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), cots_params) for _ in 1:n_locs]
+    end
 
     # Get connectivity for COTS larval dispersal
     # TODO: Replace coral connectivity with COTS-specific connectivity when available
@@ -1124,6 +1143,8 @@ function run_model(
 
     # COTS population log: [timesteps, 3 age classes, locations]
     Ycots = zeros(tf, 3, n_locs)
+    # COTS body condition log: [timesteps, locations]
+    Ycots_bc = zeros(tf, n_locs)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1794,6 +1815,7 @@ function run_model(
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
+        _c_cover_before_bleach = copy(C_cover_t)
         bleaching_mortality!(
             C_cover_t,
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
@@ -1803,6 +1825,12 @@ function run_model(
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
             c_mean_tol_ceil
         )
+        
+        bleach_scalar = parse(Float64, get(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR", "1.0"))
+        if bleach_scalar != 1.0
+            C_cover_t .= _c_cover_before_bleach .- (_c_cover_before_bleach .- C_cover_t) .* bleach_scalar
+            clamp!(C_cover_t, 0.0, 1.0)
+        end
 
         # Store current means to be used in future timesteps.
         # Use pre-seeding snapshot so that a_adapt enhancement is not compounded
@@ -1815,7 +1843,14 @@ function run_model(
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
+        _c_cover_before_cyclone = copy(C_cover_t)
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
+        
+        cyclone_scalar = parse(Float64, get(ENV, "ADRIA_DEBUG_CYCLONE_SCALAR", "1.0"))
+        if cyclone_scalar != 1.0
+            C_cover_t .= _c_cover_before_cyclone .- (_c_cover_before_cyclone .- C_cover_t) .* cyclone_scalar
+            clamp!(C_cover_t, 0.0, 1.0)
+        end
 
         # COTS predation mortality (operates on relative cover)
         cots_mortality!(C_cover_t, cots_models, cots_prey_map)
@@ -1823,9 +1858,17 @@ function run_model(
         # Disperse COTS larvae between locations via connectivity
         disperse_cots_larvae!(cots_models, cots_conn)
 
+        # Mimic incoming larvae/recruitment from upstream outbreak every 15 years
+        if cots_enabled && get(ENV, "COTS_EXTERNAL_PULSE", "false") == "true"
+            if mod(tstep, 15) == 0
+                inject_upstream_pulse!(cots_models)
+            end
+        end
+
         # Log COTS populations
         for loc in 1:n_locs
             Ycots[tstep, :, loc] .= cots_models[loc].N
+            Ycots_bc[tstep, loc] = cots_models[loc].body_condition
         end
 
         # Calculate survival_rate due to env. disturbances
@@ -1902,6 +1945,7 @@ function run_model(
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
         coral_cover_log=collated_cover_log,
-        cots_log=Ycots
+        cots_log=Ycots,
+        cots_condition_log=Ycots_bc
     )
 end

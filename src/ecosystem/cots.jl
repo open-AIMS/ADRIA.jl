@@ -43,6 +43,7 @@ end
 #     a_S     : Slow coral consumption rate coefficient
 mutable struct CotsHuman <: AbstractCotsModel
     N::MVector{3, Float64}  # Age 0 (recruits), Age 1 (juveniles), Age 2+ (adults)
+    body_condition::Float64 # Maternal nutrition index (0-1), gates larval production
     params::NamedTuple
 end
 
@@ -61,31 +62,86 @@ function cots_timestep!(model::CotsHuman, F::Float64, S::Float64)
     p = model.params
     N = model.N
 
-    # Stock-Recruitment (Beverton-Holt)
-    R = (p.a * N[3]) / (1.0 + p.b * N[3])
+    # Check for NaNs or negative numbers
+    if isnan(F) || isnan(S) || any(isnan, N)
+        # println("[DEBUG COTS] NaN detected: F=$F, S=$S, N=$N")
+    end
+    if F < 0.0 || S < 0.0 || any(x -> x < 0.0, N)
+        # Avoid flood but print first occurrences
+        # println("[DEBUG COTS] Negative detected: F=$F, S=$S, N=$N")
+    end
 
-    # Coral-modulated mortality factor (starvation feedback)
-    # When coral cover is high (F+S >= C_max), f = 1.0 (no starvation).
-    # When coral cover is zero, f = 1 - p_tilde (maximum starvation mortality).
-    rho = min(1.0, (F + S) / p.C_max)
-    f = (1.0 - p.p_tilde) + p.p_tilde * rho
+    # Ensure coral cover is non-negative and finite to prevent complex NaNs during fractional exponentiation
+    F = isnan(F) || isinf(F) ? 0.0 : max(0.0, F)
+    S = isnan(S) || isinf(S) ? 0.0 : max(0.0, S)
+
+    # --- Body Condition Update ---
+    # Exponential moving average of food availability (maternal nutrition)
+    tau = get(p, :tau_condition, 3.0)
+    alpha = 1.0 / tau
+    # Normalise food availability (0.5 * C_max represents "well-fed")
+    food_signal = min(1.0, (F + S) / (p.C_max * 0.5))
+    new_condition = (1.0 - alpha) * model.body_condition + alpha * food_signal
+    model.body_condition = clamp(new_condition, 0.0, 1.0)
+
+    # --- Threshold Starvation ---
+    # Mortality stays low while prey is available, crashes drastically below threshold
+    starve_threshold = p.C_max * 0.15
+    if (F + S) > starve_threshold
+        f = 1.0
+    else
+        frac = (F + S) / starve_threshold
+        f = (1.0 - p.p_tilde) + p.p_tilde * frac^3
+    end
+
+    # --- Ricker Recruitment ---
+    # Allows for overcompensation (massive larval pulses) gated by maternal nutrition
+    fecundity = get(p, :a_ricker, 4.0) * model.body_condition^2
+    b_ricker = get(p, :b_ricker, 0.8)
+    
+    # Allee effect: fertilization success crashes when population is too sparse
+    allee_A = get(p, :allee_threshold, 1.0)
+    allee_effect = (N[3]^2) / (allee_A^2 + N[3]^2)
+    
+    R = fecundity * N[3] * exp(-b_ricker * N[3]) * allee_effect
 
     # Base survival rates
     s1 = 1.0 - p.m1
     s2 = 1.0 - p.m2
     s3 = 1.0 - p.m3
 
+    # Coral-gated immigration
+    imm_threshold = get(p, :imm_threshold, 0.35)
+    eta_imm = get(p, :eta_imm, 2.0)
+    imm_gate = min(1.0, ((F + S) / (imm_threshold * p.C_max))^eta_imm)
+    imm = p.IMM * imm_gate
+
     # State update
     N_next = MVector{3, Float64}(0.0, 0.0, 0.0)
     N_next[3] = N[2] * (s2 * f) + N[3] * (s3 * f)
     N_next[2] = N[1] * s1
-    N_next[1] = R + p.IMM
+    N_next[1] = R + imm
+
+    # Ensure all elements of N_next are finite and non-negative
+    for i in 1:3
+        val = N_next[i]
+        N_next[i] = isnan(val) || isinf(val) ? 0.0 : max(0.0, val)
+    end
 
     model.N .= N_next
 
-    # Consumption (proportional to adult density and available cover)
-    Cons_F = N[3] * p.a_F * F
-    Cons_S = N[3] * p.a_S * S
+    # Generalized Holling Type II/III Functional Response
+    h = get(p, :h, 0.0)
+    eta_F = get(p, :eta_F, 1.0)
+    eta_S = get(p, :eta_S, 1.0)
+
+    # Use exponents to support Type III sigmoidal drop-off
+    F_pow = F^eta_F
+    S_pow = S^eta_S
+    denom = 1.0 + h * (p.a_F * F_pow + p.a_S * S_pow)
+
+    Cons_F = N[3] * (p.a_F * F_pow) / denom
+    Cons_S = N[3] * (p.a_S * S_pow) / denom
 
     return Cons_F, Cons_S
 end
@@ -114,7 +170,8 @@ function disperse_cots_larvae!(
     col_sums = vec(sum(conn; dims=1))
 
     for sink in 1:n_locs
-        if col_sums[sink] == 0.0
+        # Safeguard: skip sink if column sum is extremely close to zero to prevent division underflow
+        if col_sums[sink] < 1e-12
             continue
         end
 
@@ -123,10 +180,14 @@ function disperse_cots_larvae!(
         for k in SparseArrays.nzrange(conn, sink)
             src = SparseArrays.rowvals(conn)[k]
             w = SparseArrays.nonzeros(conn)[k] / col_sums[sink]
-            incoming += source_recruits[src] * w
+            
+            # Safeguard: ensure that multiplying zero recruits by a huge weight does not produce NaN/Inf
+            val = source_recruits[src] * w
+            incoming += isnan(val) || isinf(val) ? 0.0 : val
         end
 
-        cots_models[sink].N[1] = incoming
+        # Ensure dispersed recruits is non-negative and finite
+        cots_models[sink].N[1] = isnan(incoming) || isinf(incoming) ? 0.0 : max(0.0, incoming)
     end
 
     return nothing
@@ -153,18 +214,34 @@ function init_cots_populations(
     rng=Random.GLOBAL_RNG
 )
     models = Vector{CotsHuman}(undef, n_locs)
-    n_seeded = max(1, round(Int, n_locs * outbreak_fraction))
-    seeded_locs = Set(randperm(rng, n_locs)[1:n_seeded])
+    
+    # Check if we are forcing seeding on specific locations or the first N locations
+    force_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
+    force_seed_n_str = get(ENV, "ADRIA_DEBUG_SEED_FIRST_N", "")
+    
+    if force_seed_locs_str != ""
+        seeded_locs = Set(parse.(Int, split(force_seed_locs_str, ",")))
+    elseif force_seed_n_str != ""
+        n_seeded = min(n_locs, parse(Int, force_seed_n_str))
+        seeded_locs = Set(1:n_seeded)
+    else
+        n_seeded = max(1, round(Int, n_locs * outbreak_fraction))
+        seeded_locs = Set(randperm(rng, n_locs)[1:n_seeded])
+    end
+
+    # Allow overriding initial density for systematic testing
+    init_density = parse(Float64, get(ENV, "ADRIA_DEBUG_INIT_DENSITY", "0.1"))
 
     for loc in 1:n_locs
         if loc in seeded_locs
             # Seed with moderate initial COTS population
-            N_init = MVector{3, Float64}(0.02, 0.02, 0.1)
+            N_init = MVector{3, Float64}(0.02, 0.02, init_density)
         else
             # Zero initial COTS - immigration will seed these over time
             N_init = MVector{3, Float64}(0.0, 0.0, 0.0)
         end
-        models[loc] = CotsHuman(N_init, params)
+        # Initialize body condition to 0.8 (well-fed)
+        models[loc] = CotsHuman(N_init, 0.8, params)
     end
 
     return models
@@ -213,6 +290,10 @@ function cots_mortality!(
         surv_F = F_cover > 0.0 ? max(0.0, 1.0 - Cons_F / F_cover) : 1.0
         surv_S = S_cover > 0.0 ? max(0.0, 1.0 - Cons_S / S_cover) : 1.0
 
+        # Robust safeguards against NaNs or Inf
+        surv_F = isnan(surv_F) || isinf(surv_F) ? 1.0 : clamp(surv_F, 0.0, 1.0)
+        surv_S = isnan(surv_S) || isinf(surv_S) ? 1.0 : clamp(surv_S, 0.0, 1.0)
+
         # Apply proportional mortality uniformly across all size classes
         for g in prey_map.fast_group_indices
             for s in 1:n_sizes
@@ -228,4 +309,20 @@ function cots_mortality!(
 
     clamp!(C_cover_t, 0.0, 1.0)
     return nothing
+end
+
+# Inject an upstream recruitment pulse (larvae) to seeded locations.
+function inject_upstream_pulse!(cots_models::Vector{CotsHuman})
+    force_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
+    if force_seed_locs_str != ""
+        seeded_locs = Set(parse.(Int, split(force_seed_locs_str, ",")))
+        
+        for loc in seeded_locs
+            if loc <= length(cots_models)
+                # Inject a larval pulse of 2.0 as requested
+                pulse_val = 2.0 
+                cots_models[loc].N[1] += pulse_val
+            end
+        end
+    end
 end
