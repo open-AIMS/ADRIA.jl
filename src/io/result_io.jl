@@ -205,60 +205,70 @@ function setup_logs(
     # tf, no. species to seed, location id and rank, no. scenarios
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
-    attrs = Dict(
-        # Here, "intervention" refers to seeding or shading
-        :structure => ("timesteps", "locations", "interventions", "scenarios"),
-        :unique_loc_ids => unique_loc_ids
-    )
+    # UInt16: integer ranks 0–n_locs (max 3806 << 65535). fill_value=0 (rank 0 = no deployment).
     ranks = zcreate(
-        Float32,
+        UInt16,
         rank_dims...;
         name="rankings",
-        fill_value=nothing,
+        fill_value=0,
         fill_as_missing=false,
         path=log_fn,
         chunks=(rank_dims[1:3]..., batch_size),
-        attrs=attrs
+        attrs=Dict(
+            :structure => ("timesteps", "locations", "interventions", "scenarios"),
+            :unique_loc_ids => unique_loc_ids,
+            :units => "rank (1 = highest priority, 0 = no deployment)",
+            :description => "Location selection rank per intervention type"
+        )
     )
 
-    attrs = Dict(
-        :structure => ("timesteps", "coral_id", "locations", "scenarios"),
-        :unique_loc_ids => unique_loc_ids
-    )
     seed_log = zcreate(
         Float32,
         seed_dims...;
         name="seed",
-        fill_value=nothing,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(seed_dims[1:3]..., batch_size),
-        attrs=attrs
+        attrs=Dict(
+            :structure => ("timesteps", "coral_id", "locations", "scenarios"),
+            :unique_loc_ids => unique_loc_ids,
+            :units => "individuals",
+            :description => "Number of corals seeded per functional group per location"
+        )
     )
     mc_log = zcreate(
         Float32,
         seed_dims...;
         name="moving_corals",
-        fill_value=nothing,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(seed_dims[1:3]..., batch_size),
-        attrs=attrs
+        attrs=Dict(
+            :structure => ("timesteps", "coral_id", "locations", "scenarios"),
+            :unique_loc_ids => unique_loc_ids,
+            :units => "individuals",
+            :description => "Number of corals deployed by moving corals (larval method) per functional group per location"
+        )
     )
 
     shading_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
+    # Float16: DHW-reduction values 0–8, precision ~0.001 DHW at 8 weeks — adequate.
     shading_log = zcreate(
-        Float32,
+        Float16,
         shading_dims...;
         name="shading_log",
-        fill_value=nothing,
+        fill_value=Float16(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(shading_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "locations", "intervention", "scenarios"),
             :interventions => ["fog", "shade"],
-            :unique_loc_ids => unique_loc_ids
+            :unique_loc_ids => unique_loc_ids,
+            :units => "DHW weeks",
+            :description => "Fog and shade intervention magnitudes per location"
         )
     )
 
@@ -270,71 +280,83 @@ function setup_logs(
     # bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
     # Log for coral DHW thresholds
-    attrs = Dict(
+    # Float16: DHW tolerance values 0–~50 weeks, precision ~0.001 at 8 weeks — adequate.
+    dhw_attrs = Dict(
         :structure => ("timesteps", "species", "locations", "scenarios"),
-        :unique_loc_ids => unique_loc_ids
+        :unique_loc_ids => unique_loc_ids,
+        :units => "DHW weeks",
+        :description => "Mean DHW thermal tolerance per species per location"
     )
 
     n_group_and_size = n_groups * n_sizes
     local coral_dhw_log
     if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
         coral_dhw_log = zcreate(
-            Float32,
+            Float16,
             tf,
             n_groups * n_sizes,
             n_locs,
             n_scens;
             name="coral_dhw_log",
-            fill_value=nothing,
+            fill_value=Float16(0),
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_groups * n_sizes, n_locs, batch_size),
-            attrs=attrs
+            attrs=dhw_attrs
         )
     else
         coral_dhw_log = zcreate(
-            Float32,
+            Float16,
             tf,
             n_groups * n_sizes,
             1,
             n_scens;
             name="coral_dhw_log",
-            fill_value=0.0,
+            fill_value=Float16(0),
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_groups * n_sizes, 1, batch_size),
-            attrs=attrs
+            attrs=dhw_attrs
         )
     end
 
+    # UInt16: relative cover values in [0,1] stored as scaled integers [0,65535].
+    # On load, divide by 65535.0 to recover true value (uniform step ~1.5e-5).
+    cover_attrs = Dict(
+        :structure => ("timesteps", "species", "locations", "scenarios"),
+        :unique_loc_ids => unique_loc_ids,
+        :units => "fraction of carrying capacity (k)",
+        :scale_factor => 1.0 / 65535.0,
+        :description => "Per-species coral cover relative to location habitable area; stored as UInt16 scaled integers: true_value = stored_uint16 / 65535"
+    )
     local coral_cover_log
     if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
         coral_cover_log = zcreate(
-            Float32,
+            UInt16,
             tf,
             n_group_and_size,
             n_locs,
             n_scens;
             name="coral_cover_log",
-            fill_value=nothing,
+            fill_value=UInt16(0),
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_group_and_size, n_locs, batch_size),
-            attrs=attrs
+            attrs=cover_attrs
         )
     else
         coral_cover_log = zcreate(
-            Float32,
+            UInt16,
             tf,
             n_group_and_size,
             1,
             n_scens;
             name="coral_cover_log",
-            fill_value=0.0,
+            fill_value=UInt16(0),
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_group_and_size, 1, batch_size),
-            attrs=attrs
+            attrs=cover_attrs
         )
     end
 
@@ -460,7 +482,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
     loc_outcomes_store = zcreate(
         Float32,
         loc_dims...;
-        fill_value=nothing,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
         chunks=(loc_dims[1:3]..., batch_size),

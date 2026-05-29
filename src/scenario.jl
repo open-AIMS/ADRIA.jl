@@ -1,5 +1,3 @@
-"""Scenario running functions"""
-
 using CoralBlox
 
 import CoralBlox:
@@ -204,9 +202,19 @@ function run_scenarios(
     ]
 
     if parallel
-        # One buffer set per thread — threadid() can reach maxthreadid() due to Julia's
-        # internal threads, so size to maxthreadid() not nthreads().
-        thread_fg = [_make_fg_buffers() for _ in 1:Threads.maxthreadid()]
+        # One buffer set per thread. Each set is checked out exclusively via a Channel
+        # pool, so no two scenarios ever share the same FunctionalGroup buffers regardless
+        # of how the dynamic scheduler assigns or migrates tasks between threads.
+        # Buffer sets are allocated in parallel since each set is large (n_locs × n_groups
+        # × n_sizes CircularBuffers) and independent.
+        fg_pool = let bufs = Vector{typeof(_make_fg_buffers())}(undef, Threads.nthreads())
+            Threads.@threads :static for i in 1:Threads.nthreads()
+                bufs[i] = _make_fg_buffers()
+            end
+            pool = Channel{eltype(bufs)}(length(bufs))
+            foreach(fg -> put!(pool, fg), bufs)
+            pool
+        end
 
         # Prevent BLAS internal threads from competing with Julia threads.
         BLAS.set_num_threads(1)
@@ -267,9 +275,12 @@ function run_scenarios(
             try
                 Threads.@threads :dynamic for i in 1:N_rcp
                     d, idx, scen = scen_args[i]
-                    result = _collect_scenario_results(
-                        d, scen, thread_fg[Threads.threadid()]
-                    )
+                    fg = take!(fg_pool)
+                    result = try
+                        _collect_scenario_results(d, scen, fg)
+                    finally
+                        put!(fg_pool, fg)
+                    end
                     put!(ch, (idx, result))
                 end
             finally
@@ -495,7 +506,8 @@ function _write_batch!(
             for (i, r) in enumerate(results)
                 cc_batch[:, :, :, i] .= r.coral_cover_log
             end
-            data_store.coral_cover_log[:, :, :, idx_range] .= cc_batch
+            data_store.coral_cover_log[:, :, :, idx_range] .=
+                round.(UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0)
         end
     end
 
