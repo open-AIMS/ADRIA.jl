@@ -491,7 +491,7 @@ function _write_batch!(
     # decision_matrix_log: (tf, n_locs, n_criteria, n)
     if parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
         _, n_l, n_c = size(results[1].decision_matrix_log)
-        dm_batch = Array{Float64}(undef, tf, n_l, n_c, n)
+        dm_batch = Array{Float16}(undef, tf, n_l, n_c, n)
         for (i, r) in enumerate(results)
             dm_batch[:, :, :, i] .= r.decision_matrix_log
         end
@@ -1136,7 +1136,7 @@ function run_model(
 
     # Decision matrix log
     if log_dm
-        decision_matrix_log = ZeroDataCube(; T=Float64, timesteps=1:tf,
+        decision_matrix_log = ZeroDataCube(; T=Float32, timesteps=1:tf,
             location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
     else
         decision_matrix_log = false

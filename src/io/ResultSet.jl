@@ -177,10 +177,20 @@ function ResultSet(
                 )
             end : nothing
         ),
-        haskey(log_set, "decision_matrix") ? DataCube(
-            log_set["decision_matrix"],
-            Symbol.(Tuple(log_set["decision_matrix"].attrs["structure"]))
-        ) : nothing
+        (
+            haskey(log_set, "decision_matrix_log") ?
+            let arr = log_set["decision_matrix_log"]
+                ax = Symbol.(Tuple(arr.attrs["structure"]))
+                map(
+                    Float64,
+                    DataCube(
+                        arr;
+                        properties=_log_attrs_to_props(arr.attrs),
+                        NamedTuple{ax}([1:s for s in size(arr)])...
+                    )
+                )
+            end : nothing
+        )
     )
 end
 
@@ -356,6 +366,8 @@ function combine_results(result_sets...)::ResultSet
                 src[i] = nothing
             elseif log == :coral_cover_log
                 src[i] = round.(UInt16, clamp.(Array(s), 0.0, 1.0) .* 65535.0)
+            elseif log == :decision_matrix_log
+                src[i] = convert.(Float16, Array(s))
             else
                 src[i] = Array(s)
             end

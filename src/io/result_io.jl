@@ -371,38 +371,42 @@ function setup_logs(
         )
     end
 
-    attrs = Dict(
+    dm_attrs = Dict(
         :structure => ("timesteps", "location", "criteria", "scenarios"),
-        :unique_loc_ids => unique_loc_ids
+        :unique_loc_ids => unique_loc_ids,
+        :units => "MCDA criterion value",
+        :description => "Per-criterion MCDA decision matrix per location; stored as Float16"
     )
     local decision_matrix_log
     if parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
         decision_matrix_log = zcreate(
-            Float32,
+            Float16,
             decision_matrix_dims...;
-            name="decision_matrix",
-            fill_value=nothing,
+            name="decision_matrix_log",
+            fill_value=Float16(0),
             fill_as_missing=false,
             path=log_fn,
-            chunks=(decision_matrix_dims[1:3]..., 1),
-            attrs=attrs
+            chunks=(decision_matrix_dims[1:3]..., batch_size),
+            attrs=dm_attrs
         )
     else
         decision_matrix_log = zcreate(
-            Float32,
+            Float16,
             decision_matrix_dims[1],
             1,
             decision_matrix_dims[3],
             decision_matrix_dims[4];
-            name="decision_matrix",
-            fill_value=0.0,
+            name="decision_matrix_log",
+            fill_value=Float16(0),
             fill_as_missing=false,
             path=log_fn,
-            chunks=(decision_matrix_dims[1], 1, decision_matrix_dims[3], 1),
-            attrs=attrs
+            chunks=(decision_matrix_dims[1], 1, decision_matrix_dims[3], batch_size),
+            attrs=dm_attrs
         )
     end
-    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log, decision_matrix_log
+    return ranks,
+    mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log,
+    decision_matrix_log
 end
 
 """
