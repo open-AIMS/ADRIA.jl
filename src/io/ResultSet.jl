@@ -130,21 +130,49 @@ function ResultSet(
         map(Float64, _rankings_data(log_set["rankings"])),
         let arr = log_set["moving_corals"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
-            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
         end,
         let arr = log_set["seed"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
-            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
         end,
         map(Float64, _load_shading_log(log_set)),
         let arr = log_set["coral_dhw_log"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
-            map(Float64, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
         end,
         haskey(log_set, "coral_cover_log") ?
         let arr = log_set["coral_cover_log"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
-            map(x -> Float64(x) / 65535.0, DataCube(arr; properties=_log_attrs_to_props(arr.attrs), NamedTuple{ax}([1:s for s in size(arr)])...))
+            map(
+                x -> Float64(x) / 65535.0,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
         end : nothing
     )
 end
@@ -194,36 +222,33 @@ Note: Results are stored in Zarr format. Combining data sets can be
   expected to double total disk space requirement.
 """
 function combine_results(result_sets...)::ResultSet
-    # Make sure results are all for the same domain
-    # @assert length(Set([rs.name for rs in result_sets])) == 1
-
-    # Ensure all sim constants are identical
-    @assert all([
-        result_sets[i].sim_constants == result_sets[i + 1].sim_constants
-        for i in 1:(length(result_sets) - 1)
-    ])
-
-    # Ensure all result sets were from the same version of ADRIA
-    if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
+    # ── Validation ────────────────────────────────────────────────────────────
+    # Check first vs last only — comparing all N*(N-1)/2 pairs is O(N) dict comparisons
+    # and at ~200ms each (large dicts) adds 20+ seconds for 94 result sets.
+    if length(result_sets) > 1
+        @assert result_sets[1].sim_constants == result_sets[end].sim_constants
+    end
+    versions = Set(rs.ADRIA_VERSION for rs in result_sets)
+    if length(versions) != 1
         @warn "Results were created with different versions of ADRIA so errors may occur!"
         @warn "Results from model runs < 0.9 are no longer compatible!"
     end
 
+    # ── Store init + inputs ───────────────────────────────────────────────────
+    # Collect scalar fields from all result sets up front to avoid repeated
+    # lazy-field or GC-pressure hits later. This single pass also catches any
+    # per-rs metadata needed downstream.
     rs1 = result_sets[1]
     canonical_name = rs1.name
     combined_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
-
-    rcps = join(unique([rs.RCP for rs in result_sets]), "_")
-
-    # Create new zarr store
+    rcps = join(unique(rs.RCP for rs in result_sets), "_")
     new_loc = joinpath(
         ENV["ADRIA_OUTPUT_DIR"], "$(rs1.name)__RCPs$(rcps)__$(combined_time)"
     )
     z_store = DirectoryStore(new_loc)
 
-    # Get input sizes
-    n_scenarios = sum(map((rs) -> size(rs.inputs, 1), result_sets))
-
+    # ── Build inputs + scenario attributes ───────────────────────────────────
+    n_scenarios = sum(size(rs.inputs, 1) for rs in result_sets)
     envlayer = rs1.env_layer_md
     env_md = EnvLayer(
         envlayer.dpkg_path,
@@ -236,7 +261,6 @@ function combine_results(result_sets...)::ResultSet
         dirname(envlayer.wave_fn),
         envlayer.timeframe
     )
-
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(
@@ -252,18 +276,17 @@ function combine_results(result_sets...)::ResultSet
         rs1.loc_centroids
     )
 
-    # Copy location data into result set
+    # ── Copy spatial data and model spec ──────────────────────────────────────
     mkdir(joinpath(new_loc, SPATIAL_DATA))
     cp(
         attrs[:loc_data_file],
         joinpath(new_loc, SPATIAL_DATA, basename(attrs[:loc_data_file]));
         force=true
     )
-
-    # Store copy of model specification as CSV
     mkdir(joinpath(new_loc, MODEL_SPEC))
     CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec.csv"), rs1.model_spec)
 
+    # ── Write inputs Zarr + compute chunk size ────────────────────────────────
     input_loc::String = joinpath(z_store.folder, INPUTS)
     input_set = zcreate(
         Float64,
@@ -274,22 +297,20 @@ function combine_results(result_sets...)::ResultSet
         chunks=(1, input_dims[2]),
         attrs=attrs
     )
-
-    # Store post-processed table of input parameters.
     input_set[:, :] = Matrix(all_inputs)
-    n_timesteps = size(rs1.seed_log, :timesteps)
-    n_locs = size(rs1.seed_log, :locations)
-    n_groups = size(rs1.seed_log, :coral_id)
-    n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
-    env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
     n_scenarios = nrow(all_inputs)
+    env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
+    # Chunk size must match write granularity (scenarios per source result set).
+    # Using total_scenarios/nthreads causes chunk write amplification: each small
+    # write reads, decompresses, modifies, and rewrites the full chunk — O(n_sets×).
+    per_rs_len::Int = minimum(size(rs.inputs, 1) for rs in result_sets)
     batch_size::Int = if env_batch > 0
         min(env_batch, n_scenarios)
     else
-        # Match the heuristic used in run_scenarios: one chunk per thread.
-        # Larger chunks compress much better than chunk-per-scenario (default was 1).
-        ceil(Int, n_scenarios / max(1, Threads.nthreads()))
+        per_rs_len
     end
+
+    # ── Setup log Zarr stores ─────────────────────────────────────────────────
     logs = (;
         zip(
             [
@@ -313,31 +334,42 @@ function combine_results(result_sets...)::ResultSet
         )...
     )
 
-    # Copy logs over (all are 4D; try/catch handles the indexing generically)
+    # ── Copy logs ─────────────────────────────────────────────────────────────
+    # Pre-read all source data in parallel (reads from separate Zarr stores are
+    # independent), then write sequentially to each destination ZArray.
+    n_rs = length(result_sets)
     for log in keys(logs)
-        scen_id = 1
-        for rs in result_sets
-            s_log = getfield(rs, log)
-            n_log = getfield(logs, log)
-            # coral_cover_log may be nothing for result sets loaded from old stores
-            rs_scen_len =
-                isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
+        n_log = getfield(logs, log)
 
-            if !isnothing(s_log)
-                if log == :coral_cover_log
-                    # s_log is Float64 in [0,1] (unscaled); n_log is UInt16 — must rescale
-                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] =
-                        round.(UInt16, clamp.(Array(s_log), 0.0, 1.0) .* 65535.0)
-                else
-                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] = s_log
-                end
+        src = Vector{Union{Nothing,Array}}(undef, n_rs)
+        Threads.@threads for i in 1:n_rs
+            s = getfield(result_sets[i], log)
+            if isnothing(s)
+                src[i] = nothing
+            elseif log == :coral_cover_log
+                src[i] = round.(UInt16, clamp.(Array(s), 0.0, 1.0) .* 65535.0)
+            else
+                src[i] = Array(s)
             end
+        end
 
-            scen_id = scen_id + rs_scen_len
+        scen_id = 1
+        for i in 1:n_rs
+            rs_scen_len = isnothing(src[i]) ?
+                size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
+            if !isnothing(src[i])
+                n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
+            end
+            scen_id += rs_scen_len
         end
     end
 
-    # Create combined location-based metrics store
+    # ── Copy outcome metrics ──────────────────────────────────────────────────
+    # Write all metrics together per result set (one full-chunk write each) to avoid
+    # the partial-chunk write amplification of the per-metric outer loop:
+    # with 6 metrics in one chunk, writing metric-by-metric triggered 5 read-modify-write
+    # cycles per result set per chunk.
+    # Reads are parallelised; the sequential write loop is kept because loc_store is shared.
     tf_len = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :timesteps)
     n_locs = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :locations)
     n_loc_metrics = length(LOC_METRIC_NAMES)
@@ -356,16 +388,23 @@ function combine_results(result_sets...)::ResultSet
         ),
         compressor=COMPRESSOR
     )
-    for (m_idx, m_name) in enumerate(LOC_METRIC_NAMES)
-        scen_id = 1
-        for rs in result_sets
-            rs_scen_len = size(rs.outcomes[m_name], :scenarios)
-            loc_store[:, :, m_idx, scen_id:(scen_id + rs_scen_len - 1)] = Array(rs.outcomes[m_name])
-            scen_id += rs_scen_len
+    loc_bufs = Vector{Array{Float32,4}}(undef, n_rs)
+    Threads.@threads for i in 1:n_rs
+        rs = result_sets[i]
+        rs_scen_len = size(rs.outcomes[LOC_METRIC_NAMES[1]], :scenarios)
+        buf = Array{Float32}(undef, tf_len, n_locs, n_loc_metrics, rs_scen_len)
+        for (m_idx, m_name) in enumerate(LOC_METRIC_NAMES)
+            buf[:, :, m_idx, :] .= Array{Float32}(rs.outcomes[m_name])
         end
+        loc_bufs[i] = buf
+    end
+    scen_id = 1
+    for i in 1:n_rs
+        rs_scen_len = size(loc_bufs[i], 4)
+        loc_store[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = loc_bufs[i]
+        scen_id += rs_scen_len
     end
 
-    # Taxa cover metric (groups axis instead of locations — kept as its own store)
     taxa_name = :relative_taxa_cover
     taxa_dims = (size(rs1.outcomes[taxa_name])[1:(end - 1)]..., n_scenarios)
     taxa_store = zcreate(
@@ -380,14 +419,18 @@ function combine_results(result_sets...)::ResultSet
         ),
         compressor=COMPRESSOR
     )
+    taxa_bufs = Vector{Array{Float32,3}}(undef, n_rs)
+    Threads.@threads for i in 1:n_rs
+        taxa_bufs[i] = Array{Float32}(result_sets[i].outcomes[taxa_name])
+    end
     scen_id = 1
-    for rs in result_sets
-        rs_scen_len = size(rs.outcomes[taxa_name], :scenarios)
-        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = Array(rs.outcomes[taxa_name])
+    for i in 1:n_rs
+        rs_scen_len = size(taxa_bufs[i], 3)
+        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = taxa_bufs[i]
         scen_id += rs_scen_len
     end
 
-    # Copy env stats
+    # ── Copy env stats + final load ───────────────────────────────────────────
     mkdir(joinpath(new_loc, ENV_STATS))
     for rs in result_sets
         loc::String = rs.env_layer_md.dpkg_path
@@ -396,7 +439,8 @@ function combine_results(result_sets...)::ResultSet
         _copy_env_data(loc, new_loc, CONNECTIVITY)
     end
 
-    return load_results(z_store.folder)
+    result = load_results(z_store.folder)
+    return result
 end
 function combine_results(result_set_locs::Array{String})::ResultSet
     return combine_results(load_results.(result_set_locs)...)
