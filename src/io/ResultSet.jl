@@ -355,7 +355,8 @@ function combine_results(result_sets...)::ResultSet
 
         scen_id = 1
         for i in 1:n_rs
-            rs_scen_len = isnothing(src[i]) ?
+            rs_scen_len =
+                isnothing(src[i]) ?
                 size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
                 n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
