@@ -1439,7 +1439,7 @@ function run_model(
                     update_criteria_values!(
                         fog_decision_mat[location=At(candidate_locs)];
                         heat_stress=dhw_projection[candidate_loc_indices],
-                        wave_stress=wave_projection[candidate_loc_indices],
+                        #wave_stress=wave_projection[candidate_loc_indices],
                         coral_cover=current_loc_cover[candidate_loc_indices],
                         in_connectivity=in_conn[candidate_loc_indices],
                         out_connectivity=out_conn[candidate_loc_indices]
@@ -1525,7 +1525,7 @@ function run_model(
                         update_criteria_values!(
                             mc_decision_mat[location=At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
-                            wave_stress=wave_projection[share_candidate_loc_idx],
+                            #wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
                             in_connectivity=in_conn[share_candidate_loc_idx],
                             out_connectivity=out_conn[share_candidate_loc_idx]
