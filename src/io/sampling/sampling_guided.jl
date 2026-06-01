@@ -28,12 +28,17 @@ function sample_guided(
 end
 
 """
-    sample_options(d::Domain, pd_frequency::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32)))::DataFrame
+    sample_options(d::Domain, pd_frequency::Int64, sample_fraction=1.0; sample_method=...)::DataFrame
 
 Generate sample where all default parameters are fixed and only option_ts varies.
+
+`sample_fraction` (∈ (0, 1]) controls what fraction of all pathway combinations to keep.
+At 1.0 (default) all combinations are used; at e.g. 0.3, a random 30% are kept.
 """
 function sample_options(
-    d::Domain, pd_frequency::Int64,
+    d::Domain,
+    pd_frequency::Int64,
+    sample_fraction::Float64=1.0;
     sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     # Get one guided sample
@@ -44,13 +49,13 @@ function sample_options(
     number_changes::Int64 = scens.seed_years[1] ÷ pd_frequency
     max_time::Int64 = size(d.dhw_scens, :timesteps)
     combinations = options_combinations(options.option_name, number_changes)
-    options_ts = options_series(combinations, scens[1, :], pd_frequency, max_time)
+    options_ts = build_option_ts(combinations, scens[1, :], pd_frequency, max_time, sample_fraction)
 
     # Add decision frequency to scenario
     scens.pd_frequency = [pd_frequency]
 
     # Copy initial sample and only change option_ts
-    scens = vcat([scens for _ in 1:length(combinations)]...)
+    scens = vcat([scens for _ in 1:length(options_ts)]...)
     scens.option_ts = options_ts
     return scens
 end
@@ -67,14 +72,25 @@ function options_combinations(options_name::Vector, number_repetitions::Int64)::
 end
 
 """
-    options_series(combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64, max_time::Int64)::Vector{Int}
+    build_option_ts(combinations, scen, pd_frequency, max_time[, sample_fraction])::Vector{Int}
 
 Encode each option combination as a base-5 integer. Use `decode_option_ts` to recover the
 full time-series at model-run time.
+
+`sample_fraction` (∈ (0, 1], default 1.0) randomly keeps that fraction of all combinations
+before encoding. At 1.0 all combinations are kept.
 """
-function options_series(
-    combinations::Vector{Tuple}, scen::ADRIA.DataFrameRow, pd_frequency::Int64, max_time::Int64
+function build_option_ts(
+    combinations::Vector{Tuple}, scen::DataFrameRow, pd_frequency::Int64, max_time::Int64,
+    sample_fraction::Float64=1.0
 )::Vector{Int}
     @assert length(combinations[1]) == scen.seed_years / pd_frequency
+    @assert 0.0 < sample_fraction <= 1.0 "sample_fraction must be in (0, 1]"
+
+    if sample_fraction < 1.0
+        n_keep = ceil(Int, sample_fraction * length(combinations))
+        combinations = StatsBase.sample(combinations, n_keep; replace=false)
+    end
+
     return [ADRIA.analysis.encode_option_ts(combination) for combination in combinations]
 end
