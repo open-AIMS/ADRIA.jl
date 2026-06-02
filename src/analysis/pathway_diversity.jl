@@ -7,7 +7,7 @@ the vector of probabilities and if no option is passed it returns a dataframe wi
 and pathway diversity value.
 """
 function pathway_diversity(
-    rs::ResultSet, idx_scens::Vector{Int64}
+    rs::ResultSet, idx_scens::Vector{Int64}, removed_pathways::Int64
 )::DataFrame
     max_time = size(rs.seed_log, :timesteps)
     decoded_ts = Dict(
@@ -23,12 +23,16 @@ function pathway_diversity(
     options.pathway_diversity = zeros(size(options, 1))
 
     for (idx_option, start_option) in enumerate(options.option_name)
-        options[idx_option, :probabilities] = pathway_diversity(
-            rs, idx_scens, decoded_ts, start_option
-        )
-        options[idx_option, :pathway_diversity] = sum(
-            _entropy.(options[idx_option, :probabilities])
-        )
+        probs = pathway_diversity(rs, idx_scens, decoded_ts, start_option)
+        options[idx_option, :probabilities] = probs
+        if removed_pathways > 0
+            n_total = length(probs) + removed_pathways
+            resampled = ADRIA.StatsBase.sample(probs, n_total; replace=true)
+            resampled = resampled ./ sum(resampled)
+            options[idx_option, :pathway_diversity] = sum(_entropy.(resampled))
+        else
+            options[idx_option, :pathway_diversity] = sum(_entropy.(probs))
+        end
     end
     return options[:, [:option_name, :pathway_diversity]]
 end
