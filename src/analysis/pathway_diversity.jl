@@ -1,21 +1,30 @@
 """
-    pathway_diversity(rs::ResultSet, scens::DataFrame)::DataFrame
-    pathway_diversity(rs::ResultSet, scens::DataFrame, option::Symbol)::Vector{Float64}
+    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64})::DataFrame
+    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64}, option::Symbol)::Vector{Float64}
 
 Compute pathway diversity for all options or only one option. If one option is passed it returns
 the vector of probabilities and if no option is passed it returns a dataframe with the probability
 and pathway diversity value.
 """
 function pathway_diversity(
-    rs::ResultSet, scens::DataFrame, idx_scens::Vector{Int64}
+    rs::ResultSet, idx_scens::Vector{Int64}
 )::DataFrame
-    options = ADRIA.analysis.option_seed_preference()
+    max_time = size(rs.seed_log, :timesteps)
+    decoded_ts = Dict(
+        i => decode_option_ts(
+            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i],
+            rs.inputs.seed_years[i], rs.inputs.pd_frequency[i], max_time
+        )
+        for i in idx_scens
+    )
+
+    options = copy(PD_OPTIONS)
     options.probabilities = fill(Float64[], size(options, 1))
     options.pathway_diversity = zeros(size(options, 1))
 
     for (idx_option, start_option) in enumerate(options.option_name)
         options[idx_option, :probabilities] = pathway_diversity(
-            rs, scens, idx_scens, start_option
+            rs, idx_scens, decoded_ts, start_option
         )
         options[idx_option, :pathway_diversity] = sum(
             _entropy.(options[idx_option, :probabilities])
@@ -24,7 +33,21 @@ function pathway_diversity(
     return options[:, [:option_name, :pathway_diversity]]
 end
 function pathway_diversity(
-    rs::ResultSet, scens::DataFrame, idx_scens::Vector{Int64}, option::Symbol
+    rs::ResultSet, idx_scens::Vector{Int64}, option::Symbol
+)::Vector{Float64}
+    max_time = size(rs.seed_log, :timesteps)
+    decoded_ts = Dict(
+        i => decode_option_ts(
+            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i],
+            rs.inputs.seed_years[i], rs.inputs.pd_frequency[i], max_time
+        )
+        for i in idx_scens
+    )
+    return pathway_diversity(rs, idx_scens, decoded_ts, option)
+end
+function pathway_diversity(
+    rs::ResultSet, idx_scens::Vector{Int64},
+    decoded_ts::Dict{Int64,Vector{Symbol}}, option::Symbol
 )::Vector{Float64}
     idx_scen = idx_scens[1] # index of scenario used to extract model parameters
     start_time::Int64 =
@@ -35,26 +58,25 @@ function pathway_diversity(
     min_locs::Int64 = rs.inputs.min_iv_locations[idx_scen]
     mcda_method = ADRIA.mcda_methods()[Int64(rs.inputs.guided[idx_scen])]
 
-    # Find scenarios that start with $option on first seeding step
-    idx_option_scens = findall(eachindex(scens.option_ts)) do i
-        option_ts = decode_option_ts(
-            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i],
-            rs.inputs.seed_years[i], rs.inputs.pd_frequency[i],
-            size(rs.seed_log, :timesteps)
-        )
-        option_ts[Int(rs.inputs.seed_year_start[i])] == option
-    end
-    idx_scens = intersect(idx_scens, idx_option_scens)
-    probs = ones(length(idx_scens))
+    idx_option_scens = filter(
+        i -> decoded_ts[i][Int(rs.inputs.seed_year_start[i])] == option, idx_scens
+    )
+    probs = ones(length(idx_option_scens))
 
-    for (idx_prob, idx_scen) in enumerate(idx_scens)
-        option_ts = decode_option_ts(
-            rs.inputs.option_ts[idx_scen], rs.inputs.seed_year_start[idx_scen],
-            rs.inputs.seed_years[idx_scen],
-            rs.inputs.pd_frequency[idx_scen], size(rs.seed_log, :timesteps)
-        )
-        for tstep in start_time:Int64(rs.inputs.pd_frequency[idx_scen]):end_time
-            decision_matrix = rs.decision_matrix_log[timesteps=tstep, scenarios=idx_scen]
+    # Pre-fetch all decision matrices for selected scenarios and timesteps to avoid repeated I/O
+    pd_freq = Int64(rs.inputs.pd_frequency[idx_scen])
+    tsteps = collect(start_time:pd_freq:end_time)
+    cached_decision_matrices = readcubedata(
+        rs.decision_matrix_log[timesteps=tsteps, scenarios=idx_option_scens]
+    )
+
+    Threads.@threads for idx_prob in eachindex(idx_option_scens)
+        idx_scen = idx_option_scens[idx_prob]
+        option_ts = decoded_ts[idx_scen]
+        for tstep in tsteps
+            decision_matrix = cached_decision_matrices[
+                timesteps=At(tstep), scenarios=At(idx_scen)
+            ]
             probs[idx_prob] *= ADRIA.analysis.switching_probability(
                 option_ts[tstep - 1], decision_matrix, rs.loc_data, mcda_method, min_locs,
                 option_ts[tstep]
@@ -90,15 +112,15 @@ function switching_probability(
     ports::Union{DataFrame,Nothing}=nothing,
     weights::NTuple{3,Float64}=(0.3, 0.3, 0.4)
 )::DataFrame
-    options = option_seed_preference()
+    options = copy(PD_OPTIONS)
     options.probability = zeros(size(options, 1))
     options.selected_locations = [
         Vector{eltype(decision_matrix.location)}() for _ in 1:size(options, 1)
     ]
     valid_locs = collect(1:size(loc_data, 1))
 
-    if ports == nothing
-        ports = _ports()
+    if ports === nothing
+        ports = PD_PORTS
     end
 
     for row in eachrow(options)
@@ -219,6 +241,7 @@ function option_seed_preference(; include_weights::Bool=false)::DataFrame
     end
     return options[:, [1, end]]
 end
+const PD_OPTIONS = option_seed_preference()
 
 """
     _filter_locations(loc_data::DataFrame, selected_locations::Vector{String})
@@ -299,6 +322,7 @@ function _ports()
         (name=:gladstone, coordinates=(151.25775, -23.84852))
     ])
 end
+const PD_PORTS = _ports()
 
 """
     _dispersion(locations::DataFrame)
@@ -354,7 +378,7 @@ Encode a tuple of option symbols as a base-5 integer.
 Each position maps to an index 0–4 matching the order of `option_seed_preference()`.
 """
 function encode_option_ts(combination::Tuple)::Int
-    option_names = ADRIA.analysis.option_seed_preference().option_name
+    option_names = PD_OPTIONS.option_name
     option_to_idx = Dict(name => i - 1 for (i, name) in enumerate(option_names))
     return sum(option_to_idx[opt] * 5^(i - 1) for (i, opt) in enumerate(combination))
 end
@@ -371,7 +395,7 @@ function decode_option_ts(
 )::Vector{Symbol}
     encoded, seed_year_start, seed_years, pd_frequency, max_time =
         Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
-    option_names = ADRIA.analysis.option_seed_preference().option_name
+    option_names = PD_OPTIONS.option_name
     number_changes = seed_years ÷ pd_frequency
     decoded_combo = [option_names[(encoded ÷ 5^(i - 1)) % 5 + 1] for i in 1:number_changes]
     ts = fill(:nothing, max_time)
