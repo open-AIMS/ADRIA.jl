@@ -18,7 +18,7 @@ function pathway_diversity(
         for i in idx_scens
     )
 
-    options = copy(PD_OPTIONS)
+    options = copy(PD_OPTIONS())
     options.probabilities = fill(Float64[], size(options, 1))
     options.pathway_diversity = zeros(size(options, 1))
 
@@ -116,7 +116,7 @@ function switching_probability(
     ports::Union{DataFrame,Nothing}=nothing,
     weights::NTuple{3,Float64}=(0.3, 0.3, 0.4)
 )::DataFrame
-    options = copy(PD_OPTIONS)
+    options = copy(PD_OPTIONS())
     options.probability = zeros(size(options, 1))
     options.selected_locations = [
         Vector{eltype(decision_matrix.location)}() for _ in 1:size(options, 1)
@@ -245,7 +245,13 @@ function option_seed_preference(; include_weights::Bool=false)::DataFrame
     end
     return options[:, [1, end]]
 end
-const PD_OPTIONS = option_seed_preference()
+const _PD_OPTIONS = Ref{Union{Nothing,DataFrame}}(nothing)
+function PD_OPTIONS()
+    if isnothing(_PD_OPTIONS[])
+        _PD_OPTIONS[] = option_seed_preference()
+    end
+    return _PD_OPTIONS[]
+end
 
 """
     _filter_locations(loc_data::DataFrame, selected_locations::Vector{String})
@@ -382,7 +388,7 @@ Encode a tuple of option symbols as a base-5 integer.
 Each position maps to an index 0–4 matching the order of `option_seed_preference()`.
 """
 function encode_option_ts(combination::Tuple)::Int
-    option_names = PD_OPTIONS.option_name
+    option_names = PD_OPTIONS().option_name
     option_to_idx = Dict(name => i - 1 for (i, name) in enumerate(option_names))
     return sum(option_to_idx[opt] * 5^(i - 1) for (i, opt) in enumerate(combination))
 end
@@ -399,7 +405,7 @@ function decode_option_ts(
 )::Vector{Symbol}
     encoded, seed_year_start, seed_years, pd_frequency, max_time =
         Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
-    option_names = PD_OPTIONS.option_name
+    option_names = PD_OPTIONS().option_name
     number_changes = seed_years ÷ pd_frequency
     decoded_combo = [option_names[(encoded ÷ 5^(i - 1)) % 5 + 1] for i in 1:number_changes]
     ts = fill(:nothing, max_time)
