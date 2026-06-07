@@ -908,8 +908,8 @@ function run_model(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
-    seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
-    mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
+    seed_t_locs = eltype(domain.seed_target_locations) <: AbstractString ? String[] : vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
+    mc_t_locs = eltype(domain.mc_target_locations) <: AbstractString ? String[] : vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
 
     if is_guided
         seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
@@ -1145,10 +1145,27 @@ function run_model(
 
     # Initialize COTS populations (zero if disabled)
     # TODO: Replace with empirical COTS distribution data when available
-    if cots_enabled
-        cots_models = init_cots_populations(n_locs, cots_params; rng=rng)
+    # Parse debug overrides for COTS seeding (ENV → function args)
+    _cots_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
+    _cots_seed_n_str = get(ENV, "ADRIA_DEBUG_SEED_FIRST_N", "")
+    _cots_init_density = parse(Float64, get(ENV, "ADRIA_DEBUG_INIT_DENSITY", "0.1"))
+    _cots_seed_locs = if _cots_seed_locs_str != ""
+        Set(parse.(Int, split(_cots_seed_locs_str, ",")))
+    elseif _cots_seed_n_str != ""
+        Set(1:min(n_locs, parse(Int, _cots_seed_n_str)))
     else
-        cots_models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), cots_params) for _ in 1:n_locs]
+        nothing  # let init_cots_populations use its default random seeding
+    end
+
+    if cots_enabled
+        cots_models = init_cots_populations(
+            n_locs, cots_params;
+            seed_locs=_cots_seed_locs,
+            init_density=_cots_init_density,
+            rng=rng
+        )
+    else
+        cots_models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, cots_params) for _ in 1:n_locs]
     end
 
     # Get connectivity for COTS larval dispersal
@@ -1873,13 +1890,13 @@ function run_model(
         cots_mortality!(C_cover_t, cots_models, cots_prey_map)
 
         # Disperse COTS larvae between locations via connectivity
-        disperse_cots_larvae!(cots_models, cots_conn)
+        _cots_imm_scalar = parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0"))
+        disperse_cots_larvae!(cots_models, cots_conn; immigration_scalar=_cots_imm_scalar)
 
         # Mimic incoming larvae/recruitment from upstream outbreak every 15 years
-        if cots_enabled && get(ENV, "COTS_EXTERNAL_PULSE", "false") == "true"
-            if mod(tstep, 15) == 0
-                inject_upstream_pulse!(cots_models)
-            end
+        _cots_pulse_enabled = cots_enabled && get(ENV, "COTS_EXTERNAL_PULSE", "false") == "true"
+        if _cots_pulse_enabled && !isnothing(_cots_seed_locs) && mod(tstep, 15) == 0
+            inject_upstream_pulse!(cots_models, _cots_seed_locs)
         end
 
         # Log COTS populations

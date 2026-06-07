@@ -147,47 +147,53 @@ function cots_timestep!(model::CotsHuman, F::Float64, S::Float64)
 end
 
 # Disperse COTS larvae (age-0 recruits) between locations using a connectivity matrix.
-# Redistributes age-class 0 across sink locations based on connectivity-weighted
-# contributions from all source locations.
+# Local Ricker recruitment is retained at the source reef. Cross-reef immigration
+# from other locations is added on top, scaled by `immigration_scalar` to represent
+# the massive larval production of COTS (each adult female produces ~60 million eggs).
+#
+# The connectivity matrix was calibrated for coral larval transport. COTS produce
+# orders of magnitude more larvae per unit biomass than corals, so `immigration_scalar`
+# bridges that gap. Self-connectivity (conn[i,i]) is skipped because local recruitment
+# is already handled by the Ricker model in `cots_timestep!`.
 #
 # Arguments:
-#   cots_models - Vector of CotsHuman models, one per location
-#   conn        - Sparse connectivity matrix [sources x sinks]
+#   cots_models        - Vector of CotsHuman models, one per location
+#   conn               - Sparse connectivity matrix [sources x sinks]
+#   immigration_scalar - Multiplier for cross-reef larval immigration (default 1.0).
+#                        Higher values represent greater COTS larval production relative
+#                        to the coral baseline the connectivity matrix was built for.
 #
 # TODO: Replace coral connectivity matrix with a COTS-specific connectivity matrix
 # when available. The coral connectivity is used as a reasonable starting proxy
 # for COTS larval dispersal.
 function disperse_cots_larvae!(
     cots_models::Vector{CotsHuman},
-    conn::SparseMatrixCSC{Float64, Int64}
+    conn::SparseMatrixCSC{Float64, Int64};
+    immigration_scalar::Float64=1.0
 )
     n_locs = length(cots_models)
 
-    # Snapshot current recruits (age-0) from all locations before redistribution
-    source_recruits = [cots_models[loc].N[1] for loc in 1:n_locs]
-
-    # Normalize connectivity: columns = sink locations, rows = source locations
-    col_sums = vec(sum(conn; dims=1))
+    # Snapshot current recruits (age-0) from all locations before dispersal
+    local_recruits = [cots_models[loc].N[1] for loc in 1:n_locs]
 
     for sink in 1:n_locs
-        # Safeguard: skip sink if column sum is extremely close to zero to prevent division underflow
-        if col_sums[sink] < 1e-12
-            continue
-        end
-
-        # Weighted sum of source recruits arriving at this sink
-        incoming = 0.0
+        # Immigration from OTHER reefs only (self-connectivity skipped;
+        # local recruitment is already captured by the Ricker model)
+        immigration = 0.0
         for k in SparseArrays.nzrange(conn, sink)
             src = SparseArrays.rowvals(conn)[k]
-            w = SparseArrays.nonzeros(conn)[k] / col_sums[sink]
-            
-            # Safeguard: ensure that multiplying zero recruits by a huge weight does not produce NaN/Inf
-            val = source_recruits[src] * w
-            incoming += isnan(val) || isinf(val) ? 0.0 : val
+            if src == sink
+                continue  # Local recruitment handled separately
+            end
+            p = SparseArrays.nonzeros(conn)[k]
+
+            val = local_recruits[src] * p * immigration_scalar
+            immigration += isnan(val) || isinf(val) ? 0.0 : val
         end
 
-        # Ensure dispersed recruits is non-negative and finite
-        cots_models[sink].N[1] = isnan(incoming) || isinf(incoming) ? 0.0 : max(0.0, incoming)
+        # Keep full local recruitment + add cross-reef immigration
+        total = local_recruits[sink] + immigration
+        cots_models[sink].N[1] = isnan(total) || isinf(total) ? 0.0 : max(0.0, total)
     end
 
     return nothing
@@ -200,6 +206,8 @@ end
 #   n_locs            - Number of reef locations
 #   params            - NamedTuple of COTS parameters
 #   outbreak_fraction - Fraction of locations to seed with initial COTS (default 0.25)
+#   seed_locs         - Optional explicit set of location indices to seed (overrides outbreak_fraction)
+#   init_density      - Initial adult COTS density at seeded locations (default 0.1)
 #   rng               - Random number generator for reproducibility
 #
 # Returns:
@@ -211,26 +219,19 @@ end
 function init_cots_populations(
     n_locs::Int, params::NamedTuple;
     outbreak_fraction::Float64=0.25,
+    seed_locs::Union{Set{Int}, Nothing}=nothing,
+    init_density::Float64=0.1,
     rng=Random.GLOBAL_RNG
 )
     models = Vector{CotsHuman}(undef, n_locs)
-    
-    # Check if we are forcing seeding on specific locations or the first N locations
-    force_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
-    force_seed_n_str = get(ENV, "ADRIA_DEBUG_SEED_FIRST_N", "")
-    
-    if force_seed_locs_str != ""
-        seeded_locs = Set(parse.(Int, split(force_seed_locs_str, ",")))
-    elseif force_seed_n_str != ""
-        n_seeded = min(n_locs, parse(Int, force_seed_n_str))
-        seeded_locs = Set(1:n_seeded)
+
+    # Use explicit seed locations if provided, otherwise randomly select
+    seeded_locs = if !isnothing(seed_locs)
+        seed_locs
     else
         n_seeded = max(1, round(Int, n_locs * outbreak_fraction))
-        seeded_locs = Set(randperm(rng, n_locs)[1:n_seeded])
+        Set(randperm(rng, n_locs)[1:n_seeded])
     end
-
-    # Allow overriding initial density for systematic testing
-    init_density = parse(Float64, get(ENV, "ADRIA_DEBUG_INIT_DENSITY", "0.1"))
 
     for loc in 1:n_locs
         if loc in seeded_locs
@@ -311,18 +312,21 @@ function cots_mortality!(
     return nothing
 end
 
-# Inject an upstream recruitment pulse (larvae) to seeded locations.
-function inject_upstream_pulse!(cots_models::Vector{CotsHuman})
-    force_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
-    if force_seed_locs_str != ""
-        seeded_locs = Set(parse.(Int, split(force_seed_locs_str, ",")))
-        
-        for loc in seeded_locs
-            if loc <= length(cots_models)
-                # Inject a larval pulse of 2.0 as requested
-                pulse_val = 2.0 
-                cots_models[loc].N[1] += pulse_val
-            end
+# Inject an upstream recruitment pulse (larvae) to specified locations.
+#
+# Arguments:
+#   cots_models - Vector of CotsHuman models, one per location
+#   pulse_locs  - Set of location indices to receive the pulse
+#   pulse_val   - Larval density to add to age class 0 (default 2.0)
+function inject_upstream_pulse!(
+    cots_models::Vector{CotsHuman},
+    pulse_locs::Set{Int};
+    pulse_val::Float64=2.0
+)
+    for loc in pulse_locs
+        if loc <= length(cots_models)
+            cots_models[loc].N[1] += pulse_val
         end
     end
+    return nothing
 end
