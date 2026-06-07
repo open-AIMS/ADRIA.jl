@@ -337,13 +337,17 @@ function setup_guided_intervention(
     separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
     pref = preference(domain, param_set)
-    decision_mat = decision_matrix(
-        domain.loc_ids[valid_locs_mask],
-        pref.names;
-        depth=domain.loc_data.depth_med[valid_locs_mask],
-        cluster_diversity=diversity_scores[valid_locs_mask],
-        geographic_separation=separation_scores[valid_locs_mask]
-    )
+    if !any(valid_locs_mask)
+        decision_mat = zeros(0, 0)
+    else
+        decision_mat = decision_matrix(
+            domain.loc_ids[valid_locs_mask],
+            pref.names;
+            depth=domain.loc_data.depth_med[valid_locs_mask],
+            cluster_diversity=diversity_scores[valid_locs_mask],
+            geographic_separation=separation_scores[valid_locs_mask]
+        )
+    end
     strategy =
         is_intervention ?
         build_strategy(
