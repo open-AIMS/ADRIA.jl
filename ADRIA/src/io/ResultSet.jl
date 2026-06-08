@@ -23,7 +23,7 @@ const LOC_METRIC_NAMES = [
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,D5,D6,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -51,6 +51,8 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
+    cots_pop_log::D5     # COTS population: (timesteps, age_class, locations, scenarios)
+    cots_condition_log::D6  # COTS body condition: (timesteps, locations, scenarios)
 end
 
 """
@@ -173,7 +175,19 @@ function ResultSet(
                     NamedTuple{ax}([1:s for s in size(arr)])...
                 )
             )
-        end : nothing
+        end : nothing,
+        # COTS population log (optional — not present in older stores)
+        haskey(log_set, "cots_pop_log") ?
+        DataCube(
+            log_set["cots_pop_log"],
+            Symbol.(Tuple(log_set["cots_pop_log"].attrs["structure"]))
+        ) : nothing,
+        # COTS body condition log (optional — not present in older stores)
+        haskey(log_set, "cots_condition_log") ?
+        DataCube(
+            log_set["cots_condition_log"],
+            Symbol.(Tuple(log_set["cots_condition_log"].attrs["structure"]))
+        ) : nothing
     )
 end
 
@@ -320,7 +334,9 @@ function combine_results(result_sets...)::ResultSet
                 :seed_log,
                 :shading_log,
                 :coral_dhw_tol_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :cots_pop_log,
+                :cots_condition_log
             ],
             setup_logs(
                 z_store,

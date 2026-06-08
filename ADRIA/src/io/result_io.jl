@@ -368,7 +368,41 @@ function setup_logs(
         )
     end
 
-    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log
+    # COTS population log: (timesteps, 3 age classes, locations, scenarios)
+    n_cots_age_classes = 3
+    cots_pop_dims = (tf, n_cots_age_classes, n_locs, n_scens)
+    cots_pop_log = zcreate(
+        Float32,
+        cots_pop_dims...;
+        name="cots_pop_log",
+        fill_value=0.0,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(cots_pop_dims[1:3]..., batch_size),
+        attrs=Dict(
+            :structure => ("timesteps", "age_class", "locations", "scenarios"),
+            :age_classes => ["recruits", "juveniles", "adults"],
+            :unique_loc_ids => unique_loc_ids
+        )
+    )
+
+    # COTS body condition log: (timesteps, locations, scenarios)
+    cots_bc_dims = (tf, n_locs, n_scens)
+    cots_condition_log = zcreate(
+        Float32,
+        cots_bc_dims...;
+        name="cots_condition_log",
+        fill_value=0.0,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(cots_bc_dims[1:2]..., batch_size),
+        attrs=Dict(
+            :structure => ("timesteps", "locations", "scenarios"),
+            :unique_loc_ids => unique_loc_ids
+        )
+    )
+
+    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log, cots_pop_log, cots_condition_log
 end
 
 """
@@ -603,7 +637,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :seed_log,
                 :shading_log,
                 :coral_dhw_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :cots_pop_log,
+                :cots_condition_log
             ),
             stores
         )...

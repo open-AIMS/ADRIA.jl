@@ -301,7 +301,8 @@ function load_domain(
         Intervention(),
         criteria_weights...,
         Coral(),
-        GrowthAcceleration()
+        GrowthAcceleration(),
+        CotsParams()
     ))
 
     return adjust_sampling_bounds(

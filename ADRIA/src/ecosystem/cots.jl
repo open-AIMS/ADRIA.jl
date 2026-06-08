@@ -248,6 +248,36 @@ function init_cots_populations(
     return models
 end
 
+# Initialize COTS populations from a vector of empirical probabilities/suitabilities.
+# Uses locations where probability > 0.7 to seed COTS.
+#
+# Arguments:
+#   n_locs        - Number of reef locations
+#   params        - NamedTuple of COTS parameters
+#   probabilities - Vector of initial COTS probability/suitability for each location
+#
+# Returns:
+#   Vector{CotsHuman} of length n_locs
+function init_cots_from_spatial(
+    n_locs::Int, params::NamedTuple, probabilities::Vector{Float64}
+)
+    @assert length(probabilities) == n_locs "Probability vector length must match n_locs"
+    
+    models = Vector{CotsHuman}(undef, n_locs)
+    for loc in 1:n_locs
+        p = probabilities[loc]
+        # Treat as habitat suitability: if p > 0.7, seed with standard outbreak density
+        if p > 0.7
+            N_init = MVector{3, Float64}(0.02, 0.02, 0.1) # 0.1 adult density
+        else
+            N_init = MVector{3, Float64}(0.0, 0.0, 0.0)
+        end
+        models[loc] = CotsHuman(N_init, 0.8, params)
+    end
+    
+    return models
+end
+
 # Apply COTS predation mortality to coral cover.
 # Follows the same pattern as cyclone_mortality!(): modifies C_cover_t
 # in-place by reducing cover proportionally based on COTS consumption.

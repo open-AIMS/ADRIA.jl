@@ -177,7 +177,8 @@ function Domain(
         MCCriteriaWeights(),
         DepthThresholds(),
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        CotsParams()
     ))
 
     return ADRIADomain(

@@ -424,7 +424,9 @@ function _collect_scenario_results(
         mc_log=mc_vals,
         seed_log=seed_vals,
         coral_dhw_log=dhw_vals,
-        coral_cover_log=cover_vals
+        coral_cover_log=cover_vals,
+        cots_pop_log=Float32.(result_set.cots_log),
+        cots_condition_log=Float32.(result_set.cots_condition_log)
     )
 end
 
@@ -512,6 +514,24 @@ function _write_batch!(
             )
         end
     end
+
+    # COTS population log: (tf, 3, n_locs, n)
+    cots_r1 = results[1].cots_pop_log
+    cots_tf, cots_ages, cots_nlocs = size(cots_r1)
+    cots_pop_batch = Array{Float32}(undef, cots_tf, cots_ages, cots_nlocs, n)
+    for (i, r) in enumerate(results)
+        cots_pop_batch[:, :, :, i] .= r.cots_pop_log
+    end
+    data_store.cots_pop_log[:, :, :, idx_range] .= cots_pop_batch
+
+    # COTS body condition log: (tf, n_locs, n)
+    cots_bc_r1 = results[1].cots_condition_log
+    cots_bc_tf, cots_bc_nlocs = size(cots_bc_r1)
+    cots_bc_batch = Array{Float32}(undef, cots_bc_tf, cots_bc_nlocs, n)
+    for (i, r) in enumerate(results)
+        cots_bc_batch[:, :, i] .= r.cots_condition_log
+    end
+    data_store.cots_condition_log[:, :, idx_range] .= cots_bc_batch
 
     return nothing
 end
@@ -1014,17 +1034,18 @@ function run_model(
 
     # Extract unique cb_calib_groups and create location masks for each biogroup
     unique_cb_calib_groups::Vector{Int64} = sort(unique(domain.loc_data.CB_CALIB_GROUPS))
-    n_cb_calib_groups::Int64 = length(unique_cb_calib_groups)
-    cb_calib_group_masks::BitMatrix = falses(n_locs, n_cb_calib_groups)
-    for (idx, cb_calib_group) in enumerate(unique_cb_calib_groups)
-        cb_calib_group_masks[:, idx] .= domain.loc_data.CB_CALIB_GROUPS .== cb_calib_group
+    
+    # Get total calibration groups from params to ensure consistent sizes
+    lin_ext_data = param_set[occursin.("linear_extension_scale", factor_names)].data
+    total_calib_groups = div(length(lin_ext_data), n_groups)
+
+    cb_calib_group_masks::BitMatrix = falses(n_locs, total_calib_groups)
+    for cb_calib_group in unique_cb_calib_groups
+        cb_calib_group_masks[:, cb_calib_group] .= domain.loc_data.CB_CALIB_GROUPS .== cb_calib_group
     end
 
     # Index into unique_biogroups for each location
-    loc_cb_calib_group_idxs::Vector{Int64} = [
-        findfirst(x -> x == cb_group, unique_cb_calib_groups)
-        for cb_group in domain.loc_data.CB_CALIB_GROUPS
-    ]
+    loc_cb_calib_group_idxs::Vector{Int64} = domain.loc_data.CB_CALIB_GROUPS
 
     is_growth_acc_mask = occursin.("growth_acceleration", factor_names)
     growth_acc_steepness::Vector{Float64} =
@@ -1035,22 +1056,25 @@ function run_model(
         param_set[is_growth_acc_mask .&& occursin.("midpoint", factor_names)].data
 
     # linear_extension scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
+    lin_ext_data = param_set[occursin.("linear_extension_scale", factor_names)].data
+    total_calib_groups = div(length(lin_ext_data), n_groups)
     _linear_extension_scale_factors = reshape(
-        param_set[occursin.("linear_extension_scale", factor_names)].data,
-        n_cb_calib_groups,
+        lin_ext_data,
+        total_calib_groups,
         n_groups
     )
 
     # mb_rate scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
+    mb_rate_data = param_set[occursin.("mb_rate_scale", factor_names)].data
     _mb_rate_scale_factors = reshape(
-        param_set[occursin.("mb_rate_scale", factor_names)].data,
-        n_cb_calib_groups,
+        mb_rate_data,
+        total_calib_groups,
         n_groups
     )
 
     biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
     biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
-    for i = 1:n_cb_calib_groups
+    for i in 1:n_cb_calib_groups
         biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
         biogrp_survival[:, :, i] .= apply_survival_scaling(
             biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
@@ -1116,31 +1140,29 @@ function run_model(
 
     cots_prey_map = CotsPreyMap([1, 2, 3], [4, 5])  # Fast: Acropora spp; Slow: Massives
 
-    # COTS parameters — read from ENV overrides if available, else use defaults
-    # This allows tuning from test scripts without editing scenario.jl
-    _env_float(key, default) = parse(Float64, get(ENV, key, string(default)))
+    # COTS parameters — read from the sampled param_set
     cots_params = (
-        a = _env_float("COTS_a", 1.5),
-        b = _env_float("COTS_b", 0.5),
-        IMM = cots_enabled ? _env_float("COTS_IMM", 0.002) : 0.0,
-        p_tilde = _env_float("COTS_p_tilde", 0.97),
-        C_max = _env_float("COTS_C_max", 0.8),
-        m1 = _env_float("COTS_m1", 0.4),
-        m2 = _env_float("COTS_m2", 0.2),
-        m3 = _env_float("COTS_m3", 0.1),
-        a_F = _env_float("COTS_a_F", 0.6),
-        a_S = _env_float("COTS_a_S", 0.15),
-        h = _env_float("COTS_h", 0.0),
-        eta_F = _env_float("COTS_eta_F", 1.0),
-        eta_S = _env_float("COTS_eta_S", 1.0),
-        eta_starve = _env_float("COTS_eta_starve", 2.0),
-        eta_imm = _env_float("COTS_eta_imm", 2.0),
-        imm_threshold = _env_float("COTS_imm_threshold", 0.35),
-        fecundity_gate = get(ENV, "COTS_fecundity_gate", "false") == "true",
-        a_ricker = _env_float("COTS_a_ricker", 6.0),
-        b_ricker = _env_float("COTS_b_ricker", 0.1),
-        tau_condition = _env_float("COTS_tau_condition", 5.0),
-        allee_threshold = _env_float("COTS_allee_threshold", 1.0)
+        a = param_set[At("a")],
+        b = param_set[At("b")],
+        IMM = cots_enabled ? param_set[At("IMM")] : 0.0,
+        p_tilde = param_set[At("p_tilde")],
+        C_max = param_set[At("C_max")],
+        m1 = param_set[At("m1")],
+        m2 = param_set[At("m2")],
+        m3 = param_set[At("m3")],
+        a_F = param_set[At("a_F")],
+        a_S = param_set[At("a_S")],
+        h = param_set[At("h")],
+        eta_F = param_set[At("eta_F")],
+        eta_S = param_set[At("eta_S")],
+        eta_starve = param_set[At("eta_starve")],
+        eta_imm = param_set[At("eta_imm")],
+        imm_threshold = param_set[At("imm_threshold")],
+        fecundity_gate = param_set[At("fecundity_gate")] == 1,
+        a_ricker = param_set[At("a_ricker")],
+        b_ricker = param_set[At("b_ricker")],
+        tau_condition = param_set[At("tau_condition")],
+        allee_threshold = param_set[At("allee_threshold")]
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1158,12 +1180,16 @@ function run_model(
     end
 
     if cots_enabled
-        cots_models = init_cots_populations(
-            n_locs, cots_params;
-            seed_locs=_cots_seed_locs,
-            init_density=_cots_init_density,
-            rng=rng
-        )
+        if hasproperty(domain, :cots_init_density) && !isnothing(domain.cots_init_density)
+            cots_models = init_cots_from_spatial(n_locs, cots_params, domain.cots_init_density)
+        else
+            cots_models = init_cots_populations(
+                n_locs, cots_params;
+                seed_locs=_cots_seed_locs,
+                init_density=_cots_init_density,
+                rng=rng
+            )
+        end
     else
         cots_models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, cots_params) for _ in 1:n_locs]
     end
@@ -1202,7 +1228,7 @@ function run_model(
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .>= cover_transition_ub
-        for idx = 1:n_cb_calib_groups
+        for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
@@ -1222,7 +1248,7 @@ function run_model(
             cover_transition_ub
         )
         if sum(growth_threshold_mask_cache) > 0
-            for idx = 1:n_cb_calib_groups
+            for idx in 1:n_cb_calib_groups
                 cover_threshold_mask .=
                     growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
                 transition_scale =
@@ -1254,7 +1280,7 @@ function run_model(
         end
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .< cover_transition_lb
-        for idx = 1:n_cb_calib_groups
+        for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
             growth_constraints[cover_threshold_mask] .= growth_acceleration.(
