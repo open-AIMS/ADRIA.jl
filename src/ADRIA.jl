@@ -57,6 +57,7 @@ include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/cyclones.jl")
+include("ecosystem/cots_factors.jl")
 include("ecosystem/cots.jl")
 include("ecosystem/connectivity.jl")
 
@@ -87,6 +88,7 @@ include("analysis/sensitivity.jl")
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/RMEDomain.jl")
 include("ExtInterface/ReefMod/ReefModDomain.jl")
+include("ExtInterface/Lizard/LizardDomain.jl")
 
 include("viz/viz.jl")
 
@@ -95,7 +97,7 @@ export
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
-    Domain, ADRIADomain,
+    Domain, ADRIADomain, LizardDomain,
     metrics, select, timesteps, env_stats, viz
 
 # Interfaces for external models

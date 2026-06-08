@@ -23,3 +23,559 @@ graphify-out/
 .graphify_python
 
 .graphify_uncached.txt
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/connectivity/45/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/env_stats/dhw/45/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/rankings/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/env_stats/wave/45/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/inputs/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/logs/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/model_spec/
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_condition_log/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/cots_pop_log/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/moving_corals/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/rankings/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/seed/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/logs/shading_log/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/loc_outcomes/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/results/relative_taxa_cover/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_53_11_334/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_02_02_839/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_15_11_282/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_27_31_598/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_condition_log/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/cots_pop_log/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/moving_corals/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/rankings/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/seed/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/logs/shading_log/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/loc_outcomes/0.0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/results/relative_taxa_cover/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_38_54_304/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_45_52_331/spatial/ReefMod Engine.gpkg
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/connectivity/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/connectivity/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/connectivity/45/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/dhw/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/dhw/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/dhw/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/wave/45/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/wave/45/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/env_stats/wave/45/0.0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/inputs/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/inputs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/inputs/0.0
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/.zgroup
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/coral_cover_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/coral_cover_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/coral_dhw_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/coral_dhw_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/cots_condition_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/cots_condition_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/cots_pop_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/cots_pop_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/moving_corals/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/moving_corals/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/rankings/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/rankings/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/seed/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/seed/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/shading_log/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/logs/shading_log/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/model_spec/model_spec.csv
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/loc_outcomes/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/loc_outcomes/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/relative_taxa_cover/.zarray
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/relative_taxa_cover/.zattrs
+
+Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/spatial/ReefMod Engine.gpkg
