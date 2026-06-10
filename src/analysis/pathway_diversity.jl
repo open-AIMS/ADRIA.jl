@@ -31,6 +31,7 @@ function pathway_diversity(
             resampled = resampled ./ sum(resampled)
             options[idx_option, :pathway_diversity] = sum(_entropy.(resampled))
         else
+            probs = probs ./ sum(probs)
             options[idx_option, :pathway_diversity] = sum(_entropy.(probs))
         end
     end
