@@ -64,13 +64,16 @@ function ADRIA.viz.pawn!(
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si[Si=At(sort_by)]; rev=true), :]
+    if sort_by != :none
+        Si = Si[sortperm(Si[Si=At(sort_by)]; rev=true), :]
+    end
 
     y, x = Si.axes
+    ytick_labels = get(opts, :ytick_labels, string.(y))
     ax = Axis(
         g[1, 1];
         xticks=(1:length(x), string.(x)),
-        yticks=(1:length(y), string.(y)),
+        yticks=(1:length(y), ytick_labels),
         xticklabelrotation=xtick_rot,
         axis_opts...
     )
