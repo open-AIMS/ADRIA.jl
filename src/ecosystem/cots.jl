@@ -269,7 +269,9 @@ function init_cots_from_spatial(
         # Scale initial density based on habitat suitability p
         if p > 0.1
             scale = min(p / 0.5, 1.0)
-            N_init = MVector{3, Float64}(0.6 * scale * 1.5, 0.3 * scale * 1.5, 0.1 * scale * 1.5)
+            multiplier_str = get(ENV, "COTS_INITIAL_MULTIPLIER", "1.5")
+            multiplier = parse(Float64, multiplier_str)
+            N_init = MVector{3, Float64}(0.6 * scale * multiplier, 0.3 * scale * multiplier, 0.1 * scale * multiplier)
         else
             N_init = MVector{3, Float64}(0.0, 0.0, 0.0)
         end

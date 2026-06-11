@@ -1,0 +1,44 @@
+MethodError: no method matching filter_candidate_locations(::ADRIA.decision.ReactiveStrategy, ::Int64, ::Nothing)
+The function `filter_candidate_locations` exists, but no method is defined for this combination of argument types.
+
+Closest candidates are:
+  filter_candidate_locations(::ADRIA.decision.ReactiveStrategy, ::Int64, !Matched::NamedTuple)
+   @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\decision\strategies\ReactiveStrategy.jl:85
+  filter_candidate_locations(!Matched::ADRIA.decision.PeriodicStrategy, ::Int64, ::Union{Nothing, NamedTuple})
+   @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\decision\strategies\PeriodicStrategy.jl:81
+
+Stacktrace:
+  [1] run_model(domain::RMEDomain, param_set::YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, Tuple{DimensionalData.Dimensions.Dim{:factors, DimensionalData.Dimensions.Lookups.Categorical{String, SubArray{String, 1, Vector{String}, Tuple{Base.Slice{Base.OneTo{Int64}}}, true}, DimensionalData.Dimensions.Lookups.Unordered, DimensionalData.Dimensions.Lookups.NoMetadata}}}, Dict{Symbol, Any}}, functional_groups::Vector{Vector{CoralBlox.FunctionalGroup}})
+    @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:1725
+  [2] _collect_scenario_results(domain::RMEDomain, scenario::YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, Tuple{DimensionalData.Dimensions.Dim{:factors, DimensionalData.Dimensions.Lookups.Categorical{String, SubArray{String, 1, Vector{String}, Tuple{Base.Slice{Base.OneTo{Int64}}}, true}, DimensionalData.Dimensions.Lookups.Unordered, DimensionalData.Dimensions.Lookups.NoMetadata}}}, Dict{Symbol, Any}}, functional_groups::Vector{Vector{CoralBlox.FunctionalGroup}})
+    @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:345
+  [3] (::ADRIA.var"#166#178"{Vector{Vector{CoralBlox.FunctionalGroup}}})(dfx::Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, Tuple{DimensionalData.Dimensions.Dim{:factors, DimensionalData.Dimensions.Lookups.Categorical{String, SubArray{String, 1, Vector{String}, Tuple{Base.Slice{Base.OneTo{Int64}}}, true}, DimensionalData.Dimensions.Lookups.Unordered, DimensionalData.Dimensions.Lookups.NoMetadata}}}, Dict{Symbol, Any}}})
+    @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:298
+  [4] iterate
+    @ .\generator.jl:48 [inlined]
+  [5] _collect(c::Vector{Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, _A, Dict{Symbol, Any}} where _A}}, itr::Base.Generator{Vector{Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, _A, Dict{Symbol, Any}} where _A}}, ADRIA.var"#166#178"{Vector{Vector{CoralBlox.FunctionalGroup}}}}, ::Base.EltypeUnknown, isz::Base.HasShape{1})
+    @ Base .\array.jl:811
+  [6] collect_similar(cont::Vector{Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, _A, Dict{Symbol, Any}} where _A}}, itr::Base.Generator{Vector{Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, _A, Dict{Symbol, Any}} where _A}}, ADRIA.var"#166#178"{Vector{Vector{CoralBlox.FunctionalGroup}}}})
+    @ Base .\array.jl:720
+  [7] map(f::Function, A::Vector{Tuple{RMEDomain, Int64, YAXArrays.Cubes.YAXArray{Float64, 1, SubArray{Float64, 1, Matrix{Float64}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}}, true}, _A, Dict{Symbol, Any}} where _A}})
+    @ Base .\abstractarray.jl:3371
+  [8] macro expansion
+    @ C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:297 [inlined]
+  [9] macro expansion
+    @ C:\Users\smatthew\.julia\packages\ProgressMeter\N660J\src\ProgressMeter.jl:1026 [inlined]
+ [10] run_scenarios(dom::RMEDomain, scens::DataFrames.DataFrame, RCP::Vector{String}; show_progress::Bool)
+    @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:296
+ [11] run_scenarios
+    @ C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:141 [inlined]
+ [12] #run_scenarios#158
+    @ C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:139 [inlined]
+ [13] run_scenarios(dom::RMEDomain, scens::DataFrames.DataFrame, RCP::String)
+    @ ADRIA C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\src\scenario.jl:136
+ [14] top-level scope
+    @ C:\Users\smatthew\Documents\GitKraken\ADRIA.jl\sandbox\test_cots_persistence.jl:20
+ [15] include(mod::Module, _path::String)
+    @ Base .\Base.jl:557
+ [16] exec_options(opts::Base.JLOptions)
+    @ Base .\client.jl:323
+ [17] _start()
+    @ Base .\client.jl:531
