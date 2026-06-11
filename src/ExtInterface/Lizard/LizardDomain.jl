@@ -144,7 +144,7 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
     ]
 
     cots_init = if "cots_density" in names(loc_data)
-        Float64.(loc_data.cots_density)
+        [isnan(x) ? 0.0 : Float64(x) for x in coalesce.(loc_data.cots_density, 0.0)]
     else
         nothing
     end
