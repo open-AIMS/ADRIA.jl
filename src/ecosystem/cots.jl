@@ -266,9 +266,10 @@ function init_cots_from_spatial(
     models = Vector{CotsHuman}(undef, n_locs)
     for loc in 1:n_locs
         p = probabilities[loc]
-        # Treat as habitat suitability: if p > 0.7, seed with standard outbreak density
-        if p > 0.7
-            N_init = MVector{3, Float64}(0.02, 0.02, 0.1) # 0.1 adult density
+        # Scale initial density based on habitat suitability p
+        if p > 0.1
+            scale = min(p / 0.5, 1.0)
+            N_init = MVector{3, Float64}(0.6 * scale * 1.5, 0.3 * scale * 1.5, 0.1 * scale * 1.5)
         else
             N_init = MVector{3, Float64}(0.0, 0.0, 0.0)
         end

@@ -24,6 +24,8 @@ graphify-out/
 
 .graphify_uncached.txt
 
+Outputs/
+
 Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/connectivity/45/
 
 Outputs/ReefMod Engine__RCPs_45__2026-06-08_10_48_25_967/env_stats/dhw/45/
@@ -579,3 +581,5 @@ Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/relative_taxa_c
 Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/results/relative_taxa_cover/.zattrs
 
 Outputs/ReefMod Engine__RCPs_45__2026-06-08_11_49_11_702/spatial/ReefMod Engine.gpkg
+
+Outputs/Lizard_Historical_v0.1__RCPs_45__2026-06-10_13_18_47_997/connectivity/45/
