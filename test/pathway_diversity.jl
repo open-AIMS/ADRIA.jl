@@ -18,10 +18,11 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         rand(length(valid_locations), length(seed_pref_names))
     )
     option_names = ADRIA.analysis.option_seed_preference().option_name
+    option_perf = Dict{Symbol,ADRIA.YAXArrays.YAXArray}()
 
     @testset "when only necessary inputs are passed" begin
         result = ADRIA.analysis.switching_probability(
-            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs
+            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs, option_perf
         )
 
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
@@ -31,7 +32,7 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
     @testset "when option is passed" begin
         option = first(option_names)
         result = ADRIA.analysis.switching_probability(past_option, decision_matrix,
-            DOM.loc_data, mcda_method, min_locs, option)
+            DOM.loc_data, mcda_method, min_locs, option, option_perf)
         @test result isa Float64
     end
 
@@ -40,14 +41,14 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         selected_ports = [:cairns, :townsville, :gladstone]
         filtered_ports = ports[ports.name .∈ [selected_ports], :]
         result = ADRIA.analysis.switching_probability(past_option, decision_matrix,
-            DOM.loc_data, mcda_method, min_locs; ports=filtered_ports)
+            DOM.loc_data, mcda_method, min_locs, option_perf; ports=filtered_ports)
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
         @test result.option_name == option_names
     end
 
     @testset "when custom weights are passed" begin
         result = ADRIA.analysis.switching_probability(
-            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs;
+            past_option, decision_matrix, DOM.loc_data, mcda_method, min_locs, option_perf;
             weights=(0.5, 0.3, 0.2)
         )
         @test isapprox(sum(result.probability), 1.0, atol=0.01)

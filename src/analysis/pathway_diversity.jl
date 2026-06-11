@@ -75,6 +75,20 @@ function pathway_diversity(
         rs.decision_matrix_log[timesteps=tsteps, scenarios=idx_option_scens]
     )
 
+    # Cache outcome metrics and pre-compute per-tstep option performance (read-only in threads)
+    rel_cover_data = Array(rs.outcomes[:relative_cover][scenarios=idx_scens])
+    fd_data = Array(rs.outcomes[:coral_evenness][scenarios=idx_scens])
+    max_time = size(rel_cover_data, 1)
+    scen_to_idx = Dict(s => i for (i, s) in enumerate(idx_scens))
+
+    option_perf_by_tstep = Dict(
+        t => _compute_option_perf(
+            rel_cover_data, fd_data, idx_scens, scen_to_idx,
+            decoded_ts, t, min(t + pd_freq - 1, max_time)
+        )
+        for t in tsteps
+    )
+
     Threads.@threads for idx_prob in eachindex(idx_option_scens)
         idx_scen = idx_option_scens[idx_prob]
         option_ts = decoded_ts[idx_scen]
@@ -84,7 +98,7 @@ function pathway_diversity(
             ]
             probs[idx_prob] *= ADRIA.analysis.switching_probability(
                 option_ts[tstep - 1], decision_matrix, rs.loc_data, mcda_method, min_locs,
-                option_ts[tstep]
+                option_ts[tstep], option_perf_by_tstep[tstep]
             )
         end
     end
@@ -103,7 +117,8 @@ Compute switching probability for all defined pathway diversity options.
 - `mcda_method` : MCDA method used in selec_locations.
 - `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
 - `ports` : Dataframe with name and coordinate of ports.
-- `weights` : Tuple of weights for `(distance_to_port, dispersion, option_similarity)`. Defaults to `(0.3, 0.2, 0.5)`.
+- `weights` : 5-tuple of weights for `(cum_rel_tac_diff, cum_fd_diff, distance_to_port, dispersion, option_similarity)`. Defaults to `(0.35, 0.25, 0.1, 0.1, 0.2)`.
+- `option_perf` : Pre-computed per-option performance metrics for the relevant timestep (from `_compute_option_perf`), keyed by option symbol.
 
 # Returns
 DataFrame with probability of switching to each option or the probability value for one option if the option is passed.
@@ -113,9 +128,10 @@ function switching_probability(
     decision_matrix::YAXArray,
     loc_data::DataFrame,
     mcda_method::Union{Function,DataType},
-    min_locs::Int64;
+    min_locs::Int64,
+    option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{3,Float64}=(0.3, 0.3, 0.4)
+    weights::NTuple{5,Float64}=(0.35, 0.25, 0.1, 0.1, 0.2),
 )::DataFrame
     options = copy(PD_OPTIONS())
     options.probability = zeros(size(options, 1))
@@ -145,11 +161,26 @@ function switching_probability(
         unique_option_locs = option_locations[option_locations.UNIQUE_ID .∉ [common_ids], :]
         unique_past_locs = past_locations[past_locations.UNIQUE_ID .∉ [common_ids], :]
 
+        # Outcome-based metrics: cum_rel_tac_diff, cum_fd_diff (weights[1..2])
+        # Compares the per-location performance of a scenario holding past_option against
+        # a (possibly different) scenario holding the candidate option, paired by location.
+        if haskey(option_perf, past_option) && haskey(option_perf, row.option_name)
+            past_perf = option_perf[past_option]
+            cand_perf = option_perf[row.option_name]
+
+            δ_rel_tac = cand_perf[metric=At(:rel_tac)] ./ past_perf[metric=At(:rel_tac)] .- 1
+            δ_fd = cand_perf[metric=At(:fd)] ./ past_perf[metric=At(:fd)] .- 1
+
+            row.probability += weights[1] * two_sided_cvar(δ_rel_tac; σ=_σ_rel_tac)
+            row.probability += weights[2] * two_sided_cvar(δ_fd; σ=_σ_fd)
+        end
+
+        # Spatial metrics: distance_to_port, dispersion, option_similarity (weights[3..5])
         row.probability +=
-            distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[1]
-        row.probability += dispersion_score(option_locations, past_locations) * weights[2]
+            distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[3]
+        row.probability += dispersion_score(option_locations, past_locations) * weights[4]
         row.probability +=
-            option_similarity(unique_option_locs, unique_past_locs) * weights[3]
+            option_similarity(unique_option_locs, unique_past_locs) * weights[5]
     end
 
     # Normalize probabilities
@@ -164,12 +195,14 @@ function switching_probability(
     loc_data::DataFrame,
     mcda_method::Union{Function,DataType},
     min_locs::Int64,
-    option::Symbol;
+    option::Symbol,
+    option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{3,Float64}=(0.3, 0.2, 0.5)
+    weights::NTuple{5,Float64}=(0.35, 0.25, 0.1, 0.1, 0.2),
 )::Float64
     result = switching_probability(
-        past_option, decision_matrix, loc_data, mcda_method, min_locs; ports, weights
+        past_option, decision_matrix, loc_data, mcda_method, min_locs, option_perf;
+        ports, weights
     )
     return first(result[result.option_name .== option, :probability])
 end
@@ -414,4 +447,84 @@ function decode_option_ts(
         ts[t] = decoded_combo[(t - seed_year_start) ÷ pd_frequency + 1]
     end
     return ts
+end
+
+# Sigma sensitivity parameters for two_sided_cvar, tuned per metric's relative-change scale
+const _σ_rel_tac = 0.004   # cum_rel_tac_diff
+const _σ_fd = 0.003        # cum_fd_diff
+
+"""
+    two_sided_cvar(delta; tail_fraction, σ)
+
+Map the two-sided CVaR of `delta` to [0, 1] via tanh. Returns > 0.5 when the upper
+tail dominates (net beneficial), < 0.5 when the lower tail dominates (net detrimental),
+and 0.5 when `delta` is empty.
+
+`delta` is a per-location relative change vector (`candidate ./ past .- 1`).
+`tail_fraction` is the fraction of locations in each tail (default 3%).
+"""
+function two_sided_cvar(
+    delta::AbstractVector;
+    tail_fraction::Float64=0.03,
+    σ::Float64=0.001,
+)::Float64
+    isempty(delta) && return 0.5
+    N = length(delta)
+    k = max(1, min(floor(Int, tail_fraction * N), N ÷ 2))
+    s = sort(delta)
+    cvar_lower = mean(s[1:k])
+    cvar_upper = mean(s[(end - k + 1):end])
+    raw = cvar_upper - abs(cvar_lower)
+    return (tanh(raw / σ) + 1) / 2
+end
+
+"""
+    _compute_option_perf(rel_cover_data, fd_data, all_scens, scen_to_idx,
+                         decoded_ts, tstep, t_end)
+
+For each option, find one representative scenario that holds that option at `tstep`
+(the first match found in `all_scens`) and compute its cumulative per-location
+performance over the window [tstep, t_end]. Both the past (counterfactual) and
+candidate option representatives are looked up at the same timestep `tstep`, so that
+performance is compared over an identical future window.
+
+Returns a `Dict{Symbol, YAXArray}` mapping option symbol to its representative
+scenario's YAXArray with dims `(metric=[:rel_tac, :fd], location=1:n_locs)`.
+"""
+function _compute_option_perf(
+    rel_cover_data::AbstractArray{<:Real,3},
+    fd_data::AbstractArray{<:Real,3},
+    all_scens::AbstractVector{Int64},
+    scen_to_idx::Dict{Int64,Int64},
+    decoded_ts::Dict{Int64,Vector{Symbol}},
+    tstep::Int64,
+    t_end::Int64
+)::Dict{Symbol,YAXArray}
+    n_locs = size(rel_cover_data, 2)
+    representative_scen = Dict{Symbol,Int64}()
+    for scen in all_scens
+        opt = decoded_ts[scen][tstep]
+        opt === :nothing && continue
+        get!(representative_scen, opt, scen)
+    end
+
+    result = Dict{Symbol,YAXArray}()
+
+    for (opt, scen) in representative_scen
+        scen_idx = scen_to_idx[scen]
+        rel_cover_window = rel_cover_data[tstep:t_end, :, scen_idx]   # (n_ts, n_locs)
+        evenness_window = fd_data[tstep:t_end, :, scen_idx]           # (n_ts, n_locs)
+
+        # cum_rel_tac: sum over time, per location
+        rel_tac_vals = vec(sum(rel_cover_window; dims=1))
+        # cum_fd: sum over time, per location
+        fd_vals = vec(sum(evenness_window; dims=1))
+
+        result[opt] = DataCube(
+            permutedims(hcat(rel_tac_vals, fd_vals));
+            metric=[:rel_tac, :fd], location=1:n_locs
+        )
+    end
+
+    return result
 end

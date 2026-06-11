@@ -1,6 +1,6 @@
 module analysis
 
-using ADRIA: ZeroDataCube, ResultSet, n_locations
+using ADRIA: ZeroDataCube, DataCube, ResultSet, n_locations
 using ADRIA.metrics: nds
 
 using JuliennedArrays: Slices
