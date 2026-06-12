@@ -108,8 +108,15 @@ function _scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
     rci_sliced = slice_results(rci; kwargs...)
     tac_sliced = slice_results(tac; kwargs...)
 
+    # Materialise both to plain arrays so DimensionalData Lookup-type mismatches
+    # (Sampled/Regular from DataCube vs Categorical/Unordered from on-disk lazy arrays)
+    # don't cause broadcast errors.  Reconstruct using tac_sliced's axes so
+    # scenario_trajectory receives a consistent YAXArray.
+    product_arr = Array(tac_sliced) .* (Array(rci_sliced) .> Float32(0.35))
+    product = YAXArray(caxes(tac_sliced), product_arr, tac_sliced.properties)
+
     # We want sum of populated area >= "good" condition
-    return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
+    return scenario_trajectory(product; metric=sum)
 end
 function _scenario_rci(rs::ResultSet, rubble::YAXArray; kwargs...)
     rci = reef_condition_index(rs, rubble)
