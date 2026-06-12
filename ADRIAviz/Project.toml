@@ -54,13 +54,11 @@ julia = "1.11"
 
 [extras]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [targets]
-test = ["CairoMakie", "GeoMakie", "GLMakie", "GraphMakie", "PlotlyBase", "PlotlyKaleido", "Test", "WGLMakie"]
+test = ["CairoMakie", "GeoMakie", "GraphMakie", "PlotlyBase", "PlotlyKaleido", "Test"]
