@@ -180,13 +180,10 @@ function Domain(
         nc_ds = open_dataset(calib_params_fn)
         coral_overrides = _coral_calib_overrides(nc_ds)
         growth_accel_overrides = _growth_accel_calib_overrides(nc_ds)
-        create_coral_struct(; overrides=coral_overrides)
-        create_growth_acceleration_struct(; overrides=growth_accel_overrides)
-        # invokelatest needed: create_*_struct uses eval, incrementing the world age,
-        # so Coral() / GrowthAcceleration() must be called via invokelatest to pick up
-        # the newly defined constructors.
-        coral_instance = Base.invokelatest(Coral)
-        growth_accel_instance = Base.invokelatest(GrowthAcceleration)
+        coral_instance = create_coral_instance(; overrides=coral_overrides)
+        growth_accel_instance = create_growth_acceleration_instance(;
+            overrides=growth_accel_overrides
+        )
     else
         coral_instance = Coral()
         growth_accel_instance = GrowthAcceleration()

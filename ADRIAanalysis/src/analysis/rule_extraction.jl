@@ -1,6 +1,6 @@
 using SIRUS, MLJ
 using StableRNGs: StableRNG
-import ..performance: temporal_variability
+import ADRIA.performance: temporal_variability
 import ADRIA: is_test_env
 
 """

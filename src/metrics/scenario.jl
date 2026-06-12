@@ -1,4 +1,3 @@
-using Bootstrap
 using Random
 
 """Scenario-level summaries.
@@ -24,14 +23,10 @@ Matrix[timesteps ⋅ scenarios]
 """
 function scenario_trajectory(data::AbstractArray; metric=mean)::YAXArray{<:Real}
     tf_labels = axis_labels(data, :timesteps)
-
-    s::Matrix{eltype(data)} =
-        metric.(
-            JuliennedArrays.Slices(
-                data[timesteps=At(tf_labels)], axis_index(data, :locations)
-            )
-        )
-
+    loc_dim = axis_index(data, :locations)
+    data_arr = Array(data[timesteps=At(tf_labels)])
+    slice_dims = Tuple(setdiff(1:ndims(data_arr), loc_dim))
+    s::Matrix{eltype(data)} = metric.(eachslice(data_arr; dims=slice_dims))
     return DataCube(s; timesteps=tf_labels, scenarios=1:size(s, 2))
 end
 

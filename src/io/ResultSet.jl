@@ -1,6 +1,6 @@
 using Dates: now
 
-using PkgVersion, Zarr
+using Zarr
 
 using Setfield: @set!
 using DataFrames: DataFrame
