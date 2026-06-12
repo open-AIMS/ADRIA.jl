@@ -77,7 +77,7 @@ For a 3D `outcomes` array (timesteps × scenarios × metrics):
 metrics = [ADRIA.metrics.scenario_total_cover, ADRIA.metrics.scenario_asv]
 outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 clusters = ADRIA.analysis.cluster_scenarios(outcomes, 6)
-robust_scens = ADRIAAnalysis.find_scenarios(outcomes, clusters, x -> x .>= quantile(x, 0.25))
+robust_scens = ADRIAanalysis.find_scenarios(outcomes, clusters, x -> x .>= quantile(x, 0.25))
 ```
 """
 function find_scenarios(

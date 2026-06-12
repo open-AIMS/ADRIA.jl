@@ -1,0 +1,229 @@
+name: Build Sysimage
+
+# Triggers:
+#   • Push to main that touches Manifests, source, or build scripts
+#   • Weekly rebuild (Monday 02:00 UTC) to pick up upstream security patches
+#   • Manual dispatch with optional force-rebuild flag
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Manifest.toml'
+      - 'ADRIAviz/Manifest.toml'
+      - 'ADRIAanalysis/Manifest.toml'
+      - 'src/**'
+      - 'ADRIAviz/src/**'
+      - 'ADRIAanalysis/src/**'
+      - 'build/sim/**'
+      - 'build/analysis/**'
+      - 'Dockerfile'
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild even if cache is current'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  AWS_REGION:       ap-southeast-2
+  ECR_REGISTRY:     ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-2.amazonaws.com
+  S3_SYSIMAGE_BUCKET: adria-sysimages
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 1: compute content hashes used for cache keys and S3 paths
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+  compute-hash:
+    runs-on: ubuntu-latest
+    outputs:
+      manifest_hash:  ${{ steps.hash.outputs.manifest_hash }}
+      src_hash:       ${{ steps.hash.outputs.src_hash }}
+      combined_hash:  ${{ steps.hash.outputs.combined_hash }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute content hashes
+        id: hash
+        run: |
+          MANIFEST_HASH=$(cat Manifest.toml \
+                              ADRIAviz/Manifest.toml \
+                              ADRIAanalysis/Manifest.toml \
+                          | sha256sum | cut -c1-16)
+          SRC_HASH=$(find src ADRIAviz/src ADRIAanalysis/src \
+                         -name '*.jl' | sort | xargs sha256sum \
+                     | sha256sum | cut -c1-16)
+          COMBINED="${MANIFEST_HASH}-${SRC_HASH}"
+          echo "manifest_hash=${MANIFEST_HASH}" >> "$GITHUB_OUTPUT"
+          echo "src_hash=${SRC_HASH}"           >> "$GITHUB_OUTPUT"
+          echo "combined_hash=${COMBINED}"       >> "$GITHUB_OUTPUT"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 2: build sysimages (matrix: sim | analysis)
+# ──────────────────────────────────────────────────────────────────────────────
+  build-sysimage:
+    needs: compute-hash
+    runs-on: ubuntu-latest        # swap for self-hosted runner with ≥16 GB RAM
+                                  # to cut build time from ~45 min to ~20 min
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [sim, analysis]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Cache: skip build if Manifests + src are unchanged ─────────────────
+      - name: Restore sysimage cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: build/${{ matrix.target }}/adria_${{ matrix.target }}.so
+          key:  sysimage-${{ matrix.target }}-${{ needs.compute-hash.outputs.combined_hash }}
+
+      # ── Julia setup (only when cache misses or force-rebuild) ──────────────
+      - name: Setup Julia
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11.5'
+
+      - name: Cache Julia depot
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
+        uses: julia-actions/cache@v2
+
+      # Instantiate the build project; develops ADRIA, ADRIAviz, (ADRIAanalysis)
+      - name: Instantiate build environment
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
+        run: |
+          PKGS='using Pkg; Pkg.develop(PackageSpec(path=".")); Pkg.instantiate()'
+          if [ "${{ matrix.target }}" = "analysis" ]; then
+            PKGS='using Pkg;
+                  Pkg.develop(PackageSpec(path="."));
+                  Pkg.develop(PackageSpec(path="ADRIAviz"));
+                  Pkg.develop(PackageSpec(path="ADRIAanalysis"));
+                  Pkg.instantiate()'
+          fi
+          julia --project=build/${{ matrix.target }} -e "$PKGS"
+
+      # ── Build sysimage ──────────────────────────────────────────────────────
+      - name: Build sysimage
+        if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
+        env:
+          JULIA_CPU_TARGET: "x86_64;haswell;skylake;skylake-avx512;tigerlake"
+          SYSIMAGE_OUT: ${{ github.workspace }}/build/${{ matrix.target }}/adria_${{ matrix.target }}.so
+        run: |
+          julia --project=build/${{ matrix.target }} \
+                build/${{ matrix.target }}/make.jl
+
+      # ── Upload to S3 (keyed on content hash + git SHA) ─────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Upload sysimage to S3
+        run: |
+          GIT_SHA=$(git rev-parse --short HEAD)
+          HASH=${{ needs.compute-hash.outputs.combined_hash }}
+          TARGET=${{ matrix.target }}
+          ARTIFACT="adria_${TARGET}.so"
+
+          # Immutable versioned key
+          S3_KEY="sysimages/${TARGET}/${HASH}/${ARTIFACT}"
+          # Mutable latest pointer (overwritten each successful build)
+          LATEST_KEY="sysimages/${TARGET}/latest/${ARTIFACT}"
+
+          aws s3 cp "build/${TARGET}/${ARTIFACT}" \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${S3_KEY}" \
+            --metadata "git-sha=${GIT_SHA},\
+manifest-hash=${{ needs.compute-hash.outputs.manifest_hash }},\
+src-hash=${{ needs.compute-hash.outputs.src_hash }}"
+
+          # Atomic pointer update: copy within S3 (no re-upload)
+          aws s3 cp \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${S3_KEY}" \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${LATEST_KEY}"
+
+          echo "S3_KEY=${S3_KEY}" >> "$GITHUB_STEP_SUMMARY"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 3: build and push Docker images to ECR
+# ──────────────────────────────────────────────────────────────────────────────
+  build-docker:
+    needs: [compute-hash, build-sysimage]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [sim, analysis]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Download pre-built sysimage so Docker COPY can find it in the build context
+      - name: Download sysimage from S3
+        run: |
+          HASH=${{ needs.compute-hash.outputs.combined_hash }}
+          TARGET=${{ matrix.target }}
+          mkdir -p build/${TARGET}
+          aws s3 cp \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/sysimages/${TARGET}/${HASH}/adria_${TARGET}.so" \
+            "build/${TARGET}/adria_${TARGET}.so"
+
+      # Resolve image tags: <sha>, <semver-tag-if-present>, latest
+      - name: Resolve image tags
+        id: tags
+        run: |
+          GIT_SHA=$(git rev-parse --short HEAD)
+          GIT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          REPO="${{ env.ECR_REGISTRY }}/adria/${{ matrix.target }}"
+          TAGS="${REPO}:${GIT_SHA},${REPO}:latest"
+          if [[ -n "$GIT_TAG" ]]; then
+            TAGS="${TAGS},${REPO}:${GIT_TAG}"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "repo=${REPO}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          # Use the pre-built sysimage; skip the in-tree builder stages
+          target: adria-${{ matrix.target }}-runtime
+          # Override the COPY --from=sysimage-builder-* with a build-context
+          # injection:  the .so is already in build/<target>/ from S3 download.
+          # The Dockerfile runtime stage accepts it via COPY from the context:
+          #   COPY build/<target>/adria_<target>.so /sysimage/adria_<target>.so
+          # (See Dockerfile adria-*-runtime stages)
+          build-args: |
+            SYSIMAGE_SRC=build/${{ matrix.target }}/adria_${{ matrix.target }}.so
+          tags: ${{ steps.tags.outputs.tags }}
+          push: true
+          # Layer cache stored in ECR to accelerate rebuilds
+          cache-from: type=registry,ref=${{ steps.tags.outputs.repo }}:buildcache
+          cache-to:   type=registry,ref=${{ steps.tags.outputs.repo }}:buildcache,mode=max
+
+      - name: Write image digest to summary
+        run: |
+          echo "## Image pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tags: ${{ steps.tags.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
