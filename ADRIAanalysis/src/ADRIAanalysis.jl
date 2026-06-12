@@ -21,9 +21,11 @@ using
 import ADRIA.analysis: col_normalize, scenario_types, scenario_rcps
 
 include("analysis/clustering.jl")
+include("analysis/data_envelopment.jl")
 include("analysis/rule_extraction.jl")
 include("analysis/pareto.jl")
 include("analysis/screening.jl")
 include("analysis/scenario.jl")
+include("sensitivity/sensitivity.jl")
 
 end
