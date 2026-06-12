@@ -1,9 +1,18 @@
 using ADRIA.analysis: col_normalize
-using ADRIA.sensitivity
+
+const _ADRIA_ANALYSIS_PKG_ID = Base.PkgId(
+    Base.UUID("bc4d0ea8-6565-4397-854d-28474bf8c6b3"), "ADRIAanalysis"
+)
 
 function relative_sensitivities(
     X, y::AbstractArray{<:Real}; S=10, stat=:median
 )::Vector{Float64}
+    if !haskey(Base.loaded_modules, _ADRIA_ANALYSIS_PKG_ID)
+        error(
+            "relative_sensitivities requires ADRIAanalysis: run `using ADRIAanalysis` first"
+        )
+    end
+    sensitivity = getproperty(Base.loaded_modules[_ADRIA_ANALYSIS_PKG_ID], :sensitivity)
     return col_normalize(sensitivity.pawn(X, y; S=S)(; Si=stat))
 end
 

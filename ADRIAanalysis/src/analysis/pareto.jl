@@ -1,5 +1,5 @@
 """
-    find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector{Int} offset::Int=0)
+    find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector{Int}; offset::Int=0)
     find_pareto_optimal(scens::DataFrame, y::AbstractArray, rcps::Vector{Int}; offset::Int=0)
 
 Identify the scenarios (by position) that are determined to be pareto optimal.
@@ -16,8 +16,7 @@ NamedTuple, where each entry relates to an RCP of interest, e.g., `(RCP45=[... s
 
 # Examples
 ```julia
-using ADRIA, Statistics
-
+using ADRIA, ADRIAanalysis, Statistics
 
 rs = ADRIA.load_results("some result set")
 
@@ -25,14 +24,12 @@ tac = ADRIA.metrics.scenario_total_cover(rs)
 rsv = ADRIA.metrics.scenario_rsv(rs)
 r_juves = ADRIA.metrics.scenario_juveniles(rs)
 
-# Create matrix of mean scenario outcomes
 mean_tac = vec(mean(tac, dims=1))
 mean_sv = vec(mean(rsv, dims=1))
 mean_juves = vec(mean(r_juves, dims=1))
 y = hcat(mean_tac, mean_sv, mean_juves)
 
-# Find all pareto optimal scenarios
-optimal = ADRIA.analysis.find_pareto_optimal(rs, y, [45, 60])
+optimal = find_pareto_optimal(rs, y, [45, 60])
 # (RCP45 = [13, 48, 54, 65, 95], RCP60 = [274, 315, 356, 430, 455])
 ```
 """
@@ -71,8 +68,7 @@ NamedTuple, where each entry relates to an RCP of interest, e.g., `(RCP45=[... s
 
 # Examples
 ```julia
-using ADRIA, Statistics
-
+using ADRIA, ADRIAanalysis, Statistics
 
 rs = ADRIA.load_results("some result set")
 
@@ -80,15 +76,13 @@ tac = ADRIA.metrics.scenario_total_cover(rs)
 rsv = ADRIA.metrics.scenario_rsv(rs)
 r_juves = ADRIA.metrics.scenario_juveniles(rs)
 
-# Create matrix of mean scenario outcomes
 mean_tac = vec(mean(tac, dims=1))
 mean_sv = vec(mean(rsv, dims=1))
 mean_juves = vec(mean(r_juves, dims=1))
 y = hcat(mean_tac, mean_sv, mean_juves)
 
-# Find all pareto optimal scenarios where all metrics >= 0.9
 rule_func = x -> all(x .>= 0.9)
-robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
+robust = find_robust(rs, y, rule_func, [45, 60])
 # (RCP45 = [13, 65], RCP60 = [274, 455])
 ```
 """

@@ -1,4 +1,4 @@
-using FLoops, DataStructures
+using DataStructures
 
 """
     reef_condition_index(ltmp_cover::AbstractArray, sv::AbstractArray, juves::AbstractArray,)::AbstractArray
@@ -26,9 +26,9 @@ See table 1 in reference 1.
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
 
 # References
-1. Ryan F. Heneghan, Gabriela Scheufele, Yves-Marie Bozec et al. A framework to inform 
-   economic valuation of non-use benefits from coral-reef intervention efforts, 02 October 
-   2025, PREPRINT (Version 1) available at Research Square 
+1. Ryan F. Heneghan, Gabriela Scheufele, Yves-Marie Bozec et al. A framework to inform
+   economic valuation of non-use benefits from coral-reef intervention efforts, 02 October
+   2025, PREPRINT (Version 1) available at Research Square
    [https://doi.org/10.21203/rs.3.rs-7644150/v1]
 """
 function _reef_condition_index(

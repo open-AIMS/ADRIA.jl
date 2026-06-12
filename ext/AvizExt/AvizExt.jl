@@ -6,7 +6,7 @@ using Reexport
 using RelocatableFolders
 @reexport using GeoMakie
 
-using Statistics, Distributions, FLoops, Random
+using Statistics, Distributions, Random
 using DataFrames, Bootstrap
 
 using ImageIO, GeoInterface
@@ -32,6 +32,7 @@ include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
 include("./analysis.jl")
+include("./_scenario_helpers.jl")
 include("./viz/viz.jl")
 
 """Main entry point for app."""
@@ -205,7 +206,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     init_weight = (1.0 / (size(X, 1) / min_color_step))
 
     # Group scenarios by type
-    scen_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_types(rs.inputs)
+    scen_groups::Dict{Symbol,BitVector} = _scenario_types(rs.inputs)
     color_map = colors(scen_groups, init_weight)
     obs_color = Observable(color_map)
 

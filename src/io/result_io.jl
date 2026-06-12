@@ -20,15 +20,17 @@ function summarize_env_data(
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
         stats_store = zeros(2, size(baseline_data, 3), size(baseline_data, 2))
-        stats_store[1, :, :] .= dropdims(mean(baseline_data; dims=1); dims=1)'
-        stats_store[2, :, :] .= dropdims(std(baseline_data; dims=1); dims=1)'
+        μ = mean(baseline_data; dims=1)
+        stats_store[1, :, :] .= dropdims(μ; dims=1)'
+        stats_store[2, :, :] .= dropdims(std(baseline_data; mean=μ, dims=1); dims=1)'
         return stats_store
     end
 
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
-    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
-    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
+    μ = mean(data; dims=1)
+    stats_store[1, :, :] .= dropdims(μ; dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; mean=μ, dims=1); dims=1)'
     return stats_store
 end
 
@@ -141,7 +143,7 @@ function scenario_attributes(
         :RCP => RCP,
         :columns => input_cols,
         :invoke_time => invoke_time,
-        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
+        :ADRIA_VERSION => "v" * string(pkgversion(@__MODULE__)),
         :loc_data_file => env_layer.loc_data_fn,
         :loc_id_col => env_layer.loc_id_col,
         :cluster_id_col => env_layer.cluster_id_col,
@@ -705,7 +707,7 @@ function load_results(result_loc::String)::ResultSet
     model_spec.fieldname .= Symbol.(model_spec.fieldname)
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
-    t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
+    t_vers_id = "v" * string(pkgversion(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).

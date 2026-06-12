@@ -2,13 +2,20 @@ using Pkg, PackageCompiler
 
 # Removed ADRIA from sysimage project so line below is not needed (but could be useful later).
 # project_deps = filter!(i -> i != "ADRIA", project_deps)  # Remove ADRIA (we don't want to make this static for dev purposes)
-sysimage_fn = "ADRIA_sysimage.dll"
+sysimage_ext = if Sys.iswindows()
+    "dll"
+elseif Sys.isapple()
+    "dylib"
+else
+    "so"
+end
+sysimage_fn = "ADRIA_sysimage.$(sysimage_ext)"
 if "dev" in ARGS
     @info "Adding dev packages"
     dev_pkgs = ["Revise", "Infiltrator", "Statistics", "Plots", "GR", "GR_jll"]
     Pkg.add(dev_pkgs)
 
-    sysimage_fn = "ADRIA_sysimage_dev.dll"
+    sysimage_fn = "ADRIA_sysimage_dev.$(sysimage_ext)"
 end
 
 project_deps = collect(keys(Pkg.project().dependencies))
@@ -23,9 +30,9 @@ if "dev" in ARGS
     Pkg.rm(dev_pkgs)
 end
 
-# Copy the ADRIA_sysimage.dll file created with the above into your development folder (e.g., `sandbox`)
+# Copy the ADRIA_sysimage file created with the above into your development folder (e.g., `sandbox`)
 
 # A julia session with the sysimage can be started with:
-# julia --project=. -J ADRIA_sysimage.dll
+# julia --project=. -J ADRIA_sysimage.<ext>
 
 exit()
