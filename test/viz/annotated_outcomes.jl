@@ -9,18 +9,20 @@ Makie.inline!(false)
 # Synthetic fixtures
 
 function _scenario_ao(; n_timesteps=10, n_scenarios=12)
-    data = DataCube(rand(n_timesteps, n_scenarios); timesteps=1:n_timesteps, scenarios=1:n_scenarios)
+    data = DataCube(
+        rand(n_timesteps, n_scenarios); timesteps=1:n_timesteps, scenarios=1:n_scenarios
+    )
     groups = OrderedDict{Symbol,BitVector}(
         :counterfactual => vcat(trues(4), falses(8)),
-        :unguided       => vcat(falses(4), trues(4), falses(4)),
-        :guided         => vcat(falses(8), trues(4)),
+        :unguided => vcat(falses(4), trues(4), falses(4)),
+        :guided => vcat(falses(8), trues(4))
     )
     metadata = Dict{Symbol,Any}(
         :scenario_type_groups => groups,
-        :scenario_rcp_groups  => OrderedDict{Symbol,BitVector}(
+        :scenario_rcp_groups => OrderedDict{Symbol,BitVector}(
             :rcp45 => vcat(trues(6), falses(6)),
-            :rcp60 => vcat(falses(6), trues(6)),
-        ),
+            :rcp60 => vcat(falses(6), trues(6))
+        )
     )
     return AnnotatedOutcomes(data, metadata)
 end
@@ -30,27 +32,26 @@ function _taxonomy_ao(; n_timesteps=10, n_groups=6, n_scenarios=12)
         rand(n_timesteps, n_groups, n_scenarios);
         timesteps=1:n_timesteps,
         groups=1:n_groups,
-        scenarios=1:n_scenarios,
+        scenarios=1:n_scenarios
     )
     sc_groups = OrderedDict{Symbol,BitVector}(
         :counterfactual => vcat(trues(4), falses(8)),
-        :unguided       => vcat(falses(4), trues(4), falses(4)),
-        :guided         => vcat(falses(8), trues(4)),
+        :unguided => vcat(falses(4), trues(4), falses(4)),
+        :guided => vcat(falses(8), trues(4))
     )
     metadata = Dict{Symbol,Any}(
         :scenario_type_groups => sc_groups,
-        :scenario_rcp_groups  => nothing,
+        :scenario_rcp_groups => nothing
     )
     return AnnotatedOutcomes(data, metadata)
 end
 
 @testset "AvizExt AnnotatedOutcomes dispatch" begin
-
     @testset "_get_scenario_groups error cases" begin
         @testset "Missing :scenario_type_groups throws ArgumentError" begin
             ao_empty = AnnotatedOutcomes(
                 DataCube(rand(5, 4); timesteps=1:5, scenarios=1:4),
-                Dict{Symbol,Any}(),
+                Dict{Symbol,Any}()
             )
             @test_throws ArgumentError ADRIA.viz.scenarios(ao_empty)
             err = try

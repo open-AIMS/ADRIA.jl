@@ -53,7 +53,7 @@ end
 const _SCENARIO_TYPE_FNS = (
     counterfactual=_counterfactual_grp,
     unguided=_unguided_grp,
-    guided=_guided_grp,
+    guided=_guided_grp
 )
 const _SCENARIO_TYPE_KEYS = [:counterfactual, :unguided, :guided]
 
