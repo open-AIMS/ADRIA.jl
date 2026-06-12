@@ -1,0 +1,64 @@
+name = "ADRIAviz"
+uuid = "a7bb1955-b5ed-4954-ba3d-ac9734139a95"
+authors = ["open-AIMS contributors"]
+version = "0.1.0"
+
+[deps]
+ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
+ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+GeoFormatTypes = "68eda718-8dee-11e9-39e7-89f7f65f511f"
+GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+SimpleWeightedGraphs = "47aef6b3-ad0c-573a-a1e2-d07658019622"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
+
+[weakdeps]
+GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
+
+[extensions]
+ADRIAvizMakieExt = ["Makie", "GeoMakie", "GraphMakie"]
+ADRIAvizPlotlyExt = ["PlotlyBase"]
+ADRIAvizPlotlyKaleidoExt = ["PlotlyBase", "PlotlyKaleido"]
+
+[compat]
+ADRIA = "0.16"
+ArchGDAL = "0.10"
+DataFrames = "1"
+DimensionalData = "0.29, 0.30"
+Distributions = "0.25"
+GeoMakie = "0.7"
+GraphMakie = "0.5, 0.6"
+Graphs = "1.4, 1.5"
+ImageIO = "0.6"
+Makie = "0.22, 0.23, 0.24"
+OrderedCollections = "1"
+PlotlyBase = "0.8"
+PlotlyKaleido = "2"
+Statistics = "1"
+YAXArrays = "0.5, 0.6"
+julia = "1.11"
+
+[extras]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["CairoMakie", "GeoMakie", "GraphMakie", "PlotlyBase", "PlotlyKaleido", "Test"]

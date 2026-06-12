@@ -62,12 +62,6 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [weakdeps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
-GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
-GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-
-[extensions]
-AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
 
 [compat]
 ADRIAIndicators = "0.2.1"
@@ -105,7 +99,6 @@ JSON = "0.21.3, 1"
 LERC_jll = "3, 4"
 LinearAlgebra = "1"
 Logging = "1"
-Makie = "0.22, 0.23, 0.24"
 ModelParameters = "0.4"
 NetCDF = "0.11, 0.12"
 OnlineStats = "1.5"
@@ -145,4 +138,4 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 test = ["Aqua", "WGLMakie", "GeoMakie", "GraphMakie", "Test", "IterTools"]
 
 [workspace]
-packages = ["ADRIAanalysis"]
+packages = ["ADRIAanalysis", "ADRIAviz"]

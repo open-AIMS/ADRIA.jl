@@ -1,9 +1,9 @@
 name: UnitTests
 on:
-  # Trigger manually or on merge to main
+  # Trigger manually or on version tags
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   # Run in PR when packages updated
   pull_request:
     paths:
@@ -38,5 +38,5 @@ jobs:
       - uses: codecov/codecov-action@v6
         with:
           verbose: true
-          file: lcov.info
+          files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}

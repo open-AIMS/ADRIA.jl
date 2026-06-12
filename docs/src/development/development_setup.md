@@ -71,7 +71,7 @@ julia> ]
 You may also install additional packages for visualizations and debugging tools
 
 ```julia-REPL
-(sandbox) pkg> add GLMakie GeoMakie GraphMakie
+(sandbox) pkg> add ADRIAviz GLMakie GeoMakie GraphMakie
 (sandbox) pkg> add Revise Infiltrator BenchmarkTools JET
 ```
 

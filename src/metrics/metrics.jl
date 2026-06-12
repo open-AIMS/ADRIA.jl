@@ -11,6 +11,8 @@ using
 using YAXArrays
 using ADRIA:
     DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, functional_group_names
+using ADRIA: n_sizes, group_indices
+
 using DataFrames
 
 using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, loc_k_area, loc_area,
@@ -77,7 +79,7 @@ Helper method to extract pairs of YAXArray axes (names and their values).
 """
 function _extract_axes_values(m::YAXArray)::NamedTuple
     ax_names = parentmodule(metrics).axes_names(m)
-    ax_vals = collect.(caxes(m))
+    ax_vals = [Array(lookup(ax)) for ax in caxes(m)]
     axes_vals = (; zip(ax_names, ax_vals)...)
 
     return axes_vals

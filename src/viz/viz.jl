@@ -8,9 +8,6 @@ as extensions are expected to provide additional functionality
 for existing functions/methods.
 """
 
-# GUI
-function explore() end
-
 # Scenario plotting methods
 function scenarios() end
 function scenarios!() end
@@ -51,8 +48,11 @@ function connectivity!() end
 
 # Environment
 function dhw_scenario() end
+function dhw_scenario!() end
 function dhw_scenarios() end
+function dhw_scenarios!() end
 function cyclone_scenario() end
+function cyclone_scenario!() end
 
 # Coral Dynamics
 function taxonomy() end
@@ -61,5 +61,9 @@ function taxonomy!() end
 # Economics
 function data_envelopment_analysis() end
 function data_envelopment_analysis!() end
+
+# Export / serialisation
+function savefig() end
+function show_in_browser() end
 
 end  # module
