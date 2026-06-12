@@ -143,4 +143,4 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 test = ["Aqua", "WGLMakie", "GeoMakie", "GraphMakie", "Test", "IterTools"]
 
 [workspace]
-packages = ["packages/ADRIAAnalysis"]
+packages = ["ADRIAAnalysis"]
