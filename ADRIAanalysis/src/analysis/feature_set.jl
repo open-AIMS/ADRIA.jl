@@ -1,4 +1,4 @@
-﻿"""
+"""
     _filter_constants(scens::DataFrame)::DataFrame
 
 Filter out features/factors that do not vary.
