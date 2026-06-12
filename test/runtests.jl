@@ -61,8 +61,8 @@ end
 _abort_if_failed(tier3, "Tier 3 (Spec & Domain Loads)")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tier 4: Simulation Gate (~5–15 min)
-# Runs 64 full coral-reef scenarios. Defines the TEST_RS, TEST_DOM, TEST_SCENS,
+# Tier 4: Simulation Gate (~3–8 min)
+# Runs 32 full coral-reef scenarios. Defines the TEST_RS, TEST_DOM, TEST_SCENS,
 # and TEST_N_SAMPLES globals consumed by all Tier 5 tests.
 # ─────────────────────────────────────────────────────────────────────────────
 tier4 = @testset "Tier 4: Simulation Gate" begin
