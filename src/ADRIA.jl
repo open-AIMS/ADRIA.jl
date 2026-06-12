@@ -6,6 +6,7 @@ using
     RelocatableFolders,
     TOML,
     CpuId,
+    PkgVersion,
     ProgressMeter,
     Dates
 
