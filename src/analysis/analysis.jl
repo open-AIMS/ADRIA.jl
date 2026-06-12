@@ -105,11 +105,18 @@ Computes confidence interval for series of data.
 Confidence interval (lower bound, median and higher bound) for each series step
 """
 function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
-    slice_dim = data isa YAXArray ? YAXArrays.findAxis(agg_dim, data) : 2
-    return [
-        quantile(view(data, (slice_dim, i)), q) for i in axes(data, slice_dim),
-        q in [0.025 0.5 0.975]
-    ]
+    agg_axis = data isa YAXArray ? YAXArrays.findAxis(agg_dim, data) : 2
+    iter_axis = agg_axis == 1 ? 2 : 1
+    mat = data isa YAXArray ? Array(data) : data
+    n = size(mat, iter_axis)
+    result = Matrix{Float64}(undef, n, 3)
+    probs = [0.025, 0.5, 0.975]
+    scratch = Vector{Float64}(undef, size(mat, agg_axis))
+    for (i, sl) in enumerate(eachslice(mat; dims=iter_axis))
+        copyto!(scratch, sl)
+        result[i, :] .= quantile!(scratch, probs)
+    end
+    return result
 end
 
 include("scenario_groups.jl")

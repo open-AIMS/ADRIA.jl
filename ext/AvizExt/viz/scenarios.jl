@@ -650,7 +650,15 @@ function scenario_bands!(
         display_label = _resolve_label(label)
         members = Array(data[scenarios=mask])
         if summarize
-            confints = quantile.(Slices(members, 2), [0.1 0.5 0.9])
+            probs = [0.025, 0.5, 0.975]
+            n_t = size(members, 1)
+            confints = Matrix{Float64}(undef, n_t, 3)
+            scratch = Vector{Float64}(undef, size(members, 2))
+            for (t, sl) in enumerate(eachslice(members; dims=1))
+                copyto!(scratch, sl)
+                confints[t, :] .= quantile!(scratch, probs)
+            end
+
             band!(ax, x_vals, confints[:, 1], confints[:, 3]; color=(_colors[i], alpha))
             lines!(ax, x_vals, confints[:, 2]; color=_colors[i], label=display_label)
         else

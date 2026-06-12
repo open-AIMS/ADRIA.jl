@@ -98,7 +98,7 @@ end
 
         @testset "scenarios figure has scene plots" begin
             fig = ADRIA.viz.scenarios(ao; legend=false)
-            @test !isempty(fig.scene.plots)
+            @test !isempty(fig.content[1].scene.plots)
         end
     end
 
