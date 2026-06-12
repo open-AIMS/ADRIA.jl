@@ -2,7 +2,7 @@
 ARG SANDBOX_FROM="adria-dev"
 
 # See https://hub.docker.com/_/julia for valid versions.
-ARG JULIA_VERSION="1.11.5"
+ARG JULIA_VERSION="1.11.7"
 
 #------------------------------------------------------------------------------
 # internal-base build target: julia with OS updates and an empty @adria
