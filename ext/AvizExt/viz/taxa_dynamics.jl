@@ -349,7 +349,12 @@ function taxonomy_bands!(
         palette =
             isnothing(colors) ?
             categorical_colors(Symbol("Set1_" * string(n_groups)), n_groups) : colors
-        taxa_names = human_readable_name(functional_group_names(); title_case=true)
+        fg_names = functional_group_names()
+        taxa_names = if n_groups == length(fg_names)
+            human_readable_name(fg_names; title_case=true)
+        else
+            string.(ADRIA.axis_labels(data, :groups))
+        end
         for (i, group) in enumerate(ADRIA.axis_labels(data, :groups))
             members = data[groups=At(group)]
             ci = series_confint(members)
