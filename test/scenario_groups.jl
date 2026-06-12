@@ -1,5 +1,5 @@
 @testset "scenario_groups" begin
-    df = DataFrames.DataFrame(
+    df = DataFrames.DataFrame(;
         N_seed_TA=Int[0, 100, 100],
         fogging=Float64[0.0, 0.0, 0.0],
         SRM=Float64[0.0, 0.0, 0.0],
@@ -34,7 +34,7 @@
     end
 
     @testset "absent type is excluded" begin
-        df2 = DataFrames.DataFrame(
+        df2 = DataFrames.DataFrame(;
             N_seed_TA=Int[0, 100],
             fogging=Float64[0.0, 0.0],
             SRM=Float64[0.0, 0.0],

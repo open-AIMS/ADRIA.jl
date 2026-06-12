@@ -183,7 +183,7 @@ using ADRIAanalysis
     @testset "find_pareto_optimal" begin
         # Scenario 1 dominates scenario 2 for RCP45 (higher is better in both objectives).
         # Scenarios 3 and 4 are mutually non-dominated for RCP60.
-        scens = DataFrames.DataFrame(RCP=Int[45, 45, 60, 60])
+        scens = DataFrames.DataFrame(; RCP=Int[45, 45, 60, 60])
         y = Float64[0.9 0.9; 0.1 0.1; 0.8 0.2; 0.3 0.7]
 
         result = ADRIAanalysis.find_pareto_optimal(scens, y, [45, 60])
@@ -196,7 +196,7 @@ using ADRIAanalysis
     end
 
     @testset "find_robust" begin
-        scens = DataFrames.DataFrame(RCP=Int[45, 45, 45])
+        scens = DataFrames.DataFrame(; RCP=Int[45, 45, 45])
         # After col_normalize all three end up on the Pareto front.
         # y_star = [1.0 0.0; 0.5 0.5; 0.0 1.0]
         y = Float64[1.0 0.0; 0.5 0.5; 0.0 1.0]

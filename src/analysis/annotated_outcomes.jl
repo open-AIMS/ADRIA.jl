@@ -45,7 +45,7 @@ function attach_scenario_metadata(outcomes::YAXArray, rs::ResultSet)::AnnotatedO
         outcomes,
         Dict{Symbol,Any}(
             :scenario_type_groups => scenario_types(scenarios_df),
-            :scenario_rcp_groups  => scenario_rcps(scenarios_df),
+            :scenario_rcp_groups => scenario_rcps(scenarios_df)
         )
     )
 end
@@ -72,7 +72,7 @@ function attach_scenario_metadata(outcomes::YAXArray, rs::RMEResultSet)::Annotat
         outcomes,
         Dict{Symbol,Any}(
             :scenario_type_groups => rs.scenario_groups,
-            :scenario_rcp_groups  => nothing,
+            :scenario_rcp_groups => nothing
         )
     )
 end

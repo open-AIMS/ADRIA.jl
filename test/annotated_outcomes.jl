@@ -32,13 +32,13 @@ using OrderedCollections
         outcomes = DataCube(rand(5, n_scens); timesteps=1:5, scenarios=1:n_scens)
         groups = OrderedDict{Symbol,BitVector}(
             :counterfactual => vcat(trues(4), falses(4)),
-            :guided         => vcat(falses(4), trues(4)),
+            :guided => vcat(falses(4), trues(4))
         )
         ao = AnnotatedOutcomes(
             outcomes,
             Dict{Symbol,Any}(
                 :scenario_type_groups => groups,
-                :scenario_rcp_groups  => nothing,
+                :scenario_rcp_groups => nothing
             )
         )
 

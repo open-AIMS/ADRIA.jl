@@ -2,7 +2,13 @@ using Pkg, PackageCompiler
 
 # Removed ADRIA from sysimage project so line below is not needed (but could be useful later).
 # project_deps = filter!(i -> i != "ADRIA", project_deps)  # Remove ADRIA (we don't want to make this static for dev purposes)
-sysimage_ext = Sys.iswindows() ? "dll" : Sys.isapple() ? "dylib" : "so"
+sysimage_ext = if Sys.iswindows()
+    "dll"
+elseif Sys.isapple()
+    "dylib"
+else
+    "so"
+end
 sysimage_fn = "ADRIA_sysimage.$(sysimage_ext)"
 if "dev" in ARGS
     @info "Adding dev packages"

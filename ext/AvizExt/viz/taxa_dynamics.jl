@@ -340,28 +340,33 @@ function taxonomy_bands!(
     colormap=:tableau_10,
     alpha::Float64=0.3,
     colors=nothing,
-    labels::Union{Vector{<:AbstractString},Nothing}=nothing,
+    labels::Union{Vector{<:AbstractString},Nothing}=nothing
 )
     x_vals = collect(1:size(data, 1))
     use_default_labels = isnothing(labels)
     if by_functional_groups
         n_groups = length(data.groups)
-        palette = isnothing(colors) ? categorical_colors(Symbol("Set1_" * string(n_groups)), n_groups) : colors
+        palette =
+            isnothing(colors) ?
+            categorical_colors(Symbol("Set1_" * string(n_groups)), n_groups) : colors
         taxa_names = human_readable_name(functional_group_names(); title_case=true)
         for (i, group) in enumerate(ADRIA.axis_labels(data, :groups))
             members = data[groups=At(group)]
             ci = series_confint(members)
             display_label = use_default_labels ? taxa_names[i] : labels[i]
-            show_confints && band!(ax, x_vals, ci[:, 1], ci[:, 3]; color=(palette[i], alpha))
+            show_confints &&
+                band!(ax, x_vals, ci[:, 1], ci[:, 3]; color=(palette[i], alpha))
             lines!(ax, x_vals, ci[:, 2]; color=palette[i], label=display_label)
         end
     else
-        palette = isnothing(colors) ? categorical_colors(colormap, length(scen_groups)) : colors
+        palette =
+            isnothing(colors) ? categorical_colors(colormap, length(scen_groups)) : colors
         for (i, (label, mask)) in enumerate(scen_groups)
             members = dropdims(sum(data[scenarios=mask]; dims=:groups); dims=:groups)
             ci = series_confint(members)
             display_label = use_default_labels ? string(label) : labels[i]
-            show_confints && band!(ax, x_vals, ci[:, 1], ci[:, 3]; color=(palette[i], alpha))
+            show_confints &&
+                band!(ax, x_vals, ci[:, 1], ci[:, 3]; color=(palette[i], alpha))
             lines!(ax, x_vals, ci[:, 2]; color=palette[i], label=display_label)
         end
     end
@@ -383,7 +388,7 @@ function ADRIA.viz.taxonomy(
     xlabel::AbstractString="Year",
     ylabel::AbstractString="Relative Cover",
     xticks=nothing,
-    xticklabelrotation::Float64=π/2,
+    xticklabelrotation::Float64=π / 2
 )::Figure
     scen_groups = _get_scenario_groups(ao; by_RCP)
     f = Figure(; size)
@@ -415,7 +420,7 @@ function ADRIA.viz.taxonomy!(
     xlabel::AbstractString="Year",
     ylabel::AbstractString="Relative Cover",
     xticks=nothing,
-    xticklabelrotation::Float64=π/2,
+    xticklabelrotation::Float64=π / 2
 )::Union{GridLayout,GridPosition}
     scen_groups = _get_scenario_groups(ao; by_RCP)
     xtick_vals = isnothing(xticks) ? _time_labels(timesteps(ao.data)) : xticks
