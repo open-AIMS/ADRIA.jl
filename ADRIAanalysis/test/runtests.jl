@@ -4,7 +4,7 @@ using ADRIA: DataFrames
 using ADRIAanalysis
 
 @testset "ADRIAanalysis" begin
-    @testset "Package loads" begin
+    pkg_ts = @testset "Package loads" begin
         @test isdefined(ADRIAanalysis, :sensitivity)
         @test isdefined(ADRIAanalysis, :data_envelopment_analysis)
         @test isdefined(ADRIAanalysis, :rules)
@@ -17,6 +17,12 @@ using ADRIAanalysis
         @test isdefined(ADRIAanalysis, :find_pareto_optimal)
         @test isdefined(ADRIAanalysis, :find_robust)
         @test isdefined(ADRIAanalysis, :screen_scenarios)
+    end
+    let tc = Test.get_test_counts(pkg_ts)
+        if tc.fails + tc.errors > 0
+            @error "ADRIAanalysis: Package loads failed — aborting functional tests"
+            exit(1)
+        end
     end
 
     # ---------------------------------------------------------------------------

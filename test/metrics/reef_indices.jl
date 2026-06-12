@@ -6,20 +6,16 @@ if !@isdefined(TEST_RS)
 end
 
 @testset "reef_indices.jl" begin
-    @testset "reduced_reef_tourism_index" begin
+    @testset "reef_tourism_index" begin
         test_metric(metrics.reef_tourism_index, (TEST_RS,))
     end
 
-    @testset "scenario_reduced_rci" begin
-        test_metric(metrics.scenario_reduced_rci, (TEST_RS,))
+    @testset "scenario_rci" begin
+        test_metric(metrics.scenario_rci, (TEST_RS,))
     end
 
-    @testset "reduced_reef_tourism_index" begin
-        test_metric(metrics.reef_tourism_index, (TEST_RS,))
-    end
-
-    @testset "scenario_reduced_rti" begin
-        test_metric(metrics.scenario_reduced_rti, (TEST_RS,))
+    @testset "scenario_rti" begin
+        test_metric(metrics.scenario_rti, (TEST_RS,))
     end
 
     @testset "reef_fish_index" begin

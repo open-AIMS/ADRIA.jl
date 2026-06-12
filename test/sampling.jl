@@ -7,8 +7,12 @@ if !@isdefined(ADRIA_DIR)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
+if !@isdefined(ADRIA_DOM_45)
+    const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+end
+
 @testset "sample" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+    dom = deepcopy(ADRIA_DOM_45)
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
     ms = ADRIA.model_spec(dom, scens)
@@ -78,7 +82,7 @@ end
 
 @testset "Targeted sampling" begin
     @testset "Counterfactual sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         scens = ADRIA.sample_cf(dom, num_samples)
 
@@ -97,7 +101,7 @@ end
     end
 
     @testset "Guided sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         scens = ADRIA.sample_guided(dom, num_samples)
         ms = ADRIA.model_spec(dom, scens)
@@ -127,7 +131,7 @@ end
     end
 
     @testset "Specific Intervention strategy" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
 
         test_inputs = [
@@ -149,7 +153,7 @@ end
     end
 
     @testset "Unguided sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         scens = ADRIA.sample_unguided(dom, num_samples)
 
@@ -173,7 +177,7 @@ end
     end
 
     @testset "Site selection sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         scens = ADRIA.sample_selection(dom, num_samples)
 
@@ -212,7 +216,7 @@ end
 
 @testset "Sample bounds" begin
     @testset "Get sampling bounds" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
         ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
 
@@ -244,7 +248,7 @@ end
     @testset "Set new sampling bounds" begin
         set_factor_bounds! = ADRIA.set_factor_bounds!
 
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
         ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
