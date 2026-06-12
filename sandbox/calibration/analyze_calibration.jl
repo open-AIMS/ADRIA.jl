@@ -26,6 +26,9 @@ for i in 1:5
     p.a_F = top5.a_F[i]
     p.a_S = top5.a_S[i]
     p.IMM = top5.IMM[i]
+    p.a_ricker = top5.a_ricker[i]
+    p.b_ricker = top5.b_ricker[i]
+    p.tau_condition = top5.tau_condition[i]
     ENV["COTS_INITIAL_MULTIPLIER"] = string(top5.seed_mult[i])
     
     rs = ADRIA.run_scenario(dom, p)
