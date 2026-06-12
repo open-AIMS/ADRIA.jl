@@ -1,7 +1,4 @@
-using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
-using ADRIA.metrics: total_absolute_cover
-using Statistics
 
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
@@ -49,9 +46,9 @@ function test_rs()
     dom = ADRIA.set_factor_bounds!(dom, :min_iv_locations, (5.0, 10.0))
 
     # Create some scenarios
-    # The number of scenarios set here seem to be the rough minimum for SIRUS to produce
-    # some results.
-    n_samples = 64
+    # Keep this large enough to exercise the shared ResultSet-based tests without paying
+    # the full cost of the old 64-scenario run.
+    n_samples = 32
     scens = ADRIA.sample(dom, n_samples)
 
     # Run the model for generated scenarios

@@ -9,6 +9,10 @@ using ADRIA.decision:
     decision_matrix,
     select_locations
 
+if !@isdefined(ADRIA_DOM_45)
+    const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+end
+
 @testset "Location selection" begin
     """
     Tests to ensure cluster diversity and geographic separation of intervention sites
@@ -16,7 +20,7 @@ using ADRIA.decision:
     """
 
     @testset "Select under-represented cluster" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         loc_data = dom.loc_data
         n_locs = length(dom.loc_ids)
         min_locs = 10  # select at least 10 locations
@@ -75,7 +79,7 @@ using ADRIA.decision:
     end
 
     @testset "Select location closest to other locations" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        dom = deepcopy(ADRIA_DOM_45)
         loc_data = dom.loc_data
         n_locs = length(dom.loc_ids)
         min_locs = 10  # select at least 10 locations

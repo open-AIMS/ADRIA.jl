@@ -1,16 +1,22 @@
 using ADRIA, ADRIA.DataFrames, ADRIA.CSV
-import ADRIA.GeoDataFrames as GDF
+import ADRIA.GDF as GDF
+
+if !@isdefined(TEST_DOMAIN_PATH)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
+    const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
+end
 
 @testset "Connectivity loading" begin
     loc_data = GDF.read(
-        joinpath(@__DIR__, "..", "examples", "Test_domain", "spatial", "Test_domain.gpkg")
+        joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg")
     )
     sort!(loc_data, [:reef_siteid])
 
     unique_loc_ids = loc_data.reef_siteid
-    conn_files = joinpath(@__DIR__, "..", "examples", "Test_domain", "connectivity")
+    conn_files = joinpath(TEST_DOMAIN_PATH, "connectivity")
     conn_data = CSV.read(
-        joinpath(conn_files, "2000", "test_conn_data.csv"),
+        joinpath(conn_files, "example_conn.csv"),
         DataFrame;
         comment="#",
         drop=[1],
@@ -20,6 +26,9 @@ import ADRIA.GeoDataFrames as GDF
     conn_details = ADRIA.location_connectivity(conn_files, unique_loc_ids)
 
     conn = conn_details.conn
-    @test all(names(conn, 2) .== loc_data.reef_siteid) ||
+    d1, d2 = axes(conn)
+    @test all(d1.dim.val.data .== d2.dim.val.data) ||
+        "Site order does not match between rows/columns."
+    @test all(d2.dim.val.data .== loc_data.reef_siteid) ||
         "Sites do not match expected order!"
 end
