@@ -25,7 +25,7 @@ y = [1.0 2.0; 3.0 4.0]
 screen_scenarios(y, x -> x >= 0.25)  # returns indices of rows meeting the condition
 ```
 """
-function screen_scenarios(y::AbstractArray, rule)
+function screen_scenarios(y::AbstractArray{<:Real}, rule::Function)
     y_star = col_normalize(copy(y))
 
     return findall(all.(eachrow(map(rule, y_star))))
