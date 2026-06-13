@@ -26,7 +26,7 @@ Calculate the Kolmogorov-Smirnov test statistic.
 function ks_statistic(ks::ApproximateKSTest)::Float64
     n::Float64 = (ks.n_x * ks.n_y) / (ks.n_x + ks.n_y)
 
-    return sqrt(n) * ks.╬┤
+    return sqrt(n) * ks.δ
 end
 
 """
@@ -251,9 +251,9 @@ scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # Get mean coral cover over time and locations
-╬╝_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)
+μ_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)
 
-ADRIA.sensitivity.pawn(rs, ╬╝_tac)
+ADRIA.sensitivity.pawn(rs, μ_tac)
 ```
 
 # References
@@ -490,7 +490,7 @@ Alternate approaches use a moving window, or only data for time \$t\$.
 ```julia
 rs = ADRIA.load_results("a ResultSet of interest")
 
-# Get scenario outcomes over time (shape: `time Ôïà scenarios`)
+# Get scenario outcomes over time (shape: `time × scenarios`)
 y_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Calculate sensitivity of outcome to factors for each time step
@@ -502,22 +502,13 @@ ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 - `y` : scenario outcomes over time
 
 # Returns
-YAXArray, of shape \$D\$ Ôïà 6 Ôïà \$T\$, where
+YAXArray, of shape \$D\$ × 6 × \$T\$, where
 - \$D\$ is the number of dimensions/factors
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
 function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
-    local ts
-    try
-        ts = collect(y.axes[1])
-    catch err
-        if err isa MethodError
-            ts = 1:size(y, 1)
-        else
-            rethrow(err)
-        end
-    end
+    ts = hasproperty(y, :axes) ? collect(y.axes[1]) : (1:size(y, 1))
 
     t_pawn_idx = ZeroDataCube(;
         T=Float64,
@@ -646,7 +637,7 @@ function rsa(
             r_s[1] = missing
 
         else
-            r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A┬▓k
+            r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
         for s in 2:(length(X_q) - 1)
@@ -659,7 +650,7 @@ function rsa(
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[s] = KSampleADTest(y[sel], y[Not(sel)]).A┬▓k
+            r_s[s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
         normalize!(r_s)
     end
@@ -752,7 +743,7 @@ Note:
 - `conf` : confidence interval (default: 0.95)
 
 # Returns
-3-dimensional YAXArray, of shape \$S\$ Ôïà \$D\$ Ôïà 3, where:
+3-dimensional YAXArray, of shape \$S\$ × \$D\$ × 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
 - boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).

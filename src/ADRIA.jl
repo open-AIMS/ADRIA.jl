@@ -109,4 +109,23 @@ export RMEResultSet
 
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.8.0"]
+
+@compile_workload begin
+    # DataCube / ZeroDataCube constructors — covers Dim{:timesteps/:scenarios/:locations} triples
+    dc = DataCube(zeros(Float64, 5, 3, 10); timesteps=1:5, scenarios=1:3, locations=1:10)
+    ZeroDataCube((:timesteps, :scenarios, :locations), (5, 3, 10))
+
+    # Analysis helpers — pure computation, no filesystem I/O
+    analysis.series_confint(randn(Float64, 10, 4))
+    analysis.normalize(randn(Float64, 20))
+    analysis.discretize_outcomes(randn(Float64, 20))
+
+    # Metric dispatch paths — cover common array-input routing
+    # scenario_total_cover: in_dims = (:timesteps, :locations, :scenarios)
+    metrics.scenario_total_cover(rand(Float64, 5, 10, 3))
+    # relative_cover: 5D plain-array path (timesteps×groups×sizes×locations×scenarios)
+    metrics.relative_cover(rand(Float64, 5, 3, 10, 8, 2))
+    # coral_evenness: in_dims = (:timesteps, :groups, :locations)
+    metrics.coral_evenness(rand(Float64, 5, 3, 10))
+end
 end

@@ -11,7 +11,6 @@ using
 using YAXArrays
 using ADRIA:
     DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, functional_group_names
-using ADRIA: n_sizes, group_indices
 
 using DataFrames
 
@@ -625,8 +624,10 @@ function _absolute_shelter_volume(
 
     _, _, cs_p::DataFrame = coral_spec()
     col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
+
     # Flattened Mean colony diameters with shape [n_scenarios ⋅ n_groups * n_sizes]
     flat_mean_diams::Matrix{Float64} = Matrix(inputs.data[:, col_mask])
+
     # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
     colony_mean_diams_cm::Array{Float64,3} =
         permutedims(reshape(

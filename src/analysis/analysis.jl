@@ -78,7 +78,7 @@ S := 1.0 - 0.9
 S-1 := 0.9 - 0.8
 etc
 """
-function discretize_outcomes(y; S=20)
+function discretize_outcomes(y::AbstractArray{<:Real}; S::Int=20)
     steps = 0.0:(1 / S):1.0
 
     y_s_hat = col_normalize(y)

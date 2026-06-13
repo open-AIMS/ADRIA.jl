@@ -29,7 +29,7 @@ create_sysimage(
         # Heavy deps whose specialisations are worth baking in
         :ArchGDAL, :YAXArrays, :Zarr, :DimensionalData,
         :CoralBlox, :JMcDM,
-        :Distributions, :Interpolations, :BlackBoxOptim, :OnlineStats,
+        :Distributions, :Interpolations, :OnlineStats,
         # Data
         :DataFrames, :CSV, :JSON,
         :GeoDataFrames, :GeoInterface, :GeoFormatTypes,

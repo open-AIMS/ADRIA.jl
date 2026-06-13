@@ -1,6 +1,5 @@
 module decision
 
-using InteractiveUtils: subtypes
 using StatsBase
 using YAXArrays
 using ADRIA:
