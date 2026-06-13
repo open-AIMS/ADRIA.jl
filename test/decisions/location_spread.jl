@@ -2,7 +2,6 @@ using Test
 using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision:
-    subtypes,
     SeedPreferences,
     cluster_diversity,
     geographic_separation,
