@@ -31,18 +31,18 @@ include("analysis/scenario.jl")
 include("sensitivity/sensitivity.jl")
 
 @compile_workload begin
-    _n   = 12
-    _X   = rand(Float64, _n, 3)
-    _y   = rand(Float64, _n)
-    _Y2  = rand(Float64, _n, 4)
-    _df  = DataFrame(_X, [:a, :b, :c])
-    _ci  = [1, 2, 1, 1, 2, 2, 1, 2, 1, 1, 2, 2]
-    _bv  = BitVector(isodd.(_ci))
-    _ms  = DataFrame(
-        fieldname   = [:a, :b, :c],
-        ptype       = fill("continuous", 3),
-        lower_bound = zeros(3),
-        upper_bound = ones(3),
+    _n = 12
+    _X = rand(Float64, _n, 3)
+    _y = rand(Float64, _n)
+    _Y2 = rand(Float64, _n, 4)
+    _df = DataFrame(_X, [:a, :b, :c])
+    _ci = [1, 2, 1, 1, 2, 2, 1, 2, 1, 1, 2, 2]
+    _bv = BitVector(isodd.(_ci))
+    _ms = DataFrame(;
+        fieldname=[:a, :b, :c],
+        ptype=fill("continuous", 3),
+        lower_bound=zeros(3),
+        upper_bound=ones(3)
     )
     _df_rcp = insertcols(copy(_df), :RCP => repeat([45, 60], _n ÷ 2))
 
