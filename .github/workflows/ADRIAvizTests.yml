@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - 'ADRIAviz/**'
-      - 'src/analysis/annotated_outcomes.jl'
+      - 'ADRIA/src/analysis/annotated_outcomes.jl'
       - '.github/workflows/ADRIAvizTests.yml'
   workflow_dispatch:
 
@@ -22,7 +22,7 @@ jobs:
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
-          julia --project=. -e 'using Pkg; Pkg.develop(path=".."); Pkg.instantiate()'
+          julia --project=. -e 'using Pkg; Pkg.develop(path="../ADRIA"); Pkg.instantiate()'
       - name: Test ADRIAviz (Makie backend)
         # Basic package-integrity checks always run first (unconditional in runtests.jl),
         # so a separate no-backend step is not needed.
@@ -43,7 +43,7 @@ jobs:
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
-          julia --project=. -e 'using Pkg; Pkg.develop(path=".."); Pkg.instantiate()'
+          julia --project=. -e 'using Pkg; Pkg.develop(path="../ADRIA"); Pkg.instantiate()'
       - name: Test ADRIAviz (Plotly backend)
         # Runs in a completely separate job/runner so no Makie package can
         # be present — the Makie and Plotly extensions are mutually exclusive
