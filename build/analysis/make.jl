@@ -30,7 +30,7 @@ create_sysimage(
         :ADRIA,
         :ArchGDAL, :YAXArrays, :Zarr, :DimensionalData,
         :CoralBlox, :JMcDM,
-        :Distributions, :Interpolations, :BlackBoxOptim, :OnlineStats,
+        :Distributions, :Interpolations, :OnlineStats,
         :DataFrames, :CSV, :JSON,
         :GeoDataFrames, :GeoInterface, :GeoFormatTypes,
         :Graphs, :SimpleWeightedGraphs,
