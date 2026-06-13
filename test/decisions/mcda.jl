@@ -1,7 +1,7 @@
 using Test
 using ADRIA.Distributions
 using ADRIA.decision.JMcDM
-using ADRIA.decision: subtypes
+using InteractiveUtils: subtypes
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
