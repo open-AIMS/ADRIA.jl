@@ -25,3 +25,7 @@ graphify-out/
 .graphify_uncached.txt
 
 ADRIAviz/test/Outputs/
+
+ADRIA/docs/build/
+
+ADRIA/docs/node_modules/
