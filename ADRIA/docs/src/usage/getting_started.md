@@ -1,3 +1,7 @@
+```@meta
+EditURL = "getting_started.jl"
+```
+
 # Getting Started
 
 ## Setup
@@ -8,44 +12,55 @@ pathways that are robust to possible future conditions.
 Create a directory for your project, and start Julia inside that directory:
 
 ```bash
-$ julia --project=.
+$ julia --project=. --threads=auto
 ```
 
-ADRIA may be installed through the package manager or from the github repository (for the
-most recent development version).
+The ADRIA ecosystem consists of three packages. Install them all from the package manager:
 
-```julia-repl
-julia> ]add ADRIA
-
-# OR, to install the latest development version:
-
-julia> ]add https://github.com/open-AIMS/ADRIA.jl.git
+```julia
+julia> ]add ADRIA ADRIAviz ADRIAanalysis
 ```
 
-Similarly, ADRIA can be updated as new releases are made:
+To install the latest development version of all three packages:
 
-```julia-repl
-julia> ]up ADRIA
+```julia
+using Pkg
+Pkg.add([
+    Pkg.PackageSpec(url="https://github.com/open-AIMS/ADRIA.jl", subdir="ADRIA"),
+    Pkg.PackageSpec(url="https://github.com/open-AIMS/ADRIA.jl", subdir="ADRIAviz"),
+    Pkg.PackageSpec(url="https://github.com/open-AIMS/ADRIA.jl", subdir="ADRIAanalysis"),
+])
 ```
 
-!!! note
-    Advanced analysis and sensitivity functions (`target_clusters`, `find_scenarios`,
-    `sensitivity.pawn`, `data_envelopment_analysis`, `rules`, etc.) are provided by the
-    separate `ADRIAAnalysis.jl` package. Install it alongside `ADRIA.jl` with:
+Update all three packages as new releases are made:
 
-    ```julia-repl
-    julia> ]
-    pkg> add ADRIAAnalysis
-    ```
+```julia
+julia> ]up ADRIA ADRIAviz ADRIAanalysis
+```
 
-If desired, you can create a `config.toml` file inside your project directory.
-This is optional, and the assumed default values are shown below:
+Package roles:
+
+- **ADRIA** provides the core simulation engine, MCDA, and base metrics.
+- **ADRIAviz** provides visualization tools. The Plotly backend (recommended) requires
+  `PlotlyBase`; Makie backends (`"WGLMakie"`, `"GLMakie"`, `"CairoMakie"`) require
+  GeoMakie and GraphMakie.
+- **ADRIAanalysis** provides extended analysis functions including `target_clusters`,
+  `screen_scenarios`, `pawn`, `data_envelopment_analysis`, `rules`, and others.
+
+Install the Plotly backend dependencies:
+
+```julia
+julia> ]add PlotlyBase            # required for Plotly backend
+julia> ]add PlotlyKaleido         # optional, enables static image export
+```
+
+If desired, create a `config.toml` file inside your project directory.
+The assumed default values are shown below:
 
 ```toml
 [operation]
-num_cores = 2         # No. of cores to use. Values <= 0 will use all available cores.
 threshold = 1e-8      # Result values below this will be set to 0.0 (to save disk space).
-debug = false         # Disable multi-processing to allow error messages to be shown.
+debug = false         # Disable multi-threading to allow error messages to be shown.
 log_dhw_tols = false  # Log per-location coral DHW tolerance trajectories (increases disk usage).
 log_cover = false     # Log raw results (coral cover) for all timesteps, locations, functional groups, size classes and scenarios.
 rng_seed = false      # Set to an integer to be used as RNG seed for all runs.
@@ -57,22 +72,21 @@ output_dir = "./Outputs"  # Change this to point to where you want to store resu
 This `config.toml` file is specific to your computer and project. It **should not be**
 committed to version control.
 
-
 !!! tip "Performance"
     ADRIA uses an on-disk data store to hold results from model runs.
-    Setting `output_dir` to a directory on an SSD (Solid State Drive)
-    will maximize performance.
+    Setting `output_dir` to a directory on an SSD (Solid State Drive) will maximize
+    performance.
 
 To setup ADRIA for development, see the [Development setup](@ref) page.
 
 ## Quick Start
 
-A common workflow would be the following:
+A common workflow would be the following.
 
-Start Julia from the project directory:
+Start Julia from the project directory with multi-threading enabled:
 
 ```bash
-$ julia --project=.
+$ julia --project=. --threads=auto
 ```
 
 Load data for a spatial domain. See [Loading a Domain](@ref) for more details:
@@ -84,7 +98,7 @@ dom = ADRIA.load_domain("path to domain data package directory", "<RCP>")
 ```
 
 Generate scenarios based on available environmental data layers and model parameters. The
-number of scenarios shoud be a power of two. See [Generating scenarios](@ref) for more
+number of scenarios should be a power of two. See [Generating scenarios](@ref) for more
 details:
 
 ```julia
@@ -92,7 +106,7 @@ num_scenarios = 128
 scens = ADRIA.sample(dom, num_scenarios)
 ```
 
-Run sampled scenarios for one or more RCPs. Be aware that this may take a while:
+Run sampled scenarios for one or more RCPs. This may take a while:
 
 ```julia
 rcp_45 = "45"
@@ -120,36 +134,43 @@ timestep):
 s_tc = ADRIA.metrics.scenario_total_cover(rs)
 ```
 
-Use the visualization tools to plot the results. The Makie package ecosystem is used for
-producing plots:
+Use ADRIAviz to plot the results. Load the package and activate the Plotly backend before
+calling any `ADRIA.viz.*` function:
 
 ```julia
-using ADRIA, ADRIAviz
-ADRIAviz.activate("GLMakie")  # or "WGLMakie" / "CairoMakie"
+using ADRIA, ADRIAviz, PlotlyBase
+ADRIAviz.activate(:plotly)
 
-# Plot a quick scenario overview
-fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel=>"Absolute Cover"))
-save("path_to_save_figure", fig)
+fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel => "Absolute Cover"))
+ADRIA.viz.savefig(fig, "scenarios.html")
+```
+
+For extended analysis, load ADRIAanalysis alongside ADRIA:
+
+```julia
+using ADRIA, ADRIAanalysis
+
+# Cluster scenarios by temporal behaviour
+tac = ADRIA.metrics.scenario_total_cover(rs)
+clusters = scenario_clusters(tac)
+
+# Sensitivity analysis (PAWN method)
+scens = ADRIA.param_table(rs)
+Si = pawn(scens, vec(mean(tac; dims=(:timesteps, :locations))), ADRIA.component_params(dom))
 ```
 
 See [Analysis](@ref) for further examples of analysis and plots.
 
 ## Shared package depot paths
 
-If parallel runs are to be conducted, it is recommended to set a shared `JULIA_DEPOT_PATH`.
-This is so each individual worker does not race against each other to compile packages.
+If multiple Julia processes are used (e.g. running several independent ADRIA instances),
+it is recommended to set a shared `JULIA_DEPOT_PATH`
+so each process does not race against the others to compile packages.
 
-This would be defined in your user `.bashrc` file (or equivalent) on Linux, or configured
-via the user environment variable control panel dialog on Windows.
+This is typically defined in your `.bashrc` (or equivalent) on Linux, or configured via
+the user environment variable control panel on Windows.
 
-If runs outside of VS Code are not expected, the variable can be set using within
-`settings.json` by:
-
-- Opening settings in VS Code (Ctrl+,)
-- Search for terminal.integrated.env.windows
-- Add: "JULIA_DEPOT_PATH": "<path to depot>"
-
-Below are instructions to set a temporary environment variable for a session.
+To set a temporary environment variable for a session:
 
 On Linux:
 
@@ -169,5 +190,14 @@ On Windows (Powershell):
 $Env:JULIA_DEPOT_PATH="some_shared_accessible_directory"
 ```
 
-- https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH
-- https://pkgdocs.julialang.org/dev/depots/#Platform-specific-configuration
+For VS Code, open settings (Ctrl+,), search for `terminal.integrated.env.windows`, and
+add `"JULIA_DEPOT_PATH": "<path to depot>"`.
+
+See also:
+- [Julia documentation on `JULIA_DEPOT_PATH`](https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH)
+- [Pkg depot documentation](https://pkgdocs.julialang.org/dev/depots/#Platform-specific-configuration)
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

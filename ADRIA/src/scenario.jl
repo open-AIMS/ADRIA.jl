@@ -115,7 +115,7 @@ packages and > 4 for GBR-scale datasets.
 - Returned `Domain` holds scenario invoke time used as unique result set identifier.
 
 # Examples
-```julia-repl
+```julia
 ...
 julia> rs_45 = ADRIA.run_scenarios(dom, scens, "45")
 julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])

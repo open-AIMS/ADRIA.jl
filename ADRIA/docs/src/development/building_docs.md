@@ -1,37 +1,60 @@
 # Building Documentation
 
-ADRIA documentation is built using [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).
+ADRIA documentation is built using [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)
+with [DocumenterVitepress.jl](https://github.com/LuxDL/DocumenterVitepress.jl) as the site
+theme and [Literate.jl](https://github.com/fredrikekre/Literate.jl) for tutorial pages.
 
+Tutorial source files are `.jl` scripts in `ADRIA/docs/src/usage/`. Running `make.jl`
+converts them to markdown before Documenter processes the full site. The generated `.md`
+files are not tracked in version control.
 
-## Building documentation locally
+## Setup
 
-As the documentation is build from a separate environment, it must be maintained/updated
-to incorporate any changes to ADRIA.
+Add the required documentation dependencies if they are not already in the docs environment:
+
+```julia
+julia> ]activate ADRIA/docs
+(docs) pkg> dev ADRIA ADRIAanalysis
+(docs) pkg> add Literate DocumenterVitepress
+```
+
+## Building locally
+
+From the repository root:
 
 ```bash
-$ julia --project=docs
+$ julia --project=ADRIA/docs/ --threads=auto
 (docs) pkg> resolve
 (docs) pkg> up
 ```
 
-If no changes to the environment are necessary, simply run `make.jl` from the `docs` folder:
+Then build:
 
 ```bash
-$ cd docs
-$ julia --project=. make.jl
+$ julia --project=ADRIA/docs/ --threads=auto ADRIA/docs/make.jl
 ```
 
-Locally generated documentation can be found under `docs/build`. Open the `index.html` file with any web browser.
+This generates markdown from the Literate sources and runs `npm install` automatically
+using the Node.js bundled with DocumenterVitepress (`NodeJS_20_jll`).
+
+On **Linux/macOS**, `makedocs` also runs the full Vitepress build and writes the final
+static HTML to `ADRIA/docs/build/final_site/`.
+
+On **Windows**, the Vitepress build step is skipped by `makedocs` (a current limitation
+of the JLL runtime on Windows). To complete the build or start a live-reload dev server,
+install [Node.js](https://nodejs.org/en) (v22.11.0 or later) and run from `ADRIA/docs/`:
+
+```bash
+$ npm run docs:build   # produce static HTML in build/final_site/
+$ npm run docs:dev     # start live-reload dev server at http://localhost:5173
+```
 
 ## Documentation deployment
 
-Documentation is hosted on [GitHub Pages](https://pages.github.com/) via [GitHub Actions](https://github.com/features/actions).
+Documentation is hosted on [GitHub Pages](https://pages.github.com/) via
+[GitHub Actions](https://github.com/features/actions).
 
-Configuration is found [here](https://github.com/open-AIMS/ADRIA.jl/blob/main/.github/workflows/documentation.yml).
+Configuration is in [`.github/workflows/documentation.yml`](https://github.com/open-AIMS/ADRIA.jl/blob/main/.github/workflows/documentation.yml).
 
-Documentation is automatically built and deployed:
-
-- When a PR targeting `main` is submitted  
-  In this case, a preview URL is created: e.g., a URL with `previews/PR###` at the end, where `PR###` refers to the PR ID.
-- On commit/merge to `main`  
-  In this case the main documentation website is updated
+Documentation is built and deployed automatically on commit to `main`. When a PR
+targeting `main` is submitted, a preview URL is generated (e.g. `previews/PR###`).

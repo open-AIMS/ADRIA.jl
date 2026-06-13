@@ -37,7 +37,7 @@ $ julia --project=.
 
 Switch to the package manager (`]`) and instantiate the project. **This only needs to be done once**.
 
-```julia-REPL
+```julia
 julia> ]
 (ADRIA.jl) pkg> instantiate
 ```
@@ -46,39 +46,81 @@ This will sets up the project packages.
 
 ## Sandbox
 
-For development purposes, set up a sandbox environment **(setup only needs to be done once)**.
-This environment will function as a project apart from ADRIA, where you can install any
-packages, including ADRIA.jl, and run your code. When installing ADRIA.jl at the sandbox,
-use the `dev` command instead of `add`. For more information, please refer to
-[Pkg.jl documentation](https://pkgdocs.julialang.org/v1/managing-packages/#developing).
+### Concept
 
-Once you are inside ADRIA.jl project folder, create a folder named `sandbox` and start
-julia inside it:
+The `sandbox` is a personal Julia project environment that lives inside the ADRIA.jl
+repository folder but is excluded from version control (it appears in `.gitignore`).
+Think of it as a workbench: a place to experiment with new features, prototype algorithms,
+or run study-specific analyses without those scripts ever touching ADRIA's own git history.
+
+Using the `dev` command (rather than `add`) to install ADRIA into the sandbox means that
+any edits you make to ADRIA's source files are reflected immediately in your sandbox
+scripts -- no reinstall required.
+
+A typical sandbox layout looks like this:
+
+```
+ADRIA.jl/
+|-- ADRIA/               <- ADRIA package source (version-controlled)
+|-- sandbox/             <- your personal workspace (git-ignored)
+    |-- Project.toml
+    |-- Manifest.toml
+    |-- scratch.jl       <- ad-hoc scripts
+    |-- study_A/         <- a self-contained study
+    |   |-- .git/        <- optionally its own git repository
+    |   |-- ...
+    |-- study_B/
+        |-- ...
+```
+
+Sub-directories such as `study_A/` can be individually version-controlled with their
+own `git init`, letting you track and share the code for a specific study while keeping
+it completely separate from the main ADRIA repository.
+
+### Alternative: external project
+
+An equally valid approach is to create a project directory *outside* the ADRIA.jl
+repository and `dev`-install ADRIA using its absolute path:
+
+```julia
+(my_study) pkg> dev /path/to/ADRIA.jl/ADRIA
+(my_study) pkg> dev /path/to/ADRIA.jl/ADRIAanalysis
+```
+
+This is a good option if you prefer to keep study code entirely separate from the ADRIA
+clone. The trade-off is that you maintain separate directories (and potentially separate
+repositories) alongside the ADRIA clone, which can become harder to manage as the number
+of studies grows.
+
+### Setup (one-time)
+
+From the ADRIA.jl repository root, create the `sandbox` folder and start Julia inside it:
 
 ```bash
 $ mkdir sandbox
 $ cd sandbox
-$ julia --project=.
+$ julia --project=. --threads=auto
 ```
 
-Switch to the package manager (`]`) and add ADRIA.jl as a local package under development
+Switch to the package manager (`]`) and add ADRIA.jl as a local package under development:
 
-```julia-REPL
+```julia
 julia> ]
-(sandbox) pkg> dev ../
+(sandbox) pkg> dev ../ADRIA
+(sandbox) pkg> dev ../ADRIAanalysis
 ```
 
-You may also install additional packages for visualizations and debugging tools
+You may also install additional packages for visualizations and debugging tools:
 
-```julia-REPL
+```julia
 (sandbox) pkg> add ADRIAviz GLMakie GeoMakie GraphMakie
 (sandbox) pkg> add Revise Infiltrator BenchmarkTools JET
 ```
 
 Press backspace or Ctrl+C to leave the package manager.
 
-Development scripts/functions can now be worked on in the `sandbox` folder, and its
-sub-folders, without these polluting the ADRIA project itself.
+Development scripts can now be worked on inside `sandbox/` and its sub-folders without
+affecting the ADRIA project itself.
 
 
 ## Testing

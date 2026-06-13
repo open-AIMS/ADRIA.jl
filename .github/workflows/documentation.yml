@@ -3,8 +3,12 @@ name: Documentation
 on:
   push:
     branches:
-      - main  # update to match your development branch (master, main, dev, trunk, ...)
+      - main
     tags: '*'
+  pull_request:
+    branches:
+      - main
+
 jobs:
   build:
     permissions:
@@ -17,9 +21,15 @@ jobs:
           version: '1.11'
       - uses: julia-actions/cache@v3
       - name: Install dependencies
-        run: julia --project=ADRIA/docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path="ADRIA")); Pkg.instantiate()'
-      - name: Build and deploy
+        run: julia --project=ADRIA/docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path="ADRIA")); Pkg.develop(PackageSpec(path="ADRIAanalysis")); Pkg.instantiate()'
+      - name: Build documentation
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
         run: julia --project=ADRIA/docs/ ADRIA/docs/make.jl
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        with:
+          folder: ADRIA/docs/build/final_site
+          branch: gh-pages

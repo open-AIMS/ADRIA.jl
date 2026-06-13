@@ -1,6 +1,9 @@
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
+ADRIAanalysis = "bc4d0ea8-6565-4397-854d-28474bf8c6b3"
 DiskArrays = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
+DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"

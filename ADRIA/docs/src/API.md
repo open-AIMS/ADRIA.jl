@@ -18,7 +18,7 @@ Order   = [:function, :type]
 ## Sensitivity
 
 ```@autodocs
-Modules = [ADRIA.sensitivity]
+Modules = [ADRIAanalysis.sensitivity]
 Order   = [:function, :type]
 ```
 

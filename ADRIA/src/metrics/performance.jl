@@ -75,7 +75,7 @@ metrics (including itself), assuming \$x\$ is bound between 0 and 1.
 If this is not the case, consider normalizing values first.
 
 # Examples
-```julia-repl
+```julia
 # Apply V to a time series
 julia> temporal_variability(rand(50))
 

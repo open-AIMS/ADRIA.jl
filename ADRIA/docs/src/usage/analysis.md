@@ -1,95 +1,48 @@
+```@meta
+EditURL = "analysis.jl"
+```
+
 # Analysis
 
 !!! note
-    This page covers functions provided by `ADRIAAnalysis.jl`. Ensure it is installed
+    This page covers functions provided by `ADRIAanalysis`. Ensure it is installed
     before running the examples (see [Getting Started](@ref)).
 
-This section presents tools for analysing model generate data, including functions to
+This section presents tools for analysing model generated data, including functions to
 extract metrics and plot graphs.
 
 ## Setup
 
-### Selecting and configuring a `Makie` backend
-
-The `Makie.jl` ecosystem is used to produce figures as part of `ADRIAviz`.
-
-As of v0.16.0, `ADRIAviz` is a separate package that must be imported explicitly
-to access visualization functions. This is a **breaking change** — code that was
-`using ADRIA, CairoMakie` will get no viz methods (just missing methods, not an error)
-until `ADRIAviz` is added to the imports.
-
-To enable visualization, firstly install the following packages:
+Install `PlotlyBase` alongside `ADRIAviz` and `ADRIAanalysis`:
 
 ```julia
-]add ADRIAviz GeoMakie GraphMakie
+julia> ]add ADRIAviz ADRIAanalysis PlotlyBase
+julia> ]add PlotlyKaleido  # optional, enables static image export
 ```
 
-`Makie` allows the selection of different rendering backends, this allows it to work in a variety of environments. To learn more about Makie backends, see [here](https://docs.makie.org/stable/explanations/backends/).
-
-For example, let's install the `WGLMakie` backend. `WGLMakie` is more flexible for our workflows, though `GLMakie` is a good choice too.
-
-To install the `WGLMakie` backend:
+Load and activate the Plotly backend before calling any visualization function:
 
 ```julia
-]add WGLMakie
-```
+using ADRIA, ADRIAviz, ADRIAanalysis, PlotlyBase
+ADRIAviz.activate(:plotly)
 
-To trigger compilation of the visualization extension, call `ADRIAviz.activate` with your
-chosen backend after importing ADRIAviz:
-
-```julia
-using ADRIA, ADRIAviz
-ADRIAviz.activate()             # defaults to WGLMakie
-ADRIAviz.activate("GLMakie")    # for VS Code plots pane
-ADRIAviz.activate("CairoMakie") # non-interactive / CI
-```
-
-Alternatively, load backends explicitly:
-
-```julia
-using ADRIA, ADRIAviz
-using WGLMakie, GeoMakie, GraphMakie
-```
-
-The example scripts below assume the following imports
-
-```julia
-using ADRIA, ADRIAviz
-ADRIAviz.activate()  # or your preferred backend
-
-# Statistics library used later in this doc
 using Statistics
 ```
 
-### GLMakie inline plots
-
-If using `GLMakie`, the plots will appear in the VS Code plots pane.
-
-You may prefer figures to appear in a separate window, in which case deactivate the inline
-plotting feature.
-
-```julia
-Makie.inline!(false)
-```
-
-### Result Set
+### ResultSet
 
 All metrics and visualization tools presented here can be used with data generated from
-ADRIAmod. Following, we show usage examples considering ADRIA result set `rs`:
+ADRIA. The examples below assume an `ADRIAResultSet` `rs`:
 
 ```julia
-# Load domain data
 dom = ADRIA.load_domain("path to domain data", "<RCP>")
 
-# Create some scenarios
 num_samples = 4096
 scens = ADRIA.sample(dom, num_samples)
 
-# Run the model for generated scenarios
 rcp_45 = "45"
 rs = ADRIA.run_scenarios(dom, scens, rcp_45)
 
-# Visualize results (in terms of scenario absolute coral cover)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 ADRIA.viz.scenarios(rs, s_tac)
 ```
@@ -102,9 +55,8 @@ See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref)
 A range of metrics are defined as part of the ADRIA framework. See the [Metrics](@ref)
 page for more details.
 
-Here, we extract results for specific metrics for each timestep and sites for all the
-scenarios run. The result of each line above is a 3-dimensional Array of timesteps, sites
-and scenarios:
+The following extracts results for specific metrics for each timestep and site across all
+scenarios. Each result is a 3-dimensional Array of timesteps, sites and scenarios:
 
 ```julia
 tac = ADRIA.metrics.total_absolute_cover(rs)
@@ -112,11 +64,9 @@ rsv = ADRIA.metrics.relative_shelter_volume(rs)
 juves = ADRIA.metrics.relative_juveniles(rs)
 ```
 
-We can also look at scenario-level metrics. They aggregate the above metrics across the
-`site` dimension and indicate the _outcomes_ under a given intervention (or non-intervention) option
-and environmental condition.
-
-The result is a 2-dimensional array of timesteps and scenarios:
+Scenario-level metrics aggregate the above across the `site` dimension and indicate the
+_outcomes_ under a given intervention (or non-intervention) option and environmental
+condition. The result is a 2-dimensional array of timesteps and scenarios:
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
@@ -126,16 +76,14 @@ s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 
 ## Visualization
 
-The examples below are to illustrate usage. For further information on each method of
+The examples below illustrate usage. For further information on each method of
 analysis, see the documentation for the given function.
 
-Some options shared for the plots below are defined here.
+Some shared options used by the plots below:
 
 ```julia
-# Some shared options for the example plots below
 fig_opts = Dict(:size => (1600, 800))
 
-# Factors of Interest
 opts = Dict(
     :factors => [
         :RCP,
@@ -153,50 +101,21 @@ opts = Dict(
 
 ### Scenario outcomes
 
-One can plot a quick scenario overview:
+Plot a quick scenario overview:
 
 ```julia
 fig_s_tac = ADRIA.viz.scenarios(
     rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
 )
-save("scenarios_tac.png", fig_s_tac)
+ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
 ```
 
 ![Quick scenario plots](../assets/imgs/analysis/scenarios_tac.png)
 
-And compose a figure with subplots. In the example below we also use the parameter `opts`
-that accepts the keys `by_RCP` to group scenarios by RCP (default is `false`), `legend`
-to plot the legend (default is `true`) and `summarize` to plot confidence intervals instead
-of plotting each series (default is `true`):
-
-```julia
-tf = Figure(size=(1600, 600))  # size of figure
-
-# Implicitly create a single figure with 2 columns
-ADRIA.viz.scenarios!(
-    tf[1, 1],
-    rs,
-    s_tac;
-    opts=Dict(:by_RCP => false, :legend => false),
-    axis_opts=Dict(:title => "TAC [m²]"),
-);
-ADRIA.viz.scenarios!(
-    tf[1, 2],
-    rs,
-    s_juves;
-    opts=Dict(:summarize => false),
-    axis_opts=Dict(:title => "Juveniles [%]"),
-);
-
-tf  # display the figure
-save("aviz_scenario.png", tf)  # save the figure to a file
-```
-
-![Scenarios with subplots](../assets/imgs/analysis/aviz_scenario.png)
-
 ### Intervention location selection - visualisation
 
-Plot spatial colormaps of site selection frequencies and other available site selection metrics.
+Plot spatial colormaps of site selection frequencies and other available site selection
+metrics.
 
 ```julia
 # Calculate frequencies with which each site was selected at each rank
@@ -207,8 +126,7 @@ rank_freq = ADRIA.decision.ranks_to_frequencies(
 
 # Plot 1st rank frequencies as a colormap
 rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
-
-save("single_rank_plot.png", rank_fig)
+ADRIA.viz.savefig(rank_fig, "single_rank_plot.html")
 ```
 
 ![Rank frequency plots for single rank](../assets/imgs/analysis/single_rank_plot.png)
@@ -216,8 +134,7 @@ save("single_rank_plot.png", rank_fig)
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
 rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800)))
-
-save("ranks_plot.png", rank_fig)
+ADRIA.viz.savefig(rank_fig, "ranks_plot.html")
 ```
 
 ![Rank frequency plots for multiple ranks](../assets/imgs/analysis/ranks_plot.png)
@@ -225,10 +142,9 @@ save("ranks_plot.png", rank_fig)
 ## Intervention location selection - plot criteria maps
 
 ```julia
-
 mcda_funcs = ADRIA.decision.mcda_methods()
 
-dom = ADRIA.load_domain("path to domain","45")
+dom = ADRIA.load_domain("path to domain", "45")
 
 scens = ADRIA.sample_guided(dom, 2^2)
 scen = scens[1, :]
@@ -237,14 +153,11 @@ scen = scens[1, :]
 seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
 
 # Calculate criteria vectors
-# Cover
 sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
-# DHWS
 dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
 plan_horizon = Int64(scen["plan_horizon"])
 decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
 dhw_projection = ADRIA.decision.weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
-# Connectivity
 area_weighted_conn = dom.conn.data .* ADRIA.loc_k_area(dom)
 conn_cache = similar(area_weighted_conn)
 in_conn, out_conn, network = ADRIA.connectivity_strength(
@@ -273,7 +186,7 @@ is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))
 fig = ADRIA.viz.selection_criteria_map(
     dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
 )
-save("criteria_plots.png", fig)
+ADRIA.viz.savefig(fig, "criteria_plots.html")
 ```
 
 ![Spatial maps of location selection criteria](../assets/imgs/analysis/criteria_spatial_plots.png)
@@ -286,15 +199,11 @@ is used to screen factors (i.e., identification of important factors) and rank f
 well (ordering factors by their relative contribution towards a given quantity of interest).
 
 ```julia
-# Sensitivity (of mean scenario outcomes to factors)
+# Sensitivity of mean scenario outcomes to factors
 mean_s_tac = vec(mean(s_tac, dims=1))
-tac_Si = ADRIA.sensitivity.pawn(rs, mean_s_tac)
-pawn_fig = ADRIA.viz.pawn(
-    tac_Si;
-    opts,
-    fig_opts
-)
-save("pawn_si.png", pawn_fig)
+tac_Si = pawn(rs, mean_s_tac)
+pawn_fig = ADRIA.viz.pawn(tac_Si; opts, fig_opts)
+ADRIA.viz.savefig(pawn_fig, "pawn_si.html")
 ```
 
 ![PAWN sensitivity plots](../assets/imgs/analysis/pawn_si.png)
@@ -306,14 +215,9 @@ outputs over time. The relative importance of factors and their influence on out
 time can then be examined through this analysis.
 
 ```julia
-tsa_s = ADRIA.sensitivity.tsa(rs, s_tac)
-tsa_fig = ADRIA.viz.tsa(
-    rs,
-    tsa_s;
-    opts,
-    fig_opts
-)
-save("tsa.png", tsa_fig)
+tsa_s = tsa(rs, s_tac)
+tsa_fig = ADRIA.viz.tsa(rs, tsa_s; opts, fig_opts)
+ADRIA.viz.savefig(tsa_fig, "tsa.html")
 ```
 
 ![Plots of Temporal Sensitivities](../assets/imgs/analysis/tsa.png)
@@ -338,18 +242,17 @@ outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps)
 
 # Display convergence for specific factors of interest ("foi") within a single figure.
 # Bands represent the 95% confidence interval derived from the number of conditioning
-# points, the default for which is ten (i.e., 10 samples).
-# Due to the limited sample size, care should be taken when interpreting the figure.
+# points (default is 10 samples).
 foi = [:dhw_scenario, :wave_scenario, :guided]
-Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
+Si_conv = convergence(scens, outcome, foi)
 conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
-save("convergence_factors_series.png", conv_series_fig)
+ADRIA.viz.savefig(conv_series_fig, "convergence_factors_series.html")
 
 # Convergence analysis of factors grouped by model component as a heat map
 components = [:EnvironmentalLayer, :Intervention, :Coral]
-Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
+Si_conv = convergence(rs, scens, outcome, components)
 conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
-save("convergence_components_heatmap.png", conv_hm_fig)
+ADRIA.viz.savefig(conv_hm_fig, "convergence_components_heatmap.html")
 ```
 
 ![Convergence analysis of factors overlayed](../assets/imgs/analysis/convergence_factors_series.png)
@@ -365,16 +268,14 @@ used with the key `:summarize` to plot the confidence intervals of each cluster 
 each series individually (default is `true`).
 
 ```julia
-# Extract metric from scenarios
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
-# Cluster scenarios
 n_clusters = 4
-clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
+clusters = cluster_scenarios(s_tac, n_clusters)
 
 axis_opts = Dict(
     :title => "Time Series Clustering with $n_clusters clusters",
-    :ylabel => "TAC [m²]",
+    :ylabel => "TAC [m2]",
     :xlabel => "Timesteps [years]",
 )
 opts = Dict{Symbol, Any}(:summarize => true)
@@ -382,9 +283,7 @@ opts = Dict{Symbol, Any}(:summarize => true)
 tsc_fig = ADRIA.viz.clustered_scenarios(
     s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
 )
-
-# Save final figure
-save("tsc.png", tsc_fig)
+ADRIA.viz.savefig(tsc_fig, "tsc.html")
 ```
 
 ![Plots of Time Series Cluster](../assets/imgs/analysis/tsc.png)
@@ -397,29 +296,26 @@ median value for some outcome).
 Here we use clustering to identify groups of time series for sites with low temporal variability in shelter volume across scenarios.
 
 ```julia
-# Time series for each site summarizing median shelter volume (in cubic metres) across all scenarios
+# Time series for each site summarizing median shelter volume across all scenarios
 asv = ADRIA.metrics.absolute_shelter_volume(rs)
 asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
 
 # Cluster sites with similar shelter volume time series
 n_clusters = 6
-asv_clusters = ADRIA.analysis.cluster_series(asv_site_series, n_clusters)
+asv_clusters = cluster_series(asv_site_series, n_clusters)
 
-# find_scenarios computes median timeseries for each cluster 
+# find_scenarios computes median timeseries for each cluster
 #   and by default calculates temporal variability of that median timeseries
-# We target sites that belong to the two clusters with lowest temporal variability in shelter volume
+# Target sites that belong to the two clusters with lowest temporal variability
 lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
-asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+asv_target = find_scenarios(asv_site_series, asv_clusters, lowest)
 
-# Plot targeted scenarios
 axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
 
 tsc_asc_fig = ADRIA.viz.clustered_scenarios(
     asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
 )
-
-# Save final figure
-save("tsc_asv.png", tsc_asc_fig)
+ADRIA.viz.savefig(tsc_asc_fig, "tsc_asv.html")
 ```
 
 ![Plots of targeted lowest clusters](../assets/imgs/analysis/tsc_asv.png)
@@ -431,7 +327,7 @@ As the sites were selected using the median timeseries of two clusters, there is
 Focusing on the lowest cluster or splitting into more clusters could produce a more homogeneous group of scenarios.
 
 This can be interpreted as a form of scenario discovery where a target group of timeseries is summarised visually.
-Here the timeseries represent sites rather than scenarios. 
+Here the timeseries represent sites rather than scenarios.
 Using `summarize`, timeseries for scenarios could be obtained by aggregating over sites.
 
 For this test dataset, findings in terms of scenario discovery suggest:
@@ -458,13 +354,11 @@ outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 n_clusters = 6
 
 # Clusters matrix
-outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
-    outcomes, n_clusters
-)
+outcomes_clusters::AbstractMatrix{Int64} = cluster_scenarios(outcomes, n_clusters)
 
-# Filter scenarios that belong to on of the 4 high value clusters for all outcomes
+# Filter scenarios that belong to one of the 4 high value clusters for all outcomes
 highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
-robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)
+robust_scens = find_scenarios(outcomes, outcomes_clusters, highest_clusters)
 ```
 
 ### Time Series Clustering Map
@@ -473,62 +367,49 @@ When using Time Series Clustering to cluster among multiple locations using some
 is possible to visualize the result as a map.
 
 ```julia
-# Extract metric from scenarios
 tac = ADRIA.metrics.total_absolute_cover(rs)
 
 # Get a timeseries summarizing the scenarios for each site
 tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
 
-# Cluster scenarios
 n_clusters = 6
 clusters = ADRIA.analysis.cluster_scenarios(tac_site_series, n_clusters)
 
 # Get a vector summarizing the scenarios and timesteps for each site
 tac_sites = ADRIA.metrics.per_loc(median, tac)
 
-# Plot figure
 tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
-
-# Save final figure
-save("tsc_map.png", tsc_map_fig)
+ADRIA.viz.savefig(tsc_map_fig, "tsc_map.html")
 ```
 
 ![Plots of Spatial Time Series Clusters](../assets/imgs/analysis/tsc_map.png)
 
 ### Rule Induction (using Series Clusters)
 
-The SIRUS Rule Induction algorithm ([Bénard et al. 2021](https://doi.org//10.1214/20-EJS1792)) can be used for scenario discovery by summarising scenarios in terms of binary rules, 
+The SIRUS Rule Induction algorithm ([Benard et al. 2021](https://doi.org//10.1214/20-EJS1792)) can be used for scenario discovery by summarising scenarios in terms of binary rules,
 i.e. thresholds below/above which a factor will lead to a specified outcome.
 
 For this example, we cluster scenarios with similar total cover, and then focus on those with high temporal variability in total cover. We explore what intervention characteristics lead to high temporal variability.
 
-
 ```julia
-# Find Time Series Clusters
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 n_clusters = 6
-clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
+clusters = cluster_scenarios(s_tac, n_clusters)
 
 # Identify cluster(s) with highest median temporal variability covering at least 1% of scenarios
-# N.B. different aggregation metrics and size limits could also be specified
-target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
+target_clusters = ADRIAanalysis.target_clusters(clusters, s_tac)
 ```
 
 When the SIRUS Rule Induction algorithm produces rules involving two factors, they can be visualised as scatterplots.
 
 ```julia
-# Select features of interest to use in rules.
-# This includes all factors related to interventions and criteria to decide where to perform coral seeding.
 foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
-# Use SIRUS algorithm to extract up to 10 rules.
 max_rules = 10
-rules_iv = ADRIA.analysis.cluster_rules(
+rules_iv = cluster_rules(
     rs, target_clusters, scens, foi, max_rules; remove_duplicates=true
 )
 
-
-# Plot scatterplots for each rule highlighting the area selected by each of them
 rules_scatter_fig = ADRIA.viz.rules_scatter(
     rs,
     scens,
@@ -537,9 +418,7 @@ rules_scatter_fig = ADRIA.viz.rules_scatter(
     fig_opts=fig_opts,
     opts=opts
 )
-
-# Save final figure
-save("rules_scatter.png", rules_scatter_fig)
+ADRIA.viz.savefig(rules_scatter_fig, "rules_scatter.html")
 ```
 
 ![Plots of Rule Induction](../assets/imgs/analysis/rules_scatter.png)
@@ -549,9 +428,9 @@ Not all target scenarios will be captured (low coverage), and not all scenarios 
 It is possible for a rule to increase coverage by accepting lower density,
 and density can often be increased by accepting lower coverage.
 
-In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in SRM > 3.94 & Years to Shade > 54.0. 
+In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in SRM > 3.94 & Years to Shade > 54.0.
 
-A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., SRM > 3.94 & Years to Shade > 38.0. 
+A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., SRM > 3.94 & Years to Shade > 38.0.
 
 SRM and Years to Shade have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
 
@@ -570,37 +449,26 @@ Regional Sensitivity Analysis is a Monte Carlo filtering approach. The aim of RS
 in identifying which (group of) factors drive model outputs and their active areas of
 factor space.
 
-This implementation divides factors into bins and compares the distribution of a selected outcome 
+This implementation divides factors into bins and compares the distribution of a selected outcome
 within each bin to the distribution outside the bin.
 
 ```julia
-# As outcome, we are looking at total coral cover, averaged over time
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
-# Factors of interest to investigate
 foi = [
-    :dhw_scenario, # All DHW scenarios in the domain data, here scenarios 1-50 in the test dataset
-    :wave_scenario, # All wave scenarios specified in the domain data, here scenarios 1-50 in the test dataset
-    # Interventions
-    :N_seed_TA,  # Number of seeded Tabular Acropora deployed per intervention event
-    :N_seed_CA, # Number of seeded Corymbose Acropora deployed per intervention event
-    :fogging, # Fogging effectiveness on a scale of 0-1
-    :SRM # Reduction in DHW obtained by shading
+    :dhw_scenario,
+    :wave_scenario,
+    :N_seed_TA,
+    :N_seed_CA,
+    :fogging,
+    :SRM
 ]
 
 # Divide factors into 10 bins
-# Test whether each bin has significantly different total cover to rest of the bins
-tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
-rsa_fig = ADRIA.viz.rsa(
-    rs,
-    tac_rs,
-    foi;
-    opts,
-    fig_opts
-)
-
-save("rsa.png", rsa_fig)
+tac_rs = rsa(rs, mean_s_tac; S=10)
+rsa_fig = ADRIA.viz.rsa(rs, tac_rs, foi; opts, fig_opts)
+ADRIA.viz.savefig(rsa_fig, "rsa.html")
 ```
 
 ![Plots of Regional Sensitivities](../assets/imgs/analysis/rsa.png)
@@ -626,45 +494,37 @@ This is a form of scenario discovery that summarises scenarios matching an outco
 This example aims to identify DHW and wave scenarios and interventions which lead to top outcomes for coral cover. Note that it uses a test dataset rather than real data.
 
 ```julia
-# As outcome, we are looking at total coral cover, averaged over time
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
-# Factors of interest to investigate
 foi = [
-    :dhw_scenario, # DHW scenarios 1-50 in the test dataset
-    :wave_scenario, # Wave scenarios 1-50 in the test dataset
-    # Interventions
-    :N_seed_TA, # Number of seeded Tabular Acropora deployed per intervention event
-    :N_seed_CA, # Number of seeded Corymbose Acropora deployed per intervention event
-    :fogging, # Fogging effectiveness on a scale of 0-1
-    :SRM # Reduction in DHW obtained by shading
+    :dhw_scenario,
+    :wave_scenario,
+    :N_seed_TA,
+    :N_seed_CA,
+    :fogging,
+    :SRM
 ]
 
-tf = Figure(size=(1600, 1200))  # size of figure
-
 # Indicate factor values that are in the top half of the range
-#   mean_s_tac is normalised to [0,1], so 0.5 is half-way between the minimum and maximum values
-# Split each factor into 20 bins
-tac_top_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-ADRIA.viz.outcome_map!(
-    tf[1, 1],
+tac_top_50 = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
+fig_top_50 = ADRIA.viz.outcome_map(
     rs,
     tac_top_50,
     foi;
-    axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]")
+    axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m2]")
 )
+ADRIA.viz.savefig(fig_top_50, "outcome_map_top50.html")
 
 # Indicate factor values that are in the top 30% of the range
-tac_top_30 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
-ADRIA.viz.outcome_map!(
-    tf[2, 1],
+tac_top_30 = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
+fig_top_30 = ADRIA.viz.outcome_map(
     rs,
     tac_top_30,
     foi;
-    axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m²]"))
-
-save("outcome_map.png", tf)
+    axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m2]")
+)
+ADRIA.viz.savefig(fig_top_30, "outcome_map_top30.html")
 ```
 
 ![Outcome mapping](../assets/imgs/analysis/outcome_map.png)
@@ -675,40 +535,27 @@ There is less uncertainty in the mean for the top 30% because there were fewer s
 
 While this example uses a test data package rather than real data, we can still interpret the results:
 
-- DHW scenario:
-  - These are categorical values representing 50 different scenarios. There is no specific order to the scenarios - they are just interpreted individually.
-  - Note that as `S=20`, only 20 bins are shown - multiple scenarios have been aggregated.
-  - All 50 scenarios are represented in the top 50% of the range - it is possible to get results in the top half of the range in all scenarios. Coral cover is higher in scenarios ~20-25, ~35 and ~40, and lower in scenarios ~15 and ~45. To interpret this, we would need to look at the definition of those scenarios.
-  - In the top 30% of the range, only some scenarios are represented. For the DHW scenarios that are missing, none of the combinations of factors sampled are able to achieve results in the top 30% of the range.
-- Wave scenario: categorical variable representing each scenario in the test data package
-  - Note: Wave scenarios are no longer active as of ADRIA v0.7.0
-- Seeded Tabular Acropora and Seeded Corymbose Acropora
-  - Coral cover in the scenarios varies substantially as number of seeded corals increase. There is substantial uncertainty in the mean, but even so there is no clear pattern. Outcomes are likely more heavily influenced by other factors in the scenario set.
-  - Top 30% scenarios are obtained even with fewer seeded corals, though in fewer scenarios - there is very little uncertainty in the mean.
-- Fogging:
-  - Similar to seeding, there is no clear pattern to coral cover as fogging effectiveness increases.
-  - Only scenarios with at least 0.1 fogging effectiveness are in the top 30% of the range.
-- SRM: 
-  - As expected, coral cover increases with shade (decreases with DHW) in both groups of scenarios.
-  - In the top 30% of the range, the scenario with the lowest level of shade still has about 4.5 DHW reduction.
-  - In the top 50% of the range, the scenario with the lowest level of shade still has about 2.5 DHW reduction.
-  - There are very few scenarios in the top 50% with shade giving reductions of less than 3 DHW - there is very little uncertainty in the mean.
+- DHW scenario: These are categorical values representing 50 different scenarios. There is no specific order to the scenarios - they are just interpreted individually. Note that as `S=20`, only 20 bins are shown - multiple scenarios have been aggregated. All 50 scenarios are represented in the top 50% of the range - it is possible to get results in the top half of the range in all scenarios.
+- Wave scenario: categorical variable representing each scenario in the test data package. Note that wave scenarios are no longer active as of ADRIA v0.7.0.
+- Seeded Tabular Acropora and Seeded Corymbose Acropora: Coral cover in the scenarios varies substantially as number of seeded corals increase. Outcomes are likely more heavily influenced by other factors in the scenario set.
+- Fogging: Similar to seeding, there is no clear pattern to coral cover as fogging effectiveness increases. Only scenarios with at least 0.1 fogging effectiveness are in the top 30% of the range.
+- SRM: As expected, coral cover increases with shade (decreases with DHW) in both groups of scenarios.
 
 For this test dataset, according to this analysis:
 
-1) **Ensuring conditions for success**: Shade (SRM) is dominating the analysis. To be in the top 30% of the range, shade with at least ~4.5 DHW reduction is necessary.  Fogging with an effectiveness of at least 0.1 is also needed. 
+1) **Ensuring conditions for success**: Shade (SRM) is dominating the analysis. To be in the top 30% of the range, shade with at least ~4.5 DHW reduction is necessary. Fogging with an effectiveness of at least 0.1 is also needed.
 2) **Avoiding failure**: In some DHW scenarios, none of the sampled interventions are able to achieve performance in the top 30% of the range. Whether this is a problem depends on what those scenarios represent.
 3) **Planning for failure modes**: There are DHW scenarios for which high levels of SRM are not in the top 30% of the range - despite its cost, SRM has not delivered. This might warrant investigation as to why SRM was not sufficient in those scenarios.
 4) **Further deliberation**: High levels of SRM may be controversial both in terms of feasibility and cost. There is likely to be further debate about whether these scenarios should be considered, and whether top 30% of the range is an appropriate criteria for success.
 
-Additional sampling may be be needed to confirm findings where no matching scenarios were found.
+Additional sampling may be needed to confirm findings where no matching scenarios were found.
 
 ### Data Envelopment Analysis
 
 Performs output-oriented (default, input-oriented can also be applied) Data Envelopment Analysis (DEA)
 given inputs X and output metrics Y. DEA is used to measure the performance of entities (scenarios),
 where inputs are converted to outputs via some process. Each scenario's "efficiency score" is calculated
-relative to an "efficiency fromtier", a region representing scenarios for which outputs cannot be further
+relative to an "efficiency frontier", a region representing scenarios for which outputs cannot be further
 increased by changing inputs (scenario settings).
 
 ```julia
@@ -726,19 +573,19 @@ cost = cost_function(scens)
 s_tac = dropdims(
     mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
 )
-s_sv =
-    dropdims(
-        mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:locations);
-        dims=(:timesteps,:locations)
-    )
+s_sv = dropdims(
+    mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:locations);
+    dims=(:timesteps,:locations)
+)
 
-# Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
-# deployment cost.
-DEA_scens = ADRIA.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
+# Output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
+# deployment cost
+DEA_scens = data_envelopment_analysis(cost, s_tac, s_sv)
 dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
+ADRIA.viz.savefig(dea_fig, "dea.html")
+```
 
 ![DEA](../assets/imgs/analysis/example_dea_fig.png)
-```
 
 ### GUI for high-level exploration (prototype only!)
 
@@ -751,3 +598,8 @@ ADRIA.viz.explore("path to Result Set")
 ```
 
 ![Standalone app for data exploration](../assets/imgs/analysis/aviz_app.png)
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+
