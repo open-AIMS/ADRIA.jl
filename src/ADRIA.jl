@@ -123,8 +123,8 @@ const COMPAT_DPKG = ["0.8.0"]
     # Metric dispatch paths — cover common array-input routing
     # scenario_total_cover: in_dims = (:timesteps, :locations, :scenarios)
     metrics.scenario_total_cover(rand(Float64, 5, 10, 3))
-    # relative_cover: array + loc_area path
-    metrics.relative_cover(rand(Float64, 5, 3, 10), rand(Float64, 10))
+    # relative_cover: 5D plain-array path (timesteps×groups×sizes×locations×scenarios)
+    metrics.relative_cover(rand(Float64, 5, 3, 10, 8, 2))
     # coral_evenness: in_dims = (:timesteps, :groups, :locations)
     metrics.coral_evenness(rand(Float64, 5, 3, 10))
 end
