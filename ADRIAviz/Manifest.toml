@@ -2,13 +2,13 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "03f05b736c63ba630511e1d9d6bb61bfe0155016"
+project_hash = "11f8b7a52bc1707e9f05ae65695c6f0e711e96d1"
 
 [[deps.ADRIA]]
-deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
-path = ".."
+deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
+path = "../ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-version = "0.16.0"
+version = "0.17.0"
 
     [deps.ADRIA.weakdeps]
     BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
@@ -309,12 +309,6 @@ deps = ["TranscodingStreams", "Zstd_jll"]
 git-tree-sha1 = "da54a6cd93c54950c15adf1d336cfd7d71f51a56"
 uuid = "6b39b394-51ab-5f42-8807-6242bab2b4c2"
 version = "0.8.7"
-
-[[deps.ColorSchemes]]
-deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "b0fd3f56fa442f81e0a47815c92245acfaaa4e34"
-uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.31.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -1105,12 +1099,6 @@ git-tree-sha1 = "c0c9b76f3520863909825cbecdef58cd63de705a"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.1.5+0"
 
-[[deps.Kaleido_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "43032da5832754f58d14a91ffbe86d5f176acda9"
-uuid = "f7e6163d-2fa5-5f23-b69c-1db539e41963"
-version = "0.2.1+0"
-
 [[deps.Kerberos_krb5_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "0f2899fdadaab4b8f57db558ba21bdb4fb52f1f0"
@@ -1520,12 +1508,6 @@ git-tree-sha1 = "704ef2c93e301b6469ba63103a4e7bf935e6990c"
 uuid = "fad6cfc8-4f83-11e9-06cc-151124046ad0"
 version = "0.8.6"
 
-[[deps.Parameters]]
-deps = ["OrderedCollections", "UnPack"]
-git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
-uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-version = "0.12.3"
-
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "5d5e0a78e971354b1c7bff0655d11fdc1b0e12c8"
@@ -1546,30 +1528,6 @@ deps = ["Pkg"]
 git-tree-sha1 = "f9501cc0430a26bc3d156ae1b5b0c1b47af4d6da"
 uuid = "eebad327-c553-4316-9ea0-9fa01ccd7688"
 version = "0.3.3"
-
-[[deps.PlotlyBase]]
-deps = ["ColorSchemes", "Colors", "Dates", "DelimitedFiles", "DocStringExtensions", "JSON", "LaTeXStrings", "Logging", "Parameters", "Pkg", "REPL", "Requires", "Statistics", "UUIDs"]
-git-tree-sha1 = "6256ab3ee24ef079b3afa310593817e069925eeb"
-uuid = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
-version = "0.8.23"
-
-    [deps.PlotlyBase.extensions]
-    DataFramesExt = "DataFrames"
-    DistributionsExt = "Distributions"
-    IJuliaExt = "IJulia"
-    JSON3Ext = "JSON3"
-
-    [deps.PlotlyBase.weakdeps]
-    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-    Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-    IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
-    JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-
-[[deps.PlotlyKaleido]]
-deps = ["Artifacts", "Base64", "JSON", "Kaleido_jll"]
-git-tree-sha1 = "c7a270d11881c0709052f8e3def3d60d551e99f3"
-uuid = "f2990250-8cf9-495f-b13a-cce12b45703c"
-version = "2.3.1"
 
 [[deps.PooledArrays]]
 deps = ["DataAPI", "Future"]
@@ -2031,11 +1989,6 @@ version = "1.6.1"
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 version = "1.11.0"
-
-[[deps.UnPack]]
-git-tree-sha1 = "387c1f73762231e86e0c9c5443ce3b4a0a9a0c2b"
-uuid = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
-version = "1.0.2"
 
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"

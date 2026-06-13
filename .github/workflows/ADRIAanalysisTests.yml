@@ -6,7 +6,7 @@ on:
   pull_request:
     paths:
       - 'ADRIAanalysis/**'
-      - 'src/**'
+      - 'ADRIA/src/**'
       - '.github/workflows/ADRIAanalysisTests.yml'
   workflow_dispatch:
 
@@ -22,7 +22,7 @@ jobs:
       - name: Dev ADRIA into ADRIAanalysis environment
         run: |
           cd ADRIAanalysis
-          julia --project=. -e 'using Pkg; Pkg.develop(path=".."); Pkg.instantiate()'
+          julia --project=. -e 'using Pkg; Pkg.develop(path="../ADRIA"); Pkg.instantiate()'
       - name: Test ADRIAanalysis
         run: |
           cd ADRIAanalysis
