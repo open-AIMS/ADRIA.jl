@@ -38,10 +38,10 @@ function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataF
     ]
 
     col_names = ["fg_$(i)" for i in string.(collect(deployed_corals))]
-    ╬╝ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
+    μ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
     T = DataFrame(hcat(total_deployment...), "$(prefix)volume_total_" .* col_names)
 
-    return ╬╝, T
+    return μ, T
 end
 
 """
