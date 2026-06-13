@@ -135,7 +135,7 @@
 #
 # ```julia
 # using ADRIA, ADRIAviz, PlotlyBase
-# ADRIAviz.activate("plotly")
+# ADRIAviz.activate(:plotly)
 #
 # fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel => "Absolute Cover"))
 # ADRIA.viz.savefig(fig, "scenarios.html")
