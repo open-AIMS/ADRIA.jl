@@ -1,0 +1,29 @@
+name: ADRIAanalysis Tests
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'ADRIAanalysis/**'
+      - 'src/**'
+      - '.github/workflows/ADRIAanalysisTests.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - uses: julia-actions/cache@v3
+      - name: Dev ADRIA into ADRIAanalysis environment
+        run: |
+          cd ADRIAanalysis
+          julia --project=. -e 'using Pkg; Pkg.develop(path=".."); Pkg.instantiate()'
+      - name: Test ADRIAanalysis
+        run: |
+          cd ADRIAanalysis
+          julia --project=. -e 'using Pkg; Pkg.test()'
