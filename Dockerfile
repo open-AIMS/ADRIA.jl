@@ -219,10 +219,11 @@ RUN mkdir -p /sysimage && \
 # Lean production image for simulation jobs (EC2 Batch / ECS).
 # The sysimage is baked in; `using ADRIA` cold-starts in ~3 s instead of ~75 s.
 #
-# The sysimage .so can be supplied in two ways:
-#   1. Built in-tree: COPY --from=sysimage-builder-sim (default, shown below)
-#   2. Pre-built artifact: pass --build-arg SYSIMAGE_SRC=path/to/adria_sim.so
-#      and place the file in the Docker build context before building.
+# The sysimage .so must be present at build/sim/adria_sim.so in the build
+# context before running docker build. Two ways to place it there:
+#   1. CI pipeline: download from S3 (see .github/workflows/BuildDockerImage.yml)
+#   2. Manual: build with --target sysimage-builder-sim, extract the .so, copy
+#      it to build/sim/adria_sim.so, then build this target.
 #
 # Build:
 #   docker build --target adria-sim-runtime -t adria/sim:latest .
@@ -235,15 +236,17 @@ FROM internal-base AS adria-sim-runtime
 # at runtime (the sysimage speeds up loading; the depot provides source).
 COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
 
-# Accept a pre-built sysimage from the build context as an alternative to
-# copying from the builder stage (useful when CI downloads it from S3).
-ARG SYSIMAGE_SRC=""
-COPY --from=sysimage-builder-sim /sysimage/adria_sim.so /sysimage/adria_sim.so
+# Sysimage pre-built externally (CI: downloaded from S3; manual: extracted from
+# sysimage-builder-sim). Place at build/sim/adria_sim.so before docker build.
+COPY build/sim/adria_sim.so /sysimage/adria_sim.so
 
 ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
 
 LABEL au.gov.aims.adria.sysimage="sim" \
       au.gov.aims.adria.usecase="batch-simulation"
+
+HEALTHCHECK CMD julia -J /sysimage/adria_sim.so \
+    -e 'using ADRIA; println("ok")'
 
 # S3 credentials / region injected at runtime via IAM role; no secrets baked in.
 ENTRYPOINT ["julia", "-J", "/sysimage/adria_sim.so", "--project=@adria"]
@@ -253,6 +256,7 @@ ENTRYPOINT ["julia", "-J", "/sysimage/adria_sim.so", "--project=@adria"]
 # adria-analysis-runtime build target
 #
 # Lean production image for analysis workloads (ECS Fargate / long-lived EC2).
+# Requires build/analysis/adria_analysis.so in the build context.
 #
 # Build:
 #   docker build --target adria-analysis-runtime -t adria/analysis:latest .
@@ -260,11 +264,14 @@ ENTRYPOINT ["julia", "-J", "/sysimage/adria_sim.so", "--project=@adria"]
 FROM internal-base AS adria-analysis-runtime
 
 COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
-COPY --from=sysimage-builder-analysis /sysimage/adria_analysis.so /sysimage/adria_analysis.so
+COPY build/analysis/adria_analysis.so /sysimage/adria_analysis.so
 
 ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
 
 LABEL au.gov.aims.adria.sysimage="analysis" \
       au.gov.aims.adria.usecase="analysis-ecs"
+
+HEALTHCHECK CMD julia -J /sysimage/adria_analysis.so \
+    -e 'using ADRIA, ADRIAviz; println("ok")'
 
 ENTRYPOINT ["julia", "-J", "/sysimage/adria_analysis.so", "--project=@adria"]

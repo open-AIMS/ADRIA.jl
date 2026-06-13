@@ -1,5 +1,5 @@
 """
-    screen_scenarios(y::AbstractArray, rule)
+    screen_scenarios(y::AbstractArray{<:Real}, rule::Function)
 
 Return the indices of rows (scenarios) from `y` whose every column value
 passes `rule` after column-wise normalization.
