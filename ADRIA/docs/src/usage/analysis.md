@@ -24,7 +24,7 @@ Load and activate the Plotly backend before calling any visualization function:
 
 ```julia
 using ADRIA, ADRIAviz, ADRIAanalysis, PlotlyBase
-ADRIAviz.activate(:plotly)
+ADRIAviz.activate("plotly")
 
 using Statistics
 ```
@@ -602,4 +602,3 @@ ADRIA.viz.explore("path to Result Set")
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-

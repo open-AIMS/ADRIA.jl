@@ -23,7 +23,7 @@ and only the interactive backend is activated.
 
 ```julia
 using ADRIA, ADRIAviz
-ADRIAviz.activate(:plotly)   # loads PlotlyBase + PlotlyKaleido (if installed)
+ADRIAviz.activate("plotly")   # loads PlotlyBase + PlotlyKaleido (if installed)
 ```
 """
 function activate(backend::Symbol)

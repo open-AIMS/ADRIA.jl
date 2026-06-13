@@ -20,7 +20,7 @@
 #
 # ```julia
 # using ADRIA, ADRIAviz, ADRIAanalysis, PlotlyBase
-# ADRIAviz.activate(:plotly)
+# ADRIAviz.activate("plotly")
 #
 # using Statistics
 # ```
@@ -41,6 +41,11 @@
 #
 # s_tac = ADRIA.metrics.scenario_total_cover(rs)
 # ADRIA.viz.scenarios(rs, s_tac)
+#
+# If using the Plotly backend, a separate call to display the figure is needed
+# fig = ADRIA.viz.scenarios(rs, s_tac)
+# ADRIA.viz.show_in_browser(fig)
+#
 # ```
 #
 # See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref) and
