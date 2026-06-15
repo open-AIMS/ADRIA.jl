@@ -6,6 +6,8 @@ using ADRIA: CSV, DataFrames, YAXArrays, YAXArrays.At
 
 ENV["ADRIA_TEST"] = "true"
 
+include("test_constants.jl")
+
 # Helper: abort if a tier recorded any failures or errors.
 # Uses Test.get_test_counts() available in Julia 1.9+.
 function _abort_if_failed(ts, tier_name::String)
