@@ -154,8 +154,8 @@ end
     locs_1 = dom.loc_ids[1:half]
     locs_2 = dom.loc_ids[(half + 1):end]
 
-    weight_1 = 0.4
-    weight_2 = 0.6
+    weight_1 = TEST_TARGET_WEIGHT_1
+    weight_2 = TEST_TARGET_WEIGHT_2
 
     ADRIA.set_seed_target_locations!(
         dom, [(weight=weight_1, target_locs=locs_1), (weight=weight_2, target_locs=locs_2)]

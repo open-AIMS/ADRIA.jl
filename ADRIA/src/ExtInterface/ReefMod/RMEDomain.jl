@@ -40,9 +40,9 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{String}  # locations eligible for seeding
+    seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for seeding
     fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{String}   # locations eligible for moving corals
+    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
@@ -320,9 +320,9 @@ function load_domain(
             dhw_scens,
             wave_scens,
             cyc_scens,
+            [(weight=1.0, target_locs=reef_ids)],
             reef_ids,
-            reef_ids,
-            reef_ids,
+            [(weight=1.0, target_locs=reef_ids)],
             reef_ids,
             model,
             SimConstants()
