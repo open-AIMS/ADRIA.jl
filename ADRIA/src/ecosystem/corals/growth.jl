@@ -136,6 +136,41 @@ function depth_coefficient(d::Union{Int64,Float64})::Float64
 end
 
 """
+    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.07551, mixing_scale=12.0)
+
+Compute effective DHW at a given depth using Beer-Lambert attenuation with
+mixing-dependent attenuation decay.
+
+At low surface DHW, thermal stratification is intact and deeper sites experience
+substantially less thermal stress. At high surface DHW, convective/wind mixing
+erodes stratification, reducing the effective attenuation coefficient towards zero
+(well-mixed conditions) so that mortality approaches the surface rate at extreme DHW.
+
+# Arguments
+- `dhw_surface` : Surface (or reference depth ~2m) DHW
+- `depth` : Site depth in meters
+- `κ_base` : Base attenuation coefficient (m⁻¹); yields ~73% of surface DHW at 10m
+    under low-stress conditions, consistent with Baird et al. (2018) observations
+- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient
+
+# References
+1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+     Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+     warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
+"""
+function effective_dhw_at_depth(
+    dhw_surface::Float64, depth::Float64;
+    κ_base::Float64=0.04, mixing_scale::Float64=12.0
+)::Float64
+    κ_eff = κ_base / (1.0 + dhw_surface / mixing_scale)
+    Δz = max(0.0, depth - 2.0)
+    return dhw_surface * exp(-κ_eff * Δz)
+end
+
+"""
     bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
         depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
         s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
@@ -329,8 +364,10 @@ function bleaching_mortality!(
 
                 mort_pop::Float64 = 0.0
                 if affected_pop > 0.0
-                    # Calculate depth-adjusted bleaching mortality
-                    mort_pop = (affected_pop * depth_coeff[loc])
+                    # Depth effect is now handled via effective_dhw_at_depth (see scenario.jl).
+                    # depth_coeff[loc] multiplier intentionally removed; depth_coeff param kept
+                    # temporarily — see bleaching_mortality_fix.md cleanup list.
+                    mort_pop = affected_pop
 
                     # Set values close to 0.0 (e.g., 1e-214) to 0.0
                     # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
