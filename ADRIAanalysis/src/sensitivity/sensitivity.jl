@@ -253,7 +253,7 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 # Get mean coral cover over time and locations
 μ_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)
 
-ADRIA.sensitivity.pawn(rs, μ_tac)
+ADRIAanalysis.sensitivity.pawn(rs, μ_tac)
 ```
 
 # References
@@ -434,11 +434,11 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store[n_scenarios=At(nn)] .= Si(
-            X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
-        )[
-        factors=At(target_factors)
-]
+        pawn_store[n_scenarios=At(nn)] .= Array(
+            Si(
+                X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
+            )[factors=At(target_factors)]
+        )
     end
 
     return pawn_store
@@ -494,7 +494,7 @@ rs = ADRIA.load_results("a ResultSet of interest")
 y_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Calculate sensitivity of outcome to factors for each time step
-ADRIA.sensitivity.tsa(rs.inputs, y_tac)
+ADRIAanalysis.sensitivity.tsa(rs.inputs, y_tac)
 ```
 
 # Arguments
@@ -574,7 +574,7 @@ Dataset
 
 # Examples
 ```julia
-ADRIA.sensitivity.rsa(X, y; S=10)
+ADRIAanalysis.sensitivity.rsa(X, y; S=10)
 ```
 
 # References
@@ -695,7 +695,7 @@ function rsa(
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         vec(y),
-        rs.model_spec[rs.model_spec.fieldname .∈ factors, :];
+        rs.model_spec[rs.model_spec.fieldname .∈ Ref(factors), :];
         S=S
     )
 end
@@ -760,7 +760,7 @@ foi = [:SRM, :fogging, :a_adapt]
 rule = y -> all(y .> 0.5)
 
 # Map input values where to their outcomes
-ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
+ADRIAanalysis.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
 function outcome_map(
