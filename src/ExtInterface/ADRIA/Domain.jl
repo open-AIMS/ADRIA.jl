@@ -571,6 +571,8 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
         )]
     end
 
+    d.RCP = RCP
+
     return d
 end
 

@@ -325,6 +325,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     dhws = correct_axis_names!(dhws)
 
     d.dhw_scens = dhws
+    d.RCP = RCP
 
     return d
 end

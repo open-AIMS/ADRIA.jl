@@ -78,6 +78,7 @@ include("io/result_post_processing.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
+include("io/rme_export.jl")
 
 include("scenario.jl")
 include("analysis/analysis.jl")
@@ -95,7 +96,7 @@ export
     SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
-    metrics, select, timesteps, env_stats, viz
+    select, timesteps, env_stats, viz
 
 # Interfaces for external models
 export RMEDomain
