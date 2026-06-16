@@ -255,7 +255,7 @@ end
 function load_wave_data(data_fn::String, timeframe::Vector{Int64}, conn_ids)
     return if !ispath(data_fn)
         @info "No wave data file found at $(data_fn). Using wave inputs set to 0."
-        return ZeroDataCube(; 
+        return ZeroDataCube(;
             T=Float64, timesteps=timeframe, locations=conn_ids, scenarios=1:1
         )
     else
