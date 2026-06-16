@@ -29,8 +29,7 @@ graphify-out/
 .claude/
 
 .graphify_python
-
-.graphify_uncached.txt
+.graphify*
 
 ADRIAviz/test/Outputs/
 
