@@ -693,7 +693,9 @@ maximum shelter volume possible.
 - `scens` : DataFrame of scenario inputs
 
 # Returns
-Shelter volume relative to a theoretical maximum volume for the available \$k\$ area.
+Shelter volume relative to a theoretical maximum volume for the available \$k\$ area. The
+maximum volume is defined as the volume occupied by corals where there is 1 95cm diameter
+Tabular Acropora per m².
 
 # References
 1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S.,
@@ -736,6 +738,9 @@ function _relative_shelter_volume(
         reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
     tab_acro_idx::Int64 = findfirst(functional_group_names() .== :tabular_Acropora)
+    # The maximumm shelter volume is defined as the shelter volume if every 1m²  contained
+    # a single Tabular Acropora with diameter of 95 cm. ADRIAIndicators accepts this
+    # "reference" as an input. See email from Ryan Heneghan Tue 2026-04-14 10:09am
     reference_params::Tuple{Float64,Float64,Float64} = (
         95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
     )
