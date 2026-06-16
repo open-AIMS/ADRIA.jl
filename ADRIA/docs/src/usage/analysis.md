@@ -558,6 +558,24 @@ where inputs are converted to outputs via some process. Each scenario's "efficie
 relative to an "efficiency frontier", a region representing scenarios for which outputs cannot be further
 increased by changing inputs (scenario settings).
 
+DEA treats each scenario as a unit that converts **inputs** into **outputs**:
+
+- **Inputs (`X`, the "cost")** are the resources each scenario consumes and that you want to
+  *minimise* - for example deployment cost, effort, the number of corals deployed, or the area
+  treated. ADRIA does not prescribe a cost metric: you supply a function (or a precomputed
+  array) that returns one input value per scenario. Pass a `Vector{Float64}` of length
+  `n_scenarios` for a single input, or a `Matrix{Float64}` of size `n_scenarios x n_inputs`
+  for several. The `cost_function` in the example below is a placeholder for your own function.
+- **Outputs (`Y`)** are the benefits each scenario produces and that you want to *maximise* -
+  metrics such as total coral cover and shelter volume.
+
+The inputs must be row-aligned with the outputs (one row per scenario), strictly positive, and
+reasonably scaled across scenarios. In particular, avoid inputs that span many orders of
+magnitude or that approach zero: under the default output orientation a near-zero input against
+a positive output makes the efficiency frontier unbounded, and the DEA solver will report an
+infeasible/no-solution status. If "do-nothing" (counterfactual) scenarios are included, give
+them a meaningful non-zero baseline cost rather than zero.
+
 ```julia
 dom = ADRIA.load_domain("path to domain", "45")
 
@@ -566,7 +584,17 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 
 n_scens = size(scens,1)
 
-# Get cost of deploying corals in each scenario, with user-specified function
+# `cost` is the DEA input: one positive value per scenario representing the resources
+# consumed. Replace `cost_function` with your own cost/effort model. This simple example
+# uses deployed coral counts plus a non-zero baseline, so every scenario (including
+# counterfactuals with no deployment) carries a positive, comparably scaled cost.
+function cost_function(scens)
+    seed_cols = intersect(["N_seed_TA", "N_seed_CA"], names(scens))
+    deployed = isempty(seed_cols) ? zeros(nrow(scens)) :
+               vec(sum(Matrix(scens[:, seed_cols]); dims=2))
+    return deployed .+ (0.1 * maximum(deployed) + 1.0)  # baseline keeps inputs positive
+end
+
 cost = cost_function(scens)
 
 # Get mean coral cover and shelter volume for each scenario
