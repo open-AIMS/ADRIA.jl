@@ -8,6 +8,57 @@ Tutorial source files are `.jl` scripts in `ADRIA/docs/src/usage/`. Running `mak
 converts them to markdown before Documenter processes the full site. The generated `.md`
 files are not tracked in version control.
 
+## Refreshing documentation figures
+
+Example figures shown in the documentation are PNG files committed under
+`ADRIA/docs/src/assets/imgs/`. They are generated offline using the scripts in
+`ADRIA/docs/scripts/` and should be re-run whenever the relevant visualizations change.
+
+The scripts require a separate Julia environment with heavy dependencies
+(CairoMakie, ADRIAanalysis, MLJ, SIRUS) that are not part of the main docs build.
+Set it up once:
+
+```julia
+julia> ]activate ADRIA/docs/scripts
+(scripts) pkg> dev ADRIA ADRIAanalysis ADRIAviz
+(scripts) pkg> add CairoMakie GeoMakie GraphMakie MLJ SIRUS DataFrames
+```
+
+Set `ADRIA_TEST_DOMAIN` to the path of a local domain directory. You can export it
+once per shell session to avoid repeating it:
+
+**Bash / Linux / macOS:**
+```bash
+$ export ADRIA_TEST_DOMAIN=/path/to/domain
+```
+
+**PowerShell (Windows):**
+```powershell
+$env:ADRIA_TEST_DOMAIN = 'C:\path\to\domain'
+```
+
+**Command Prompt (Windows):**
+```cmd
+set ADRIA_TEST_DOMAIN=C:\path\to\domain
+```
+
+Then regenerate figures:
+
+```bash
+$ julia --project=ADRIA/docs/scripts ADRIA/docs/scripts/makie_viz_check.jl
+```
+
+PNGs are written to `ADRIA/docs/scripts/makie_viz_output/` by default. To write
+directly to the committed docs assets path, override `ADRIA_FIGURE_DIR`:
+
+```bash
+$ ADRIA_FIGURE_DIR=ADRIA/docs/src/assets/imgs/analysis \
+  julia --project=ADRIA/docs/scripts ADRIA/docs/scripts/makie_viz_check.jl
+```
+
+Updated PNGs are written directly to `ADRIA/docs/src/assets/imgs/analysis/` and should
+be committed. Model outputs (Zarr result sets written to `Outputs/`) are gitignored.
+
 ## Setup
 
 Add the required documentation dependencies if they are not already in the docs environment:

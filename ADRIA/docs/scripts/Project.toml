@@ -1,0 +1,13 @@
+[deps]
+ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
+ADRIAanalysis = "bc4d0ea8-6565-4397-854d-28474bf8c6b3"
+ADRIAviz = "a7bb1955-b5ed-4954-ba3d-ac9734139a95"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+SIRUS = "cdeec39e-fb35-4959-aadb-a1dd5dede958"

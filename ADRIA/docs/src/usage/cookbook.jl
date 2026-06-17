@@ -199,3 +199,139 @@
 # # Get selection score for locations over time
 # sel_score = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
 # ```
+#
+# ## Taxonomy plot
+#
+# Relative cover by taxa group over time, summarised across scenarios.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+# scens = ADRIA.sample(dom, 128)
+# rs = ADRIA.run_scenarios(dom, scens, "45")
+#
+# ADRIA.viz.taxonomy(rs)
+# ```
+#
+# ![taxonomy](../assets/imgs/analysis/taxonomy.png)
+#
+# ## Scenarios coloured by cluster
+#
+# Scenario trajectories with each scenario line coloured by its cluster membership.
+# Useful for visually inspecting how clusters differ in trajectory shape.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+# using ADRIA.analysis: cluster_scenarios
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+# scens = ADRIA.sample(dom, 128)
+# rs = ADRIA.run_scenarios(dom, scens, "45")
+#
+# s_tac = ADRIA.metrics.scenario_total_cover(rs)
+# clusters = cluster_scenarios(s_tac, 4)
+#
+# ADRIA.viz.scenarios(s_tac, clusters)
+# ```
+#
+# ![scenarios_by_cluster](../assets/imgs/analysis/scenarios_by_cluster.png)
+#
+# ## Connectivity graph
+#
+# Network graph of larval connectivity between locations in the domain.
+# Node size reflects relative connectivity strength.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+#
+# ADRIA.viz.connectivity(dom)
+# ```
+#
+# ![connectivity](../assets/imgs/analysis/connectivity.png)
+#
+# ## Selection frequency by intervention type
+#
+# Spatial map showing how often each location was selected, shown as a panel
+# per intervention type (seeding, fogging, shading, move corals).
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+# scens = ADRIA.sample(dom, 128)
+# rs = ADRIA.run_scenarios(dom, scens, "45")
+#
+# intervention_types = (:seed, :fog, :shade, :mc)
+# labels = String[]
+# freq_cols = Vector{Float64}[]
+# for iv in intervention_types
+#     freq = try
+#         collect(Float64, ADRIA.decision.selection_frequency(rs.ranks, iv))
+#     catch
+#         continue
+#     end
+#     any(x -> isfinite(x) && x > 0, freq) || continue
+#     push!(labels, titlecase(string(iv)))
+#     push!(freq_cols, freq)
+# end
+#
+# freq_matrix = reduce(hcat, freq_cols)
+# ADRIA.viz.map(rs, freq_matrix, labels)
+# ```
+#
+# ![ranks_by_intervention](../assets/imgs/analysis/ranks_by_intervention.png)
+#
+# ## DHW scenario
+#
+# Degree heating weeks over time for a single environmental scenario.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+#
+# # Show DHW projections for environmental scenario 1
+# ADRIA.viz.dhw_scenario(dom, 1)
+# ```
+#
+# ![dhw_scenario](../assets/imgs/analysis/dhw_scenario.png)
+#
+# ## DHW scenarios (all)
+#
+# Summary of degree heating weeks across all environmental scenarios, showing
+# the ensemble range and median.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+#
+# ADRIA.viz.dhw_scenarios(dom)
+# ```
+#
+# ![dhw_scenarios](../assets/imgs/analysis/dhw_scenarios.png)
+#
+# ## Cyclone scenario
+#
+# Cyclone disturbance severity over time for a single environmental scenario.
+#
+# ```julia
+# using ADRIA
+# using ADRIAviz
+#
+# dom = ADRIA.load_domain("path/to/domain", "45")
+#
+# # Show cyclone disturbance for environmental scenario 1
+# ADRIA.viz.cyclone_scenario(dom, 1)
+# ```
+#
+# ![cyclone_scenario](../assets/imgs/analysis/cyclone_scenario.png)
