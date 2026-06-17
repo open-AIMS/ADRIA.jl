@@ -15,7 +15,7 @@ import GeoMakie.GeoJSON.FeatureCollection as FC
 import ADRIA.FileIO, ADRIA.GFT
 using ADRIA
 using ADRIA:
-    ResultSet
+    ResultSet, model_spec
 
 using ADRIAviz
 using ADRIAviz:

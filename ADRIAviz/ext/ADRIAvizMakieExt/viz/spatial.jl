@@ -283,7 +283,6 @@ function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     outputs_matrix::Matrix,
     map_titles::Vector{String};
-    criteria::Vector{Symbol}=Array(M.criteria),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
@@ -291,7 +290,7 @@ function ADRIA.viz.map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(
-        g, rs, outputs_matrix, map_titles; criteria=criteria, opts=opts, axis_opts=axis_opts
+        g, rs, outputs_matrix, map_titles; opts=opts, axis_opts=axis_opts
     )
     return f
 end
@@ -303,7 +302,7 @@ function ADRIA.viz.map!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    if length(rs.loc_data.site_id) != size(outputs_matrix, 1)
+    if nrow(rs.loc_data) != size(outputs_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
 
@@ -556,14 +555,11 @@ function ADRIA.viz.connectivity!(
     spatial.ytickalign = 10
 
     # Calculate alpha values for edges based on connectivity strength and weighting
-    edge_col = Vector{Tuple{Symbol,Float64}}(undef, ne(network))
+    edge_col = Vector{RGBAf}(undef, ne(network))
     norm_coef = maximum(conn_weights)
     for (ind, e) in enumerate(edges(network))
-        if (e.src == e.dst)
-            edge_col[ind] = (:black, 0.0)
-            continue
-        end
-        edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
+        alpha = (e.src == e.dst) ? 0.0f0 : Float32(conn_weights[e.src] * e.weight / norm_coef)
+        edge_col[ind] = RGBAf(0, 0, 0, alpha)
     end
 
     # Rescale node size to be visible

@@ -179,7 +179,7 @@ function ADRIA.viz.selection_criteria_map!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    if length(rs.loc_data.site_id) != size(decision_matrix, 1)
+    if nrow(rs.loc_data) != size(decision_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
 
@@ -215,7 +215,7 @@ function _default_colormap(
     rank_ids = keys(rank_groups)
     return Dict(
         rank_grp =>
-            [RGBA(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
+            [RGBAf(1.0f0, 1.0f0, 1.0f0, 0.1f0), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
 end
