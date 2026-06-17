@@ -251,6 +251,7 @@ Taking the quantiles from a Gamma distribution with α:=1 creates a uniform Diri
 Vector of values that sum to 1.
 """
 function gamma_to_dirichlet(p; G=Gamma(1))
+    p = clamp.(p, eps(), prevfloat(1.0))
     gamma_samples = quantile.(G, p)
     return gamma_samples ./ sum(gamma_samples)
 end
