@@ -4,7 +4,7 @@ using Random
 
 @testset "sensitivity" begin
     @testset "pawn(Si) returns Figure" begin
-        # Fixture matches the structure returned by ADRIA.sensitivity.pawn():
+        # Fixture matches the structure returned by ADRIAanalysis.sensitivity.pawn():
         # dimensions are :factors (Symbol) × :Si (Symbol col names)
         factor_names = Symbol.(["Factor1", "Factor2", "Factor3"])
         Si_cols = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
