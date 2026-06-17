@@ -42,7 +42,6 @@ function ADRIA.viz.ranks_to_frequencies(
     end
 
     # Multi-panel: one subplot per rank
-    n_locs = length(rs.loc_data.site_id)
     outputs_matrix = hcat([collect(Float64, frequencies[ranks=r]) for r in ids]...)
     map_titles = ["Rank $(r)" for r in ids]
 
@@ -84,7 +83,7 @@ function ADRIA.viz.selection_criteria_map(
     height::Int=600,
     kwargs...
 )
-    if length(rs.loc_data.site_id) != size(decision_matrix, 1)
+    if size(rs.loc_data, 1) != size(decision_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
 

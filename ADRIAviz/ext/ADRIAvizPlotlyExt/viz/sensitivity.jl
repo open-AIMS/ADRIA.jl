@@ -38,12 +38,20 @@ function ADRIA.viz.pawn(
         type="heatmap"
     )
 
+    # Scale height with factor count so labels stay legible for large factor sets.
+    fig_height = max(400, 80 + 22 * length(factor_names))
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
         title_text=title,
+        height=fig_height,
         xaxis=PlotlyBase.attr(; title_text="SI Statistic"),
         yaxis=PlotlyBase.attr(;
-            title_text="Factor", ticktext=factor_names, tickvals=factor_names
+            title_text="Factor", ticktext=factor_names, tickvals=factor_names,
+            # Rows are sorted by `by` descending, so the most influential factor is
+            # `factor_names[1]`. Plotly places y[1] at the bottom, so reverse the
+            # axis to put the most influential factor at the top.
+            autorange="reversed", automargin=true
         )
     )
     return PlotlyBase.Plot([trace], layout)
@@ -136,30 +144,66 @@ function ADRIA.viz.rsa(
         )
     end
 
-    layout = PlotlyBase.Layout(;
-        ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel, domain=_subplot_domain(1, n_factors)),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+    layout = _grid_layout(
+        factor_names, n_factors; title=title, xlabel=xlabel, ylabel=ylabel
     )
-    for i in 2:n_factors
-        fname = factor_names[i]
-        axis_sfx = string(i)
-        layout[Symbol("xaxis$(axis_sfx)")] = PlotlyBase.attr(;
-            title_text="$(fname) value", domain=_subplot_domain(i, n_factors)
-        )
-        layout[Symbol("yaxis$(axis_sfx)")] = PlotlyBase.attr(; title_text=ylabel)
-    end
-
     return PlotlyBase.Plot(traces, layout)
 end
 
-# helper: compute subplot x-domain for panel i of n total
-function _subplot_domain(i::Int, n::Int)
-    gap = 0.05
-    w = (1.0 - gap * (n - 1)) / n
-    lo = (i - 1) * (w + gap)
-    return [lo, lo + w]
+# helper: compute the [x_domain, y_domain] rectangles for an n-panel subplot grid.
+# Panels fill left-to-right, top-to-bottom (panel 1 is top-left). Reuses
+# `_calc_gridsize` so the grid shape matches the rest of ADRIAviz.
+function _grid_domains(n::Int; x_gap::Float64=0.08, y_gap::Float64=0.12)
+    n_rows, n_cols = _calc_gridsize(n)
+    w = (1.0 - x_gap * (n_cols - 1)) / n_cols
+    h = (1.0 - y_gap * (n_rows - 1)) / n_rows
+    domains = Tuple{Vector{Float64},Vector{Float64},Int,Int}[]
+    for i in 1:n
+        row = div(i - 1, n_cols) + 1   # row 1 is the top row
+        col = mod(i - 1, n_cols) + 1
+        x0 = (col - 1) * (w + x_gap)
+        y1 = 1.0 - (row - 1) * (h + y_gap)
+        y0 = y1 - h
+        push!(domains, ([x0, x0 + w], [y0, y1], row, col))
+    end
+    return domains, n_rows, n_cols
+end
+
+# helper: build a subplot-grid Layout for the per-factor sensitivity plots.
+# Each panel gets its own x/y axes (rotated x ticks + automargin so labels stay
+# legible for large factor sets), a shared `xlabel`/`ylabel`, and a factor-name
+# subplot title placed above each panel.
+function _grid_layout(
+    factor_names, n_factors::Int; title::String, xlabel::String, ylabel::String
+)
+    domains, n_rows, n_cols = _grid_domains(n_factors)
+    annotations = PlotlyBase.PlotlyAttribute[]
+    layout = PlotlyBase.Layout(;
+        ADRIA_LAYOUT_DEFAULTS...,
+        title_text=title,
+        width=max(700, 360 * n_cols),
+        height=max(400, 320 * n_rows),
+        showlegend=false
+    )
+    for i in 1:n_factors
+        xd, yd, _, col = domains[i]
+        sfx = i == 1 ? "" : string(i)
+        layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text=xlabel, domain=xd, anchor="y$(sfx)",
+            tickangle=-45, automargin=true
+        )
+        layout[Symbol("yaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text=(col == 1 ? ylabel : ""), domain=yd, anchor="x$(sfx)",
+            automargin=true
+        )
+        push!(annotations, PlotlyBase.attr(;
+            text=string(factor_names[i]), x=(xd[1] + xd[2]) / 2, y=yd[2],
+            xref="paper", yref="paper", xanchor="center", yanchor="bottom",
+            showarrow=false, font=PlotlyBase.attr(; size=12)
+        ))
+    end
+    layout[:annotations] = annotations
+    return layout
 end
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -224,21 +268,9 @@ function ADRIA.viz.outcome_map(
         )
     end
 
-    layout = PlotlyBase.Layout(;
-        ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel, domain=_subplot_domain(1, n_factors)),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+    layout = _grid_layout(
+        factor_names, n_factors; title=title, xlabel=xlabel, ylabel=ylabel
     )
-    for i in 2:n_factors
-        fname = factor_names[i]
-        axis_sfx = string(i)
-        layout[Symbol("xaxis$(axis_sfx)")] = PlotlyBase.attr(;
-            title_text=string(fname), domain=_subplot_domain(i, n_factors)
-        )
-        layout[Symbol("yaxis$(axis_sfx)")] = PlotlyBase.attr(; title_text=ylabel)
-    end
-
     return PlotlyBase.Plot(traces, layout)
 end
 
