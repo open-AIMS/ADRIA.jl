@@ -102,18 +102,15 @@ function summarize(
         return fill_metadata!(D.(mapslices(metric, data; dims=alongs_axis)), metadata(data))
     end
 
-    alongs = sort([axis_index(data, axis) for axis in alongs_axis])
-
-    # Use of view and comprehensions to speed up calculation of summary statistics.
-    # see: https://stackoverflow.com/a/62040897
+    # Apply `metric` across the `alongs_axis` dimensions, keeping the rest.
+    # `eachslice` over the kept dimensions yields one view per kept-dim index
+    # (each view spanning the summarized dimensions), so `map(metric, ...)`
+    # collapses `alongs_axis` in a single pass over in-memory data.
     data_raw = read(data)
-    ranges = [axes(data_raw, ax) for ax in alongs]
-    summarized_data = [
-        metric(view(data_raw, (slice, indices...))) for
-        indices in Iterators.product(ranges...)
-    ]
-
     new_dims = setdiff(axes_names(data), alongs_axis)
+    kept_idx = Tuple(axis_index(data, ax) for ax in new_dims)
+    summarized_data = map(metric, eachslice(data_raw; dims=kept_idx))
+
     new_axis = [axis_labels(data, ax) for ax in new_dims]
 
     return fill_metadata!(

@@ -1,4 +1,5 @@
 using YAXArrays
+using DimensionalData
 
 using ADRIA:
     Domain,
@@ -449,6 +450,51 @@ function selection_frequency(
     n_selected = _times_selected(ranks, iv_type, (:scenarios, :timesteps))
 
     return n_selected ./ maximum(n_selected)
+end
+
+"""
+    ranks_to_frequencies(ranks::YAXArray)::YAXArray
+
+Compute the frequency with which each location was assigned each rank, across
+all non-location dimensions (e.g. timesteps and scenarios).
+
+# Arguments
+- `ranks` : YAXArray with a `locations` dimension. Values are integer ranks
+            (0 = not selected). Typically the output of `ADRIA.metrics.seed_ranks`
+            or `rs.ranks[intervention=At(:seed)]`.
+
+# Returns
+`YAXArray[ranks=1:max_rank, locations=...]` where each value is the fraction of
+observations (across all non-location dimensions) in which that location was
+assigned that rank.
+
+# Example
+```julia
+rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1)
+```
+"""
+function ranks_to_frequencies(ranks::YAXArray)::YAXArray
+    locs = collect(ranks.locations)
+    n_locs = length(locs)
+    ranks_arr = Int.(collect(ranks))
+
+    ax_names = Symbol.(DimensionalData.name.(DimensionalData.dims(ranks)))
+    loc_idx = findfirst(==(:locations), ax_names)
+    other = [i for i in 1:ndims(ranks) if i != loc_idx]
+    ranks_2d = reshape(permutedims(ranks_arr, [loc_idx; other...]), n_locs, :)
+
+    n_obs = size(ranks_2d, 2)
+    valid = ranks_2d[ranks_2d .> 0]
+    isempty(valid) && return DataCube(zeros(Float64, 1, n_locs); ranks=[1], locations=locs)
+    max_rank = Int(maximum(valid))
+
+    freq_data = zeros(Float64, max_rank, n_locs)
+    for r in 1:max_rank
+        freq_data[r, :] .= count.(==(r), eachrow(ranks_2d)) ./ n_obs
+    end
+
+    return DataCube(freq_data; ranks=1:max_rank, locations=locs)
 end
 
 """
