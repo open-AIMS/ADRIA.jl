@@ -4,7 +4,14 @@ using Documenter, DocumenterVitepress, Literate, ADRIA, ADRIAanalysis
 
 # Generate documentation pages from Literate sources
 usage_dir = joinpath(@__DIR__, "src", "usage")
-for name in ["getting_started", "loading_results", "scenario_runs", "scenario_discovery", "analysis", "cookbook"]
+for name in [
+    "getting_started",
+    "loading_results",
+    "scenario_runs",
+    "scenario_discovery",
+    "analysis",
+    "cookbook"
+]
     Literate.markdown(
         joinpath(usage_dir, "$(name).jl"),
         usage_dir;
@@ -14,15 +21,15 @@ end
 
 makedocs(;
     sitename="ADRIA.jl",
-    format=DocumenterVitepress.MarkdownVitepress(
+    format=DocumenterVitepress.MarkdownVitepress(;
         repo="github.com/open-AIMS/ADRIA.jl",
-        devbranch="main",
+        devbranch="main"
     ),
     pages=[
         "index.md",
         "Concepts" => [
             joinpath("concepts", "dMCDA.md"),
-            joinpath("concepts", "disturbances.md"),
+            joinpath("concepts", "disturbances.md")
         ],
         "Usage" => [
             joinpath("usage", "getting_started.md"),
@@ -32,19 +39,19 @@ makedocs(;
             joinpath("usage", "scenario_runs.md"),
             joinpath("usage", "scenario_discovery.md"),
             joinpath("usage", "analysis.md"),
-            joinpath("usage", "cookbook.md"),
+            joinpath("usage", "cookbook.md")
         ],
         "Architecture" => [
             joinpath("architecture", "architecture.md"),
-            joinpath("architecture", "domain_and_resultsets.md"),
+            joinpath("architecture", "domain_and_resultsets.md")
         ],
         "Development" => [
             joinpath("development", "development_setup.md"),
             joinpath("development", "metrics.md"),
             joinpath("development", "release_guide.md"),
-            joinpath("development", "building_docs.md"),
+            joinpath("development", "building_docs.md")
         ],
-        "API.md",
+        "API.md"
     ]
 )
 
