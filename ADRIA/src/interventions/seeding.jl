@@ -144,7 +144,11 @@ function update_tolerance_distribution!(
     #       with no deployments (for a given species). A location with 0 cover
     #       and 0 deployments will therefore be NaN due to zero division.
     #       These are replaced with 0.0 so that the existing distribution is used unchanged.
-    w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
+    # Materialize scaled_seed to a plain Matrix before broadcasting to avoid YAXArrays
+    # broadcast dispatch (to_yax MethodError when mixing YAXArray with plain Array).
+    scaled_seed_mat = Matrix{Float64}(scaled_seed)
+    w_taxa::Matrix{Float64} =
+        scaled_seed_mat ./ (cover[seed_sc, seed_locs] .+ scaled_seed_mat)
     # NaN occurs when both cover and scaled_seed are 0 (undeployed taxa at bare locations).
     replace!(w_taxa, NaN => 0.0)
 
@@ -159,11 +163,10 @@ function update_tolerance_distribution!(
         # Lower bound fixed (HEAT_LB), consistent with bleaching_mortality! which uses the
         # same floor. Upper bound anchored to initial mean + HEAT_UB (fixed ceiling) shifted
         # by the a_adapt enhancement, so the cap does not drift with population tolerance.
-        tn::Vector{Float64} =
-            truncated_normal_mean.(
-                a_adapt_relative, stdev[seed_sc], HEAT_LB,
-                view(tol_ceil, :, :, loc)[seed_sc]
-            )
+        tn::Vector{Float64} = truncated_normal_mean.(
+            a_adapt_relative, stdev[seed_sc], HEAT_LB,
+            view(tol_ceil,:,:,loc)[seed_sc]
+        )
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))

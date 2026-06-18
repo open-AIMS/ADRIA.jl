@@ -1,9 +1,13 @@
 import GeoInterface as GI
 import ArchGDAL as AG
-using DataFrames: DataFrame, nrow, hasproperty
+using DataFrames: DataFrame, nrow
 using Graphs: edges, ne, eigenvector_centrality, indegree_centrality, outdegree_centrality
 using SimpleWeightedGraphs: SimpleWeightedDiGraph
-using ADRIA: Domain, ResultSet, _get_geom_col, centroids
+using ADRIA: Domain, ResultSet, _get_geom_col
+
+# Import shared spatial utilities
+using ADRIAviz.viz: _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length,
+    GBR_COASTAL_PLACES, compute_map_decorations
 
 # =============================================================================
 # GeoJSON conversion helpers
@@ -12,64 +16,6 @@ using ADRIA: Domain, ResultSet, _get_geom_col, centroids
 # GeoInterface.coordinates(geom) returns the same nested-array structure that
 # GeoJSON expects, so no JSON parsing is required.
 # =============================================================================
-
-# Candidate location-id columns, only consulted when no domain context is
-# available (see `_get_site_ids`). The authoritative source is always the
-# domain's configured `loc_id_col` (see `_loc_id_col` / `_site_ids`).
-const _SITE_ID_CANDIDATES = (:reef_siteid, :site_id, :UNIQUE_ID, :reef_id)
-
-"""
-    _loc_id_col(x::Union{Domain,ResultSet}) -> Symbol
-
-The canonical per-location identifier column for the modelled spatial scale.
-This is the column ADRIA uses to order `conn`/`centroids`, so it is the only
-correct choice for matching choropleth `locations` to GeoJSON feature ids and
-for labelling reef sites. Never guess column names when this is available.
-"""
-_loc_id_col(dom::Domain)::Symbol = Symbol(dom.loc_id_col)
-_loc_id_col(rs::ResultSet)::Symbol = Symbol(rs.env_layer_md.loc_id_col)
-
-"""
-    _get_site_ids(gdf::DataFrame) -> Vector{String}
-
-Fallback site-id resolver for when no `Domain`/`ResultSet` is available to
-provide the canonical `loc_id_col`. Tries `_SITE_ID_CANDIDATES` in order, then
-falls back to row indices. These values become both the GeoJSON feature `id`
-fields and the `locations` array in a Plotly choropleth trace — they must match.
-
-Because several id columns can coexist (e.g. a site-scale run carrying both
-`site_id` and a reef-level `UNIQUE_ID`), this warns when the choice is
-ambiguous: pass a `Domain`/`ResultSet` to resolve it deterministically.
-"""
-function _get_site_ids(gdf::DataFrame)::Vector{String}
-    present = [c for c in _SITE_ID_CANDIDATES if hasproperty(gdf, c)]
-    if isempty(present)
-        return string.(1:nrow(gdf))
-    end
-    if length(present) > 1
-        @warn "Multiple candidate location-id columns present $(present); using \
-               '$(first(present))'. Pass a Domain/ResultSet so the canonical \
-               loc_id_col is used instead."
-    end
-    return string.(gdf[:, first(present)])
-end
-
-"""
-    _site_ids(gdf, id_col) -> Vector{String}
-
-Resolve site ids using an explicit column when provided (the domain's
-`loc_id_col`), otherwise fall back to the column-guessing `_get_site_ids`.
-"""
-function _site_ids(gdf::DataFrame, id_col::Union{Symbol,Nothing})::Vector{String}
-    if !isnothing(id_col)
-        if hasproperty(gdf, id_col)
-            return string.(gdf[:, id_col])
-        end
-        @warn "Configured location-id column '$(id_col)' not found in \
-               GeoDataFrame; falling back to heuristic resolution."
-    end
-    return _get_site_ids(gdf)
-end
 
 """
     _geom_to_geojson_dict(geom) -> Dict{String,Any}
@@ -181,37 +127,6 @@ end
 #   - labelled markers for major coastal centres within `max_km` of the reefs
 # =============================================================================
 
-# Major Queensland coastal population centres (name, lon, lat). Used to give
-# spatial context; filtered to those within `max_km` of the modelled reefs, so
-# non-GBR domains simply show none.
-const GBR_COASTAL_PLACES = [
-    ("Cooktown", 145.251, -15.468), ("Port Douglas", 145.465, -16.483),
-    ("Cairns", 145.770, -16.920), ("Innisfail", 146.030, -17.524),
-    ("Cardwell", 146.020, -18.267), ("Ingham", 146.158, -18.650),
-    ("Townsville", 146.816, -19.258), ("Ayr", 147.405, -19.574),
-    ("Bowen", 148.246, -20.013), ("Airlie Beach", 148.718, -20.267),
-    ("Mackay", 149.186, -21.144), ("Yeppoon", 150.742, -23.130),
-    ("Rockhampton", 150.510, -23.378), ("Gladstone", 151.256, -23.843),
-    ("Bundaberg", 152.349, -24.866), ("Hervey Bay", 152.844, -25.290),
-    ("Brisbane", 153.025, -27.470)
-]
-
-"""Great-circle distance between two lon/lat points, in kilometres."""
-function _haversine_km(lon1, lat1, lon2, lat2)::Float64
-    R = 6371.0
-    dlat = deg2rad(lat2 - lat1)
-    dlon = deg2rad(lon2 - lon1)
-    a = sin(dlat / 2)^2 + cosd(lat1) * cosd(lat2) * sin(dlon / 2)^2
-    return 2R * asin(min(1.0, sqrt(a)))
-end
-
-"""Round a distance down to a cartographically 'nice' scale-bar length (km)."""
-function _nice_length(x::Real)::Int
-    options = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000]
-    idx = findlast(<=(x), options)
-    return options[isnothing(idx) ? 1 : idx]
-end
-
 """
     _map_decorations(gdf; max_km=100.0)
         -> (traces, annotations, lon_range, lat_range)
@@ -221,72 +136,56 @@ a reef map, plus the lon/lat display range expanded to include any qualifying
 coastal centres. Returns empty decorations if centroids cannot be computed.
 """
 function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
-    cents = ADRIA.centroids(gdf)
-    isempty(cents) &&
+    deco_data = compute_map_decorations(gdf; max_km=max_km)
+    isnothing(deco_data) &&
         return (AbstractTrace[], PlotlyBase.PlotlyAttribute[], nothing, nothing)
 
-    lons = Float64[c[1] for c in cents]
-    lats = Float64[c[2] for c in cents]
-    lon_min, lon_max = extrema(lons)
-    lat_min, lat_max = extrema(lats)
-
-    # Coastal centres within max_km of any reef
-    places = NamedTuple{(:name, :lon, :lat),Tuple{String,Float64,Float64}}[]
-    for (name, plon, plat) in GBR_COASTAL_PLACES
-        d = minimum(_haversine_km(plon, plat, lons[i], lats[i]) for i in eachindex(lons))
-        d <= max_km && push!(places, (name=name, lon=plon, lat=plat))
-    end
-
     traces = AbstractTrace[]
-    if !isempty(places)
+    if !isempty(deco_data.places)
         push!(
             traces,
             scattergeo(;
-                lon=[p.lon for p in places], lat=[p.lat for p in places],
-                text=[p.name for p in places], mode="markers+text",
+                lon=[p.lon for p in deco_data.places],
+                lat=[p.lat for p in deco_data.places],
+                text=[p.name for p in deco_data.places],
+                mode="markers+text",
                 marker=attr(; size=6, color="#333333", symbol="circle"),
-                # Label sits to the upper-left of the marker.
-                textposition="top left", textfont=attr(; size=11, color="#333333"),
-                hoverinfo="text", showlegend=false, name="Places"
+                textposition="top left",
+                textfont=attr(; size=11, color="#333333"),
+                hoverinfo="text",
+                showlegend=false,
+                name="Places"
             )
         )
     end
 
-    # Display range = reefs + qualifying places, with a small pad
-    all_lons = vcat(lons, [p.lon for p in places])
-    all_lats = vcat(lats, [p.lat for p in places])
-    lo_min, lo_max = extrema(all_lons)
-    la_min, la_max = extrema(all_lats)
-    lon_pad = max(0.05, 0.08 * (lo_max - lo_min))
-    lat_pad = max(0.05, 0.08 * (la_max - la_min))
-    lon_range = [lo_min - lon_pad, lo_max + lon_pad]
-    lat_range = [la_min - lat_pad, la_max + lat_pad]
-
-    # Scale bar (~1/4 of the reef extent width, rounded to a nice length)
-    lat_mid = (lat_min + lat_max) / 2
-    width_km = _haversine_km(lon_min, lat_mid, lon_max, lat_mid)
-    bar_km = _nice_length(max(width_km / 4, 1.0))
-    bar_deg = bar_km / (111.32 * cosd(lat_mid))
-    bx0 = lon_range[1] + 0.04 * (lon_range[2] - lon_range[1])
-    by = lat_range[1] + 0.06 * (lat_range[2] - lat_range[1])
     push!(
         traces,
         scattergeo(;
-            lon=[bx0, bx0 + bar_deg], lat=[by, by], mode="lines",
-            line=attr(; color="black", width=3), hoverinfo="skip",
-            showlegend=false, name="scale"
+            lon=[deco_data.scale_bar_x0, deco_data.scale_bar_x0 + deco_data.scale_bar_deg],
+            lat=[deco_data.scale_bar_y, deco_data.scale_bar_y],
+            mode="lines",
+            line=attr(; color="black", width=3),
+            hoverinfo="skip",
+            showlegend=false,
+            name="scale"
         )
     )
     push!(
         traces,
         scattergeo(;
-            lon=[bx0 + bar_deg / 2], lat=[by], text=["$(bar_km) km"], mode="text",
-            textposition="top center", textfont=attr(; size=11, color="black"),
-            hoverinfo="skip", showlegend=false, name="scale_label"
+            lon=[deco_data.scale_bar_x0 + deco_data.scale_bar_deg / 2],
+            lat=[deco_data.scale_bar_y],
+            text=["$(deco_data.scale_bar_km) km"],
+            mode="text",
+            textposition="top center",
+            textfont=attr(; size=11, color="black"),
+            hoverinfo="skip",
+            showlegend=false,
+            name="scale_label"
         )
     )
 
-    # North arrow (paper-anchored; north is up in mercator)
     north = attr(;
         text="N", x=0.07, y=0.92, xref="paper", yref="paper",
         showarrow=true, ax=0, ay=28, arrowhead=2, arrowsize=1.3, arrowwidth=2,
@@ -294,7 +193,7 @@ function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
         xanchor="center", yanchor="bottom"
     )
 
-    return traces, PlotlyBase.PlotlyAttribute[north], lon_range, lat_range
+    return traces, PlotlyBase.PlotlyAttribute[north], deco_data.lon_range, deco_data.lat_range
 end
 
 """

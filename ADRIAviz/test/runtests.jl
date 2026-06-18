@@ -25,6 +25,9 @@ using ADRIAviz
         end
     end
 
+    # Spatial utilities tests (lightweight, no backend required)
+    include("spatial_utils.jl")
+
     if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
         include("annotated_outcomes.jl")
         include("taxa_dynamics.jl")

@@ -1,7 +1,11 @@
 import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
+using DataFrames: DataFrame
 
-using ADRIA: _get_geom_col
+using ADRIA: _get_geom_col, Domain, ResultSet
+
+# Import shared spatial utilities
+using ADRIAviz.viz: _loc_id_col, compute_map_decorations, MapDecorationData
 
 """
     _get_geoms(gdf::DataFrame, geom_col::Symbol)
@@ -19,6 +23,69 @@ Retrieve the vector of geometries from a GeoDataFrame.
 """
 function _get_geoms(gdf::DataFrame)
     return _get_geoms(gdf, _get_geom_col(gdf))
+end
+
+# =============================================================================
+# Map decorations: scale bar, north arrow, coastal places
+# =============================================================================
+
+"""
+    _render_coastal_places!(ax::GeoAxis, deco::MapDecorationData)
+
+Render coastal place labels on a Makie GeoAxis from decoration data.
+"""
+function _render_coastal_places!(ax::GeoAxis, deco::MapDecorationData)
+    if isempty(deco.places)
+        return
+    end
+    scatter!(
+        ax,
+        [p.lon for p in deco.places],
+        [p.lat for p in deco.places];
+        color=:black,
+        markersize=4,
+        label="Places"
+    )
+    for place in deco.places
+        text!(ax, place.lon, place.lat; text=place.name, fontsize=9, offset=(5, 5))
+    end
+end
+
+"""
+    _render_scale_bar!(ax::GeoAxis, deco::MapDecorationData)
+
+Render a scale bar on a Makie GeoAxis from decoration data.
+"""
+function _render_scale_bar!(ax::GeoAxis, deco::MapDecorationData)
+    linesegments!(
+        ax,
+        [deco.scale_bar_x0, deco.scale_bar_x0 + deco.scale_bar_deg],
+        [deco.scale_bar_y, deco.scale_bar_y];
+        color=:black,
+        linewidth=2
+    )
+    text!(
+        ax,
+        deco.scale_bar_x0 + deco.scale_bar_deg / 2,
+        deco.scale_bar_y + 0.5;
+        text="$(deco.scale_bar_km) km",
+        fontsize=9,
+        align=(:center, :bottom)
+    )
+end
+
+"""
+    _render_map_decorations!(ax::GeoAxis, gdf::DataFrame; max_km=100.0)
+
+Render map decorations (scale bar, places) on a Makie GeoAxis.
+Fails silently if decorations cannot be computed.
+"""
+function _render_map_decorations!(ax::GeoAxis, gdf::DataFrame; max_km::Float64=100.0)
+    deco_data = compute_map_decorations(gdf; max_km=max_km)
+    isnothing(deco_data) && return
+
+    _render_coastal_places!(ax, deco_data)
+    _render_scale_bar!(ax, deco_data)
 end
 
 function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
@@ -554,20 +621,19 @@ function ADRIA.viz.connectivity!(
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
 
-    # Calculate alpha values for edges based on connectivity strength and weighting
-    edge_col = Vector{RGBAf}(undef, ne(network))
+    # Cache the normalization coefficient once
     norm_coef = maximum(conn_weights)
-    for (ind, e) in enumerate(edges(network))
-        alpha = (e.src == e.dst) ? 0.0f0 : Float32(conn_weights[e.src] * e.weight / norm_coef)
-        edge_col[ind] = RGBAf(0, 0, 0, alpha)
+
+    # Calculate alpha values for edges based on connectivity strength and weighting (lazy, only if needed)
+    edge_col = get(opts, :edge_color) do
+        RGBAf.(0, 0, 0, [
+            (e.src == e.dst) ? 0.0f0 : Float32(conn_weights[e.src] * e.weight / norm_coef)
+            for e in edges(network)
+        ])
     end
 
     # Rescale node size to be visible
-    node_size = conn_weights ./ maximum(conn_weights) .* 10.0
-
-    # Extract graph kwargs and set defaults
-    edge_col = get(opts, :edge_color, edge_col)
-    node_size = get(opts, :node_size, node_size)
+    node_size = get(opts, :node_size, conn_weights ./ norm_coef .* 10.0)
     node_color = get(opts, :node_color, node_size)
 
     # Plot geodata polygons

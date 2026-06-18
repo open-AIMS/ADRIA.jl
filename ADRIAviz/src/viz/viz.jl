@@ -4,6 +4,10 @@ using ADRIA: axes_names, ResultSet, model_spec
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
+# Export shared spatial utilities for use in extensions
+export _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length
+export GBR_COASTAL_PLACES, CoastalPlace, MapDecorationData, compute_map_decorations
+
 function _no_backend_error()
     return error(
         "No visualization backend loaded. Load a backend before calling viz functions:\n" *
@@ -65,3 +69,4 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
 end
 
 include("../outcome_metadata.jl")
+include("spatial_utils.jl")

@@ -224,7 +224,7 @@ function run_scenarios(
 
             dom = switch_RCPs!(dom, rcp)
             target_rows = findall(
-                scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+                scenarios_matrix[factors = At("RCP")] .== parse(Float64, rcp)
             )
             scen_args = collect(
                 _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
@@ -334,7 +334,7 @@ end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     target_rows = findall(
-        collect(scenarios_matrix[factors=At("RCP")]) .== parse(Float64, rcp)
+        collect(scenarios_matrix[factors = At("RCP")]) .== parse(Float64, rcp)
     )
     rep_doms = Iterators.repeated(dom, n)
     return zip(
@@ -506,8 +506,9 @@ function _write_batch!(
             for (i, r) in enumerate(results)
                 cc_batch[:, :, :, i] .= r.coral_cover_log
             end
-            data_store.coral_cover_log[:, :, :, idx_range] .=
-                round.(UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0)
+            data_store.coral_cover_log[:, :, :, idx_range] .= round.(
+                UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0
+            )
         end
     end
 
@@ -687,9 +688,9 @@ function run_model(
             # Slicing results in (timesteps, locations)
             dhw_baseline = @view(
                 domain.dhw_scens[
-                    scenarios=dhw_idx,
-                    mcb_durations=1,
-                    albedo=At(domain.dhw_scens.albedo[1])
+                    scenarios = dhw_idx,
+                    mcb_durations = 1,
+                    albedo = At(domain.dhw_scens.albedo[1])
                 ]
             )
 
@@ -698,9 +699,9 @@ function run_model(
             if mcb_duration > 0.0 && mcb_albedo > 0.0
                 dhw_treated = @view(
                     domain.dhw_scens[
-                        scenarios=dhw_idx,
-                        mcb_durations=At(mcb_duration),
-                        albedo=At(mcb_albedo)
+                        scenarios = dhw_idx,
+                        mcb_durations = At(mcb_duration),
+                        albedo = At(mcb_albedo)
                     ]
                 )
             end
@@ -1187,13 +1188,12 @@ function run_model(
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
-            growth_constraints[cover_threshold_mask] .=
-                growth_acceleration.(
-                    growth_acc_height[idx],
-                    growth_acc_midpoint[idx],
-                    growth_acc_steepness[idx],
-                    relative_habitable_cover_cache[cover_threshold_mask]
-                )
+            growth_constraints[cover_threshold_mask] .= growth_acceleration.(
+                growth_acc_height[idx],
+                growth_acc_midpoint[idx],
+                growth_acc_steepness[idx],
+                relative_habitable_cover_cache[cover_threshold_mask]
+            )
         end
 
         @inbounds for i in habitable_loc_idxs
@@ -1402,7 +1402,7 @@ function run_model(
                 if is_guided
                     # Update decision matrix with current conditions
                     update_criteria_values!(
-                        fog_decision_mat[location=At(candidate_locs)];
+                        fog_decision_mat[location = At(candidate_locs)];
                         heat_stress=dhw_projection[candidate_loc_indices],
                         wave_stress=wave_projection[candidate_loc_indices],
                         coral_cover=current_loc_cover[candidate_loc_indices],
@@ -1413,7 +1413,7 @@ function run_model(
                     # Build state for target locations only
                     selected_fog_ranks = select_locations(
                         fog_pref,
-                        fog_decision_mat[location=At(candidate_locs)],
+                        fog_decision_mat[location = At(candidate_locs)],
                         MCDA_approach,
                         min_iv_locs
                     )
@@ -1488,7 +1488,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            mc_decision_mat[location=At(share_candidate_locs)];
+                            mc_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1498,7 +1498,7 @@ function run_model(
 
                         selected_mc_ranks = select_locations(
                             mc_pref,
-                            mc_decision_mat[location=At(share_candidate_locs)],
+                            mc_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
                             mc_min_iv_locs
                         )
@@ -1673,7 +1673,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            seed_decision_mat[location=At(share_candidate_locs)];
+                            seed_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1684,7 +1684,7 @@ function run_model(
                         # Build state for target locations only
                         selected_seed_ranks = select_locations(
                             seed_pref,
-                            seed_decision_mat[location=At(share_candidate_locs)],
+                            seed_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
                             min_iv_locs
                         )
@@ -1812,7 +1812,7 @@ function run_model(
             )
         end
 
-        recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
+        recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
 

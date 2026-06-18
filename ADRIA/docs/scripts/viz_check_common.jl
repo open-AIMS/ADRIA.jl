@@ -61,7 +61,7 @@ end
 
 dom_path = get(ENV, "ADRIA_TEST_DOMAIN", "")
 if isempty(dom_path) || !isdir(dom_path)
-    ValueError(
+    ArgumentError(
         """
         ADRIA_TEST_DOMAIN must be set to a valid domain directory path.
         Example: ADRIA_TEST_DOMAIN=/path/to/domain
@@ -340,7 +340,7 @@ check("criteria_spatial_plots") do
 
     ADRIA.viz.selection_criteria_map(
         example_dom,
-        seed_decision_mat[criteria=.!is_const],
+        seed_decision_mat[criteria = .!is_const],
         crit_agg.scores ./ maximum(crit_agg.scores)
     )
 end

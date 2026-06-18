@@ -215,7 +215,7 @@ function _default_colormap(
     rank_ids = keys(rank_groups)
     return Dict(
         rank_grp =>
-            [RGBAf(1.0f0, 1.0f0, 1.0f0, 0.1f0), rank_colors[rank_grp]] for
+            [RGBA(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
 end

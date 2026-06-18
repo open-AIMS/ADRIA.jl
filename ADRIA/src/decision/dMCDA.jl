@@ -31,7 +31,7 @@ end
 List of MCDA method names.
 """
 function mcda_method_names()::Vector{String}
-    return getindex.(split.(string.(mcda_methods()), "."), 2)
+    return string.(nameof.(parentmodule.(mcda_methods())))
 end
 
 """
@@ -144,8 +144,14 @@ function weighted_projection(
     timeframe::Int64
 )::Vector{Float64}
     horizon = tstep:min(tstep + planning_horizon, timeframe)
-    # Put more weight on projected conditions closer to the decision point
-    return summary_stat_env(decay[1:length(horizon)] .* env_data[horizon, :], :timesteps)
+    n = length(horizon)
+    # Materialize once as a plain Matrix (avoids YAXArrays broadcast dispatch),
+    # then scale each row in-place so no second full-matrix allocation is needed.
+    env_slice = Matrix{Float64}(env_data[horizon, :])
+    @inbounds for i in 1:n
+        @views env_slice[i, :] .*= decay[i]
+    end
+    return summary_stat_env(env_slice, 1)
 end
 
 """
@@ -172,8 +178,11 @@ function summary_stat_env(
     w=0.5
 )::Vector{Float64}
     if size(env_layer, 1) > 1
+        w1 = 1.0 - w
         μ = mean(env_layer; dims=dims)
-        return vec(μ .* w .+ std(env_layer; mean=μ, dims=dims) .* (1.0 - w))
+        σ = std(env_layer; mean=μ, dims=dims)
+        @. μ = μ * w + σ * w1
+        return vec(μ)
     end
 
     return vec(env_layer)

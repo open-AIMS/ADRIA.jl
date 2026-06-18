@@ -23,7 +23,7 @@ end
 function per_loc(
     metric, data::YAXArray{D,T,N,A}, timesteps::Union{UnitRange,Int64}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], [:scenarios, :timesteps], metric)
+    return summarize(data[timesteps = At(timesteps)], [:scenarios, :timesteps], metric)
 end
 
 """
@@ -68,7 +68,7 @@ end
 function loc_trajectory(
     metric, data::YAXArray{D,T,N,A}, timesteps::Union{UnitRange,Int64}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], [:scenarios], metric)
+    return summarize(data[timesteps = At(timesteps)], [:scenarios], metric)
 end
 
 """
@@ -102,15 +102,18 @@ function summarize(
         return fill_metadata!(D.(mapslices(metric, data; dims=alongs_axis)), metadata(data))
     end
 
-    # Apply `metric` across the `alongs_axis` dimensions, keeping the rest.
-    # `eachslice` over the kept dimensions yields one view per kept-dim index
-    # (each view spanning the summarized dimensions), so `map(metric, ...)`
-    # collapses `alongs_axis` in a single pass over in-memory data.
-    data_raw = read(data)
-    new_dims = setdiff(axes_names(data), alongs_axis)
-    kept_idx = Tuple(axis_index(data, ax) for ax in new_dims)
-    summarized_data = map(metric, eachslice(data_raw; dims=kept_idx))
+    alongs = sort([axis_index(data, axis) for axis in alongs_axis])
 
+    # Use of view and comprehensions to speed up calculation of summary statistics.
+    # see: https://stackoverflow.com/a/62040897
+    data_raw = read(data)
+    ranges = [axes(data_raw, ax) for ax in alongs]
+    summarized_data = [
+        metric(view(data_raw, (slice, indices...))) for
+        indices in Iterators.product(ranges...)
+    ]
+
+    new_dims = setdiff(axes_names(data), alongs_axis)
     new_axis = [axis_labels(data, ax) for ax in new_dims]
 
     return fill_metadata!(
@@ -123,7 +126,7 @@ function summarize(
     metric::Function,
     timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], alongs_axis, metric)
+    return summarize(data[timesteps = At(timesteps)], alongs_axis, metric)
 end
 
 """
@@ -136,7 +139,7 @@ each location.
 - `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios).
 - `scens` : Scenarios DataFrame.
 - `agg_metric` : Metric used to aggregate scenarios when comparing between counterfactual and
-target. If it is an `AbstractFloat` between 0 and 1, it uses the `bs_metric`-th quantile.
+target. If it is an `AbstractFloat` between 0 and 1, it uses the `agg_metric`-th quantile.
 Defaults to `median`.
 - `diff_target` : Target group of scenarios to compare with. Valid options are `:guided` and
 `:unguided`. Defaults to `:guided`
@@ -189,11 +192,11 @@ function ensemble_loc_difference(
     outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
 
     # Counterfactual, target outcomes
-    cf_outcomes = outcomes_agg[scenarios=scens.guided .== -1]
+    cf_outcomes = outcomes_agg[scenarios = scens.guided .== -1]
     target_outcomes = if diff_target == :guided
-        outcomes_agg[scenarios=scens.guided .> 0]
+        outcomes_agg[scenarios = scens.guided .> 0]
     elseif diff_target == :unguided
-        outcomes_agg[scenarios=scens.guided .== 0]
+        outcomes_agg[scenarios = scens.guided .== 0]
     else
         error("Invalid diff_target value. Valid values are :guided and :unguided.")
     end

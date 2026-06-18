@@ -38,12 +38,13 @@ function _reef_condition_index(
 )::AbstractArray{<:Real}
     out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
 
-    juves_rel_baseline = juves ./ maximum(juves)
+    juves_mat = collect(juves)
+    juves_mat ./= maximum(juves_mat)
     for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
         @views ADRIAIndicators.reef_condition_index!(
             ltmp_cover.data[:, :, scen_idx],
             sv.data[:, :, scen_idx],
-            juves_rel_baseline.data[:, :, scen_idx],
+            juves_mat[:, :, scen_idx],
             out_rci[:, :, scen_idx]
         )
     end
@@ -63,14 +64,15 @@ function _reef_condition_index(
     juves::AbstractArray{<:Real,3},
     rubble::AbstractArray{<:Real,3}
 )::AbstractArray{<:Real}
-    juves = collect(juves ./ maximum(juves))
+    juves_mat = collect(juves)
+    juves_mat ./= maximum(juves_mat)
 
     out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
     for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
         @views ADRIAIndicators.reef_condition_index!(
             ltmp_cover.data[:, :, scen_idx],
             sv.data[:, :, scen_idx],
-            juves[:, :, scen_idx],
+            juves_mat[:, :, scen_idx],
             rubble.data[:, :, scen_idx],
             out_rci[:, :, scen_idx];
         )

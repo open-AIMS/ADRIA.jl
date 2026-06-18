@@ -127,5 +127,9 @@ const COMPAT_DPKG = ["0.8.0"]
     metrics.relative_cover(rand(Float64, 5, 3, 10, 8, 2))
     # coral_evenness: in_dims = (:timesteps, :groups, :locations)
     metrics.coral_evenness(rand(Float64, 5, 3, 10))
+
+    d = load_domain(joinpath(pkgdir(ADRIA), "test", "data", "Test_domain"), "45")
+    sample(d, 64)
 end
+
 end

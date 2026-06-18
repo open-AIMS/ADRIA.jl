@@ -1,0 +1,10 @@
+[deps]
+ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
