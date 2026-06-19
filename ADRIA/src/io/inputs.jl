@@ -188,7 +188,6 @@ end
 
 """
     load_env_data(data_fn::String, attr::String)::YAXArray
-    load_env_data(timeframe, sites)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
@@ -202,9 +201,6 @@ function load_env_data(data_fn::String, attr::String)::YAXArray{Float64}
     end
 
     return YAXArray(DimensionalData.dims(data), convert(Array{Float64}, data.data))
-end
-function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray{Float64}
-    return ZeroDataCube(; T=Float64, timesteps=timeframe, sites=sites, scenarios=1:50)
 end
 
 """
@@ -231,7 +227,12 @@ function load_cyclone_data(
 )::YAXArray
     cyclone_mortality = if !ispath(data_fn)
         @info "No cyclone mortality data file found at $(data_fn). Using default cyclone mortality data."
-        load_cyclone_data(timeframe, location_ids)
+        ZeroDataCube(;
+            timesteps=1:length(timeframe),
+            locations=sort(location_ids),
+            species=ADRIA.coral_spec().taxa_names,
+            scenarios=1:1
+        )
     else
         load_cyclone_data(data_fn)
     end
@@ -250,19 +251,13 @@ function load_cyclone_data(
 
     return cyclone_mortality
 end
-function load_cyclone_data(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
-    return ZeroDataCube(;
-        timesteps=1:length(timeframe),
-        locations=sort(location_ids),
-        species=ADRIA.coral_spec().taxa_names,
-        scenarios=[1]
-    )
-end
 
 function load_wave_data(data_fn::String, timeframe::Vector{Int64}, conn_ids)
     return if !ispath(data_fn)
-        @info "No wave data file found at $(data_fn). Using default wave data."
-        load_env_data(timeframe, conn_ids)
+        @info "No wave data file found at $(data_fn). Using wave inputs set to 0."
+        return ZeroDataCube(;
+            T=Float64, timesteps=timeframe, locations=conn_ids, scenarios=1:1
+        )
     else
         load_env_data(data_fn, "Ub")
     end
