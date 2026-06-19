@@ -2,7 +2,7 @@ using
     GeoMakie,
     GeoMakie.Colors
 
-const COLORMAP_TYPE = Union{Symbol,RGB,RGBA,Vector{Symbol},Vector{RGBA},Vector{RGB}}
+const COLORMAP_TYPE = Union{Symbol,RGB,RGBA,Vector{Symbol},Vector{<:RGBA},Vector{<:RGB}}
 
 include("scenarios.jl")
 include("sensitivity.jl")
