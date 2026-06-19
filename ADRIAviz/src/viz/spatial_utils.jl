@@ -6,6 +6,7 @@ structures used by both Plotly and Makie spatial viz backends.
 """
 
 using DataFrames: DataFrame, nrow, hasproperty
+using Distances: haversine
 using ADRIA: Domain, ResultSet, centroids
 
 # =============================================================================
@@ -68,18 +69,13 @@ end
 # =============================================================================
 
 """
-    _haversine_km(lon1, lat1, lon2, lat2)::Float64
+    _haversine_km(lon1::Real, lat1::Real, lon2::Real, lat2::Real)::Float64
 
 Great-circle distance between two lon/lat points (degrees) in kilometres.
-Uses WGS84 Earth radius (6371 km).
+Uses Distances.jl haversine with WGS84 Earth radius (6371 km).
 """
-function _haversine_km(lon1, lat1, lon2, lat2)::Float64
-    R = 6371.0
-    lat1_rad, lat2_rad = deg2rad(lat1), deg2rad(lat2)
-    dlat = deg2rad(lat2 - lat1)
-    dlon = deg2rad(lon2 - lon1)
-    a = sin(dlat / 2)^2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)^2
-    return 2R * asin(min(1.0, sqrt(a)))
+function _haversine_km(lon1::Real, lat1::Real, lon2::Real, lat2::Real)::Float64
+    6371.0 * haversine([deg2rad(lat1), deg2rad(lon1)], [deg2rad(lat2), deg2rad(lon2)])
 end
 
 """
@@ -115,7 +111,7 @@ const GBR_COASTAL_PLACES = [
 
 Named tuple for a coastal place: (name, lon, lat).
 """
-const CoastalPlace = NamedTuple{(:name, :lon, :lat), Tuple{String,Float64,Float64}}
+const CoastalPlace = NamedTuple{(:name, :lon, :lat),Tuple{String,Float64,Float64}}
 
 """
     MapDecorationData

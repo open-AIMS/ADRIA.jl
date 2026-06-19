@@ -72,6 +72,25 @@ function loc_trajectory(
 end
 
 """
+Barrier function: Val{NA}/Val{NK} allow Julia to specialize on ndims at compile time,
+eliminating per-iteration dynamic dispatch on view/metric calls.
+"""
+function _summarize_inner(
+    permuted::AbstractArray{T},
+    metric::F,
+    kept_ranges::NTuple{NK,Base.OneTo{Int}},
+    ::Val{NA},
+    ::Val{NK}
+) where {T,F<:Function,NA,NK}
+    colons = ntuple(_ -> Colon(), Val(NA))
+    output = Array{T}(undef, map(length, kept_ranges)...)
+    for indices in Iterators.product(kept_ranges...)
+        output[indices...] = metric(view(permuted, colons..., indices...))
+    end
+    return output
+end
+
+"""
     summarize(data::YAXArray{<:Real}, alongs_axis::Vector{Symbol}, metric::Function)::YAXArray{<:Real}
     summarize(data::YAXArray{<:Real}, alongs_axis::Vector{Symbol}, metric::Function, timesteps::Union{UnitRange,Vector{Int64},BitVector})::YAXArray{<:Real}
 
@@ -89,35 +108,41 @@ YAXArray with summary metric for the remaining axis.
 function summarize(
     data::YAXArray{D,T,N,A}, alongs_axis::Vector{Symbol}, metric::Function
 )::YAXArray where {D,T,N,A}
-    # The approach using JuliennedArrays is faster then directly passing the YAXArray to
-    # mapslices only when we `read(data)`. Since `read(data)` loads all the data from disk
-    # into memory, we only want to use that approach when there is a reasonable amount of
-    # available space in RAM
     available_ram = Sys.free_memory() * 0.7
     data_size = sizeof(eltype(data)) * length(data)
 
-    # Only use this approach when data occupies more than 70% of available RAM
-    if data_size > available_ram
+    # Account for read(data) allocating a second copy alongside the source
+    if data_size * 3 > available_ram
         # `D.` is ensuring the returned YAXArray has the same type as the input `data`
         return fill_metadata!(D.(mapslices(metric, data; dims=alongs_axis)), metadata(data))
     end
 
-    alongs = sort([axis_index(data, axis) for axis in alongs_axis])
+    alongs_axis_set = Set(alongs_axis)
+    alongs = sort([axis_index(data, ax) for ax in alongs_axis])
 
-    # Use of view and comprehensions to speed up calculation of summary statistics.
-    # see: https://stackoverflow.com/a/62040897
+    # Paired sort keeps dim names and indices aligned (setdiff order is not guaranteed)
+    new_dims_pairs = sort(
+        [(axis_index(data, ax), ax) for ax in axes_names(data) if !(ax in alongs_axis_set)];
+        by=first
+    )
+    new_axes_indices, new_dims = Int.(first.(new_dims_pairs)),
+    Symbol.(last.(new_dims_pairs))
+
     data_raw = read(data)
-    ranges = [axes(data_raw, ax) for ax in alongs]
-    summarized_data = [
-        metric(view(data_raw, (slice, indices...))) for
-        indices in Iterators.product(ranges...)
-    ]
 
-    new_dims = setdiff(axes_names(data), alongs_axis)
+    # Permute so alongs dims are leading: slices passed to metric are contiguous in memory
+    permuted = permutedims(data_raw, vcat(alongs, new_axes_indices))
+
+    n_alongs = length(alongs)
+    kept_ranges = Tuple(axes(permuted, n_alongs + i) for i in 1:length(new_dims))
     new_axis = [axis_labels(data, ax) for ax in new_dims]
 
+    result = _summarize_inner(
+        permuted, metric, kept_ranges, Val(n_alongs), Val(length(new_dims))
+    )
+
     return fill_metadata!(
-        DataCube(summarized_data; NamedTuple{Tuple(new_dims)}(new_axis)...), metadata(data)
+        DataCube(result; NamedTuple{Tuple(new_dims)}(new_axis)...), metadata(data)
     )
 end
 function summarize(

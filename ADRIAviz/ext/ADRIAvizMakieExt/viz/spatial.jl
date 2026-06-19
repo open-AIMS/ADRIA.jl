@@ -201,6 +201,7 @@ function create_map!(
 
             for color in hl_groups
                 m = findall(highlight .== [color])
+                isempty(m) && continue
 
                 poly!(
                     spatial,
@@ -247,6 +248,30 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    y::Union{YAXArray,AbstractVector{<:Real}},
+    highlight::AbstractVector;
+    diverging::Bool=false,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    set_plot_opts!(y, opts, :colorbar_label; metadata_key=:metric_name)
+
+    if diverging
+        opts[:color_map] = _diverging_cmap(y)
+    end
+
+    opts[:highlight] = highlight
+
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
+
+    return f
+end
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     y::Union{YAXArray,AbstractVector{<:Real}};
