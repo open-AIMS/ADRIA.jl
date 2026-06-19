@@ -198,7 +198,7 @@ function _foi_data_stores(
             T=Union{Missing,Float64},
             default=seq_store[:default][2:end],
             second_dim...
-        ) for _ in 1:(length(m_spec.fieldname) - length(unordered_cat))
+        ) for _ = 1:(length(m_spec.fieldname) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
@@ -306,7 +306,7 @@ function pawn(
 
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
-        for d_i in 1:D
+        for d_i = 1:D
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
@@ -315,7 +315,7 @@ function pawn(
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
-            for s in 2:S
+            for s = 2:S
                 Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
@@ -434,10 +434,10 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store[n_scenarios=At(nn)] .= Array(
+        pawn_store[n_scenarios = At(nn)] .= Array(
             Si(
                 X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
-            )[factors=At(target_factors)]
+            )[factors = At(target_factors)]
         )
     end
 
@@ -469,8 +469,8 @@ function convergence(
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped[factors=At(cc)] .= dropdims(
-            mean(Si_n[factors=At(Symbol.(factors))]; dims=:factors);
+        Si_grouped[factors = At(cc)] .= dropdims(
+            mean(Si_n[factors = At(Symbol.(factors))]; dims=:factors);
             dims=:factors
         )
     end
@@ -640,7 +640,7 @@ function rsa(
             r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        for s in 2:(length(X_q) - 1)
+        for s = 2:(length(X_q) - 1)
             sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
@@ -775,7 +775,7 @@ function outcome_map(
     if length(unique(X_f)) == 1
         p[:, [1, 2, 3]] .= 0.0
     else
-        for i in 1:length(X_q[1:(end - 1)])
+        for i = 1:length(X_q[1:(end - 1)])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X_f .<= X_q[i + 1])

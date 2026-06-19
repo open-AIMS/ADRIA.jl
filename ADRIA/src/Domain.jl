@@ -113,9 +113,9 @@ function nearest_neighbor_distances(
     effective_n = min(n_neighbors, n_locs - 1)
     mean_distances = zeros(n_locs)
     buf = Vector{Float64}(undef, n_locs - 1)
-    for i in 1:n_locs
+    for i = 1:n_locs
         k = 0
-        for j in 1:n_locs
+        for j = 1:n_locs
             j == i && continue
             k += 1
             buf[k] = dist_matrix[i, j]
@@ -431,7 +431,7 @@ ADRIA.set_seed_target_locations!(
 """
 function set_seed_target_locations!(
     domain::Domain,
-    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    location_ids::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     _validate_no_overlap(location_ids)
@@ -493,10 +493,10 @@ function _validate_iv_locations(domain::Domain, location_ids::Vector{String})::N
 end
 
 function _validate_no_overlap(
-    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    location_ids::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}
 )::Nothing
     sets = getproperty.(location_ids, :target_locs)
-    for i in 1:length(sets), j in (i + 1):length(sets)
+    for i = 1:length(sets), j = (i + 1):length(sets)
         overlap = intersect(sets[i], sets[j])
         if !isempty(overlap)
             error(
@@ -532,7 +532,7 @@ ADRIA.set_mc_target_locations!(
 """
 function set_mc_target_locations!(
     domain::Domain,
-    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    location_ids::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     _validate_no_overlap(location_ids)

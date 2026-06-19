@@ -57,7 +57,9 @@ using ADRIAviz
             @warn "ADRIA_RUN_PLOTLY_INTEGRATION=1 but ADRIA_TEST_DOMAIN is not set " *
                 "or invalid; skipping integration test"
         else
-            check_script = joinpath(@__DIR__, "..", "..", "ADRIA", "docs", "scripts", "plotly_viz_check.jl")
+            check_script = joinpath(
+                @__DIR__, "..", "..", "ADRIA", "docs", "scripts", "plotly_viz_check.jl"
+            )
             @testset "Plotly integration (end-to-end)" begin
                 include(check_script)
                 n_fail = count(r -> !r[2], RESULTS)

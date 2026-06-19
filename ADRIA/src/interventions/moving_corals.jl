@@ -70,10 +70,9 @@ function distribute_moving_corals(
                 (area_increase_per_coral_m2 / sum(area_increase_per_coral_m2))
 
             # Adjust number of deployed corals accordingly
-            n_deployed_corals[:, i] .=
-                floor.(
-                    area_increase_per_coral_m2 ./ colony_areas
-                )
+            n_deployed_corals[:, i] .= floor.(
+                area_increase_per_coral_m2 ./ colony_areas
+            )
         end
 
         prop_increase[:, i] .= (area_increase_per_coral_m2 ./ loc_k_m²[i])

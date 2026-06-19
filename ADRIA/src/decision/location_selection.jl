@@ -123,8 +123,8 @@ function rank_locations(
         plan_horizon = Int64(scen[At("plan_horizon")])
         decay = α .^ (1:(plan_horizon + 1)) .^ 2
 
-        min_depth = scen[factors=At("depth_min")].data[1]
-        depth_offset = scen[factors=At("depth_offset")].data[1]
+        min_depth = scen[factors = At("depth_min")].data[1]
+        depth_offset = scen[factors = At("depth_offset")].data[1]
 
         depth_criteria = identify_within_depth_bounds(
             loc_data.depth_med, min_depth, depth_offset
@@ -144,14 +144,14 @@ function rank_locations(
             @warn "No valid fogging locations found for scenario $(scen_idx)"
         end
 
-        MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
+        MCDA_approach = mcda_methods()[Int64(scen[factors = At("guided")][1])]
 
         seed_pref = SeedPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
         mc_pref = MCPreferences(dom, scen)
 
         # Determine environmental projections
-        dhw_scen_idx = Int64(scen[factors=At("dhw_scenario")][1])
+        dhw_scen_idx = Int64(scen[factors = At("dhw_scenario")][1])
         if dhw_scen_idx > 0.0
             dhw_scens = dom.dhw_scens[:, :, dhw_scen_idx]
         else
@@ -159,7 +159,7 @@ function rank_locations(
             dhw_scens .= 0.0
         end
 
-        wave_scen_idx = Int64(scen[factors=At("wave_scenario")][1])
+        wave_scen_idx = Int64(scen[factors = At("wave_scenario")][1])
         if wave_scen_idx > 0.0
             wave_scens = dom.wave_scens[:, :, dhw_scen_idx]
         else
@@ -199,9 +199,9 @@ function rank_locations(
 
             if !isempty(selected_seed_ranks)
                 ranks_store[
-                    locations=At(selected_seed_ranks),
-                    intervention=At(:seed),
-                    scenarios=scen_idx
+                    locations = At(selected_seed_ranks),
+                    intervention = At(:seed),
+                    scenarios = scen_idx
                 ] .= 1:length(selected_seed_ranks)
             end
         end
@@ -222,9 +222,9 @@ function rank_locations(
             )
             if !isempty(selected_fog_ranks)
                 ranks_store[
-                    locations=At(selected_fog_ranks),
-                    intervention=At(:fog),
-                    scenarios=scen_idx
+                    locations = At(selected_fog_ranks),
+                    intervention = At(:fog),
+                    scenarios = scen_idx
                 ] .= 1:length(selected_fog_ranks)
             end
         end
@@ -289,7 +289,7 @@ function selection_score(
     # 1 is best rank, n_locs is worst rank, 0 are locations that were ignored
     # Determine the lowest rank for each scenario
     lowest_ranks = maximum([maximum(r)
-                            for r in eachcol(ranks[intervention=At(iv_type)])])
+                            for r in eachcol(ranks[intervention = At(iv_type)])])
 
     return _calc_selection_score(ranks, lowest_ranks, iv_type, (:scenarios,))
 end
@@ -349,7 +349,7 @@ function _calc_selection_score(
 
     tsliced = mapslices(
         x -> any(x .> 0) ? lowest_rank .- (x .- 1.0) : 0.0,
-        ranks[intervention=At(iv_type)];
+        ranks[intervention = At(iv_type)];
         dims="timesteps"
     )
     selection_score = dropdims(
@@ -364,7 +364,7 @@ function _calc_selection_score(
         decisions = 0.0
         for s in axes(tsliced, :scenarios)
             for t in axes(tsliced, :timesteps)
-                if any(tsliced[timesteps=At(t), scenarios=At(s)] .> 0.0)
+                if any(tsliced[timesteps = At(t), scenarios = At(s)] .> 0.0)
                     decisions += 1.0
                 end
             end
@@ -396,7 +396,7 @@ function _times_selected(
     iv_type::Union{Symbol,Int64},
     squash::Union{Symbol,Tuple}
 )::YAXArray where {T<:Union{Int64,Float32,Float64}}
-    s = copy(ranks[intervention=At(iv_type)])
+    s = copy(ranks[intervention = At(iv_type)])
     s[s .> 0.0] .= 1.0
 
     return dropdims(sum(s; dims=squash); dims=squash)
@@ -481,7 +481,7 @@ function ranks_to_frequencies(ranks::YAXArray)::YAXArray
 
     ax_names = Symbol.(DimensionalData.name.(DimensionalData.dims(ranks)))
     loc_idx = findfirst(==(:locations), ax_names)
-    other = [i for i in 1:ndims(ranks) if i != loc_idx]
+    other = [i for i = 1:ndims(ranks) if i != loc_idx]
     ranks_2d = reshape(permutedims(ranks_arr, [loc_idx; other...]), n_locs, :)
 
     n_obs = size(ranks_2d, 2)
@@ -490,7 +490,7 @@ function ranks_to_frequencies(ranks::YAXArray)::YAXArray
     max_rank = Int(maximum(valid))
 
     freq_data = zeros(Float64, max_rank, n_locs)
-    for r in 1:max_rank
+    for r = 1:max_rank
         freq_data[r, :] .= count.(==(r), eachrow(ranks_2d)) ./ n_obs
     end
 
@@ -570,7 +570,7 @@ function deployment_summary_stats(
     ranks::YAXArray{T,4},
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64,Float32,Float64}}
-    iv_ranks = ranks[intervention=At(iv_type)]
+    iv_ranks = ranks[intervention = At(iv_type)]
 
     # Min, Mean, Median, Max, stdev
     summarized::YAXArray = DataCube(

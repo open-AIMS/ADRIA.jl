@@ -57,7 +57,7 @@ The absolute mean of all pairwise distances between elements in a given set.
 function gmd(vals::AbstractVector{<:Real})::Float64
     n = length(vals)
     sv = sort(vals)
-    return (2 / (n * (n - 1))) .* sum(([((2 * i) - n - 1) * sv[i] for i in 1:n]))
+    return (2 / (n * (n - 1))) .* sum(([((2 * i) - n - 1) * sv[i] for i = 1:n]))
 end
 function gmd(vals::AbstractMatrix{<:Real})
     return gmd.(eachcol(vals))

@@ -62,7 +62,7 @@ function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
         ("dist_mean", "dist_mean")
     )
         data = Array(nc_ds[varname])  # (n_groups, n_sizes)
-        for (fg_idx, fg) in enumerate(fg_names), sc in 1:size(data, 2)
+        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
             overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
         end
     end

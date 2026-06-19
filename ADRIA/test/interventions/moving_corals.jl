@@ -42,19 +42,19 @@ end
     N_mc = vec(scens.N_mc_settlers)
 
     mc_log_1 = dropdims(
-        sum(rs.mc_log[locations=dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));
+        sum(rs.mc_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));
         dims=(:coral_id, :locations)
     )
     mc_log_2 = dropdims(
-        sum(rs.mc_log[locations=dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations));
+        sum(rs.mc_log[locations = dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations));
         dims=(:coral_id, :locations)
     )
 
     # mc_log is persisted as Float32; use Float32 rtol regardless of in-memory eltype
     fp32_rtol = sqrt(eps(Float32))
-    for s in 1:num_samples
-        log_1 = mc_log_1[scenarios=At(s)]
-        log_2 = mc_log_2[scenarios=At(s)]
+    for s = 1:num_samples
+        log_1 = mc_log_1[scenarios = At(s)]
+        log_2 = mc_log_2[scenarios = At(s)]
         budget_1 = weight_1 * N_mc[s]
         budget_2 = weight_2 * N_mc[s]
         @test all(log_1 .<= budget_1 .|| isapprox.(log_1, budget_1; rtol=fp32_rtol))

@@ -94,8 +94,8 @@ function complexity_invariance_distance(
 
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
-    for i in 1:n_scenarios
-        Threads.@threads for j in (i + 1):n_scenarios
+    for i = 1:n_scenarios
+        Threads.@threads for j = (i + 1):n_scenarios
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(
                     data[:, i], data[:, j], complexity[i], complexity[j], dist_fn
@@ -209,7 +209,7 @@ function cluster_scenarios(
     _, n_scenarios, n_metrics = size(data)
 
     clusters = zeros(Int64, n_scenarios, n_metrics)
-    for m in 1:n_metrics
+    for m = 1:n_metrics
         clusters[:, m] = cluster_series(
             data[:, :, m], n_clusters; method=method, distance=distance
         )
@@ -335,7 +335,7 @@ function find_scenarios(
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
-        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps=tf], 2)
+        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps = tf], 2)
         median_series = median.(timesteps_slices)
 
         # Summary statistics for that cluster metric

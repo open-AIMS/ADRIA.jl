@@ -319,8 +319,8 @@ function ADRIA.viz.scenario_by_group_and_size(
     # as a Label to the whole figure, but left it like this for simplicity
     title = pop!(fig_opts, :title, "")
 
-    for fg in 1:n_groups
-        for sc in 1:n_sizes
+    for fg = 1:n_groups
+        for sc = 1:n_sizes
             ax = Axis(
                 fig[sc, fg];
                 title="Functional group = $fg\nSize class = $sc",
@@ -626,7 +626,7 @@ function scenario_bands!(
         (label -> get(legend_labels, label, string(label)))
     for (i, (label, mask)) in enumerate(scen_groups)
         display_label = _resolve_label(label)
-        members = data isa YAXArray ? Array(data[scenarios=mask]) : data[:, mask]
+        members = data isa YAXArray ? Array(data[scenarios = mask]) : data[:, mask]
         if summarize
             probs = [0.025, 0.5, 0.975]
             n_t = size(members, 1)

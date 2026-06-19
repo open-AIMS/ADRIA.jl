@@ -53,7 +53,7 @@ import ADRIA.YAXArrays: At
 
 function _stack_rsa(rsa_ds, factors::Vector{Symbol}, rs)
     si_q = collect(rsa_ds[factors[1]].axes[1])
-    rows = [coalesce.(collect(rsa_ds[f][Si=At("Si")]), NaN) for f in factors]
+    rows = [coalesce.(collect(rsa_ds[f][Si = At("Si")]), NaN) for f in factors]
     mat = permutedims(reduce(hcat, rows))
     Si = ADRIA.DataCube(Matrix{Float64}(mat); factors=factors, si_quantile=si_q)
     fvals = Matrix{Float64}(rs.inputs[:, factors])
@@ -66,9 +66,9 @@ function _stack_outcome_map(om_ds, factors::Vector{Symbol}, rs)
     arr = Array{Float64}(undef, length(factors), 3, length(si_q))
     for (i, f) in enumerate(factors)
         da = om_ds[f]
-        arr[i, 1, :] = coalesce.(collect(da[CI=At("lower")]), NaN)
-        arr[i, 2, :] = coalesce.(collect(da[CI=At("mean")]), NaN)
-        arr[i, 3, :] = coalesce.(collect(da[CI=At("upper")]), NaN)
+        arr[i, 1, :] = coalesce.(collect(da[CI = At("lower")]), NaN)
+        arr[i, 2, :] = coalesce.(collect(da[CI = At("mean")]), NaN)
+        arr[i, 3, :] = coalesce.(collect(da[CI = At("upper")]), NaN)
     end
     outcomes = ADRIA.DataCube(arr; factors=factors, CI=CI, si_quantile=si_q)
     fvals = Matrix{Float64}(rs.inputs[:, factors])

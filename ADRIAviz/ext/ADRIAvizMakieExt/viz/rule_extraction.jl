@@ -90,8 +90,8 @@ function ADRIA.viz.rules_scatter!(
     n_rows, n_cols = _calc_gridsize(n_factors)
     spec = model_spec(rs)
     feat_names = names(scenarios)
-    for r in 1:n_rows
-        for c in 1:n_cols
+    for r = 1:n_rows
+        for c = 1:n_cols
             # Get condition clauses to be shown in x and y axis
             index = c + (r - 1) * n_cols
             if length(rules) < index

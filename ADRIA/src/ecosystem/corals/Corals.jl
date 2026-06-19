@@ -77,7 +77,7 @@ end
 function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
     bins::Matrix{Float64} = zeros(size(mean_diam)...)
     bins[:, 1] .= mean_diam[:, 1] .* 2
-    for i in 2:(size(mean_diam)[2])
+    for i = 2:(size(mean_diam)[2])
         bins[:, i] .= (mean_diam[:, i] .- bins[:, i - 1]) .* 2 .+ bins[:, i - 1]
     end
     return bins
@@ -203,7 +203,7 @@ function add_scale_factors!(
 
     _, n_cb_calib_groups = size(_linear_extension_scale_factors)
     for (fgroup_idx, functional_group) in enumerate(functional_group_names())
-        for cb_calib_group in 1:n_cb_calib_groups
+        for cb_calib_group = 1:n_cb_calib_groups
             linear_extension_factor_name::String =
                 "linear_extension_scale_cb_group_" *
                 "$(cb_calib_group)_$(functional_group)"

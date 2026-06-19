@@ -148,7 +148,7 @@ function weighted_projection(
     # Materialize once as a plain Matrix (avoids YAXArrays broadcast dispatch),
     # then scale each row in-place so no second full-matrix allocation is needed.
     env_slice = Matrix{Float64}(env_data[horizon, :])
-    @inbounds for i in 1:n
+    @inbounds for i = 1:n
         @views env_slice[i, :] .*= decay[i]
     end
     return summary_stat_env(env_slice, 1)

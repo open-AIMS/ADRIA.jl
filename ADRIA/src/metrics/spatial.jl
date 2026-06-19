@@ -134,7 +134,7 @@ function summarize(
     permuted = permutedims(data_raw, vcat(alongs, new_axes_indices))
 
     n_alongs = length(alongs)
-    kept_ranges = Tuple(axes(permuted, n_alongs + i) for i in 1:length(new_dims))
+    kept_ranges = Tuple(axes(permuted, n_alongs + i) for i = 1:length(new_dims))
     new_axis = [axis_labels(data, ax) for ax in new_dims]
 
     result = _summarize_inner(
@@ -238,7 +238,7 @@ function ensemble_loc_difference(
     )
 
     n_locs = length(_locations)
-    for loc in 1:n_locs
+    for loc = 1:n_locs
         cf_shuf_set::Vector{Int64} = shuffle(rng, 1:n_cf_outcomes)[1:min_n_outcomes]
         target_shuf_set::Vector{Int64} = shuffle(rng, 1:n_target_outcomes)[1:min_n_outcomes]
 

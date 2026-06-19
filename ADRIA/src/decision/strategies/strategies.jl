@@ -42,7 +42,7 @@ function strategy_type(strategy_idx::Int64)
     throw(ArgumentError("Unknown mc strategy type: $strategy_type"))
 end
 function strategy_type(param_set::YAXArray{Float64,1}, iv_type::String)
-    return strategy_type(Int64(param_set[factors=At(["$(iv_type)_strategy"])][1]))
+    return strategy_type(Int64(param_set[factors = At(["$(iv_type)_strategy"])][1]))
 end
 
 function is_reactive(strategy_idx::T)::Bool where {T<:Real}

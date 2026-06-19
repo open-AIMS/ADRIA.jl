@@ -36,7 +36,7 @@ Render coastal place labels on a Makie GeoAxis from decoration data.
 """
 function _render_coastal_places!(ax::GeoAxis, deco::MapDecorationData)
     if isempty(deco.places)
-        return
+        return nothing
     end
     scatter!(
         ax,
@@ -82,7 +82,7 @@ Fails silently if decorations cannot be computed.
 """
 function _render_map_decorations!(ax::GeoAxis, gdf::DataFrame; max_km::Float64=100.0)
     deco_data = compute_map_decorations(gdf; max_km=max_km)
-    isnothing(deco_data) && return
+    isnothing(deco_data) && return nothing
 
     _render_coastal_places!(ax, deco_data)
     _render_scale_bar!(ax, deco_data)
@@ -405,7 +405,7 @@ function ADRIA.viz.map!(
     n_rows, n_cols = _calc_gridsize(n_plots)
     step::Int64 = 1
 
-    for row in 1:n_rows, col in 1:n_cols
+    for row = 1:n_rows, col = 1:n_cols
         if step > length(map_titles)
             break
         end
@@ -651,10 +651,16 @@ function ADRIA.viz.connectivity!(
 
     # Calculate alpha values for edges based on connectivity strength and weighting (lazy, only if needed)
     edge_col = get(opts, :edge_color) do
-        RGBAf.(0, 0, 0, [
-            (e.src == e.dst) ? 0.0f0 : Float32(conn_weights[e.src] * e.weight / norm_coef)
-            for e in edges(network)
-        ])
+        RGBAf.(
+            0,
+            0,
+            0,
+            [
+                (e.src == e.dst) ? 0.0f0 :
+                Float32(conn_weights[e.src] * e.weight / norm_coef)
+                for e in edges(network)
+            ]
+        )
     end
 
     # Rescale node size to be visible

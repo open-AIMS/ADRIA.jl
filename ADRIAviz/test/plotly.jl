@@ -1012,7 +1012,7 @@ end
     end
 
     @testset "all scen_ids in range are accepted without error" begin
-        for sid in 1:4
+        for sid = 1:4
             @test_nowarn ADRIA.viz.cyclone_scenario(cyc, sid)
         end
     end
@@ -1056,7 +1056,7 @@ end
     end
 
     @testset "all scen_ids in range are accepted without error" begin
-        for sid in 1:4
+        for sid = 1:4
             @test_nowarn ADRIA.viz.dhw_scenario(dhw, sid)
         end
     end

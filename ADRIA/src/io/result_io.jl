@@ -757,7 +757,7 @@ function load_results(result_loc::String)::ResultSet
                 scenarios=1:data_size[4]
             )
             for m_name in metric_syms
-                outcomes[m_name] = combined[metrics=At(string(m_name))]
+                outcomes[m_name] = combined[metrics = At(string(m_name))]
             end
             continue
         end

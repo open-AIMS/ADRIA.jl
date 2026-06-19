@@ -40,9 +40,9 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for seeding
+    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
     fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for moving corals
+    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
@@ -163,7 +163,7 @@ function load_domain(
 
     if timeframe == nothing
         timeframe = (icc_start_year, dhw_scens.timesteps[end])
-        dhw_scens = dhw_scens[timesteps=At(timeframe[1]:timeframe[2])]
+        dhw_scens = dhw_scens[timesteps = At(timeframe[1]:timeframe[2])]
     end
 
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])

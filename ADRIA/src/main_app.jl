@@ -91,7 +91,7 @@ function _indicative_result_display(res)
     Y_ung = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, unguided_scens))
     Y_g = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, guided_scens))
 
-    year_axis = [t % 5 == 0 || t == 2099 ? string(t) : "" for t in 2025:2099]
+    year_axis = [t % 5 == 0 || t == 2099 ? string(t) : "" for t = 2025:2099]
 
     # No deployment
     upper = Y_no[:upper_95]

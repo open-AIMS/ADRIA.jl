@@ -18,11 +18,11 @@ function ADRIA.viz.pawn(
     end
 
     if factors != :all
-        Si = Si[factors=At(factors)]
+        Si = Si[factors = At(factors)]
     end
 
     # Sort rows by chosen statistic (descending)
-    sort_vals = collect(Si[Si=At(by)])
+    sort_vals = collect(Si[Si = At(by)])
     perm = sortperm(sort_vals; rev=true)
     Si = Si[perm, :]
 
@@ -158,7 +158,7 @@ function _grid_domains(n::Int; x_gap::Float64=0.08, y_gap::Float64=0.12)
     w = (1.0 - x_gap * (n_cols - 1)) / n_cols
     h = (1.0 - y_gap * (n_rows - 1)) / n_rows
     domains = Tuple{Vector{Float64},Vector{Float64},Int,Int}[]
-    for i in 1:n
+    for i = 1:n
         row = div(i - 1, n_cols) + 1   # row 1 is the top row
         col = mod(i - 1, n_cols) + 1
         x0 = (col - 1) * (w + x_gap)
@@ -185,7 +185,7 @@ function _grid_layout(
         height=max(400, 320 * n_rows),
         showlegend=false
     )
-    for i in 1:n_factors
+    for i = 1:n_factors
         xd, yd, _, col = domains[i]
         sfx = i == 1 ? "" : string(i)
         layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
@@ -196,11 +196,14 @@ function _grid_layout(
             title_text=(col == 1 ? ylabel : ""), domain=yd, anchor="x$(sfx)",
             automargin=true
         )
-        push!(annotations, PlotlyBase.attr(;
-            text=string(factor_names[i]), x=(xd[1] + xd[2]) / 2, y=yd[2],
-            xref="paper", yref="paper", xanchor="center", yanchor="bottom",
-            showarrow=false, font=PlotlyBase.attr(; size=12)
-        ))
+        push!(
+            annotations,
+            PlotlyBase.attr(;
+                text=string(factor_names[i]), x=(xd[1] + xd[2]) / 2, y=yd[2],
+                xref="paper", yref="paper", xanchor="center", yanchor="bottom",
+                showarrow=false, font=PlotlyBase.attr(; size=12)
+            )
+        )
     end
     layout[:annotations] = annotations
     return layout

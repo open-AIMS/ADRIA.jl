@@ -277,7 +277,7 @@ function _reef_fish_index(rc::AbstractArray{T})::AbstractArray{T} where {T<:Real
     n_scenarios = size(rc, axis_index(rc, :scenarios))
     out_rfi = zeros(eltype(rc), size(rc)...)
 
-    for scen_idx in 1:n_scenarios
+    for scen_idx = 1:n_scenarios
         @views ADRIAIndicators.reef_fish_index!(
             rc.data[:, :, scen_idx],
             out_rfi[:, :, scen_idx]

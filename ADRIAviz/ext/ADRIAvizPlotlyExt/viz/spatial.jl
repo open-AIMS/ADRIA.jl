@@ -60,7 +60,7 @@ function _gdf_to_geojson(
             "geometry" => _geom_to_geojson_dict(gdf[i, col]),
             "properties" => Dict{String,Any}()
         )
-        for i in 1:nrow(gdf)
+        for i = 1:nrow(gdf)
     ]
     return Dict{String,Any}("type" => "FeatureCollection", "features" => features)
 end
@@ -193,7 +193,9 @@ function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
         xanchor="center", yanchor="bottom"
     )
 
-    return traces, PlotlyBase.PlotlyAttribute[north], deco_data.lon_range, deco_data.lat_range
+    return traces,
+    PlotlyBase.PlotlyAttribute[north], deco_data.lon_range,
+    deco_data.lat_range
 end
 
 """
@@ -530,7 +532,7 @@ function ADRIA.viz.map(
         :annotations => PlotlyBase.PlotlyAttribute[]
     )
 
-    for k in 1:n_plots
+    for k = 1:n_plots
         geo_ref = k == 1 ? "geo" : "geo$(k)"
         row = div(k - 1, n_cols) + 1
         col = mod(k - 1, n_cols) + 1
@@ -696,8 +698,8 @@ function ADRIA.viz.connectivity(
     max_w = max(maximum((e.weight for e in edge_list); init=0.0), 1e-9)
 
     n_bins = 3
-    bin_lons = [Union{Float64,Nothing}[] for _ in 1:n_bins]
-    bin_lats = [Union{Float64,Nothing}[] for _ in 1:n_bins]
+    bin_lons = [Union{Float64,Nothing}[] for _ = 1:n_bins]
+    bin_lats = [Union{Float64,Nothing}[] for _ = 1:n_bins]
     for e in edge_list
         e.src == e.dst && continue
         w = e.weight / max_w
@@ -712,7 +714,7 @@ function ADRIA.viz.connectivity(
     edge_widths = (0.5, 1.2, 2.2)
     edge_opacities = (0.25, 0.45, 0.7)
     edge_traces = AbstractTrace[]
-    for b in 1:n_bins
+    for b = 1:n_bins
         isempty(bin_lons[b]) && continue
         push!(
             edge_traces,
@@ -738,7 +740,7 @@ function ADRIA.viz.connectivity(
     node_lats = [c[2] for c in cents]
     node_text = [
         "$(id_vec[i])<br>Centrality: $(round(conn_weights[i]; digits=3))"
-        for i in 1:n_locs
+        for i = 1:n_locs
     ]
     node_trace = scattergeo(;
         lon=node_lons,

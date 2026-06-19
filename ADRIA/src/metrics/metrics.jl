@@ -638,7 +638,7 @@ function _absolute_shelter_volume(
     ASV::YAXArray = ZeroDataCube(
         (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties
     )
-    for scen::Int64 in 1:n_scens
+    for scen::Int64 = 1:n_scens
         ADRIAIndicators.absolute_shelter_volume!(
             view(X.data,:,:,:,:,scen),
             view(col_mean_area,:,:,scen),
@@ -796,7 +796,7 @@ function _relative_shelter_volume(
     reference_params::Tuple{Float64,Float64,Float64} = (
         95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
     )
-    for scen::Int64 in 1:n_scens
+    for scen::Int64 = 1:n_scens
         ADRIAIndicators.relative_shelter_volume!(
             view(X.data,:,:,:,:,scen),
             view(colony_mean_diams_cm,:,:,scen),

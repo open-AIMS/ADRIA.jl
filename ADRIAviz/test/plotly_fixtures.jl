@@ -314,7 +314,7 @@ function _plotly_rules(; n_rules=4)
             [features[1], "<", 0.3 + 0.05 * i],
             [features[2], "<=", 0.2 + 0.05 * i]
         ]
-        for i in 1:n_rules
+        for i = 1:n_rules
     ]
 end
 

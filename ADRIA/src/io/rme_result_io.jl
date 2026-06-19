@@ -189,19 +189,19 @@ function _construct_scenario_groups(
     n_scenarios::Int
 )::Dict{Symbol,BitVector}
     if size(inputs) == (0, 0)
-        return Dict(:counterfactual => BitVector([true for _ in 1:n_scenarios]))
+        return Dict(:counterfactual => BitVector([true for _ = 1:n_scenarios]))
     end
 
     counterfactual_scens::BitVector = BitVector([
         p_a == 0.0 && e_a == 0 for (p_a, e_a)
-        in
+         in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
     # Intervened if not counterfactual
     intervened_scens::BitVector = BitVector([
         p_a != 0 || e_a != 0 for (p_a, e_a)
-        in
+         in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
