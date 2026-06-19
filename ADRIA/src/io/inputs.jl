@@ -83,8 +83,13 @@ function load_nc_data(
         ds = open_dataset(data_fn)
         res = ds[Symbol(attr)]
         ax_names = name.(res.axes)
-        loc_dim =
-            :locations in ax_names ? :locations : (:sites in ax_names ? :sites : nothing)
+        loc_dim = if :locations in ax_names
+            :locations
+        elseif :sites in ax_names
+            :sites
+        else
+            nothing
+        end
 
         if isnothing(loc_dim)
             error("Error loading $data_fn: could not find location/site dimension.")
@@ -139,8 +144,6 @@ because this can be incorrect. Instead, match by number of sites.
 function _nc_dim_labels(
     data_fn::String, data::Array{<:Real}, nc_file::NetCDF.NcFile
 )::Vector{Union{UnitRange{Int64},Vector{String}}}
-    local locs_idx::Int64
-
     if !("reef_siteid" in keys(nc_file.vars))
         error(
             "Error loading $data_fn : could not find 'reef_siteid' variable. " *
@@ -149,15 +152,21 @@ function _nc_dim_labels(
     end
 
     sites = _site_labels(nc_file)
+    n_sites = length(sites)
 
-    try
-        # This will be an issue if the number of elements for two or more dimensions have
-        # the same number of elements, but so far that hasn't happened...
-        locs_idx = first(findall(size(data) .== length(sites)))
-    catch err
+    # Find which dimension matches the number of sites
+    locs_idx = 0
+    for (i, sz) in enumerate(size(data))
+        if sz == n_sites
+            locs_idx = i
+            break
+        end
+    end
+
+    if locs_idx == 0
         error(
             "Error loading $data_fn : could not determine number of locations." *
-            "Detected size: $(size(data)) | Known number of locations: $(length(sites))"
+            "Detected size: $(size(data)) | Known number of locations: $(n_sites)"
         )
     end
 
@@ -185,7 +194,14 @@ Load environmental data layers (DHW, Wave) from netCDF.
 """
 function load_env_data(data_fn::String, attr::String)::YAXArray{Float64}
     _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
-    return map(Float64, load_nc_data(data_fn, attr; dim_names=_dim_names))
+    data = load_nc_data(data_fn, attr; dim_names=_dim_names)
+
+    # Already Float64 from NetCDF, avoid expensive map() copy
+    if eltype(data) === Float64
+        return data
+    end
+
+    return YAXArray(DimensionalData.dims(data), convert(Array{Float64}, data.data))
 end
 function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray{Float64}
     return ZeroDataCube(; T=Float64, timesteps=timeframe, sites=sites, scenarios=1:50)

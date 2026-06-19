@@ -1,7 +1,11 @@
 import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
+using DataFrames: DataFrame
 
-using ADRIA: _get_geom_col
+using ADRIA: _get_geom_col, Domain, ResultSet
+
+# Import shared spatial utilities
+using ADRIAviz.viz: _loc_id_col, compute_map_decorations, MapDecorationData
 
 """
     _get_geoms(gdf::DataFrame, geom_col::Symbol)
@@ -19,6 +23,69 @@ Retrieve the vector of geometries from a GeoDataFrame.
 """
 function _get_geoms(gdf::DataFrame)
     return _get_geoms(gdf, _get_geom_col(gdf))
+end
+
+# =============================================================================
+# Map decorations: scale bar, north arrow, coastal places
+# =============================================================================
+
+"""
+    _render_coastal_places!(ax::GeoAxis, deco::MapDecorationData)
+
+Render coastal place labels on a Makie GeoAxis from decoration data.
+"""
+function _render_coastal_places!(ax::GeoAxis, deco::MapDecorationData)
+    if isempty(deco.places)
+        return nothing
+    end
+    scatter!(
+        ax,
+        [p.lon for p in deco.places],
+        [p.lat for p in deco.places];
+        color=:black,
+        markersize=4,
+        label="Places"
+    )
+    for place in deco.places
+        text!(ax, place.lon, place.lat; text=place.name, fontsize=9, offset=(5, 5))
+    end
+end
+
+"""
+    _render_scale_bar!(ax::GeoAxis, deco::MapDecorationData)
+
+Render a scale bar on a Makie GeoAxis from decoration data.
+"""
+function _render_scale_bar!(ax::GeoAxis, deco::MapDecorationData)
+    linesegments!(
+        ax,
+        [deco.scale_bar_x0, deco.scale_bar_x0 + deco.scale_bar_deg],
+        [deco.scale_bar_y, deco.scale_bar_y];
+        color=:black,
+        linewidth=2
+    )
+    text!(
+        ax,
+        deco.scale_bar_x0 + deco.scale_bar_deg / 2,
+        deco.scale_bar_y + 0.5;
+        text="$(deco.scale_bar_km) km",
+        fontsize=9,
+        align=(:center, :bottom)
+    )
+end
+
+"""
+    _render_map_decorations!(ax::GeoAxis, gdf::DataFrame; max_km=100.0)
+
+Render map decorations (scale bar, places) on a Makie GeoAxis.
+Fails silently if decorations cannot be computed.
+"""
+function _render_map_decorations!(ax::GeoAxis, gdf::DataFrame; max_km::Float64=100.0)
+    deco_data = compute_map_decorations(gdf; max_km=max_km)
+    isnothing(deco_data) && return nothing
+
+    _render_coastal_places!(ax, deco_data)
+    _render_scale_bar!(ax, deco_data)
 end
 
 function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
@@ -134,6 +201,7 @@ function create_map!(
 
             for color in hl_groups
                 m = findall(highlight .== [color])
+                isempty(m) && continue
 
                 poly!(
                     spatial,
@@ -180,6 +248,30 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    y::Union{YAXArray,AbstractVector{<:Real}},
+    highlight::AbstractVector;
+    diverging::Bool=false,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    set_plot_opts!(y, opts, :colorbar_label; metadata_key=:metric_name)
+
+    if diverging
+        opts[:color_map] = _diverging_cmap(y)
+    end
+
+    opts[:highlight] = highlight
+
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
+
+    return f
+end
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     y::Union{YAXArray,AbstractVector{<:Real}};
@@ -283,7 +375,6 @@ function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     outputs_matrix::Matrix,
     map_titles::Vector{String};
-    criteria::Vector{Symbol}=Array(M.criteria),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
@@ -291,7 +382,7 @@ function ADRIA.viz.map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(
-        g, rs, outputs_matrix, map_titles; criteria=criteria, opts=opts, axis_opts=axis_opts
+        g, rs, outputs_matrix, map_titles; opts=opts, axis_opts=axis_opts
     )
     return f
 end
@@ -303,7 +394,7 @@ function ADRIA.viz.map!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    if length(rs.loc_data.site_id) != size(outputs_matrix, 1)
+    if nrow(rs.loc_data) != size(outputs_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
 
@@ -314,7 +405,7 @@ function ADRIA.viz.map!(
     n_rows, n_cols = _calc_gridsize(n_plots)
     step::Int64 = 1
 
-    for row in 1:n_rows, col in 1:n_cols
+    for row = 1:n_rows, col = 1:n_cols
         if step > length(map_titles)
             break
         end
@@ -555,23 +646,25 @@ function ADRIA.viz.connectivity!(
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
 
-    # Calculate alpha values for edges based on connectivity strength and weighting
-    edge_col = Vector{Tuple{Symbol,Float64}}(undef, ne(network))
+    # Cache the normalization coefficient once
     norm_coef = maximum(conn_weights)
-    for (ind, e) in enumerate(edges(network))
-        if (e.src == e.dst)
-            edge_col[ind] = (:black, 0.0)
-            continue
-        end
-        edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
+
+    # Calculate alpha values for edges based on connectivity strength and weighting (lazy, only if needed)
+    edge_col = get(opts, :edge_color) do
+        RGBAf.(
+            0,
+            0,
+            0,
+            [
+                (e.src == e.dst) ? 0.0f0 :
+                Float32(conn_weights[e.src] * e.weight / norm_coef)
+                for e in edges(network)
+            ]
+        )
     end
 
     # Rescale node size to be visible
-    node_size = conn_weights ./ maximum(conn_weights) .* 10.0
-
-    # Extract graph kwargs and set defaults
-    edge_col = get(opts, :edge_color, edge_col)
-    node_size = get(opts, :node_size, node_size)
+    node_size = get(opts, :node_size, conn_weights ./ norm_coef .* 10.0)
     node_color = get(opts, :node_color, node_size)
 
     # Plot geodata polygons

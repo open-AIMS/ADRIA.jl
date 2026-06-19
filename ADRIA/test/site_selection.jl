@@ -88,6 +88,6 @@ end
 
     @test all([
         (rankings[rankings[:, 1] .== s_order[rank, 1], 2] .== rank)[1] for
-        rank in 1:size(s_order, 1)
+        rank = 1:size(s_order, 1)
     ]) || "Ranking does not match mcda score ordering"
 end

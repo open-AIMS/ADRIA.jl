@@ -93,7 +93,7 @@ function MCPreferences(dom, params::YAXArray)::MCPreferences
     w::DataFrame = component_params(dom.model, MCCriteriaWeights)
     cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
 
-    return MCPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
+    return MCPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
 function MCPreferences(dom, params...)::MCPreferences
     w::DataFrame = component_params(dom.model, MCCriteriaWeights)

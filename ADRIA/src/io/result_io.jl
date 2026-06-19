@@ -212,7 +212,7 @@ function setup_logs(
         UInt16,
         rank_dims...;
         name="rankings",
-        fill_value=0,
+        fill_value=UInt16(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(rank_dims[1:3]..., batch_size),
@@ -757,7 +757,7 @@ function load_results(result_loc::String)::ResultSet
                 scenarios=1:data_size[4]
             )
             for m_name in metric_syms
-                outcomes[m_name] = combined[metrics=At(string(m_name))]
+                outcomes[m_name] = combined[metrics = At(string(m_name))]
             end
             continue
         end

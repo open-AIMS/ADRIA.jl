@@ -37,7 +37,7 @@ function ADRIA.viz.cyclone_scenario(
     traces = PlotlyBase.AbstractTrace[]
 
     # Per-location traces (semi-transparent)
-    for i in 1:n_locs
+    for i = 1:n_locs
         push!(
             traces,
             PlotlyBase.scatter(;
@@ -120,7 +120,7 @@ function ADRIA.viz.dhw_scenario(
     traces = PlotlyBase.AbstractTrace[]
 
     # Per-site traces (semi-transparent)
-    for i in 1:n_sites
+    for i = 1:n_sites
         push!(
             traces,
             PlotlyBase.scatter(;
@@ -202,8 +202,8 @@ function ADRIA.viz.dhw_scenarios(
 
     α = (1 - ci_level) / 2
     means = vec(mean(site_means; dims=2))                      # (T,)
-    lower_ci = [quantile(site_means[t, :], α) for t in 1:n_timesteps]
-    upper_ci = [quantile(site_means[t, :], 1 - α) for t in 1:n_timesteps]
+    lower_ci = [quantile(site_means[t, :], α) for t = 1:n_timesteps]
+    upper_ci = [quantile(site_means[t, :], 1 - α) for t = 1:n_timesteps]
 
     x_vals = isnothing(timeframe) ? collect(dhw_scens.timesteps) : collect(timeframe)
     ci_pct = floor(Int, ci_level * 100)
@@ -211,7 +211,7 @@ function ADRIA.viz.dhw_scenarios(
     traces = PlotlyBase.AbstractTrace[]
 
     # Individual scenario trajectories (semi-transparent)
-    for i in 1:n_scens
+    for i = 1:n_scens
         push!(
             traces,
             PlotlyBase.scatter(;

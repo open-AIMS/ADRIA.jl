@@ -12,10 +12,11 @@ using ImageIO, GeoInterface
 
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-import ADRIA.FileIO, ADRIA.GFT
+using ADRIA.FileIO: FileIO
+using ADRIA.GFT: GFT
 using ADRIA
 using ADRIA:
-    ResultSet
+    ResultSet, model_spec
 
 using ADRIAviz
 using ADRIAviz:

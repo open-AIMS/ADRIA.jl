@@ -192,7 +192,7 @@ function taxonomy_by_intervention!(
 
         taxonomy_by_intervention!(
             ax,
-            relative_taxa_cover[scenarios=scen_groups[scen_name]],
+            relative_taxa_cover[scenarios = scen_groups[scen_name]],
             colors;
             show_confints=show_confints,
             series_opts=series_opts
@@ -215,7 +215,7 @@ function taxonomy_by_intervention!(
     # Plot and calculate confidence intervals
     confints = zeros(n_timesteps, n_functional_groups, 3)
     for (idx, group) in enumerate(functional_groups)
-        confints[:, idx, :] = series_confint(relative_taxa_cover[groups=At(group)])
+        confints[:, idx, :] = series_confint(relative_taxa_cover[groups = At(group)])
         if show_confints
             band!(
                 ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
@@ -269,7 +269,7 @@ function intervention_by_taxonomy!(
 
         intervention_by_taxonomy!(
             ax,
-            relative_taxa_cover[groups=idx],
+            relative_taxa_cover[groups = idx],
             colors,
             scen_groups;
             show_confints=show_confints,
@@ -295,7 +295,7 @@ function intervention_by_taxonomy!(
     confints = zeros(n_timesteps, n_scenario_groups, 3)
     for (idx, scen) in enumerate(scenario_group_names)
         confints[:, idx, :] = series_confint(
-            relative_taxa_cover[scenarios=scen_groups[scen]]
+            relative_taxa_cover[scenarios = scen_groups[scen]]
         )
         if show_confints
             band!(
@@ -357,7 +357,7 @@ function taxonomy_bands!(
             string.(ADRIA.axis_labels(data, :groups))
         end
         for (i, group) in enumerate(ADRIA.axis_labels(data, :groups))
-            members = data[groups=At(group)]
+            members = data[groups = At(group)]
             ci = series_confint(members)
             display_label = use_default_labels ? taxa_names[i] : labels[i]
             show_confints &&
@@ -368,7 +368,7 @@ function taxonomy_bands!(
         palette =
             isnothing(colors) ? categorical_colors(colormap, length(scen_groups)) : colors
         for (i, (label, mask)) in enumerate(scen_groups)
-            members = dropdims(sum(data[scenarios=mask]; dims=:groups); dims=:groups)
+            members = dropdims(sum(data[scenarios = mask]; dims=:groups); dims=:groups)
             ci = series_confint(members)
             display_label = use_default_labels ? string(label) : labels[i]
             show_confints &&

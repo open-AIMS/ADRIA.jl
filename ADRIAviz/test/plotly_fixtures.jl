@@ -91,7 +91,7 @@ end
     _plotly_pawn_si(; n_factors=4) -> YAXArray
 
 2-D YAXArray (factors × Si_cols) matching the structure returned by
-`ADRIA.sensitivity.pawn()`. Used for `pawn(Si)` tests.
+`ADRIAanalysis.sensitivity.pawn()`. Used for `pawn(Si)` tests.
 """
 function _plotly_pawn_si(; n_factors=4)
     factor_names = Symbol.("Factor" .* string.(1:n_factors))
@@ -314,7 +314,7 @@ function _plotly_rules(; n_rules=4)
             [features[1], "<", 0.3 + 0.05 * i],
             [features[2], "<=", 0.2 + 0.05 * i]
         ]
-        for i in 1:n_rules
+        for i = 1:n_rules
     ]
 end
 

@@ -34,9 +34,9 @@ mutable struct ADRIADomain <: Domain
     # Each element of these vector is a pair weight and list of location ids.
     # The weights represents the share of the intervention capacity that will be distributed
     # to each list of locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for seeding
+    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
     fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for moving corals
+    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
@@ -62,7 +62,7 @@ function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
         ("dist_mean", "dist_mean")
     )
         data = Array(nc_ds[varname])  # (n_groups, n_sizes)
-        for (fg_idx, fg) in enumerate(fg_names), sc in 1:size(data, 2)
+        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
             overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
         end
     end
@@ -284,11 +284,19 @@ function Domain(
 
     # Sort data to maintain consistent order
     sort!(location_data, Symbol[Symbol(location_id_col)])
-    u_sids::Vector{String} = string.(collect(location_data[!, location_id_col]))
+
+    # Ensure location_id_col values are strings
+    if !all(isa.(location_data[!, location_id_col], String))
+        location_data[!, location_id_col] = string.(location_data[!, location_id_col])
+    end
+
+    u_sids::Vector{String} = location_data[!, location_id_col]
+
     # If location id column is missing then derive it from the Unique IDs
     if !in(location_id_col, names(location_data))
-        location_data[!, location_id_col] .= String[
-            d[2] for d in split.(u_sids, "_"; limit=2)
+        # Extract ID component from unique ID (second part after split on "_"; limit=2)
+        location_data[!, location_id_col] = [
+            last(split(id, "_"; limit=2)) for id in u_sids
         ]
     end
 
@@ -324,13 +332,13 @@ function Domain(
 
     # If environmental data is over different timeframes align them.
     if !all(dhw.timesteps .== 1:length(dhw.timesteps))
-        dhw = dhw[timesteps=At(timeframe)]
+        dhw = dhw[timesteps = At(timeframe)]
     end
     if !all(waves.timesteps .== 1:length(waves.timesteps))
-        waves = waves[timesteps=At(timeframe)]
+        waves = waves[timesteps = At(timeframe)]
     end
     if !all(cyclone_mortality.timesteps .== 1:length(cyclone_mortality.timesteps))
-        cyclone_mortality = cyclone_mortality[timesteps=At(timeframe)]
+        cyclone_mortality = cyclone_mortality[timesteps = At(timeframe)]
     end
 
     msg::String =
@@ -563,7 +571,7 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
 
     # Constraint dhw timeframe to timeframe in datapackage
     if !all(d.dhw_scens.timesteps .== 1:length(d.dhw_scens.timesteps))
-        d.dhw_scens = d.dhw_scens[timesteps=At(
+        d.dhw_scens = d.dhw_scens[timesteps = At(
             d.env_layer_md.timeframe
         )]
     end

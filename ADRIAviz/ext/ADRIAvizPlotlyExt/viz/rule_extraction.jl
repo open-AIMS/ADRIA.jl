@@ -3,8 +3,8 @@ using DataFrames
 # ──────────────────────────────────────────────────────────────────────────────
 # rules_scatter(scenarios, clusters, rules)
 #
-# Rules format: Vector{Vector{Vector}} — each rule is Vector{Vector},
-# each clause is [feature_name, operator, threshold].
+# `rules` is a Vector of `ADRIAanalysis.Rule`. Each rule's `.condition` is a
+# Vector of clauses, where each clause is [feature_name, operator, threshold].
 # Only rules with exactly 2 clauses are plotted.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ function ADRIA.viz.rules_scatter(
     kwargs...
 )::PlotlyBase.Plot
     # Filter to rules with exactly 2 clauses
-    two_clause = filter(r -> length(r) == 2, rules)
+    two_clause = filter(r -> length(r.condition) == 2, rules)
 
     if isempty(two_clause)
         return PlotlyBase.Plot(
@@ -39,7 +39,7 @@ function ADRIA.viz.rules_scatter(
     traces = PlotlyBase.AbstractTrace[]
 
     for rule in two_clause
-        clause1, clause2 = rule[1], rule[2]
+        clause1, clause2 = rule.condition[1], rule.condition[2]
         feat1 = string(first(clause1))
         feat2 = string(first(clause2))
 

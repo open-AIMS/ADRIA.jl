@@ -115,7 +115,7 @@ packages and > 4 for GBR-scale datasets.
 - Returned `Domain` holds scenario invoke time used as unique result set identifier.
 
 # Examples
-```julia-repl
+```julia
 ...
 julia> rs_45 = ADRIA.run_scenarios(dom, scens, "45")
 julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
@@ -198,7 +198,7 @@ function run_scenarios(
             eachrow(_bin_edges[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         )
-        for _ in 1:n_locs
+        for _ = 1:n_locs
     ]
 
     if parallel
@@ -208,7 +208,7 @@ function run_scenarios(
         # Buffer sets are allocated in parallel since each set is large (n_locs × n_groups
         # × n_sizes CircularBuffers) and independent.
         fg_pool = let bufs = Vector{typeof(_make_fg_buffers())}(undef, Threads.nthreads())
-            Threads.@threads :static for i in 1:Threads.nthreads()
+            Threads.@threads :static for i = 1:Threads.nthreads()
                 bufs[i] = _make_fg_buffers()
             end
             pool = Channel{eltype(bufs)}(length(bufs))
@@ -224,7 +224,7 @@ function run_scenarios(
 
             dom = switch_RCPs!(dom, rcp)
             target_rows = findall(
-                scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+                scenarios_matrix[factors = At("RCP")] .== parse(Float64, rcp)
             )
             scen_args = collect(
                 _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
@@ -261,8 +261,8 @@ function run_scenarios(
                         chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
                         s = chunk_start(next_chunk)
                         n = chunk_len(next_chunk)
-                        results = [buf[s + i] for i in 0:(n - 1)]
-                        for i in 0:(n - 1)
+                        results = [buf[s + i] for i = 0:(n - 1)]
+                        for i = 0:(n - 1)
                             delete!(buf, s + i)
                         end
                         _write_batch!(data_store, s, results)
@@ -273,7 +273,7 @@ function run_scenarios(
             end
 
             try
-                Threads.@threads :dynamic for i in 1:N_rcp
+                Threads.@threads :dynamic for i = 1:N_rcp
                     d, idx, scen = scen_args[i]
                     fg = take!(fg_pool)
                     result = try
@@ -334,7 +334,7 @@ end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     target_rows = findall(
-        collect(scenarios_matrix[factors=At("RCP")]) .== parse(Float64, rcp)
+        collect(scenarios_matrix[factors = At("RCP")]) .== parse(Float64, rcp)
     )
     rep_doms = Iterators.repeated(dom, n)
     return zip(
@@ -506,8 +506,9 @@ function _write_batch!(
             for (i, r) in enumerate(results)
                 cc_batch[:, :, :, i] .= r.coral_cover_log
             end
-            data_store.coral_cover_log[:, :, :, idx_range] .=
-                round.(UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0)
+            data_store.coral_cover_log[:, :, :, idx_range] .= round.(
+                UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0
+            )
         end
     end
 
@@ -623,9 +624,9 @@ function run_model(
     bin_end = edges[:, 2:end]
     functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
     group_info = zeros(n_groups, n_sizes)
-    for i in 1:n_locs
+    for i = 1:n_locs
         fg::Vector{FunctionalGroup} = Vector(undef, n_groups)
-        for g in 1:n_groups
+        for g = 1:n_groups
             fg[g] = FunctionalGroup(
                 bin_start[g, :],
                 bin_end[g, :],
@@ -687,9 +688,9 @@ function run_model(
             # Slicing results in (timesteps, locations)
             dhw_baseline = @view(
                 domain.dhw_scens[
-                    scenarios=dhw_idx,
-                    mcb_durations=1,
-                    albedo=At(domain.dhw_scens.albedo[1])
+                    scenarios = dhw_idx,
+                    mcb_durations = 1,
+                    albedo = At(domain.dhw_scens.albedo[1])
                 ]
             )
 
@@ -698,9 +699,9 @@ function run_model(
             if mcb_duration > 0.0 && mcb_albedo > 0.0
                 dhw_treated = @view(
                     domain.dhw_scens[
-                        scenarios=dhw_idx,
-                        mcb_durations=At(mcb_duration),
-                        albedo=At(mcb_albedo)
+                        scenarios = dhw_idx,
+                        mcb_durations = At(mcb_duration),
+                        albedo = At(mcb_albedo)
                     ]
                 )
             end
@@ -715,7 +716,7 @@ function run_model(
                 mcb_active_years = decision_frequency(
                     mcb_start_year, tf, length(mcb_years), mcb_freq
                 )
-                for t in 1:tf
+                for t = 1:tf
                     if mcb_active_years[t]
                         dhw_scen[t, mcb_loc_mask] .= dhw_treated[t, mcb_loc_mask]
                     end
@@ -992,7 +993,7 @@ function run_model(
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks
-    cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
+    cover_view = [@view C_cover[1, :, :, loc] for loc = 1:n_locs]
     functional_groups = reuse_buffers!.(
         functional_groups, (cover_view .* vec_abs_k)
     )
@@ -1047,7 +1048,7 @@ function run_model(
 
     biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
     biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
-    for i in 1:n_cb_calib_groups
+    for i = 1:n_cb_calib_groups
         biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
         biogrp_survival[:, :, i] .= apply_survival_scaling(
             biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
@@ -1107,7 +1108,7 @@ function run_model(
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
-    for tstep::Int64 in 2:tf
+    for tstep::Int64 = 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
@@ -1132,7 +1133,7 @@ function run_model(
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .>= cover_transition_ub
-        for idx in 1:n_cb_calib_groups
+        for idx = 1:n_cb_calib_groups
             cover_threshold_mask .=
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
@@ -1152,7 +1153,7 @@ function run_model(
             cover_transition_ub
         )
         if sum(growth_threshold_mask_cache) > 0
-            for idx in 1:n_cb_calib_groups
+            for idx = 1:n_cb_calib_groups
                 cover_threshold_mask .=
                     growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
                 transition_scale =
@@ -1184,16 +1185,15 @@ function run_model(
         end
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .< cover_transition_lb
-        for idx in 1:n_cb_calib_groups
+        for idx = 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
-            growth_constraints[cover_threshold_mask] .=
-                growth_acceleration.(
-                    growth_acc_height[idx],
-                    growth_acc_midpoint[idx],
-                    growth_acc_steepness[idx],
-                    relative_habitable_cover_cache[cover_threshold_mask]
-                )
+            growth_constraints[cover_threshold_mask] .= growth_acceleration.(
+                growth_acc_height[idx],
+                growth_acc_midpoint[idx],
+                growth_acc_steepness[idx],
+                relative_habitable_cover_cache[cover_threshold_mask]
+            )
         end
 
         @inbounds for i in habitable_loc_idxs
@@ -1262,7 +1262,7 @@ function run_model(
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fecundity_per_m², C_cover_t, habitable_areas)
 
-        for l in 1:n_locs
+        for l = 1:n_locs
             s = sum(fec_scope[:, l])
             if s > 0.0
                 prop_fecundity[:, l] .= fec_scope[:, l] ./ s
@@ -1402,7 +1402,7 @@ function run_model(
                 if is_guided
                     # Update decision matrix with current conditions
                     update_criteria_values!(
-                        fog_decision_mat[location=At(candidate_locs)];
+                        fog_decision_mat[location = At(candidate_locs)];
                         heat_stress=dhw_projection[candidate_loc_indices],
                         wave_stress=wave_projection[candidate_loc_indices],
                         coral_cover=current_loc_cover[candidate_loc_indices],
@@ -1413,7 +1413,7 @@ function run_model(
                     # Build state for target locations only
                     selected_fog_ranks = select_locations(
                         fog_pref,
-                        fog_decision_mat[location=At(candidate_locs)],
+                        fog_decision_mat[location = At(candidate_locs)],
                         MCDA_approach,
                         min_iv_locs
                     )
@@ -1488,7 +1488,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            mc_decision_mat[location=At(share_candidate_locs)];
+                            mc_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1498,7 +1498,7 @@ function run_model(
 
                         selected_mc_ranks = select_locations(
                             mc_pref,
-                            mc_decision_mat[location=At(share_candidate_locs)],
+                            mc_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
                             mc_min_iv_locs
                         )
@@ -1673,7 +1673,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            seed_decision_mat[location=At(share_candidate_locs)];
+                            seed_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1684,7 +1684,7 @@ function run_model(
                         # Build state for target locations only
                         selected_seed_ranks = select_locations(
                             seed_pref,
-                            seed_decision_mat[location=At(share_candidate_locs)],
+                            seed_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
                             min_iv_locs
                         )
@@ -1806,13 +1806,13 @@ function run_model(
         end
         @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
 
-        for loc in 1:n_locs
+        for loc = 1:n_locs
             apply_mortality!(
                 functional_groups[loc], @view(survival_rate_cache[:, :, loc])
             )
         end
 
-        recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
+        recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
 
@@ -1821,7 +1821,7 @@ function run_model(
             # Calculate proportional cover loss at each location
             # due to disturbances this timestep
             Δcover_loss_proportion .= 0.0
-            for loc in 1:n_locs
+            for loc = 1:n_locs
                 cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
                 cover_after = sum(@view(C_cover_t[:, :, loc]))
 

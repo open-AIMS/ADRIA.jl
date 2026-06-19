@@ -15,7 +15,7 @@ end
     @test eltype(TEST_RS.coral_cover_log) == Float64
 
     # Verify UInt16 unscaling: cover values must be in [0, 1]
-    cover_data = Array(TEST_RS.coral_cover_log)
+    cover_data = TEST_RS.coral_cover_log.data
     @test all(0.0 .<= cover_data .<= 1.0)
 end
 

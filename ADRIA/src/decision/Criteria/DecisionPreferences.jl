@@ -70,12 +70,12 @@ function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
         # Convert Vector to appropriate format for YAXArray assignment
         if isa(value, Vector)
             # For vectors, materialize and assign element-wise to avoid broadcast issues with YAXArrays
-            criteria_slice = dm[criteria=At(criteria_name)]
+            criteria_slice = dm[criteria = At(criteria_name)]
             for i in axes(criteria_slice, 1)
                 criteria_slice[i] = value[i]
             end
         else
-            dm[criteria=At(criteria_name)] .= value
+            dm[criteria = At(criteria_name)] .= value
         end
     end
 
@@ -177,7 +177,7 @@ function criteria_aggregated_scores(
     end
 
     # Assess decision matrix only using valid (non-constant) criteria
-    res = solve(dp, dm[criteria=.!is_const], method)
+    res = solve(dp, dm[criteria = .!is_const], method)
 
     if all(isnan.(res.scores))
         # This may happen if there are constants in the decision matrix
@@ -250,7 +250,7 @@ function apply_threshold(
 
     valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1] + threshold[2]))
 
-    return dm[location=valid_locs]
+    return dm[location = valid_locs]
 end
 
 """
@@ -292,7 +292,7 @@ function cluster_diversity(
 
     # Map cluster scores back to each location
     diversity_scores = zeros(n_locations)
-    for i in 1:n_locations
+    for i = 1:n_locations
         diversity_scores[i] = cluster_scores[cluster_ids[i]]
     end
 

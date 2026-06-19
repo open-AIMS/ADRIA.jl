@@ -23,7 +23,7 @@ and only the interactive backend is activated.
 
 ```julia
 using ADRIA, ADRIAviz
-ADRIAviz.activate(:plotly)   # loads PlotlyBase + PlotlyKaleido (if installed)
+ADRIAviz.activate("plotly")   # loads PlotlyBase + PlotlyKaleido (if installed)
 ```
 """
 function activate(backend::Symbol)
@@ -61,7 +61,7 @@ Supported backends: `"WGLMakie"`, `"GLMakie"`, `"CairoMakie"`.
 The packages must already be installed in the active environment.
 If they are not, install them first:
 
-```julia-repl
+```julia
 pkg> add WGLMakie GeoMakie GraphMakie
 ```
 

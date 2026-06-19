@@ -17,7 +17,10 @@ function coral_cover(;
         (n_timesteps, 1, 1, n_locations, n_scenarios)
     )
 
-    return coral_cover .* location_weights
+    return DataCube(
+        coral_cover.data .* location_weights,
+        (:timesteps, :groups, :sizes, :locations, :scenarios)
+    )
 end
 
 """Cover for each location at each timestep and scenario sums up to 1."""

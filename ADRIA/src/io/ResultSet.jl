@@ -179,8 +179,9 @@ end
 
 function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
     ax_names = Symbol.(Tuple(rankings_set.attrs["structure"]))
-    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} =
-        range.([1], size(rankings_set))
+    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} = range.(
+        [1], size(rankings_set)
+    )
 
     # Replace interventions axis with named labels
     intervention_idx = findfirst(x -> x == :interventions, ax_names)
@@ -342,7 +343,7 @@ function combine_results(result_sets...)::ResultSet
         n_log = getfield(logs, log)
 
         src = Vector{Union{Nothing,Array}}(undef, n_rs)
-        Threads.@threads for i in 1:n_rs
+        Threads.@threads for i = 1:n_rs
             s = getfield(result_sets[i], log)
             if isnothing(s)
                 src[i] = nothing
@@ -354,7 +355,7 @@ function combine_results(result_sets...)::ResultSet
         end
 
         scen_id = 1
-        for i in 1:n_rs
+        for i = 1:n_rs
             rs_scen_len =
                 isnothing(src[i]) ?
                 size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
@@ -390,7 +391,7 @@ function combine_results(result_sets...)::ResultSet
         compressor=COMPRESSOR
     )
     loc_bufs = Vector{Array{Float32,4}}(undef, n_rs)
-    Threads.@threads for i in 1:n_rs
+    Threads.@threads for i = 1:n_rs
         rs = result_sets[i]
         rs_scen_len = size(rs.outcomes[LOC_METRIC_NAMES[1]], :scenarios)
         buf = Array{Float32}(undef, tf_len, n_locs, n_loc_metrics, rs_scen_len)
@@ -400,7 +401,7 @@ function combine_results(result_sets...)::ResultSet
         loc_bufs[i] = buf
     end
     scen_id = 1
-    for i in 1:n_rs
+    for i = 1:n_rs
         rs_scen_len = size(loc_bufs[i], 4)
         loc_store[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = loc_bufs[i]
         scen_id += rs_scen_len
@@ -421,11 +422,11 @@ function combine_results(result_sets...)::ResultSet
         compressor=COMPRESSOR
     )
     taxa_bufs = Vector{Array{Float32,3}}(undef, n_rs)
-    Threads.@threads for i in 1:n_rs
+    Threads.@threads for i = 1:n_rs
         taxa_bufs[i] = Array{Float32}(result_sets[i].outcomes[taxa_name])
     end
     scen_id = 1
-    for i in 1:n_rs
+    for i = 1:n_rs
         rs_scen_len = size(taxa_bufs[i], 3)
         taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = taxa_bufs[i]
         scen_id += rs_scen_len

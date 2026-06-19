@@ -222,7 +222,7 @@ if hasmethod(
 
         # Plot normalized scores and criteria as map
         decision_mat_fig = ADRIA.viz.selection_criteria_map(
-            ADRIA_DOM_45, seed_decision_mat[criteria=.!is_const],
+            ADRIA_DOM_45, seed_decision_mat[criteria = .!is_const],
             crit_agg.scores ./ maximum(crit_agg.scores)
         )
     end

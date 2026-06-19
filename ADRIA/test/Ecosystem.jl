@@ -8,7 +8,7 @@ using ADRIA.Random
     mean_diffs::Vector{Float64} = zeros(n_checks)
 
     # The truncted normal mean should agree with the normal mean for symmetrical bound about mean
-    for i in 1:n_checks
+    for i = 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
         width = rand(Uniform(0, 10 * stdev))
@@ -25,7 +25,7 @@ using ADRIA.Random
     mean_diffs = zeros(n_checks)
 
     # The calculated truncated normal mean should agree with the Distributions.jl implementation
-    for i in 1:n_checks
+    for i = 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
         lb = rand(Uniform(mu - 6.0 * stdev, mu + 3.0 * stdev))
@@ -48,7 +48,7 @@ end
 
     # The truncated normal cdf should return 0.0, 0.5, and 1.0 when evaluated at the lower
     # bound, median and upper bound respectively.
-    for i in 1:n_checks
+    for i = 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
 
@@ -79,7 +79,7 @@ end
     n_checks = 3000
 
     # The truncated normal cdf should agree with the Distributions.jl implementation
-    for i in 1:n_checks
+    for i = 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
         lb = rand(Uniform(mu - stdev * 6.0, mu + stdev * 3.0))

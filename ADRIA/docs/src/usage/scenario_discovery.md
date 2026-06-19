@@ -1,17 +1,38 @@
+```@meta
+EditURL = "scenario_discovery.jl"
+```
+
 # Scenario Discovery
 
+Scenario discovery identifies which scenarios meet a target outcome criterion,
+helping to understand what conditions or interventions lead to desired results.
+
+## Setup
 
 ```julia
-using ADRIA
+using ADRIA, ADRIAanalysis, Statistics
+```
 
-dom = ADRIA.load_domain("...", "<RCP>")
+### ResultSet
+
+The examples below assume an `ADRIAResultSet` `rs`:
+
+```julia
+dom = ADRIA.load_domain("path to domain data", "<RCP>")
 scens = ADRIA.sample(dom, 4096)
-
 rs = ADRIA.run_scenarios(dom, scens, "45")
-# rs = ADRIA.load_results("...")
+```
 
-# Calculate representative statistic for all metrics of interest
-# Here, total cover, shelter volume and juvenile population
+See [Loading a Domain](@ref), [Generating scenarios](@ref) and
+[Running scenarios](@ref) for more detail.
+
+## Screening scenarios
+
+`screen_scenarios` identifies scenarios where all outcomes meet a given rule after
+column-wise normalization. A scenario is selected only when the rule holds for
+every outcome column.
+
+```julia
 tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_tac = vec(mean(tac, dims=1))
 
@@ -21,26 +42,28 @@ mean_sv = vec(mean(rsv, dims=1))
 r_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 mean_juves = vec(mean(r_juves, dims=1))
 
-# Create matrix of all metrics
+# Stack outcomes column-wise (one column per metric)
 y = hcat(mean_tac, mean_sv, mean_juves)
 
-# Define "robust scenario" as one where all metric outcomes >= 30th percentile.
-rule_func = x -> all(x .>= 0.3)
-
-# Identify robust scenarios for a specific RCP (4.5)
-robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45])
-
-# Output robust scenario IDs
-@info robust.RCP45
-
-# Could qualitatively examine inputs that led to robust scenarios ...
-rs.inputs[robust.RCP45, :]
-
-# ... or mark behavioural and non-behavioural outcomes for further analysis
-# e.g., with random forest.
-behave = zeros(size(y, 1))
-behave[robust.RCP45] .= 1.0
-
-# Next step is to test these for robustness across environmental conditions ...
-# [TODO]
+# Select scenarios where all normalized outcomes are at or above the 30th percentile
+robust = screen_scenarios(y, x -> x >= 0.3)
 ```
+
+The returned `robust` is a vector of scenario indices. Use it to inspect the inputs
+that produced those outcomes:
+
+```julia
+rs.inputs[robust, :]
+```
+
+Or create a binary classification vector for further analysis (e.g., random forests):
+
+```julia
+behave = zeros(size(y, 1))
+behave[robust] .= 1.0
+```
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

@@ -33,10 +33,10 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     cyclone_mortality_scens
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for seeding
+    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
     fog_target_locations::Vector{String}        # locations eligible for fogging
     shade_target_locations::Vector{String}    # locations eligible for shading
-    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for moving corals
+    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
 
     model
     sim_constants::SimConstants
@@ -110,7 +110,7 @@ function load_domain(
         timestep=Int64.(collect(cube_axes[1])),
         location=location_ids,
         scenario=Int64.(collect(cube_axes[3]))
-    )[timestep=At(timeframe[1]:timeframe[2])]
+    )[timestep = At(timeframe[1]:timeframe[2])]
 
     dhw_scens = correct_axis_names!(dhw_scens)
 
@@ -125,7 +125,7 @@ function load_domain(
     spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
-    spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
+    spatial_data[:, :zone_type] .= ["" for _ = 1:nrow(spatial_data)]
 
     dist_matrix = distance_matrix(spatial_data)
     spatial_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
@@ -223,9 +223,9 @@ function load_initial_cover(
         location=Int64.(collect(c_axes[2])),
         group=Int64.(collect(c_axes[3])),
         scenario=Int64.(collect(c_axes[4]))
-    )[timestep=At(init_yr)]
+    )[timestep = At(init_yr)]
 
-    init_cc_per_taxa = init_cc_per_taxa[group=At(2:6)]
+    init_cc_per_taxa = init_cc_per_taxa[group = At(2:6)]
     # The following class weight calculations are taken from ReefModEngine Domain calculation
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
@@ -320,7 +320,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
         timestep=Int64.(collect(cube_axes[1])),
         location=d.loc_ids,
         scenario=Int64.(collect(cube_axes[3]))
-    )[timestep=At(d.env_layer_md.timeframe)]
+    )[timestep = At(d.env_layer_md.timeframe)]
 
     dhws = correct_axis_names!(dhws)
 
@@ -367,7 +367,7 @@ function _cyclone_mortality_scens(
             timestep=Int64.(collect(c_axes[1])),
             location=Int64.(collect(c_axes[2])),
             scenario=Int64.(collect(c_axes[3]))
-        )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
+        )[timestep = At(timeframe[1]:timeframe[2])] .+ 1
 
     species::Vector{Symbol} = functional_group_names()
     cyclone_mortality_scens::YAXArray{Float64} = ZeroDataCube(;
@@ -389,16 +389,16 @@ function _cyclone_mortality_scens(
     mr_massives::Vector{Float64} = cyclone_mr[:massives]
     cm_scens_massives = mr_massives[cyclone_scens].data
     for m in species[massives]
-        cyclone_mortality_scens[species=At(m)] .= cm_scens_massives
+        cyclone_mortality_scens[species = At(m)] .= cm_scens_massives
     end
 
     # Set mortality rates for branching corals at <= 5m depth
     below_5::BitVector = spatial_data.depth_med .<= -5
     if sum(below_5) > 0
         mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
-        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=below_5]].data
+        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location = below_5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=below_5, species=At(b)] .= cm_scens_bd5
+            cyclone_mortality_scens[locations = below_5, species = At(b)] .= cm_scens_bd5
         end
     end
 
@@ -406,9 +406,9 @@ function _cyclone_mortality_scens(
     above_5::BitVector = spatial_data.depth_med .> -5
     if sum(above_5) > 0
         mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
-        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=above_5]].data
+        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location = above_5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=above_5, species=At(b)] .= cm_scens_bs5
+            cyclone_mortality_scens[locations = above_5, species = At(b)] .= cm_scens_bs5
         end
     end
 

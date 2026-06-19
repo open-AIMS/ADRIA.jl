@@ -1,6 +1,9 @@
 sandbox/
 
 examples/Outputs/
+ADRIA/docs/scripts/Outputs/
+ADRIA/docs/scripts/plotly_viz_output/
+ADRIA/docs/scripts/makie_viz_output/
 
 /build/*.dll
 /build/*.so
@@ -8,7 +11,15 @@ examples/Outputs/
 
 JuliaSysimage.dll
 
-docs/build/
+ADRIA/docs/build/
+
+# Literate-generated markdown (source files are the .jl counterparts)
+ADRIA/docs/src/usage/getting_started.md
+ADRIA/docs/src/usage/loading_results.md
+ADRIA/docs/src/usage/scenario_runs.md
+ADRIA/docs/src/usage/scenario_discovery.md
+ADRIA/docs/src/usage/analysis.md
+ADRIA/docs/src/usage/cookbook.md
 input/
 output/
 .aider*
@@ -21,8 +32,7 @@ graphify-out/
 .claude/
 
 .graphify_python
-
-.graphify_uncached.txt
+.graphify*
 
 ADRIAviz/test/Outputs/
 

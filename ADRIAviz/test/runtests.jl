@@ -25,6 +25,9 @@ using ADRIAviz
         end
     end
 
+    # Spatial utilities tests (lightweight, no backend required)
+    include("spatial_utils.jl")
+
     if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
         include("annotated_outcomes.jl")
         include("taxa_dynamics.jl")
@@ -39,5 +42,29 @@ using ADRIAviz
     #             statement (Plotly and Makie extensions are mutually exclusive).
     if get(ENV, "ADRIA_RUN_PLOTLY_TESTS", "0") == "1"
         include("plotly.jl")
+    end
+
+    # Plotly end-to-end integration test.
+    # Gate: ADRIA_RUN_PLOTLY_INTEGRATION=1
+    # Requires:
+    #   - ADRIA_TEST_DOMAIN set to a valid domain directory path
+    #   - Heavy packages not in this Project.toml: MLJ, SIRUS, ADRIAanalysis
+    #     These must be available in the active Julia project environment.
+    # Runs examples/plotly_viz_check.jl and asserts all figures succeed.
+    if get(ENV, "ADRIA_RUN_PLOTLY_INTEGRATION", "0") == "1"
+        dom_path = get(ENV, "ADRIA_TEST_DOMAIN", "")
+        if isempty(dom_path) || !isdir(dom_path)
+            @warn "ADRIA_RUN_PLOTLY_INTEGRATION=1 but ADRIA_TEST_DOMAIN is not set " *
+                "or invalid; skipping integration test"
+        else
+            check_script = joinpath(
+                @__DIR__, "..", "..", "ADRIA", "docs", "scripts", "plotly_viz_check.jl"
+            )
+            @testset "Plotly integration (end-to-end)" begin
+                include(check_script)
+                n_fail = count(r -> !r[2], RESULTS)
+                @test n_fail == 0
+            end
+        end
     end
 end

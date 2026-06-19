@@ -26,7 +26,7 @@ end
     )
 
     # check colony areas in cm^2 are within bounds designated by bin edges
-    for k in 1:6
+    for k = 1:6
         @test all(
             stored_colony_mean_areas[coral_params.class_id .== k] .>=
             bin_edge_diameters_cm2[k]

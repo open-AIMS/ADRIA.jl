@@ -202,8 +202,9 @@ function bleaching_mortality!(
 
     # The model is modified to incorporate adaptation effect but maximum
     # reduction is to capped to 0.
-    @. capped_dhw =
-        min.(ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0)
+    @. capped_dhw = min.(
+        ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0
+    )
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
@@ -306,7 +307,7 @@ function bleaching_mortality!(
     # we assume the high background mortality of juveniles includes DHW mortality
     for loc in active_locs
         # Determine bleaching mortality for each non-juvenile species/size class
-        for grp in 1:n_groups
+        for grp = 1:n_groups
             # Skip location if there is no population
             if sum(@view(cover[grp, :, loc])) == 0.0
                 continue
@@ -418,7 +419,7 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    for i in length(growth_rate):-1:2
+    for i = length(growth_rate):-1:2
         # Pre-compute sums once
         cover_sum = sum(view(cover, (i - 1):i))
 
@@ -471,7 +472,7 @@ function adjust_DHW_distribution!(
 
     # Adjust population distribution
     for (grp, sc1) in enumerate(1:n_sizes:n_sp_sc)
-        for loc in 1:n_locs
+        for loc = 1:n_locs
             sc_end::Int64 = sc1 + step
 
             # Skip if no cover
@@ -584,12 +585,11 @@ function settler_DHW_tolerance!(
             cover_sum = sum(C_cover_t[grp, fecund_size_mask, loc])
             (cover_sum == 0) ? continue : 0
             w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
-            c_mean_per_group .=
-                breeders.(
-                    c_mean_t_1[grp, fecund_size_mask, loc],
-                    c_mean_t[grp, fecund_size_mask, loc],
-                    h²
-                )
+            c_mean_per_group .= breeders.(
+                c_mean_t_1[grp, fecund_size_mask, loc],
+                c_mean_t[grp, fecund_size_mask, loc],
+                h²
+            )
             @views c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_group, w)
         end
     end

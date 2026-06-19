@@ -1,18 +1,17 @@
+```@meta
+EditURL = "cookbook.jl"
+```
+
 # Cookbook examples
 
 ## Extracting model details
 
-Example showcasing how to extract model details, such as:
-
-- the model parameter table
-- model specification
-
-and more specific information/data from the above.
+Example showcasing how to extract model details, such as the model parameter table and
+model specification, and more specific information from the above.
 
 ```julia
 using DataFrames
 using ADRIA
-
 
 # Loading a dataset for a study area (a "domain")
 data_pkg = "./Example_domain"
@@ -40,10 +39,10 @@ p_vals = dom.model[:val]
 p_types = dom.model[:ptype]
 
 ## Parameter bounds (for e.g., to pass into a sampler or optimizer)
-## Note: ADRIA integer parameter bounds are set such that ℓ ≤ x ≤ u+1,
-## where ℓ is the lower bound and u is the upper bound.
+## Note: ADRIA integer parameter bounds are set such that lb <= x <= u+1,
+## where lb is the lower bound and u is the upper bound.
 ## This is because `floor(x)` is assigned with `update_params!()`.
-## Instances where ℓ := x := u indicate uncertain parameters that
+## Instances where lb == x == u indicate uncertain parameters that
 ## are nevertheless assumed to be constant.
 p_bounds = dom.model[:bounds]
 
@@ -53,7 +52,6 @@ p_groups = dom.model[:component]
 ## All of above as a DataFrame
 model_spec = DataFrame(dom.model)
 
-
 # Get DataFrame of parameter information for a specific sub-component (Intervention, Criteria, Coral)
 ADRIA.component_params(dom.model, Intervention)
 ```
@@ -62,7 +60,6 @@ ADRIA.component_params(dom.model, Intervention)
 
 ```julia
 using ADRIA
-
 
 # Loading data package
 dom = ADRIA.load_domain("Example_domain", "<RCP>")
@@ -83,8 +80,7 @@ scens = ADRIA.sample(dom, 128)
 # p_df = ADRIA.load_scenarios(dom, joinpath(here, "example_scenarios.csv"))
 
 # Batch run scenarios. Returns a ResultSet.
-# Setting up and running scenarios
-rs = ADRIA.run_scenarios(dom, p_df, "45")
+rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # Multiple RCPs can be specified, so long as RCP-specific data is available.
 # rs = ADRIA.run_scenarios(dom, p_df, ["45", "60"])
@@ -149,7 +145,7 @@ using Statistics, StatsBase
 dom = ADRIA.load_domain("path to Domain files", "RCP")
 
 # Select locations for interventions without any model runs
-scens = ADRIA.sample_site_selection(dom, 8)  # Get site selection scenario dataframe.
+scens = ADRIA.sample_site_selection(dom, 8)
 
 # Area of seeded corals in m^2
 area_to_seed = 962.11
@@ -160,20 +156,16 @@ sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 # Use rank_locations to get ranks
 ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
 
-# Get frequencies with which each site is selected for each rank for set of stand alone
-# location selections
+# Get frequencies with which each site is selected for each rank
 rank_freq = ranks_to_frequencies(ranks[intervention=1])
 
 # Calculate rank aggregations
-# Get location selection freqencies for set of standalone location selections
 location_selection_frequency = location_selection_frequencies(ranks[intervention=1])
 
 # Get summed inverse rank for set of standalone location selections
-# Measure of magnitude and frequency of high rank
 sel_score = selection_score(ranks[intervention=1])
 
 # Use aggregation function within rank_locations to get direct output
-# To get rank frequencies:
 rank_frequencies_seed = rank_locations(
     dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
 )
@@ -188,7 +180,7 @@ rank_frequencies_seed = rank_locations(
 scens = ADRIA.sample(dom, 8)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-# Get frequencies with which each site was selected for each rank for a set of runs
+# Get frequencies with which each site was selected for each rank
 rank_freq = ranks_to_frequencies(rs.ranks[intervention=1])  # with timesteps not aggregated
 
 # With timesteps aggregated
@@ -206,9 +198,13 @@ unguided_freq = location_selection_frequencies(
 )
 
 # Get selection score for set of runs
-# Measure of magnitude and frequency of high rank
 sel_score = selection_score(rs.ranks[intervention=1])
 
 # Get selection score for locations over time
 sel_score = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
 ```
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

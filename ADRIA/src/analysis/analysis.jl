@@ -165,8 +165,8 @@ function complexity_invariance_distance(
     end
     dist_fn(x, y) = (distance == :euclidean) ? euclidean(x, y) : weuclidean(x, y, weights)
 
-    for i in 1:n_scenarios
-        Threads.@threads for j in (i + 1):n_scenarios
+    for i = 1:n_scenarios
+        Threads.@threads for j = (i + 1):n_scenarios
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(
                     data[:, i], data[:, j], complexity[i], complexity[j], dist_fn
@@ -238,7 +238,7 @@ function cluster_scenarios(
     _, n_scenarios, n_metrics = size(data)
 
     clusters = zeros(Int64, n_scenarios, n_metrics)
-    for m in 1:n_metrics
+    for m = 1:n_metrics
         clusters[:, m] = cluster_series(
             data[:, :, m], n_clusters; method=method, distance=distance
         )

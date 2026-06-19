@@ -6,7 +6,10 @@ ADRIAviz provides plotting functions for ADRIA model outputs via the `ADRIA.viz`
 It is backend-agnostic: Makie (GeoMakie + GraphMakie) and PlotlyBase are supported through
 Julia's package extension mechanism — only the backends you load are compiled.
 
-> **v0.16.0 breaking change:** ADRIAviz is now a separate package.
+The Plotly backend is recommended for interactive use.
+CairoMakie is currently recommended for publication quality figures.
+
+> **v0.17.0 breaking change:** ADRIAviz is now a separate package.
 > Code that previously relied on `using ADRIA, CairoMakie` to activate viz methods must
 > now add `using ADRIAviz` (or `Pkg.add("ADRIAviz")` if outside the monorepo).
 
@@ -42,7 +45,7 @@ fig = ADRIA.viz.scenarios(rs, s_tc)
 fig = ADRIA.viz.map(rs, s_tc)
 
 # Sensitivity analysis
-Si = ADRIA.sensitivity.pawn(rs, s_tc)
+Si = ADRIAanalysis.sensitivity.pawn(rs, s_tc)
 fig = ADRIA.viz.pawn(Si)
 
 # Interactive explorer (Makie only)
@@ -90,7 +93,7 @@ p = ADRIA.viz.scenarios(rs, s_tc)
 p   # display inline in Jupyter / Pluto
 
 # Sensitivity analysis
-Si = ADRIA.sensitivity.pawn(rs, s_tc)
+Si = ADRIAanalysis.sensitivity.pawn(rs, s_tc)
 ADRIA.viz.pawn(Si)
 ADRIA.viz.tsa(Si)
 ADRIA.viz.rsa(Si, factor_values)

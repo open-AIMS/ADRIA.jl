@@ -57,3 +57,29 @@ function test_rs()
 
     return (dom, n_samples, scens, rs)
 end
+
+# ── Globals consumed by all Tier 5 tests ─────────────────────────────────────
+if !@isdefined(TEST_RS)
+    const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
+end
+
+# ── Tier 4 gate tests ─────────────────────────────────────────────────────────
+
+@testset "Scenario run produces a valid ResultSet" begin
+    @test TEST_RS isa ADRIA.ResultSet
+    @test size(TEST_RS.inputs, 1) == TEST_N_SAMPLES
+    @test TEST_N_SAMPLES == 32
+    # Ensure all expected log arrays are present
+    @test !isnothing(TEST_RS.seed_log)
+    @test !isnothing(TEST_RS.mc_log)
+    @test !isnothing(TEST_RS.shading_log)
+    @test !isnothing(TEST_RS.coral_dhw_tol_log)
+    @test !isnothing(TEST_RS.ranks)
+end
+
+@testset "CSV spec scenario loading" begin
+    rs_small = test_small_spec_rs()
+    @test rs_small isa ADRIA.ResultSet
+    # 16 scenarios were sampled in test_small_spec_rs
+    @test size(rs_small.inputs, 1) == 16
+end
