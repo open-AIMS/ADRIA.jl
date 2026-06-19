@@ -29,7 +29,7 @@ weakdeps = ["MLJ", "SIRUS"]
     ADRIAanalysisRulesExt = ["SIRUS", "MLJ"]
 
 [[deps.ADRIAviz]]
-deps = ["ADRIA", "ArchGDAL", "DataFrames", "DimensionalData", "Distributions", "GeoFormatTypes", "GeoInterface", "Graphs", "ImageIO", "OrderedCollections", "PrecompileTools", "Printf", "Random", "Reexport", "SimpleWeightedGraphs", "Statistics", "StatsBase", "YAXArrays"]
+deps = ["ADRIA", "ArchGDAL", "DataFrames", "DimensionalData", "Distances", "Distributions", "GeoFormatTypes", "GeoInterface", "Graphs", "ImageIO", "OrderedCollections", "PrecompileTools", "Printf", "Random", "Reexport", "SimpleWeightedGraphs", "Statistics", "StatsBase", "YAXArrays"]
 path = "../../../ADRIAviz"
 uuid = "a7bb1955-b5ed-4954-ba3d-ac9734139a95"
 version = "0.1.0"
