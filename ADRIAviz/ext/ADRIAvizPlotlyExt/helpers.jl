@@ -53,8 +53,13 @@ Returns `(tickvals, ticktext)` for a Plotly x-axis. Labels timestep integers
 as calendar years starting from 2025.
 """
 function _year_ticks(x_vals)
-    base_year = 2025
     tickvals = collect(x_vals)
-    ticktext = string.(base_year .+ tickvals .- first(tickvals))
+    if first(tickvals) < 1900
+        @warn "Timesteps do not appear to be calendar years. Defaulting to 2025 base year offset."
+        base_year = 2025
+        ticktext = string.(base_year .+ tickvals .- first(tickvals))
+    else
+        ticktext = string.(tickvals)
+    end
     return tickvals, ticktext
 end
