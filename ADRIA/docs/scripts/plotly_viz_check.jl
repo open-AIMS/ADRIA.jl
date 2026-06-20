@@ -23,12 +23,14 @@
 # Backend setup
 # ----------------------------------------------------------------------------
 
-const RESULTS = Tuple{String,Bool,String}[]
+const RESULTS = @NamedTuple{name::String, ok::Bool, msg::String, elapsed::Float64}[]
 
 const OUT_DIR = joinpath(@__DIR__, "plotly_viz_output")
 isdir(OUT_DIR) || mkpath(OUT_DIR)
 
 const OPEN_IN_BROWSER = get(ENV, "OPEN_IN_BROWSER", "false") == "true"
+
+const BACKEND_NAME = "plotly"
 
 _activate_backend() = ADRIAviz.activate(:plotly)
 

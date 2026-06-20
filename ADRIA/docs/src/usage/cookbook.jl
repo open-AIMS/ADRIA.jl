@@ -177,13 +177,7 @@
 # rs = ADRIA.run_scenarios(dom, scens, "45")
 #
 # # Get frequencies with which each site was selected for each rank
-# rank_freq = ranks_to_frequencies(rs.ranks[intervention=1])  # with timesteps not aggregated
-#
-# # With timesteps aggregated
-# rank_freq = ranks_to_frequencies(
-#     rs.ranks[intervention=1];
-#     agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
-# )
+# rank_freq = ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
 #
 # # Get selection frequencies for set of runs
 # selection_freq = location_selection_frequencies(rs.ranks[intervention=1])
@@ -258,7 +252,7 @@
 # ## Selection frequency by intervention type
 #
 # Spatial map showing how often each location was selected, shown as a panel
-# per intervention type (seeding, fogging, shading, move corals).
+# per intervention type (seeding, fogging, shading, moving corals).
 #
 # ```julia
 # using ADRIA
