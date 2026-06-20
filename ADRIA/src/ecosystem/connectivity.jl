@@ -68,29 +68,39 @@ function location_connectivity(
             [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
         )
 
-        # Create store for each year; capture column names from the first file read
-        tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
-        first_read = true
-        for yr in years
-            assoc_files = getfield(year_conn_fns, Symbol.("year_" * yr))
-            conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[]
-            for fn in assoc_files
-                df = CSV.read(
-                    fn,
-                    DataFrame;
+        # Read column names once from the first file, before any loop
+        conn_loc_ids = String.(
+            Tables.columnnames(
+                CSV.File(
+                    joinpath(file_path, conn_fns[1]);
                     comment="#",
                     missingstring="NA",
                     transpose=swap,
                     types=Float64,
                     drop=[1]
                 )
-                if first_read
-                    conn_loc_ids = names(df)
-                    first_read = false
-                end
-                push!(conn_data, Matrix(df))
+            )
+        )
+
+        # Create store for each year; capture column names from the first file read
+        tmp_store::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}(undef, length(years))
+        for (yr_ix, yr) in enumerate(years)
+            assoc_files = getfield(year_conn_fns, Symbol.("year_" * yr))
+            conn_data = Vector{Matrix{Float64}}(undef, length(assoc_files))
+
+            Threads.@threads for ix in eachindex(assoc_files)
+                f = CSV.File(
+                    assoc_files[ix];
+                    comment="#",
+                    missingstring="NA",
+                    transpose=swap,
+                    types=Float64,
+                    drop=[1]
+                )
+                conn_data[ix] = Tables.matrix(f)
             end
-            push!(tmp_store, agg_func(conn_data))
+
+            tmp_store[yr_ix] = agg_func(conn_data)
         end
 
         # Mean across all years
