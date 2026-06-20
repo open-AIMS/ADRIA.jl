@@ -1,6 +1,35 @@
 using Statistics
 
 # ──────────────────────────────────────────────────────────────────────────────
+# data_envelopment_analysis(rs, dea_output) — wrapper for API compatibility
+# ──────────────────────────────────────────────────────────────────────────────
+
+"""
+    ADRIA.viz.data_envelopment_analysis(rs::Union{Domain,ResultSet}, dea_output; kwargs...)
+
+Plot DEA results. The `rs` argument is accepted for API compatibility with the Makie backend
+but is not used by the Plotly implementation.
+"""
+function ADRIA.viz.data_envelopment_analysis(
+    rs::Union{ADRIA.Domain,ADRIA.ResultSet},
+    dea_output;
+    metrics_x_lab::String="",
+    metrics_y_lab::String="",
+    frontier_type::Symbol=:vrs_peers,
+    title::String="Data Envelopment Analysis",
+    kwargs...
+)::PlotlyBase.Plot
+    return ADRIA.viz.data_envelopment_analysis(
+        dea_output;
+        metrics_x_lab=metrics_x_lab,
+        metrics_y_lab=metrics_y_lab,
+        frontier_type=frontier_type,
+        title=title,
+        kwargs...
+    )
+end
+
+# ──────────────────────────────────────────────────────────────────────────────
 # data_envelopment_analysis(dea_output)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -69,23 +98,49 @@ function ADRIA.viz.data_envelopment_analysis(
 
     row_h = 0.3
     gap = 0.05
+    fsz = _plotly_font_sizes(1)
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
         # Row 1
-        xaxis=PlotlyBase.attr(; title_text=metrics_x_lab, domain=[0.0, 1.0], anchor="y"),
+        xaxis=PlotlyBase.attr(;
+            title_text=metrics_x_lab,
+            domain=[0.0, 1.0],
+            anchor="y",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
         yaxis=PlotlyBase.attr(;
-            title_text=metrics_y_lab, domain=[2 * (row_h + gap), 1.0], anchor="x"
+            title_text=metrics_y_lab,
+            domain=[2 * (row_h + gap), 1.0],
+            anchor="x",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         ),
         # Row 2
-        xaxis2=PlotlyBase.attr(; title_text="Scenario", domain=[0.0, 1.0], anchor="y2"),
+        xaxis2=PlotlyBase.attr(;
+            title_text="Scenario",
+            domain=[0.0, 1.0],
+            anchor="y2",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
         yaxis2=PlotlyBase.attr(;
-            title_text="VRS Efficiency", domain=[row_h + gap, 2 * row_h + gap], anchor="x2"
+            title_text="VRS Efficiency",
+            domain=[row_h + gap, 2 * row_h + gap],
+            anchor="x2",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         ),
         # Row 3
-        xaxis3=PlotlyBase.attr(; title_text="Scenario", domain=[0.0, 1.0], anchor="y3"),
+        xaxis3=PlotlyBase.attr(;
+            title_text="Scenario",
+            domain=[0.0, 1.0],
+            anchor="y3",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
         yaxis3=PlotlyBase.attr(;
-            title_text="CRS Efficiency", domain=[0.0, row_h], anchor="x3"
+            title_text="CRS Efficiency",
+            domain=[0.0, row_h],
+            anchor="x3",
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         )
     )
 

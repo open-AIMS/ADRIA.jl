@@ -1,15 +1,36 @@
+module viz
+
 using DataFrames, DimensionalData, YAXArrays
+using ADRIA
 using ADRIA: axes_names, ResultSet, model_spec
 
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
+# Font sizing tier system for typography consistency across all Makie visualizations.
+# 10pt is the minimum tick size for readability at 300 DPI (print). For large multi-panel
+# layouts (5+), short numeric formats (e.g., ×10³ notation) are preferred over long decimals.
+function set_typography_defaults!(axis_opts::OPT_TYPE; n_panels::Int=1)::OPT_TYPE
+    if n_panels <= 1
+        title_sz, label_sz, tick_sz = 16, 12, 10
+    else
+        title_sz, label_sz, tick_sz = 14, 12, 10
+    end
+    axis_opts[:titlesize] = get(axis_opts, :titlesize, title_sz)
+    axis_opts[:xlabelsize] = get(axis_opts, :xlabelsize, label_sz)
+    axis_opts[:ylabelsize] = get(axis_opts, :ylabelsize, label_sz)
+    axis_opts[:xticklabelsize] = get(axis_opts, :xticklabelsize, tick_sz)
+    axis_opts[:yticklabelsize] = get(axis_opts, :yticklabelsize, tick_sz)
+    return axis_opts
+end
+
 function _no_backend_error()
-    return error(
-        "No visualization backend loaded. Load a backend before calling viz functions:\n" *
-        "  using GLMakie      # interactive desktop\n" *
-        "  using WGLMakie     # Pluto / browser\n" *
-        "  using CairoMakie   # static PNG/SVG"
+    return ArgumentError(
+        "No visualization backend loaded. Load a backend with `ADRIAviz.activate()` before calling viz functions:\n" *
+        "  GLMakie      # interactive desktop\n" *
+        "  WGLMakie     # Pluto / browser\n" *
+        "  CairoMakie   # static PNG/SVG \n" *
+        "  Plotly       # interactive browser-based"
     )
 end
 
@@ -47,26 +68,41 @@ end
     _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
 
 Calculates a "nice" number of rows and columns from a given number of factors.
+
+Produces balanced, landscape-oriented grids:
+- n=1 → (1,1), n=2 → (1,2), n=3–4 → (2,2), n=5–6 → (2,3), n≥7 → square-ish
 """
 function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
-    if n_factors <= 4
-        if n_factors == 1
-            return 1, 1
+    n_factors < 1 && error("n_factors must be >= 1")
+
+    if n_factors == 1
+        return 1, 1
+    elseif n_factors == 2
+        return 1, 2
+    elseif n_factors <= 6
+        n_rows = Int(ceil(sqrt(Float64(n_factors))))
+        n_cols = Int(ceil(n_factors / n_rows))
+        if n_rows > n_cols
+            n_rows, n_cols = n_cols, n_rows
         end
-
-        n_cols::Int64 = 2
+        return n_rows, n_cols
     else
-        n_cols = max_cols
+        n_side = Int(ceil(sqrt(Float64(n_factors))))
+        return n_side, n_side
     end
-
-    n_rows::Int64 = ceil(Int64, n_factors / n_cols)
-
-    return n_rows, n_cols
 end
 
 include("../outcome_metadata.jl")
 include("spatial_utils.jl")
 
 # Export shared spatial utilities for use in extensions (after they're defined)
-export _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length
+export set_typography_defaults!
+export _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length, validate_extent
 export GBR_COASTAL_PLACES, CoastalPlace, MapDecorationData, compute_map_decorations
+
+# Export outcome metadata functions and types
+export outcome_title, outcome_label, set_plot_opts!
+export OPT_TYPE, DEFAULT_OPT_TYPE
+export _time_labels, _calc_gridsize, timesteps
+
+end  # module viz

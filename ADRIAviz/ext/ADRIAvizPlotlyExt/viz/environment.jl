@@ -61,11 +61,18 @@ function ADRIA.viz.cyclone_scenario(
         )
     )
 
+    fsz = _plotly_font_sizes(1)
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        xaxis=PlotlyBase.attr(;
+            title_text=xlabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text=ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end
@@ -144,11 +151,18 @@ function ADRIA.viz.dhw_scenario(
         )
     )
 
+    fsz = _plotly_font_sizes(1)
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        xaxis=PlotlyBase.attr(;
+            title_text=xlabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text=ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end
@@ -249,11 +263,18 @@ function ADRIA.viz.dhw_scenarios(
         )
     )
 
+    fsz = _plotly_font_sizes(1)
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        xaxis=PlotlyBase.attr(;
+            title_text=xlabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text=ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end

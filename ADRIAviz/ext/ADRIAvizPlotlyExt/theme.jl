@@ -21,3 +21,18 @@ const ADRIA_LAYOUT_DEFAULTS = Layout(;
     xaxis=attr(; showgrid=false, linecolor="black", linewidth=1),
     yaxis=attr(; gridcolor="#e5e5e5", linecolor="black", linewidth=1)
 )
+
+# Tier values mirror set_typography_defaults! in src/viz/viz.jl.
+# DPI note: Plotly renders at ~96 DPI (browser/screen); Makie targets 300 DPI print.
+# The same numeric pt values are intentionally shared - the perceptual difference is
+# acceptable because the two backends serve different audiences (dashboard vs. publication).
+# Users exporting Plotly to PNG for print should override via the layout keyword.
+function _plotly_font_sizes(n_panels::Int=1)
+    if n_panels <= 1
+        return (title=16, label=12, tick=10)
+    elseif n_panels <= 4
+        return (title=12, label=10, tick=8)
+    else
+        return (title=10, label=9, tick=8)
+    end
+end

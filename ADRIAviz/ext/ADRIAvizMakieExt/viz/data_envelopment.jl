@@ -58,6 +58,7 @@ function ADRIA.viz.data_envelopment_analysis(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -83,6 +84,7 @@ function ADRIA.viz.data_envelopment_analysis!(
     DEA_output;
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    set_typography_defaults!(axis_opts)
     scatter_colors::Vector{COLOR_TYPE} = get(opts, :scatter_colors, [:red, :black])
     legend_names = get(
         opts, :legend_names, ["Best practice frontier", "Scenario data cloud"]

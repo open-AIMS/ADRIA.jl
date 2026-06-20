@@ -6,6 +6,7 @@ using Reexport
 @reexport using GeoMakie
 
 using Statistics, Distributions, Random
+using SparseArrays
 using DataFrames
 
 using ImageIO, GeoInterface
@@ -13,7 +14,6 @@ using ImageIO, GeoInterface
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
 using ADRIA.FileIO: FileIO
-using ADRIA.GFT: GFT
 using ADRIA
 using ADRIA:
     ResultSet, model_spec

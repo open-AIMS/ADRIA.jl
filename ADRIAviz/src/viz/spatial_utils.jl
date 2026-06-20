@@ -7,6 +7,8 @@ structures used by both Plotly and Makie spatial viz backends.
 
 using DataFrames: DataFrame, nrow, hasproperty
 using Distances: haversine
+using GeoInterface
+using NaturalEarth
 using ADRIA: Domain, ResultSet, centroids
 
 # =============================================================================
@@ -40,9 +42,11 @@ function _get_site_ids(gdf::DataFrame)::Vector{String}
         return string.(1:nrow(gdf))
     end
     if length(present) > 1
-        @warn "Multiple candidate location-id columns present $(present); using \
-               '$(first(present))'. Pass a Domain/ResultSet so the canonical \
-               loc_id_col is used instead."
+        @warn """
+        Multiple candidate location-id columns present $(present); using
+        '$(first(present))'. Pass a Domain/ResultSet so the canonical
+        loc_id_col is used instead.
+        """
     end
     return string.(gdf[:, first(present)])
 end
@@ -58,8 +62,10 @@ function _site_ids(gdf::DataFrame, id_col::Union{Symbol,Nothing})::Vector{String
         if hasproperty(gdf, id_col)
             return string.(gdf[:, id_col])
         end
-        @warn "Configured location-id column '$(id_col)' not found in \
-               GeoDataFrame; falling back to heuristic resolution."
+        @warn """
+        Configured location-id column '$(id_col)' not found in
+        GeoDataFrame; falling back to heuristic resolution.
+        """
     end
     return _get_site_ids(gdf)
 end
@@ -71,20 +77,20 @@ end
 """
     _haversine_km(lon1::Real, lat1::Real, lon2::Real, lat2::Real)::Float64
 
-Great-circle distance between two lon/lat points (degrees) in kilometres.
-Uses Distances.jl haversine with WGS84 Earth radius (6371 km).
+Great-circle distance between two lon/lat points (in degrees) in kilometres.
 """
 function _haversine_km(lon1::Real, lat1::Real, lon2::Real, lat2::Real)::Float64
-    6371.0 * haversine([deg2rad(lat1), deg2rad(lon1)], [deg2rad(lat2), deg2rad(lon2)])
+    haversine([deg2rad(lat1), deg2rad(lon1)], [deg2rad(lat2), deg2rad(lon2)])
 end
 
 """
     _nice_length(x::Real)::Int
 
 Round a distance down to a cartographically 'nice' scale-bar length (km).
+Capped at 250km for large-scale maps to ensure legibility.
 """
 function _nice_length(x::Real)::Int
-    options = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000]
+    options = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250]
     idx = findlast(<=(x), options)
     return options[isnothing(idx) ? 1 : idx]
 end
@@ -93,25 +99,27 @@ end
 # Coastal Context Data
 # =============================================================================
 
-"""Major Queensland coastal population centres (name, lon, lat)."""
+"""Major Queensland coastal population centres (name, lon, lat, population)."""
 const GBR_COASTAL_PLACES = [
-    ("Cooktown", 145.251, -15.468), ("Port Douglas", 145.465, -16.483),
-    ("Cairns", 145.770, -16.920), ("Innisfail", 146.030, -17.524),
-    ("Cardwell", 146.020, -18.267), ("Ingham", 146.158, -18.650),
-    ("Townsville", 146.816, -19.258), ("Ayr", 147.405, -19.574),
-    ("Bowen", 148.246, -20.013), ("Airlie Beach", 148.718, -20.267),
-    ("Mackay", 149.186, -21.144), ("Yeppoon", 150.742, -23.130),
-    ("Rockhampton", 150.510, -23.378), ("Gladstone", 151.256, -23.843),
-    ("Bundaberg", 152.349, -24.866), ("Hervey Bay", 152.844, -25.290),
-    ("Brisbane", 153.025, -27.470)
+    ("Cooktown", 145.251, -15.468, 3500), ("Port Douglas", 145.465, -16.483, 3800),
+    ("Cairns", 145.770, -16.920, 150000), ("Innisfail", 146.030, -17.524, 7000),
+    ("Cardwell", 146.020, -18.267, 1800), ("Ingham", 146.158, -18.650, 4500),
+    ("Townsville", 146.816, -19.258, 190000), ("Ayr", 147.405, -19.574, 2500),
+    ("Bowen", 148.246, -20.013, 9500), ("Airlie Beach", 148.718, -20.267, 5000),
+    ("Mackay", 149.186, -21.144, 80000), ("Yeppoon", 150.742, -23.130, 8000),
+    ("Rockhampton", 150.510, -23.378, 77000), ("Gladstone", 151.256, -23.843, 32000),
+    ("Bundaberg", 152.349, -24.866, 52000), ("Hervey Bay", 152.844, -25.290, 52000),
+    ("Brisbane", 153.025, -27.470, 2350000)
 ]
 
 """
     CoastalPlace
 
-Named tuple for a coastal place: (name, lon, lat).
+Named tuple for a coastal place: (name, lon, lat, population).
 """
-const CoastalPlace = NamedTuple{(:name, :lon, :lat),Tuple{String,Float64,Float64}}
+const CoastalPlace = NamedTuple{
+    (:name, :lon, :lat, :population),Tuple{String,Float64,Float64,Int}
+}
 
 """
     MapDecorationData
@@ -129,13 +137,68 @@ struct MapDecorationData
 end
 
 """
-    compute_map_decorations(gdf::DataFrame; max_km=100.0) -> Union{MapDecorationData,Nothing}
+    _get_populated_places(gdf::DataFrame; min_population::Int=50000, max_km::Float64=150.0) -> Vector{CoastalPlace}
 
-Compute decoration data (nearby coastal places, scale bar) for a reef map.
+Fetch populated places from NaturalEarth.
+Filters by minimum population and proximity to the mapped extent.
+
+# Arguments
+- `gdf::DataFrame`: GeoDataFrame with reef geometries
+- `min_population::Int`: Minimum population to include (default 50,000)
+- `max_km::Float64`: Maximum distance from map extent to include places (default 150km)
+
+# Returns
+Vector of CoastalPlace tuples (name, lon, lat, population)
+"""
+function _get_populated_places(
+    gdf::DataFrame; min_population::Int=50000, max_km::Float64=150.0
+)::Vector{CoastalPlace}
+    cents = centroids(gdf)
+    isempty(cents) && return CoastalPlace[]
+
+    lons = Float64[c[1] for c in cents]
+    lats = Float64[c[2] for c in cents]
+
+    places_gdf = naturalearth("cities", 50)
+
+    # Filter by population and proximity
+    result = CoastalPlace[]
+    for row in eachrow(places_gdf)
+        pop = get(row, :POP_MAX, 0)
+        isempty(pop) && continue
+
+        lon, lat = GeoInterface.coordinates(row.geometry)
+        lon = Float64(lon)
+        lat = Float64(lat)
+
+        if pop >= min_population
+            # Check distance to map extent
+            d = minimum(
+                haversine(
+                    [deg2rad(lat), deg2rad(lon)], [deg2rad(lats[i]), deg2rad(lons[i])]
+                )
+                for i in eachindex(lons)
+            )
+            if d <= max_km
+                name = get(row, :name, "Unknown")
+                push!(result, (name=String(name), lon=lon, lat=lat, population=Int(pop)))
+            end
+        end
+    end
+
+    return result
+end
+
+"""
+    compute_map_decorations(gdf::DataFrame; min_population::Int=50000, max_km::Float64=150.0) -> Union{MapDecorationData,Nothing}
+
+Compute decoration data (populated places, scale bar) for a map.
 
 # Arguments
 - `gdf::DataFrame`: GeoDataFrame with geometries in WGS84 (EPSG:4326)
-- `max_km::Float64`: Maximum distance in km to include coastal places
+- `min_population::Int`: Minimum population threshold for cities (default 50,000)
+- `max_km::Float64`: Maximum distance in km from map extent to include places.
+  Defaults to 150km.
 
 # Returns
 - `MapDecorationData` with computed places, scale bar specs, and display extent
@@ -146,39 +209,43 @@ Compute decoration data (nearby coastal places, scale bar) for a reef map.
 - `ADRIA.centroids(gdf)` returns (lon, lat) tuples in degrees
 - Display is within ±75° latitude (near-pole scale bar rendering not supported)
 """
-function compute_map_decorations(gdf::DataFrame; max_km::Float64=100.0)
+function compute_map_decorations(
+    gdf::DataFrame; min_population::Int=50000, max_km::Float64=150.0
+)
     cents = centroids(gdf)
     isempty(cents) && return nothing
 
     lons = Float64[c[1] for c in cents]
     lats = Float64[c[2] for c in cents]
-    lon_min, lon_max = extrema(lons)
-    lat_min, lat_max = extrema(lats)
 
-    # Coastal centres within max_km of any reef
-    places = CoastalPlace[]
-    for (name, plon, plat) in GBR_COASTAL_PLACES
-        d = minimum(_haversine_km(plon, plat, lons[i], lats[i]) for i in eachindex(lons))
-        d <= max_km && push!(places, (name=name, lon=plon, lat=plat))
+    # Fetch populated places filtered by population (gracefully skip if unavailable)
+    places = try
+        _get_populated_places(gdf; min_population=min_population, max_km=max_km)
+    catch err
+        @warn "Failed to fetch NaturalEarth data for map decorations: $err\nSkipping place labels."
+        CoastalPlace[]
     end
 
     # Display range = reefs + qualifying places, with small pad
     all_lons = vcat(lons, [p.lon for p in places])
     all_lats = vcat(lats, [p.lat for p in places])
-    lo_min, lo_max = extrema(all_lons)
-    la_min, la_max = extrema(all_lats)
-    lon_pad = max(0.05, 0.08 * (lo_max - lo_min))
-    lat_pad = max(0.05, 0.08 * (la_max - la_min))
-    lon_range = [lo_min - lon_pad, lo_max + lon_pad]
-    lat_range = [la_min - lat_pad, la_max + lat_pad]
+    lon_min, lon_max = extrema(all_lons)
+    lat_min, lat_max = extrema(all_lats)
+    lon_pad = max(0.05, 0.08 * (lon_max - lon_min))
+    lat_pad = max(0.05, 0.08 * (lat_max - lat_min))
+    lon_range = [lon_min - lon_pad, lon_max + lon_pad]
+    lat_range = [lat_min - lat_pad, lat_max + lat_pad]
 
     # Scale bar (~1/4 of reef extent width, rounded to nice length)
     lat_mid = (lat_min + lat_max) / 2
 
     # Guard against polar regions (cosd near poles → 0, causing division issues)
     if abs(lat_mid) > 75.0
-        @warn "Map decorations requested at high latitude (lat=$lat_mid); \
-               skipping scale bar computation for near-polar regions."
+        @warn """
+        Map decorations requested at high latitude (lat=$lat_mid);
+        skipping scale bar computation for near-polar regions.
+        """
+
         return nothing
     end
 
@@ -198,4 +265,34 @@ function compute_map_decorations(gdf::DataFrame; max_km::Float64=100.0)
     return MapDecorationData(
         places, bar_km, bar_deg, bx0, by, lon_range, lat_range
     )
+end
+
+# =============================================================================
+# Extent Validation
+# =============================================================================
+
+"""
+    validate_extent(extent::Tuple)
+
+Validate that a geographic bounding box `(lon_min, lon_max, lat_min, lat_max)`
+is well-formed: no NaN values and non-degenerate bounds.
+"""
+function validate_extent(extent::Tuple)
+    length(extent) == 4 || error(
+        "extent must be a 4-tuple (lon_min, lon_max, lat_min, lat_max)"
+    )
+    lon_min, lon_max, lat_min, lat_max = extent
+    any(isnan.([lon_min, lon_max, lat_min, lat_max])) && error(
+        "Invalid extent: contains NaN values. extent=$(extent)"
+    )
+    lon_min >= lon_max && error(
+        "Invalid extent: lon_min >= lon_max ($(lon_min) >= $(lon_max))"
+    )
+    lat_min >= lat_max && error(
+        "Invalid extent: lat_min >= lat_max ($(lat_min) >= $(lat_max))"
+    )
+    abs((lat_min + lat_max) / 2) > 85 && @warn(
+        "Latitude near pole; scale bar and map projection may distort significantly"
+    )
+    return nothing
 end
