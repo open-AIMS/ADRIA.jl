@@ -6,7 +6,7 @@
 #
 # !!! note
 #     Visualizations and examples are still being developed, so take the examples below as
-#     examples of what analysis and visualizations are possible, but not the intended
+#     illustrations of what analysis and visualizations are possible, but not the intended
 #     quality.
 #
 # This section presents tools for analysing model generated data, including functions to
