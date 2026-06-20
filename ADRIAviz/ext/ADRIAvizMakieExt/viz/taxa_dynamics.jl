@@ -81,6 +81,7 @@ function ADRIA.viz.taxonomy(
     )
 
     fig_opts[:size] = get(fig_opts, :size, (1200, fig_height))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
 
     g = f[1, 1] = GridLayout()
@@ -104,6 +105,7 @@ function ADRIA.viz.taxonomy!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
+    set_typography_defaults!(axis_opts)
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Year")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Relative Cover")
 
@@ -174,6 +176,7 @@ function taxonomy_by_intervention!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
+    set_typography_defaults!(axis_opts)
     # Get taxonomy names for legend
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
     series_opts[:labels] = get(series_opts, :labels, taxa_names)
@@ -181,6 +184,8 @@ function taxonomy_by_intervention!(
     # Get default axis options
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    n_groups = length(scen_groups)
+    first_ax = nothing
     for (idx, scen_name) in enumerate(keys(scen_groups))
         ax = Axis(
             g[idx, 1];
@@ -189,15 +194,20 @@ function taxonomy_by_intervention!(
             xticklabelrotation=xtick_rot,
             axis_opts...
         )
+        isnothing(first_ax) && (first_ax = ax)
 
         taxonomy_by_intervention!(
             ax,
             relative_taxa_cover[scenarios = scen_groups[scen_name]],
             colors;
             show_confints=show_confints,
+            show_legend=false,
             series_opts=series_opts
         )
     end
+    !isnothing(first_ax) && Legend(
+        g[n_groups + 1, 1], first_ax; orientation=:horizontal, framevisible=false
+    )
     return nothing
 end
 function taxonomy_by_intervention!(
@@ -249,6 +259,7 @@ function intervention_by_taxonomy!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
+    set_typography_defaults!(axis_opts)
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
@@ -256,9 +267,11 @@ function intervention_by_taxonomy!(
         series_opts, :labels, titlecase.(String.(scenario_group_names))
     )
 
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    n_taxa = length(taxa_names)
+    first_ax = nothing
     for (idx, taxa_name) in enumerate(taxa_names)
-        xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
-        xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
         ax = Axis(
             g[idx, 1];
             title=taxa_name,
@@ -266,6 +279,7 @@ function intervention_by_taxonomy!(
             xticklabelrotation=xtick_rot,
             axis_opts...
         )
+        isnothing(first_ax) && (first_ax = ax)
 
         intervention_by_taxonomy!(
             ax,
@@ -273,9 +287,13 @@ function intervention_by_taxonomy!(
             colors,
             scen_groups;
             show_confints=show_confints,
+            show_legend=false,
             series_opts=series_opts
         )
     end
+    !isnothing(first_ax) && Legend(
+        g[n_taxa + 1, 1], first_ax; orientation=:horizontal, framevisible=false
+    )
     return nothing
 end
 function intervention_by_taxonomy!(
@@ -428,11 +446,19 @@ function ADRIA.viz.taxonomy!(
     xticks=nothing,
     xticklabelrotation::Float64=π / 2
 )::Union{GridLayout,GridPosition}
+    _axis_opts = DEFAULT_OPT_TYPE()
+    set_typography_defaults!(_axis_opts)
     scen_groups = _get_scenario_groups(ao; by_RCP)
     xtick_vals = isnothing(xticks) ? _time_labels(timesteps(ao.data)) : xticks
     ax = Axis(g[1, 1];
         xlabel, ylabel,
-        xticks=xtick_vals, xticklabelrotation
+        xticks=xtick_vals,
+        xticklabelrotation,
+        titlesize=_axis_opts[:titlesize],
+        xlabelsize=_axis_opts[:xlabelsize],
+        ylabelsize=_axis_opts[:ylabelsize],
+        xticklabelsize=_axis_opts[:xticklabelsize],
+        yticklabelsize=_axis_opts[:yticklabelsize]
     )
     taxonomy_bands!(ax, ao.data, scen_groups;
         by_functional_groups, show_confints, colors, labels

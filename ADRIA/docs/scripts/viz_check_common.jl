@@ -11,7 +11,7 @@
 #   _viz_outcome_map(rs, om_ds, foi) -> ADRIA.viz.outcome_map with backend signature
 #   _viz_rules_scatter(rs, scens, tgt, rules) -> ADRIA.viz.rules_scatter with backend signature
 #   _viz_backend_extras()          -> optional extra checks (no-op default)
-#   RESULTS::Vector{Tuple{String,Bool,String}}
+#   RESULTS::Vector{NamedTuple} -> (name::String, ok::Bool, msg::String, elapsed::Float64)
 
 # ----------------------------------------------------------------------------
 # Shared packages
@@ -19,6 +19,8 @@
 
 using Statistics
 using DataFrames
+using Dates
+using Printf
 
 using MLJ, SIRUS
 
@@ -26,11 +28,11 @@ using MLJ, SIRUS
 @time using ADRIAanalysis
 @time using ADRIAviz
 
+using ADRIA.analysis: cluster_scenarios, cluster_series
 using ADRIAanalysis:
     find_scenarios, target_clusters, cluster_rules,
     data_envelopment_analysis
 using ADRIAanalysis.sensitivity: pawn, tsa, rsa, outcome_map, convergence
-using ADRIA.analysis: cluster_scenarios, cluster_series
 
 # Activate the backend (hook defined by the including file)
 _activate_backend()
@@ -41,16 +43,19 @@ _activate_backend()
 
 function check(build_fn, name::String)
     println("\n>>> $name")
+    start_time = time()
     try
         fig = build_fn()
         path = _save_fig(fig, name)
-        push!(RESULTS, (name, true, string(path)))
-        println("    [OK]   -> $path")
+        elapsed = time() - start_time
+        push!(RESULTS, (name=name, ok=true, msg=string(path), elapsed=elapsed))
+        println("    [OK]   -> $path ($(Printf.@sprintf("%.2f", elapsed))s)")
         return fig
     catch err
+        elapsed = time() - start_time
         msg = sprint(showerror, err)
-        push!(RESULTS, (name, false, msg))
-        println("    [FAIL] $msg")
+        push!(RESULTS, (name=name, ok=false, msg=msg, elapsed=elapsed))
+        println("    [FAIL] $msg ($(Printf.@sprintf("%.2f", elapsed))s)")
         return nothing
     end
 end
@@ -259,20 +264,12 @@ check("tsc_asv") do
 end
 
 # ----------------------------------------------------------------------------
-# 12. Connectivity graph
-# ----------------------------------------------------------------------------
-
-check("connectivity") do
-    ADRIA.viz.connectivity(example_dom)
-end
-
-# ----------------------------------------------------------------------------
-# 13. Location selection frequencies
+# 12. Location selection frequencies
 # ----------------------------------------------------------------------------
 
 const INTERVENTION_TYPES = (:seed, :fog, :shade, :mc)
 _intervention_name(iv) = get(
-    Dict(:seed => "Seed", :fog => "Fog", :shade => "Shade", :mc => "Move Corals"),
+    Dict(:seed => "Seed", :fog => "Fog", :shade => "Shade", :mc => "Moving Corals"),
     iv, titlecase(string(iv))
 )
 
@@ -299,7 +296,7 @@ check("ranks_by_intervention") do
 end
 
 # ----------------------------------------------------------------------------
-# 14. Location selection criteria maps
+# 13. Location selection criteria maps
 # ----------------------------------------------------------------------------
 
 check("criteria_spatial_plots") do
@@ -346,7 +343,7 @@ check("criteria_spatial_plots") do
 end
 
 # ----------------------------------------------------------------------------
-# 15. Environmental drivers
+# 14. Environmental drivers
 # ----------------------------------------------------------------------------
 
 check("dhw_scenario") do
@@ -362,23 +359,103 @@ check("cyclone_scenario") do
 end
 
 # ----------------------------------------------------------------------------
+# 15. Connectivity graph
+# ----------------------------------------------------------------------------
+
+check("connectivity") do
+    ADRIA.viz.connectivity(example_dom)
+end
+
+# ----------------------------------------------------------------------------
 # Backend-specific extras (no-op unless overridden)
 # ----------------------------------------------------------------------------
 
 _viz_backend_extras()
 
 # ----------------------------------------------------------------------------
-# Summary
+# Summary and report generation
 # ----------------------------------------------------------------------------
+
+function _format_time(elapsed::Float64)
+    if elapsed < 1.0
+        return "$(Printf.@sprintf("%.0f", elapsed * 1000))ms"
+    else
+        return "$(Printf.@sprintf("%.2f", elapsed))s"
+    end
+end
+
+function _format_summary_line(result)
+    status = result.ok ? "PASS" : "FAIL"
+    time_str = _format_time(result.elapsed)
+    detail = result.ok ? "" : "\n      Error: $(result.msg)"
+    return "  [$status] $(result.name) [$time_str]$detail"
+end
+
+function _save_report_markdown(results, backend::String; filename="viz_check_report.md")
+    report_name = replace(filename, r"\.md$" => "")
+    filename = "$(backend)_$(report_name).md"
+
+    n_ok = count(r -> r.ok, results)
+    total_time = sum(r -> r.elapsed, results)
+
+    lines = [
+        "# Visualization Check Report",
+        "",
+        "**Date:** $(now())",
+        "",
+        "## Summary",
+        "- **Total Checks:** $(length(results))",
+        "- **Passed:** $n_ok",
+        "- **Failed:** $(length(results) - n_ok)",
+        "- **Total Time:** $(_format_time(total_time))",
+        "",
+        "## Results",
+        ""
+    ]
+
+    for result in results
+        status = result.ok ? "✓ PASS" : "✗ FAIL"
+        time_str = _format_time(result.elapsed)
+        push!(lines, "### $status — $(result.name) [$time_str]")
+        if result.ok
+            push!(lines, "")
+            push!(lines, "Location: `$(result.msg)`")
+        else
+            push!(lines, "")
+            push!(lines, "```")
+            push!(lines, result.msg)
+            push!(lines, "```")
+        end
+        push!(lines, "")
+    end
+
+    push!(lines, "## Timings by Check")
+    push!(lines, "")
+    sorted_by_time = sort(results; by=r -> r.elapsed, rev=true)
+    for result in sorted_by_time
+        time_str = _format_time(result.elapsed)
+        status = result.ok ? "✓" : "✗"
+        push!(lines, "- $status $(result.name): $time_str")
+    end
+
+    report_content = join(lines, "\n")
+    write(filename, report_content)
+    return filename
+end
 
 println("\n" * "="^70)
 println("Visualization run summary")
 println("="^70)
-n_ok = count(r -> r[2], RESULTS)
-for (name, ok, msg) in RESULTS
-    status = ok ? "OK  " : "FAIL"
-    detail = ok ? "" : "  ($msg)"
-    println("  [$status] $name$detail")
+n_ok = count(r -> r.ok, RESULTS)
+for result in RESULTS
+    println(_format_summary_line(result))
 end
 println("-"^70)
-println("$(n_ok) / $(length(RESULTS)) visualizations succeeded.")
+total_time = sum(r -> r.elapsed, RESULTS)
+println(
+    "$(n_ok) / $(length(RESULTS)) visualizations succeeded in $(_format_time(total_time))"
+)
+
+# Save markdown report
+report_path = _save_report_markdown(RESULTS, BACKEND_NAME)
+println("\nReport saved to: $report_path")

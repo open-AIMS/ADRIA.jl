@@ -40,13 +40,15 @@
 
 using CairoMakie
 
-const RESULTS = Tuple{String,Bool,String}[]
+const RESULTS = @NamedTuple{name::String, ok::Bool, msg::String, elapsed::Float64}[]
 
 const FIG_FORMAT = get(ENV, "ADRIA_FIG_FORMAT", "png")
 
 const DEFAULT_FIG_DIR = joinpath(@__DIR__, "makie_viz_output")
 const FIG_DIR = get(ENV, "ADRIA_FIGURE_DIR", DEFAULT_FIG_DIR)
 isdir(FIG_DIR) || mkpath(FIG_DIR)
+
+const BACKEND_NAME = "makie"
 
 _activate_backend() = ADRIAviz.activate("CairoMakie")
 
@@ -98,6 +100,7 @@ include("viz_check_common.jl")
 println("Figures written to: $FIG_DIR")
 if count(r -> !r[2], RESULTS) < length(RESULTS)
     println("\nTo commit updated docs figures:")
+    println("  Copy the figures to ADRIA/docs/src/assets/imgs/analysis/")
     println("  git add ADRIA/docs/src/assets/imgs/analysis/*.$FIG_FORMAT")
     println("  git commit -m 'docs: refresh Makie example figures'")
 end

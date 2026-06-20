@@ -28,6 +28,10 @@ using ADRIAviz
     # Spatial utilities tests (lightweight, no backend required)
     include("spatial_utils.jl")
 
+    # Spatial decoration tests: validate_extent, _calc_gridsize (lightweight);
+    # _figure_size/_adaptive_gap (backend-gated); integration (domain-gated)
+    include("spatial_decorations.jl")
+
     if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
         include("annotated_outcomes.jl")
         include("taxa_dynamics.jl")

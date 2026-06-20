@@ -22,6 +22,8 @@ function ADRIA.viz.scenarios(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
+    fig_opts[:size] = get(fig_opts, :size, (1200, 600))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -37,6 +39,7 @@ function ADRIA.viz.scenarios!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
+    set_typography_defaults!(axis_opts)
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)

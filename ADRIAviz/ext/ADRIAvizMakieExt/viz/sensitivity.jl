@@ -57,6 +57,7 @@ function ADRIA.viz.pawn!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -93,6 +94,7 @@ function ADRIA.viz.pawn(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.pawn!(g, Si; opts, axis_opts)
@@ -126,6 +128,7 @@ function ADRIA.viz.tsa!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     stat = get(opts, :stat, :median)
 
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -177,6 +180,8 @@ function ADRIA.viz.tsa(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    fig_opts[:size] = get(fig_opts, :size, (1200, 600))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.tsa!(g, rs, si; opts, axis_opts)
@@ -214,6 +219,7 @@ function ADRIA.viz.rsa!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     n_factors::Int64 = length(factors)
+    set_typography_defaults!(axis_opts; n_panels=n_factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
     end
@@ -275,15 +281,20 @@ function ADRIA.viz.rsa!(
 
     if n_factors > 1
         linkyaxes!(axs...)
-        Label(g[end + 1, :]; text=xlabel, fontsize=18)
-        Label(g[1:(end - 1), 0]; text=ylabel, fontsize=18, rotation=π / 2.0)
+        Label(g[end + 1, :]; text=xlabel, fontsize=axis_opts[:xlabelsize] + 2)
+        Label(
+            g[1:(end - 1), 0];
+            text=ylabel,
+            fontsize=get(axis_opts, :ylabelsize, axis_opts[:xlabelsize]) + 2,
+            rotation=π / 2.0
+        )
     else
         axs[1].xlabel = xlabel
         axs[1].ylabel = ylabel
     end
 
     if :title in keys(axis_opts)
-        Label(g[0, :]; text=title_val, fontsize=24)
+        Label(g[0, :]; text=title_val, fontsize=axis_opts[:titlesize])
     end
 
     # Clear empty figures
@@ -329,6 +340,8 @@ function ADRIA.viz.rsa(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    n_rows, n_cols = _calc_gridsize(length(factors))
+    set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.rsa!(g, rs, si, factors; axis_opts)
@@ -355,6 +368,7 @@ function ADRIA.viz.rsa(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.rsa!(g, rs, si, factor; opts=opts, axis_opts=axis_opts)
@@ -369,6 +383,7 @@ function ADRIA.viz.rsa!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     xlabel = get(axis_opts, :xlabel, "Factor Value")
     ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
 
@@ -386,11 +401,8 @@ function ADRIA.viz.rsa!(
     ax::Axis = Axis(
         g[1, 1];
         title=title_val,
-        titlesize=38,
         xlabel=xlabel,
         ylabel=ylabel,
-        xlabelsize=32,
-        ylabelsize=32,
         ylabelrotation=π / 2.0,
         axis_opts...
     )
@@ -422,7 +434,7 @@ For each `factor` in `factors`, plot `outcomes` with a ribbon for the `upper` an
 - `ax` : An Axis
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `ms_factor` : Model specification for one factor
-- `f_vals` : Factor values for one factor, as present in the result set 
+- `f_vals` : Factor values for one factor, as present in the result set
 
 # Returns
 Makie figure
@@ -438,6 +450,7 @@ function ADRIA.viz.outcome_map!(
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
     n_factors::Int64 = length(factors)
+    set_typography_defaults!(axis_opts; n_panels=n_factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
     end
@@ -497,11 +510,16 @@ function ADRIA.viz.outcome_map!(
 
     if n_factors > 1
         linkyaxes!(axs...)
-        Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
-        Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
+        Label(g[n_rows + 1, :]; text=xlabel, fontsize=axis_opts[:xlabelsize] + 2)
+        Label(
+            g[:, 0];
+            text=ylabel,
+            fontsize=get(axis_opts, :ylabelsize, axis_opts[:xlabelsize]) + 2,
+            rotation=pi / 2
+        )
 
         if @isdefined(title_val)
-            Label(g[0, :]; text=title_val, fontsize=24)
+            Label(g[0, :]; text=title_val, fontsize=axis_opts[:titlesize])
         end
     else
         axs[1].xlabel = xlabel
@@ -574,6 +592,8 @@ function ADRIA.viz.outcome_map(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    n_rows, n_cols = _calc_gridsize(length(factors))
+    set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.outcome_map!(g, rs, outcomes, factors; opts=opts, axis_opts=axis_opts)
@@ -689,11 +709,13 @@ function _series_convergence(
 
         if n_factors > 1
             linkyaxes!(axs...)
-            Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
-            Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
+            x_lbl_sz = axis_opts[:xlabelsize]
+            y_lbl_sz = get(axis_opts, :ylabelsize, x_lbl_sz)
+            Label(g[n_rows + 1, :]; text=xlabel, fontsize=x_lbl_sz + 2)
+            Label(g[:, 0]; text=ylabel, fontsize=y_lbl_sz + 2, rotation=pi / 2)
 
             if @isdefined(title_val)
-                Label(g[0, :]; text=title_val, fontsize=24)
+                Label(g[0, :]; text=title_val, fontsize=axis_opts[:titlesize])
             end
         else
             axs[1].xlabel = xlabel
@@ -746,10 +768,9 @@ function _heatmap_convergence(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     y_label = get(axis_opts, :ylabel, "Factors")
     x_label = get(axis_opts, :xlabel, "N scenarios")
-    y_labelsize = get(axis_opts, :ylabelsize, 22)
-    x_labelsize = get(axis_opts, :xlabelsize, 22)
 
     z = Array(Si_conv[Si = At(:median)])
     xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
@@ -761,8 +782,6 @@ function _heatmap_convergence(
         yticks=ytick_vals,
         xlabel=x_label,
         ylabel=y_label,
-        xlabelsize=x_labelsize,
-        ylabelsize=y_labelsize,
         axis_opts...
     )
     heatmap!(ax, z')
@@ -804,6 +823,8 @@ function ADRIA.viz.convergence(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    fig_opts[:size] = get(fig_opts, :size, (1200, 600))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     ADRIA.viz.convergence!(
         f[1, 1],
@@ -821,6 +842,10 @@ function ADRIA.viz.convergence!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(:viz_type => :series),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    _n =
+        (get(opts, :viz_type, :series) == :series && !get(opts, :plot_overlay, true)) ?
+        length(factors) : 1
+    set_typography_defaults!(axis_opts; n_panels=_n)
     viz_type = get(opts, :viz_type, :series)
     if viz_type == :series
         return _series_convergence(g, Si_conv, factors; opts=opts, axis_opts=axis_opts)

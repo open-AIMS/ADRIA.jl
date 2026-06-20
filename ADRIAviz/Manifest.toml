@@ -2,7 +2,7 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "11f8b7a52bc1707e9f05ae65695c6f0e711e96d1"
+project_hash = "272e967041f1fb6cd94ae0aa0cc1b910779b56ad"
 
 [[deps.ADRIA]]
 deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
@@ -819,6 +819,20 @@ version = "1.6.1"
     Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
     RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 
+[[deps.GeoJSON]]
+deps = ["Extents", "GeoFormatTypes", "GeoInterface", "JSON3", "StructTypes", "Tables"]
+git-tree-sha1 = "ce64817b826c36b30493b31be2ce53c55a277835"
+uuid = "61d90e0f-e114-555e-ac52-39dfb47a3ef9"
+version = "0.8.4"
+
+    [deps.GeoJSON.extensions]
+    GeoJSONMakieExt = "Makie"
+    GeoJSONRecipesBaseExt = "RecipesBase"
+
+    [deps.GeoJSON.weakdeps]
+    Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+
 [[deps.GeometryOps]]
 deps = ["AbstractTrees", "AdaptivePredicates", "CoordinateTransformations", "DataAPI", "DelaunayTriangulation", "ExactPredicates", "Extents", "GeoFormatTypes", "GeoInterface", "GeometryOpsCore", "LinearAlgebra", "Random", "SortTileRecursiveTree", "StaticArrays", "Statistics", "Tables"]
 git-tree-sha1 = "1a51219dd36002699e2618ad364b9cc5c97684ef"
@@ -1087,6 +1101,16 @@ weakdeps = ["ArrowTypes"]
     [deps.JSON.extensions]
     JSONArrowExt = ["ArrowTypes"]
 
+[[deps.JSON3]]
+deps = ["Dates", "Mmap", "Parsers", "PrecompileTools", "StructTypes", "UUIDs"]
+git-tree-sha1 = "411eccfe8aba0814ffa0fdf4860913ed09c34975"
+uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+version = "1.14.3"
+weakdeps = ["ArrowTypes"]
+
+    [deps.JSON3.extensions]
+    JSON3ArrowExt = ["ArrowTypes"]
+
 [[deps.JpegTurbo]]
 deps = ["CEnum", "FileIO", "ImageCore", "JpegTurbo_jll", "TOML"]
 git-tree-sha1 = "9496de8fb52c224a2e3f9ff403947674517317d9"
@@ -1344,6 +1368,12 @@ deps = ["OpenLibm_jll"]
 git-tree-sha1 = "9b8215b1ee9e78a293f99797cd31375471b2bcae"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "1.1.3"
+
+[[deps.NaturalEarth]]
+deps = ["Downloads", "GeoJSON", "Pkg", "Preferences", "Scratch"]
+git-tree-sha1 = "334574c147f5e48b62ce4d3f8b80c8b0edf247b5"
+uuid = "436b0209-26ab-4e65-94a9-6526d86fea76"
+version = "0.1.1"
 
 [[deps.NearestNeighbors]]
 deps = ["AbstractTrees", "Distances", "StaticArrays"]
@@ -1894,6 +1924,12 @@ deps = ["PrecompileTools"]
 git-tree-sha1 = "d05693d339e37d6ab134c5ab53c29fce5ee5d7d5"
 uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 version = "0.4.4"
+
+[[deps.StructTypes]]
+deps = ["Dates", "UUIDs"]
+git-tree-sha1 = "159331b30e94d7b11379037feeb9b690950cace8"
+uuid = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
+version = "1.11.0"
 
 [[deps.StructUtils]]
 deps = ["Dates", "UUIDs"]

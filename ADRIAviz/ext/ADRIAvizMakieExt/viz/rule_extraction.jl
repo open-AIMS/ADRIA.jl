@@ -39,6 +39,7 @@ function ADRIA.viz.rules_scatter(
     base_width = 1200
     base_height = n_rows * base_width / 5
     fig_opts[:size] = get(fig_opts, :size, (base_width, base_height))
+    set_figure_defaults(fig_opts)
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -77,17 +78,17 @@ function ADRIA.viz.rules_scatter!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     sub_g = g[1, 1] = GridLayout()
 
     # Colors and Labels Setup
     colors = ["#1f78b4", "#ff7f00"]
     labels = ["Target", "Non-target"]
     marker = :circle
-    title_size = 11
-    labels_size = 11
 
     n_factors = length(rules)
     n_rows, n_cols = _calc_gridsize(n_factors)
+    set_typography_defaults!(axis_opts; n_panels=n_factors)
     spec = model_spec(rs)
     feat_names = names(scenarios)
     for r = 1:n_rows
@@ -118,9 +119,6 @@ function ADRIA.viz.rules_scatter!(
                 xlabel=feature_names[1],
                 ylabel=feature_names[2],
                 title=_readable_condition(condition, feature_names),
-                titlesize=title_size,
-                xlabelsize=labels_size,
-                ylabelsize=labels_size,
                 axis_opts...
             )
 

@@ -40,14 +40,19 @@ function ADRIA.viz.pawn(
 
     # Scale height with factor count so labels stay legible for large factor sets.
     fig_height = max(400, 80 + 22 * length(factor_names))
+    fsz = _plotly_font_sizes(1)
 
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
         height=fig_height,
-        xaxis=PlotlyBase.attr(; title_text="SI Statistic"),
+        xaxis=PlotlyBase.attr(;
+            title_text="SI Statistic", tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
         yaxis=PlotlyBase.attr(;
             title_text="Factor", ticktext=factor_names, tickvals=factor_names,
+            tickfont=PlotlyBase.attr(; size=fsz.tick),
             # Rows are sorted by `by` descending, so the most influential factor is
             # `factor_names[1]`. Plotly places y[1] at the bottom, so reverse the
             # axis to put the most influential factor at the top.
@@ -93,13 +98,21 @@ function ADRIA.viz.tsa(
         )
     end
 
+    fsz = _plotly_font_sizes(1)
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
         xaxis=PlotlyBase.attr(;
-            title_text=xlabel, tickvals=tickvals, ticktext=ticktext
+            title_text=xlabel,
+            tickvals=tickvals,
+            ticktext=ticktext,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         ),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+        yaxis=PlotlyBase.attr(;
+            title_text=ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end
@@ -144,8 +157,14 @@ function ADRIA.viz.rsa(
         )
     end
 
+    fsz = _plotly_font_sizes(n_factors)
     layout = _grid_layout(
-        factor_names, n_factors; title=title, xlabel=xlabel, ylabel=ylabel
+        factor_names,
+        n_factors;
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        fsz=fsz
     )
     return PlotlyBase.Plot(traces, layout)
 end
@@ -174,13 +193,19 @@ end
 # legible for large factor sets), a shared `xlabel`/`ylabel`, and a factor-name
 # subplot title placed above each panel.
 function _grid_layout(
-    factor_names, n_factors::Int; title::String, xlabel::String, ylabel::String
+    factor_names,
+    n_factors::Int;
+    title::String,
+    xlabel::String,
+    ylabel::String,
+    fsz=(title=12, label=12, tick=12)
 )
     domains, n_rows, n_cols = _grid_domains(n_factors)
     annotations = PlotlyBase.PlotlyAttribute[]
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
         width=max(700, 360 * n_cols),
         height=max(400, 320 * n_rows),
         showlegend=false
@@ -190,18 +215,18 @@ function _grid_layout(
         sfx = i == 1 ? "" : string(i)
         layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
             title_text=xlabel, domain=xd, anchor="y$(sfx)",
-            tickangle=-45, automargin=true
+            tickangle=-45, automargin=true, tickfont=PlotlyBase.attr(; size=fsz.tick)
         )
         layout[Symbol("yaxis$(sfx)")] = PlotlyBase.attr(;
             title_text=(col == 1 ? ylabel : ""), domain=yd, anchor="x$(sfx)",
-            automargin=true
+            automargin=true, tickfont=PlotlyBase.attr(; size=fsz.tick)
         )
         push!(
             annotations,
             PlotlyBase.attr(;
                 text=string(factor_names[i]), x=(xd[1] + xd[2]) / 2, y=yd[2],
                 xref="paper", yref="paper", xanchor="center", yanchor="bottom",
-                showarrow=false, font=PlotlyBase.attr(; size=12)
+                showarrow=false, font=PlotlyBase.attr(; size=fsz.label)
             )
         )
     end
@@ -271,8 +296,14 @@ function ADRIA.viz.outcome_map(
         )
     end
 
+    fsz = _plotly_font_sizes(n_factors)
     layout = _grid_layout(
-        factor_names, n_factors; title=title, xlabel=xlabel, ylabel=ylabel
+        factor_names,
+        n_factors;
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        fsz=fsz
     )
     return PlotlyBase.Plot(traces, layout)
 end
@@ -311,11 +342,18 @@ function ADRIA.viz.convergence(
         )
     end
 
+    fsz = _plotly_font_sizes(1)
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
-        xaxis=PlotlyBase.attr(; title_text=xlabel),
-        yaxis=PlotlyBase.attr(; title_text=ylabel)
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        xaxis=PlotlyBase.attr(;
+            title_text=xlabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text=ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end

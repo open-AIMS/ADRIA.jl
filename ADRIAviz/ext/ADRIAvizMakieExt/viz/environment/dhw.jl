@@ -25,10 +25,12 @@ function ADRIA.viz.dhw_scenario(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     loc_scens = dom.dhw_scens[:, :, scen_id]
     mean_dhw_scen = dropdims(mean(loc_scens; dims=2); dims=2)
 
-    fig_opts[:size] = get(axis_opts, :size, (800, 400))
+    fig_opts[:size] = get(fig_opts, :size, (800, 400))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
 
     # axis_opts[:xticks] = get(axis_opts, :xticks, _time_labels(ts))
@@ -79,18 +81,21 @@ function ADRIA.viz.dhw_scenarios(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     data = dom.dhw_scens
 
     # Extract dimension information
     years = dom.env_layer_md.timeframe
 
     fig_size = get(fig_opts, :size, (1200, 600))
+    fig_opts[:size] = fig_size
+    set_figure_defaults(fig_opts)
 
     axis_opts[:title] = get(axis_opts, :title, "DHW Scenarios")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Year")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "DHW")
     axis_opts[:xticklabelrotation] = get(axis_opts, :xticklabelrotation, 2 / π)
-    fig = Figure(; size=fig_size)
+    fig = Figure(; fig_opts...)
     ax = Axis(fig[1, 1]; axis_opts...)
 
     # Determine CI bounds

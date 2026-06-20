@@ -103,6 +103,7 @@ function _map_geo_layout(;
             showocean=true, oceancolor="#e0eef5",
             lonaxis=attr(; range=collect(Float64, lon_range)),
             lataxis=attr(; range=collect(Float64, lat_range)),
+            fitbounds=false,
             projection_type="mercator"
         )
     end
@@ -128,17 +129,18 @@ end
 # =============================================================================
 
 """
-    _map_decorations(gdf; max_km=100.0)
+    _map_decorations(gdf; min_population=50000, max_km=300.0)
         -> (traces, annotations, lon_range, lat_range)
 
 Build scale-bar / place-name scattergeo traces and a north-arrow annotation for
-a reef map, plus the lon/lat display range expanded to include any qualifying
-coastal centres. Returns empty decorations if centroids cannot be computed.
+a map, plus the lon/lat display range expanded to include any qualifying
+populated places. Returns empty decorations if centroids cannot be computed.
 """
-function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
-    deco_data = compute_map_decorations(gdf; max_km=max_km)
+function _map_decorations(gdf::DataFrame; min_population::Int=50000, max_km::Float64=150.0)
+    deco_data = compute_map_decorations(gdf; min_population=min_population, max_km=max_km)
     isnothing(deco_data) &&
         return (AbstractTrace[], PlotlyBase.PlotlyAttribute[], nothing, nothing)
+    fsz = _plotly_font_sizes(1)
 
     traces = AbstractTrace[]
     if !isempty(deco_data.places)
@@ -151,7 +153,7 @@ function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
                 mode="markers+text",
                 marker=attr(; size=6, color="#333333", symbol="circle"),
                 textposition="top left",
-                textfont=attr(; size=11, color="#333333"),
+                textfont=attr(; size=fsz.tick - 1, color="#333333"),
                 hoverinfo="text",
                 showlegend=false,
                 name="Places"
@@ -179,17 +181,20 @@ function _map_decorations(gdf::DataFrame; max_km::Float64=100.0)
             text=["$(deco_data.scale_bar_km) km"],
             mode="text",
             textposition="top center",
-            textfont=attr(; size=11, color="black"),
+            textfont=attr(; size=fsz.tick, color="black"),
             hoverinfo="skip",
             showlegend=false,
             name="scale_label"
         )
     )
 
+    lon_span = deco_data.lon_range[2] - deco_data.lon_range[1]
+    north_x = deco_data.scale_bar_x0 + deco_data.scale_bar_deg + 0.025 * lon_span
+    north_y = deco_data.scale_bar_y
     north = attr(;
-        text="N", x=0.07, y=0.92, xref="paper", yref="paper",
+        text="N", x=north_x, y=north_y, xref="geo", yref="geo",
         showarrow=true, ax=0, ay=28, arrowhead=2, arrowsize=1.3, arrowwidth=2,
-        arrowcolor="black", font=attr(; size=15, color="black"),
+        arrowcolor="black", font=attr(; size=fsz.label, color="black"),
         xanchor="center", yanchor="bottom"
     )
 

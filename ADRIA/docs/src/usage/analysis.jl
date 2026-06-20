@@ -4,10 +4,20 @@
 #     This page covers functions provided by `ADRIAanalysis`. Ensure it is installed
 #     before running the examples (see [Getting Started](@ref)).
 #
+# !!! note
+#     Visualizations and examples are still being developed, so take the examples below as
+#     examples of what analysis and visualizations are possible, but not the intended
+#     quality.
+#
 # This section presents tools for analysing model generated data, including functions to
 # extract metrics and plot graphs.
 #
 # ## Setup
+#
+# Plotly is recommended for quick visual assessment, however the Makie backend is more
+# suitable for publication quality plots.
+#
+# While we use Plotly for the code here, the equivalent figures from Makie are shown.
 #
 # Install `PlotlyBase` alongside `ADRIAviz` and `ADRIAanalysis`:
 #
@@ -120,10 +130,7 @@
 #
 # ```julia
 # # Calculate frequencies with which each site was selected at each rank
-# rank_freq = ADRIA.decision.ranks_to_frequencies(
-#     rs.ranks[intervention=1];
-#     agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
-# )
+# rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
 #
 # # Plot 1st rank frequencies as a colormap
 # rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
@@ -239,7 +246,7 @@
 # using `viz.convergence`.
 #
 # ```julia
-# outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
+# outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
 #
 # # Display convergence for specific factors of interest ("foi") within a single figure.
 # # Bands represent the 95% confidence interval derived from the number of conditioning
@@ -251,7 +258,7 @@
 #
 # # Convergence analysis of factors grouped by model component as a heat map
 # components = [:EnvironmentalLayer, :Intervention, :Coral]
-# Si_conv = convergence(rs, scens, outcome, components)
+# Si_conv = convergence(scens, outcome, components)
 # conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
 # ADRIA.viz.savefig(conv_hm_fig, "convergence_components_heatmap.html")
 # ```
@@ -398,23 +405,23 @@
 # clusters = cluster_scenarios(s_tac, n_clusters)
 #
 # # Identify cluster(s) with highest median temporal variability covering at least 1% of scenarios
-# target_clusters = ADRIAanalysis.target_clusters(clusters, s_tac)
+# tgt = target_clusters(clusters, s_tac)
 # ```
 #
 # When the SIRUS Rule Induction algorithm produces rules involving two factors, they can be visualised as scatterplots.
 #
 # ```julia
-# foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+# rule_foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 #
 # max_rules = 10
 # rules_iv = cluster_rules(
-#     rs, target_clusters, scens, foi, max_rules; remove_duplicates=true
+#     rs, tgt, scens, rule_foi, max_rules; remove_duplicates=true
 # )
 #
 # rules_scatter_fig = ADRIA.viz.rules_scatter(
 #     rs,
 #     scens,
-#     target_clusters,
+#     tgt,
 #     rules_iv;
 #     fig_opts=fig_opts,
 #     opts=opts
@@ -467,7 +474,7 @@
 # ]
 #
 # # Divide factors into 10 bins
-# tac_rs = rsa(rs, mean_s_tac; S=10)
+# tac_rs = rsa(rs, mean_s_tac, foi; S=10)
 # rsa_fig = ADRIA.viz.rsa(rs, tac_rs, foi; opts, fig_opts)
 # ADRIA.viz.savefig(rsa_fig, "rsa.html")
 # ```
@@ -583,34 +590,37 @@
 # scens = ADRIA.sample(dom, 128)
 # rs = ADRIA.run_scenarios(dom, scens, "45")
 #
-# n_scens = size(scens,1)
-#
-# # `cost` is the DEA input: one positive value per scenario representing the resources
-# # consumed. Replace `cost_function` with your own cost/effort model. This simple example
-# # uses deployed coral counts plus a non-zero baseline, so every scenario (including
-# # counterfactuals with no deployment) carries a positive, comparably scaled cost.
-# function cost_function(scens)
-#     seed_cols = intersect(["N_seed_TA", "N_seed_CA"], names(scens))
-#     deployed = isempty(seed_cols) ? zeros(nrow(scens)) :
-#                vec(sum(Matrix(scens[:, seed_cols]); dims=2))
-#     return deployed .+ (0.1 * maximum(deployed) + 1.0)  # baseline keeps inputs positive
+# # Compute cost from seeded coral counts; ensure every scenario has a positive baseline
+# seed_cols = String[c for c in ("N_seed_TA", "N_seed_CA") if c in names(scens)]
+# cost = if isempty(seed_cols)
+#     ones(Float64, nrow(scens))
+# else
+#     Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
 # end
 #
-# cost = cost_function(scens)
-#
 # # Get mean coral cover and shelter volume for each scenario
-# s_tac = dropdims(
+# s_tac_mean = dropdims(
 #     mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
 # )
+# asv = ADRIA.metrics.absolute_shelter_volume(rs)
 # s_sv = dropdims(
-#     mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:locations);
-#     dims=(:timesteps,:locations)
+#     mean(mean(asv; dims=:timesteps); dims=:locations);
+#     dims=(:timesteps, :locations)
 # )
+#
+# # Normalise inputs and outputs to [0, 1] before passing to DEA
+# function _norm01(v::AbstractVector{Float64})
+#     lo, hi = extrema(v)
+#     return hi - lo < eps() ? ones(length(v)) : (v .- lo) ./ (hi - lo)
+# end
+#
+# X = _norm01(cost)
+# Y = hcat(_norm01(Array{Float64}(s_tac_mean)), _norm01(Array{Float64}(s_sv)))
 #
 # # Output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
 # # deployment cost
-# DEA_scens = data_envelopment_analysis(cost, s_tac, s_sv)
-# dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
+# DEA_out = data_envelopment_analysis(X, Y)
+# dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_out)
 # ADRIA.viz.savefig(dea_fig, "dea.html")
 # ```
 #

@@ -64,15 +64,20 @@ function ADRIA.viz.scenarios(
 
     _ylabel =
         isempty(ylabel) ? ADRIAviz.outcome_label(data; metadata_key=:metric_name) : ylabel
+    fsz = _plotly_font_sizes(1)
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
-        title_text=title,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
         xaxis=PlotlyBase.attr(;
             title_text=xlabel,
             tickvals=tickvals,
-            ticktext=ticktext
+            ticktext=ticktext,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         ),
-        yaxis=PlotlyBase.attr(; title_text=_ylabel)
+        yaxis=PlotlyBase.attr(;
+            title_text=_ylabel, tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
     return PlotlyBase.Plot(traces, layout)
 end

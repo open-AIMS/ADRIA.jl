@@ -40,7 +40,10 @@ Calculate the mean absolute coral for each scenario for the entire domain.
 - `rs` : ResultSet
 """
 function _scenario_total_cover(tac::AbstractArray; kwargs...)::AbstractArray{<:Real}
-    return dropdims(sum(slice_results(tac; kwargs...); dims=:locations); dims=:locations)
+    sliced = slice_results(tac; kwargs...)
+    tf_labels = axis_labels(sliced, :timesteps)
+    result = dropdims(sum(sliced; dims=:locations); dims=:locations)
+    return DataCube(result.data; timesteps=tf_labels, scenarios=1:size(result.data, 2))
 end
 function _scenario_total_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     tac = total_absolute_cover(rs)
@@ -124,7 +127,9 @@ function _scenario_relative_juveniles(
     aj::YAXArray{<:Real,3},
     k_area::AbstractVector{<:Real}
 )::AbstractArray{<:Real}
-    return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(k_area)
+    tf_labels = axis_labels(aj, :timesteps)
+    result = dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(k_area)
+    return DataCube(result.data; timesteps=tf_labels, scenarios=1:size(result.data, 2))
 end
 function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
     # Calculate relative domain-wide cover based on absolute values
@@ -153,7 +158,9 @@ Calculate the mean absolute juvenile population for each scenario for the entire
 function _scenario_absolute_juveniles(
     aj::YAXArray
 )::AbstractArray{<:Real}
-    return dropdims(sum(aj; dims=:locations); dims=:locations)
+    tf_labels = axis_labels(aj, :timesteps)
+    result = dropdims(sum(aj; dims=:locations); dims=:locations)
+    return DataCube(result.data; timesteps=tf_labels, scenarios=1:size(result.data, 2))
 end
 function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     aj = absolute_juveniles(rs)
@@ -207,7 +214,9 @@ Calculate the mean absolute shelter volumes for each scenario for the entire dom
 """
 function _scenario_asv(asv::YAXArray; kwargs...)::AbstractArray{<:Real}
     sv_sliced = slice_results(asv; kwargs...)
-    return dropdims(sum(sv_sliced; dims=:locations); dims=:locations)
+    tf_labels = axis_labels(sv_sliced, :timesteps)
+    result = dropdims(sum(sv_sliced; dims=:locations); dims=:locations)
+    return DataCube(result.data; timesteps=tf_labels, scenarios=1:size(result.data, 2))
 end
 function _scenario_asv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
@@ -229,7 +238,9 @@ Calculate the mean relative shelter volumes for each scenario for the entire dom
 """
 function _scenario_rsv(sv::YAXArray; kwargs...)::AbstractArray{<:Real}
     sv_sliced = slice_results(sv; kwargs...)
-    return dropdims(mean(sv_sliced; dims=:locations); dims=:locations)
+    tf_labels = axis_labels(sv_sliced, :timesteps)
+    result = dropdims(mean(sv_sliced; dims=:locations); dims=:locations)
+    return DataCube(result.data; timesteps=tf_labels, scenarios=1:size(result.data, 2))
 end
 function _scenario_rsv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)

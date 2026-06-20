@@ -122,64 +122,45 @@ function Domain(
     calib_params_fn::String=""
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
-    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
-        FogCriteriaWeights(),
-        MCCriteriaWeights(),
-        DepthThresholds()
-    ]
 
-    dhw_axes = DimensionalData.name.(DHW.axes)
     if has_mcb_scenarios(DHW)
         albedos = collect(DHW.albedo)
         durations = collect(DHW.mcb_durations)
-
-        intervention_params = (
-            mcb_albedo=Factor(
-                albedos[1];
-                ptype="ordered categorical",
-                dist=CategoricalDistribution,
-                dist_params=(Tuple(albedos)),
-                name="MCB Albedo",
-                description="Albedo level to use from 5D DHW dataset."
-            ),
-            mcb_duration=Factor(
-                durations[1];
-                ptype="ordered categorical",
-                dist=CategoricalDistribution,
-                dist_params=(Tuple(durations)),
-                name="MCB Duration",
-                description="Duration level (yearly days) to use from 5D DHW dataset."
-            )
-        )
     else
         albedos = [0.0, 0.0]
         durations = [0.0, 0.0]
-        intervention_params = (
-            mcb_albedo=Factor(
-                albedos[1];
-                ptype="ordered categorical",
-                dist=CategoricalDistribution,
-                dist_params=(Tuple(albedos)),
-                name="MCB Albedo",
-                description="Albedo level to use from 5D DHW dataset."
-            ),
-            mcb_duration=Factor(
-                durations[1];
-                ptype="ordered categorical",
-                dist=CategoricalDistribution,
-                dist_params=(Tuple(durations)),
-                name="MCB Duration",
-                description="Duration level (yearly days) to use from 5D DHW dataset."
-            )
-        )
     end
+
+    intervention_params = (
+        mcb_albedo=Factor(
+            albedos[1];
+            ptype="ordered categorical",
+            dist=CategoricalDistribution,
+            dist_params=(Tuple(albedos)),
+            name="MCB Albedo",
+            description="Albedo level to use from 5D DHW dataset."
+        ),
+        mcb_duration=Factor(
+            durations[1];
+            ptype="ordered categorical",
+            dist=CategoricalDistribution,
+            dist_params=(Tuple(durations)),
+            name="MCB Duration",
+            description="Duration level (yearly days) to use from 5D DHW dataset."
+        )
+    )
+
+    local coral_instance::Coral
+    local growth_accel_instance::GrowthAcceleration
 
     if !isempty(calib_params_fn) && isfile(calib_params_fn)
         @info "Loading calibrated coral parameters from $(calib_params_fn)"
-        nc_ds = open_dataset(calib_params_fn)
-        coral_overrides = _coral_calib_overrides(nc_ds)
-        growth_accel_overrides = _growth_accel_calib_overrides(nc_ds)
+
+        # Use do block to ensure file is closed even in the event of an error
+        coral_overrides, growth_accel_overrides = open_dataset(calib_params_fn) do nc_ds
+            _coral_calib_overrides(nc_ds), _growth_accel_calib_overrides(nc_ds)
+        end
+
         coral_instance = create_coral_instance(; overrides=coral_overrides)
         growth_accel_instance = create_growth_acceleration_instance(;
             overrides=growth_accel_overrides
@@ -192,7 +173,10 @@ function Domain(
     model::Model = Model((
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(; intervention_params...),
-        criteria_weights...,
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        MCCriteriaWeights(),
+        DepthThresholds(),
         coral_instance,
         growth_accel_instance
     ))
@@ -320,7 +304,6 @@ function Domain(
     location_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
 
     n_locs::Int64 = nrow(location_data)
-    n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
     coral_growth::CoralGrowth = CoralGrowth(n_locs)
 
     # Load initial coral cover relative to k area

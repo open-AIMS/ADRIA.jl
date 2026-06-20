@@ -84,6 +84,8 @@ function ADRIA.viz.scenarios(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
+    set_figure_defaults(fig_opts)
+    set_typography_defaults!(axis_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -105,6 +107,8 @@ function ADRIA.viz.scenarios(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_figure_defaults(fig_opts)
+    set_typography_defaults!(axis_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -132,6 +136,7 @@ function ADRIA.viz.scenarios(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenarios!(
@@ -148,6 +153,7 @@ function ADRIA.viz.scenarios!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
+    set_typography_defaults!(axis_opts)
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -304,6 +310,7 @@ function ADRIA.viz.scenario_by_group_and_size(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     n_timesteps, n_groups, n_sizes = size(data)
+    set_typography_defaults!(axis_opts; n_panels=n_groups * n_sizes)
     fig_size = pop!(fig_opts, :size, (1000, 1200))
     fig = Figure(; size=fig_size, fig_opts...)
     xdata = 1:n_timesteps
@@ -334,7 +341,7 @@ function ADRIA.viz.scenario_by_group_and_size(
         end
     end
 
-    Label(fig[0, :], title; fontsize=24)
+    Label(fig[0, :], title; fontsize=get(axis_opts, :titlesize, 16))
 
     return fig
 end
@@ -502,6 +509,7 @@ function ADRIA.viz.scenarios(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenarios!(
@@ -516,6 +524,7 @@ function ADRIA.viz.scenarios!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
+    set_typography_defaults!(axis_opts)
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
 

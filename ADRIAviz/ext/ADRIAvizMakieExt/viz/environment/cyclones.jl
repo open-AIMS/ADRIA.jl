@@ -4,13 +4,15 @@ function ADRIA.viz.cyclone_scenario(
     dom::Domain, scen_id::Int64;
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    set_typography_defaults!(axis_opts)
     taxa_mean = dropdims(
         mean(dom.cyclone_mortality_scens[:, :, :, scen_id] .* 100.0; dims=:species);
         dims=:species
     )
     mean_cyc_scen = dropdims(mean(taxa_mean; dims=:locations); dims=:locations)
 
-    fig_opts[:size] = get(axis_opts, :size, (800, 400))
+    fig_opts[:size] = get(fig_opts, :size, (800, 400))
+    set_figure_defaults(fig_opts)
     f = Figure(; fig_opts...)
 
     axis_opts[:xticks] = get(axis_opts, :xticks, collect(taxa_mean.timesteps[1:5:end]))
