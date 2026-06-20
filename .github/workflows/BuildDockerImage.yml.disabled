@@ -1,0 +1,80 @@
+name: Build Docker Image
+
+# Downloads pre-built sysimage .so files from S3, then builds and pushes
+# sim and analysis Docker images to ECR. Does NOT build sysimages in CI
+# (that takes 35-45 min per variant and is done manually by engineers).
+#
+# Required GitHub secrets:
+#   AWS_ACCOUNT_ID           - 12-digit AWS account number
+#   AWS_ACCESS_KEY_ID        - IAM key with S3 read + ECR push
+#   AWS_SECRET_ACCESS_KEY    - corresponding secret
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "Manifest.toml"
+      - "ADRIAviz/Manifest.toml"
+      - "ADRIAanalysis/Manifest.toml"
+      - "src/**/*.jl"
+  workflow_dispatch:
+    inputs:
+      sysimage_hash:
+        description: "Manifest hash prefix of the .so to embed (leave blank for latest)"
+        required: false
+        default: "latest"
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-2.amazonaws.com
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [sim, analysis]
+        include:
+          - variant: sim
+            docker_target: adria-sim-runtime
+            so_name: adria_sim.so
+            so_dest: build/sim/adria_sim.so
+          - variant: analysis
+            docker_target: adria-analysis-runtime
+            so_name: adria_analysis.so
+            so_dest: build/analysis/adria_analysis.so
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download sysimage .so from S3
+        run: |
+          PREFIX=${{ github.event.inputs.sysimage_hash || 'latest' }}
+          aws s3 cp \
+            s3://adria-sysimages/linux/${{ matrix.variant }}/${PREFIX}/${{ matrix.so_name }} \
+            ${{ matrix.so_dest }}
+
+      - name: Check Manifests are committed
+        run: git ls-files --error-unmatch Manifest.toml ADRIAviz/Manifest.toml ADRIAanalysis/Manifest.toml
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ matrix.docker_target }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/adria/${{ matrix.variant }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/adria/${{ matrix.variant }}:latest
+            ${{ github.ref_type == 'tag' && format('{0}/adria/{1}:{2}', env.ECR_REGISTRY, matrix.variant, github.ref_name) || '' }}

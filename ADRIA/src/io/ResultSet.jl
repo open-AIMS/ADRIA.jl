@@ -1,0 +1,659 @@
+using Dates: now
+
+using Zarr
+
+using Setfield: @set!
+using DataFrames: DataFrame
+using ADRIA: Domain, EnvLayer
+
+const CONNECTIVITY = "connectivity"
+const ENV_STATS = "env_stats"
+const INPUTS = "inputs"
+const LOG_GRP = "logs"
+const MODEL_SPEC = "model_spec"
+const RESULTS = "results"
+const SPATIAL_DATA = "spatial"
+
+# Combined store name for the 6 location-based outcome metrics
+const LOC_METRICS = "loc_outcomes"
+const LOC_METRIC_NAMES = [
+    :relative_cover, :relative_shelter_volume, :absolute_shelter_volume,
+    :relative_juveniles, :juvenile_indicator, :coral_evenness
+]
+
+abstract type ResultSet end
+
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
+    name::String
+    RCP::String
+    invoke_time::String
+    ADRIA_VERSION::String
+
+    loc_ids::T1
+    loc_area::Vector{Float64}
+    loc_max_coral_cover::Vector{Float64}
+    loc_centroids::T2
+    env_layer_md::EnvLayer
+    dhw_stats::D
+    wave_stats::D
+    connectivity_data::D
+    loc_data::G
+
+    inputs::G
+    sim_constants::D1
+    model_spec::DF
+
+    # raw::AbstractArray
+    outcomes::D2
+    ranks::A
+    mc_log::B  # Number of individuals deployed per functional group per location
+    seed_log::B  # Number of individuals deployed per functional group per location
+    shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
+    coral_dhw_tol_log::D3
+    coral_cover_log::D4
+end
+
+"""
+    _log_attrs_to_props(attrs)::Dict{Symbol,Any}
+
+Extract `units` and `description` from a Zarr array's `.attrs` dict into a
+`Dict{Symbol,Any}` suitable for passing as `properties` to `DataCube`.
+"""
+function _log_attrs_to_props(attrs)::Dict{Symbol,Any}
+    props = Dict{Symbol,Any}()
+    haskey(attrs, "units") && (props[:units] = attrs["units"])
+    haskey(attrs, "description") && (props[:description] = attrs["description"])
+    return props
+end
+
+"""
+Load shading log from a Zarr log group, handling both the new combined format
+(`shading_log`) and old stores that kept `fog` and `shade` as separate arrays.
+"""
+function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
+    if haskey(log_set, "shading_log")
+        arr = log_set["shading_log"]
+        ax_names = Symbol.(Tuple(arr.attrs["structure"]))
+        ax_labels = [1:s for s in size(arr)]
+        return DataCube(
+            arr;
+            properties=_log_attrs_to_props(arr.attrs),
+            NamedTuple{ax_names}(ax_labels)...
+        )
+    end
+
+    # Old format: two separate (T, L, N) arrays — load and stack into (T, L, 2, N)
+    fog_arr = log_set["fog"][:, :, :]
+    shade_arr = log_set["shade"][:, :, :]
+    tf, n_locs, n_scens = size(fog_arr)
+    combined = Array{Float32}(undef, tf, n_locs, 2, n_scens)
+    combined[:, :, 1, :] .= fog_arr
+    combined[:, :, 2, :] .= shade_arr
+    return DataCube(
+        combined;
+        timesteps=1:tf, locations=1:n_locs,
+        intervention=["fog", "shade"], scenarios=1:n_scens
+    )
+end
+
+function ResultSet(
+    input_set::AbstractArray,
+    env_layer_md::EnvLayer,
+    inputs_used::DataFrame,
+    outcomes::Dict,
+    log_set::Zarr.ZGroup,
+    dhw_stats_set::Dict,
+    wave_stats_set::Dict,
+    conn_data::Dict,
+    loc_data::DataFrame,
+    model_spec::DataFrame
+)::ResultSet
+    rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
+    return ADRIAResultSet(
+        input_set.attrs["name"],
+        string(rcp),
+        input_set.attrs["invoke_time"],
+        input_set.attrs["ADRIA_VERSION"],
+        input_set.attrs["loc_ids"],
+        convert.(Float64, input_set.attrs["loc_area"]),
+        convert.(Float64, input_set.attrs["loc_max_coral_cover"]),
+        input_set.attrs["loc_centroids"],
+        env_layer_md,
+        dhw_stats_set,
+        wave_stats_set,
+        conn_data,
+        loc_data,
+        inputs_used,
+        input_set.attrs["sim_constants"],
+        model_spec,
+        outcomes,
+        map(Float64, _rankings_data(log_set["rankings"])),
+        let arr = log_set["moving_corals"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
+        end,
+        let arr = log_set["seed"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
+        end,
+        map(Float64, _load_shading_log(log_set)),
+        let arr = log_set["coral_dhw_log"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(
+                Float64,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
+        end,
+        haskey(log_set, "coral_cover_log") ?
+        let arr = log_set["coral_cover_log"]
+            ax = Symbol.(Tuple(arr.attrs["structure"]))
+            map(
+                x -> Float64(x) / 65535.0,
+                DataCube(
+                    arr;
+                    properties=_log_attrs_to_props(arr.attrs),
+                    NamedTuple{ax}([1:s for s in size(arr)])...
+                )
+            )
+        end : nothing
+    )
+end
+
+function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
+    ax_names = Symbol.(Tuple(rankings_set.attrs["structure"]))
+    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} = range.(
+        [1], size(rankings_set)
+    )
+
+    # Replace interventions axis with named labels
+    intervention_idx = findfirst(x -> x == :interventions, ax_names)
+    !isnothing(intervention_idx) && (ax_labels[intervention_idx] = interventions())
+
+    return DataCube(
+        rankings_set;
+        properties=_log_attrs_to_props(rankings_set.attrs),
+        NamedTuple{ax_names}(ax_labels)...
+    )
+end
+
+"""
+    _copy_env_data(src::String, dst::String, subdir::String)::Nothing
+
+Helper function to copy environmental data layer statistics from data store.
+"""
+function _copy_env_data(
+    src::String, dst::String, folder_name::String, subdir=""::String
+)::Nothing
+    src_dir = joinpath(src, folder_name, subdir)
+    dst_dir = joinpath(dst, folder_name, subdir)
+    mkpath(dst_dir)
+    src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
+    for ds in src_ds
+        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds); force=true)
+    end
+
+    return nothing
+end
+
+"""
+    combine_results(result_sets...)::ResultSet
+    combine_results(result_set_locs::Array{String})::ResultSet
+
+Combine arbitrary number of ADRIA result sets into a single data store.
+
+Note: Results are stored in Zarr format. Combining data sets can be
+  expected to double total disk space requirement.
+"""
+function combine_results(result_sets...)::ResultSet
+    # ── Validation ────────────────────────────────────────────────────────────
+    # Check first vs last only — comparing all N*(N-1)/2 pairs is O(N) dict comparisons
+    # and at ~200ms each (large dicts) adds 20+ seconds for 94 result sets.
+    if length(result_sets) > 1
+        @assert result_sets[1].sim_constants == result_sets[end].sim_constants
+    end
+    versions = Set(rs.ADRIA_VERSION for rs in result_sets)
+    if length(versions) != 1
+        @warn "Results were created with different versions of ADRIA so errors may occur!"
+        @warn "Results from model runs < 0.9 are no longer compatible!"
+    end
+
+    # ── Store init + inputs ───────────────────────────────────────────────────
+    # Collect scalar fields from all result sets up front to avoid repeated
+    # lazy-field or GC-pressure hits later. This single pass also catches any
+    # per-rs metadata needed downstream.
+    rs1 = result_sets[1]
+    canonical_name = rs1.name
+    combined_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
+    rcps = join(unique(rs.RCP for rs in result_sets), "_")
+    new_loc = joinpath(
+        ENV["ADRIA_OUTPUT_DIR"], "$(rs1.name)__RCPs$(rcps)__$(combined_time)"
+    )
+    z_store = DirectoryStore(new_loc)
+
+    # ── Build inputs + scenario attributes ───────────────────────────────────
+    n_scenarios = sum(size(rs.inputs, 1) for rs in result_sets)
+    envlayer = rs1.env_layer_md
+    env_md = EnvLayer(
+        envlayer.dpkg_path,
+        envlayer.loc_data_fn,
+        envlayer.loc_id_col,
+        envlayer.cluster_id_col,
+        envlayer.init_coral_cov_fn,
+        envlayer.connectivity_fn,
+        dirname(envlayer.DHW_fn),
+        dirname(envlayer.wave_fn),
+        envlayer.timeframe
+    )
+    all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
+    input_dims = size(all_inputs)
+    attrs = scenario_attributes(
+        canonical_name,
+        rcps,
+        names(all_inputs),
+        combined_time,
+        env_md,
+        rs1.sim_constants,
+        rs1.loc_ids,
+        rs1.loc_area,
+        rs1.loc_max_coral_cover,
+        rs1.loc_centroids
+    )
+
+    # ── Copy spatial data and model spec ──────────────────────────────────────
+    mkdir(joinpath(new_loc, SPATIAL_DATA))
+    cp(
+        attrs[:loc_data_file],
+        joinpath(new_loc, SPATIAL_DATA, basename(attrs[:loc_data_file]));
+        force=true
+    )
+    mkdir(joinpath(new_loc, MODEL_SPEC))
+    CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec.csv"), rs1.model_spec)
+
+    # ── Write inputs Zarr + compute chunk size ────────────────────────────────
+    input_loc::String = joinpath(z_store.folder, INPUTS)
+    input_set = zcreate(
+        Float64,
+        input_dims...;
+        fill_value=-9999.0,
+        fill_as_missing=false,
+        path=input_loc,
+        chunks=(1, input_dims[2]),
+        attrs=attrs
+    )
+    input_set[:, :] = Matrix(all_inputs)
+    n_scenarios = nrow(all_inputs)
+    env_batch::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
+    # Chunk size must match write granularity (scenarios per source result set).
+    # Using total_scenarios/nthreads causes chunk write amplification: each small
+    # write reads, decompresses, modifies, and rewrites the full chunk — O(n_sets×).
+    per_rs_len::Int = minimum(size(rs.inputs, 1) for rs in result_sets)
+    batch_size::Int = if env_batch > 0
+        min(env_batch, n_scenarios)
+    else
+        per_rs_len
+    end
+
+    # ── Setup log Zarr stores ─────────────────────────────────────────────────
+    logs = (;
+        zip(
+            [
+                :ranks,
+                :mc_log,
+                :seed_log,
+                :shading_log,
+                :coral_dhw_tol_log,
+                :coral_cover_log
+            ],
+            setup_logs(
+                z_store,
+                rs1.loc_ids,
+                nrow(all_inputs),
+                size(rs1.seed_log, :timesteps),
+                size(rs1.seed_log, :locations),
+                size(rs1.seed_log, :coral_id),
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id),
+                batch_size
+            )
+        )...
+    )
+
+    # ── Copy logs ─────────────────────────────────────────────────────────────
+    # Pre-read all source data in parallel (reads from separate Zarr stores are
+    # independent), then write sequentially to each destination ZArray.
+    n_rs = length(result_sets)
+    for log in keys(logs)
+        n_log = getfield(logs, log)
+
+        src = Vector{Union{Nothing,Array}}(undef, n_rs)
+        Threads.@threads for i = 1:n_rs
+            s = getfield(result_sets[i], log)
+            if isnothing(s)
+                src[i] = nothing
+            elseif log == :coral_cover_log
+                src[i] = round.(UInt16, clamp.(Array(s), 0.0, 1.0) .* 65535.0)
+            else
+                src[i] = Array(s)
+            end
+        end
+
+        scen_id = 1
+        for i = 1:n_rs
+            rs_scen_len =
+                isnothing(src[i]) ?
+                size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
+            if !isnothing(src[i])
+                n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
+            end
+            scen_id += rs_scen_len
+        end
+    end
+
+    # ── Copy outcome metrics ──────────────────────────────────────────────────
+    # Write all metrics together per result set (one full-chunk write each) to avoid
+    # the partial-chunk write amplification of the per-metric outer loop:
+    # with 6 metrics in one chunk, writing metric-by-metric triggered 5 read-modify-write
+    # cycles per result set per chunk.
+    # Reads are parallelised; the sequential write loop is kept because loc_store is shared.
+    tf_len = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :timesteps)
+    n_locs = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :locations)
+    n_loc_metrics = length(LOC_METRIC_NAMES)
+    loc_dims = (tf_len, n_locs, n_loc_metrics, n_scenarios)
+    loc_store = zcreate(
+        Float32,
+        loc_dims...;
+        fill_value=Float32(0),
+        fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
+        chunks=(loc_dims[1:3]..., batch_size),
+        attrs=Dict{Symbol,Any}(
+            :structure => ("timesteps", "locations", "metrics", "scenarios"),
+            :unique_loc_ids => rs1.loc_ids,
+            :metrics => string.(LOC_METRIC_NAMES)
+        ),
+        compressor=COMPRESSOR
+    )
+    loc_bufs = Vector{Array{Float32,4}}(undef, n_rs)
+    Threads.@threads for i = 1:n_rs
+        rs = result_sets[i]
+        rs_scen_len = size(rs.outcomes[LOC_METRIC_NAMES[1]], :scenarios)
+        buf = Array{Float32}(undef, tf_len, n_locs, n_loc_metrics, rs_scen_len)
+        for (m_idx, m_name) in enumerate(LOC_METRIC_NAMES)
+            buf[:, :, m_idx, :] .= Array{Float32}(rs.outcomes[m_name])
+        end
+        loc_bufs[i] = buf
+    end
+    scen_id = 1
+    for i = 1:n_rs
+        rs_scen_len = size(loc_bufs[i], 4)
+        loc_store[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = loc_bufs[i]
+        scen_id += rs_scen_len
+    end
+
+    taxa_name = :relative_taxa_cover
+    taxa_dims = (size(rs1.outcomes[taxa_name])[1:(end - 1)]..., n_scenarios)
+    taxa_store = zcreate(
+        Float32,
+        taxa_dims...;
+        fill_value=Float32(0),
+        fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, string(taxa_name)),
+        chunks=(taxa_dims[1:(end - 1)]..., batch_size),
+        attrs=Dict{Symbol,Any}(
+            :structure => ("timesteps", "groups", "scenarios")
+        ),
+        compressor=COMPRESSOR
+    )
+    taxa_bufs = Vector{Array{Float32,3}}(undef, n_rs)
+    Threads.@threads for i = 1:n_rs
+        taxa_bufs[i] = Array{Float32}(result_sets[i].outcomes[taxa_name])
+    end
+    scen_id = 1
+    for i = 1:n_rs
+        rs_scen_len = size(taxa_bufs[i], 3)
+        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = taxa_bufs[i]
+        scen_id += rs_scen_len
+    end
+
+    # ── Copy env stats + final load ───────────────────────────────────────────
+    mkdir(joinpath(new_loc, ENV_STATS))
+    for rs in result_sets
+        loc::String = rs.env_layer_md.dpkg_path
+        _copy_env_data(loc, new_loc, ENV_STATS, "dhw")
+        _copy_env_data(loc, new_loc, ENV_STATS, "wave")
+        _copy_env_data(loc, new_loc, CONNECTIVITY)
+    end
+
+    result = load_results(z_store.folder)
+    return result
+end
+function combine_results(result_set_locs::Array{String})::ResultSet
+    return combine_results(load_results.(result_set_locs)...)
+end
+
+"""
+    env_stats(rs::ResultSet, s_name::String, rcp::String)
+    env_stats(rs::ResultSet, s_name::String, rcp::String, scenario::Int)
+    env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, scenario::Int)
+
+Extract statistics for a given environmental layer ("DHW" or "wave")
+"""
+function env_stats(rs::ResultSet, s_name::String, rcp::String)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp]
+end
+function env_stats(rs::ResultSet, s_name::String, rcp::String, scenario::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][:, scenario]
+end
+function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, scenario::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, scenario]
+end
+
+"""
+    store_name(rs::ResultSet)::String
+
+Get name of result set.
+"""
+function store_name(rs::ResultSet)::String
+    return "$(rs.name)__RCPs_$(rs.RCP)__$(rs.invoke_time)"
+end
+
+"""
+    result_location(rs::ResultSet)::String
+
+Get location of result set.
+"""
+function result_location(rs::ResultSet)::String
+    store = ""
+    try
+        store = joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(rs))
+    catch err
+        if isa(err, KeyError)
+            @warn "Output directory not yet set. Displaying result directory instead."
+            store = store_name(rs)
+        else
+            rethrow(err)
+        end
+    end
+
+    return replace(store, "\\" => "/")
+end
+
+"""
+    select(r::ResultSet, op::String)
+
+Hacky scenario filtering - to be replaced with more robust approach.
+
+Only supports filtering by single attribute.
+Should be expanded to support filtering metric results too.
+
+# Examples
+```julia
+select(result, "guided .> 0.0")
+
+# Above expands to:
+# result.inputs.guided .> 0.0
+```
+"""
+function select(r::ResultSet, op::String)
+    scens = r.inputs
+
+    col, qry = split(op, " "; limit=2)
+    col = Symbol(col)
+
+    df_ss = getproperty(scens, col)
+
+    return eval(Meta.parse("$df_ss $qry"))
+end
+
+"""
+    timesteps(rs::ResultSet)
+
+Retrieve the time steps represented in the result set.
+
+# Arguments
+- `rs` : ResultSet
+"""
+function timesteps(rs::ResultSet)
+    return rs.env_layer_md.timeframe
+end
+
+"""
+    timesteps(outcomes::YAXArray)::Vector{Int64}
+
+Extract time step labels from a YAXArray. Returns an empty `Vector{Int64}` if
+the array has no `:timesteps` dimension.
+"""
+function timesteps(outcomes::YAXArray)::Vector{Int64}
+    return :timesteps in axes_names(outcomes) ? Int.(outcomes.timesteps) : Int64[]
+end
+
+@deprecate site_k_area(rs::ResultSet) loc_k_area(rs)
+@deprecate site_k(rs::ResultSet) loc_k(rs)
+
+"""
+    loc_k_area(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's coral carrying capacity in terms of absolute area.
+"""
+function loc_k_area(rs::ResultSet)::Vector{Float64}
+    return rs.loc_max_coral_cover .* rs.loc_area
+end
+
+"""
+    loc_k(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's coral carrying capacity in as a proportion relative to the
+location's total area.
+"""
+function loc_k(rs::ResultSet)::Vector{Float64}
+    return rs.loc_max_coral_cover
+end
+
+"""
+    loc_area(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's total area in its areal unit (m², km², etc).
+"""
+function loc_area(rs::ResultSet)::Vector{Float64}
+    return rs.loc_area
+end
+
+"""
+    n_locations(rs::ResultSet)::Int64
+
+Retrieve the number of locations represented in the result set.
+
+# Arguments
+- `rs` : ResultSet
+"""
+function n_locations(rs::ResultSet)::Int64
+    return size(rs.loc_ids, 1)
+end
+
+"""
+    n_scenarios(rs::ResultSet)::Int64
+
+Number of scenarios stored in the given result set.
+
+# Arguments
+- `rs` : ResultSet
+"""
+function n_scenarios(rs::ResultSet)::Int64
+    return size(rs.inputs, 1)
+end
+
+"""
+    component_params(spec::DataFrame, component::Type)::DataFrame
+
+Extract parameters for a specific model component from exported model specification.
+"""
+function component_params(rs::ResultSet, component::T)::DataFrame where {T}
+    spec = rs.model_spec
+    return spec[spec.component .== string(component), :]
+end
+function component_params(rs::ResultSet, components::Vector{T})::DataFrame where {T}
+    spec = rs.model_spec
+    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
+end
+
+"""
+    model_spec(rs::ResultSet)::DataFrame
+
+Extract model specification from Result Set.
+"""
+function model_spec(rs::ResultSet)::DataFrame
+    return rs.model_spec
+end
+function model_spec(rs::ResultSet, param_names::Vector{Symbol})::DataFrame
+    return rs.model_spec[rs.model_spec.fieldname .∈ Ref(param_names), :]
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
+    vers_id = rs.ADRIA_VERSION
+
+    tf, locs, scens = size(rs.outcomes[:relative_cover])
+    # Species/size groups represented: $(species)
+
+    rcps = join(split(rs.RCP, "_"), ", ")
+
+    println("""
+    Domain: $(rs.name)
+
+    Run with ADRIA $(vers_id) on $(rs.invoke_time)
+    Results stored at: $(result_location(rs))
+
+    RCP(s) represented: $(rcps)
+    Scenarios run: $(scens)
+    Number of locations: $(locs)
+    Timesteps: $(tf)
+
+    Input layers
+    ------------""")
+
+    for fn in fieldnames(typeof(rs.env_layer_md))
+        if fn == :timeframe
+            tf = getfield(rs.env_layer_md, fn)
+            println("$(fn) : $(tf[1]) - $(tf[end])")
+            continue
+        end
+
+        println("$(fn) : $(getfield(rs.env_layer_md, fn))")
+    end
+end

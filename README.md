@@ -25,7 +25,13 @@ deployment which consider ecological, economic and social benefits.
 ADRIA also includes a simplified coral ecosystem model to allow exploration of outcomes as a
 result of intervention decisions made across a wide range of possible future conditions.
 
-ADRIA requires Julia v1.9 and above.
+ADRIA requires Julia v1.11 and above.
+
+The repository is structured as a Julia workspace containing three packages.
+
+- **ADRIA** — the core simulation and MCDA engine
+- **ADRIAviz** — visualization tools (Makie and Plotly backends)
+- **ADRIAanalysis** — extended analysis functions (clustering, sensitivity, DEA, rule extraction)
 
 Setup and usage is demonstrated in the
 [Documentation](https://open-aims.github.io/ADRIA.jl/stable/usage/getting_started/).

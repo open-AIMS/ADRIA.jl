@@ -1,13 +1,13 @@
 name: UnitTests
 on:
-  # Trigger manually or on merge to main
+  # Trigger manually or on version tags
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   # Run in PR when packages updated
   pull_request:
     paths:
-      - 'Manifest-v1.11.toml'
+      - 'ADRIA/Manifest-v1.11.toml'
   workflow_dispatch:
 
 jobs:
@@ -33,10 +33,16 @@ jobs:
         with:
           cache-name: adria-setup-cache
       - uses: julia-actions/julia-buildpkg@v1
+        with:
+          project: ADRIA
       - uses: julia-actions/julia-runtest@v1
+        with:
+          project: ADRIA
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: ADRIA/src
       - uses: codecov/codecov-action@v6
         with:
           verbose: true
-          file: lcov.info
+          files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}

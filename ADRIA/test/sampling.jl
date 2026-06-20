@@ -1,0 +1,439 @@
+using ADRIA
+using ADRIA.Distributions
+using ADRIA.DataFrames
+
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+end
+
+if !@isdefined(ADRIA_DOM_45)
+    const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+end
+
+@testset "sample" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    num_samples = 32
+    scens = ADRIA.sample(dom, num_samples)
+    ms = ADRIA.model_spec(dom, scens)
+    constant_params = ms.is_constant
+
+    @testset "constant params are constant" begin
+        @test all(
+            values(scens[1, constant_params]) .== values(scens[end, constant_params])
+        ) ||
+            "Constant params are not constant!"
+    end
+
+    @testset "values are within expected bounds" begin
+        lb = values(ms[:, :lower_bound])
+        ub = values(ms[:, :upper_bound])
+
+        not_cw_mask =
+            ms.component .∉
+            [(
+                "SeedCriteriaWeights",
+                "FogCriteriaWeights",
+                "MCCriteriaWeights",
+                "decision.DepthThresholds"
+            )]
+
+        # Reactive params are zeroed when both strategies are Periodic (not Reactive)
+        not_reactive_mask = .!(contains.(string.(ms.fieldname), "reactive"))
+
+        iv_fieldnames = ADRIA.component_params(dom, Intervention).fieldname
+        not_iv_mask = .!(
+        ms.fieldname .∈ [filter(x -> x ∉ [:guided, :heritability], iv_fieldnames)]
+)
+
+        to_test_mask =
+            not_cw_mask .& not_reactive_mask .& not_iv_mask
+        _lb, _ub = lb[to_test_mask], ub[to_test_mask]
+
+        eco = (ms.component .== "Coral") .& .!(constant_params)
+
+        msg = "Sampled values were not in expected bounds!"
+        coral_msg = "Sampled coral values were not in expected bounds!"
+        for i = 1:num_samples
+            # Filter CriteriaWeights factors
+            scen_vals = collect(scens[i, :])
+            not_cw_scen_vals = scen_vals[to_test_mask]
+
+            if scens[i, :guided] > 0
+
+                # All params should be within bounds
+                cond = _lb .<= not_cw_scen_vals .<= _ub
+                @test all(cond) ||
+                    "$msg | $(ms[to_test_mask,:][.!(cond), :]) | $(not_cw_scen_vals[.!(cond)])"
+                continue
+            end
+
+            # When no interventions are used, e.g., for counterfactual or unguided scenarios
+            # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
+            cond = lb[eco] .<= scen_vals[eco] .<= ub[eco]
+            @test all(cond) ||
+                "$coral_msg | $(ms[.!(cond), :]) | $(scen_vals[eco][.!(cond)])"
+
+            # Note: Test to ensure all intervention factors are set to 0 is covered by the guided
+            # sampling test below
+        end
+    end
+end
+
+@testset "Targeted sampling" begin
+    @testset "Counterfactual sampling" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+        scens = ADRIA.sample_cf(dom, num_samples)
+
+        @test all(scens.guided .== -1) || "Intervention scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
+
+        # Ensure all interventions are deactivated (ignoring the "guided" factor)
+        interv_params = String[ip for ip in interv_params if ip != "guided"]
+        @test all(all.(==(0), eachrow(scens[:, interv_params]))) ||
+            "Intervention factors with values > 0 found"
+    end
+
+    @testset "Guided sampling" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+        scens = ADRIA.sample_guided(dom, num_samples)
+        ms = ADRIA.model_spec(dom, scens)
+
+        @test all(scens.guided .> 0) || "Non-intervention scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
+
+        # Ignore guided
+        interv_params = String[ip for ip in interv_params if ip != "guided"]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
+            "All intervention factors had values <= 0"
+
+        seed_weights = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+        fog_weights = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
+
+        @test all(abs.(sum(Matrix(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
+            "Some seeding weights are not properly normalized."
+        @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
+            "Some fogging weights are not properly normalized."
+    end
+
+    @testset "Specific Intervention strategy" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+
+        test_inputs = [
+            ("Cocoso",), ("Mairca",), ("counterfactual", "unguided"),
+            ("counterfactual", "unguided", "Piv"),
+            ("counterfactual", "unguided", "Cocoso", "Moora", "Piv", "Vikor"),
+            ("Cocoso", "Mairca", "Moora", "Piv", "Vikor")
+        ]
+        test_output = [
+            [1], [2], [-1, 0], [-1, 0, 4], [-1, 0, 1, 3, 4, 5]
+        ]
+
+        for (inp, out) in zip(test_inputs, test_output)
+            ADRIA.set_factor_bounds!(dom, :guided, inp)
+            scens = ADRIA.sample(dom, 32)
+
+            @test all(scens.guided .∈ [out])
+        end
+    end
+
+    @testset "Unguided sampling" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+        scens = ADRIA.sample_unguided(dom, num_samples)
+
+        @test all(scens.guided .== 0) || "Intervention or counterfactual scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
+
+        # Ignore guided, planning horizon, and reactive params (which are conditionally zeroed)
+        interv_params = String[
+            ip for ip in interv_params if
+            ip ∉ ["plan_horizon", "guided"] && !contains(ip, "reactive")
+        ]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
+            "Some intervention params had values <= 0"
+    end
+
+    @testset "Site selection sampling" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+        scens = ADRIA.sample_selection(dom, num_samples)
+
+        @test all(scens.guided .> 0) || "Intervention or counterfactual scenarios found"
+
+        # Get Intervention params
+        ms = ADRIA.model_spec(dom)
+        target_params = string.(
+            ADRIA.component_params(
+                ms,
+                [
+                    ADRIA.EnvironmentalLayer,
+                    ADRIA.Intervention,
+                    ADRIA.SeedCriteriaWeights,
+                    ADRIA.FogCriteriaWeights
+                ]
+            ).fieldname
+        )
+
+        # Ignore guided
+        target_params = String[ip for ip in target_params if ip != "guided"]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachrow(scens[:, target_params]))) ||
+            "All target factors had values <= 0"
+
+        # Check that all coral parameters are set to their nominated default values
+        coral_params = ADRIA.component_params(ms, ADRIA.Coral).fieldname
+
+        @test all([
+            all(scens[:, c] .== ms[ms.fieldname .== c, :val][1]) for c in coral_params
+        ]) || "Non-default coral parameter value found"
+    end
+end
+
+@testset "Sample bounds" begin
+    @testset "Get sampling bounds" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+        ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
+
+        @testset "Continuous variables" begin
+            continuous_factors = ms[(ms.ptype .∉ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+
+            for factor in eachrow(continuous_factors)
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn) == factor.dist_params[1:2]
+                @test ADRIA.get_attr(dom, fn, :default_dist_params) ==
+                    factor.default_dist_params
+            end
+        end
+
+        @testset "Discrete variables" begin
+            discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+            for factor in eachrow(discrete_factors)
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1]
+                @test ADRIA.get_bounds(dom, fn)[2] == factor.dist_params[2]
+                @test ADRIA.get_attr(dom, fn, :default_dist_params)[1] ==
+                    factor.default_dist_params[1]
+                @test ADRIA.get_attr(dom, fn, :default_dist_params)[2] ==
+                    factor.default_dist_params[2]
+            end
+        end
+    end
+
+    @testset "Set new sampling bounds" begin
+        set_factor_bounds! = ADRIA.set_factor_bounds!
+
+        dom = deepcopy(ADRIA_DOM_45)
+        num_samples = 32
+        cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+        ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
+
+        test_components = ["EnvironmentalLayer", "Coral"]
+
+        function _test_bounds(
+            scens::DataFrame, factor_mask::BitVector, bounds_ranges::Vector
+        )
+            # scens[:,collect(factor_fieldnames)] == scens[:,factor_mask]
+
+            filt_scens = Matrix(scens[scens.guided .> 0, factor_mask])
+            min_scens, max_scens = vcat.([extrema(x) for x in eachcol(filt_scens)]...)
+            min_bounds, max_bounds = vcat.(extrema.(collect.(bounds_ranges))...)
+
+            err_msg = "Sampled continuous factor is outside of specified new bounds."
+            # @test all((max_scens .<= max_bounds) .&& (min_scens .>= min_bounds)) || err_msg
+            return all((max_scens .<= max_bounds) .&& (min_scens .>= min_bounds)) || err_msg
+        end
+
+        @testset "Uniform distributions" begin
+            factor_mask = (ms.component .∈ [test_components]) .&& (ms.dist .== Uniform)
+            factors = ms[factor_mask, :]
+            factor_fieldnames = (factors.fieldname...,)
+
+            @testset "set_factor_bounds!" begin
+                bounds_ranges = [range(b[1], b[2], 5) for b in factors.default_dist_params]
+                new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+                scens = ADRIA.sample_guided(dom, num_samples)
+
+                @test _test_bounds(scens, factor_mask, bounds_ranges)
+            end
+
+            @testset "set to default bounds" begin
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
+                dom = ADRIA.set_factor_bounds!(
+                    dom; NamedTuple{factor_fieldnames}(new_bounds)...
+                )
+
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+                @test all(factor_params.dist_params .== factor_params.default_dist_params)
+                scens = ADRIA.sample(dom, num_samples)
+
+                @test _test_bounds(scens, factor_mask, new_bounds)
+            end
+        end
+
+        # @testset "DiscreteUniform distributions" begin
+        #     factor_mask = ms.component .∈ [test_components] .&& ms.dist .== DiscreteUniform
+        #     factors = ms[factor_mask, :]
+        #     factor_fieldnames = (factors.fieldname...,)
+
+        #     @testset "set_factor_bounds!" begin
+        #         bounds_ranges = [b[1]:b[2] for b in factors.default_dist_params]
+        #         new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+        #         scens = ADRIA.sample_guided(dom, num_samples)
+
+        #         @test _test_bounds(scens, factor_mask, bounds_ranges)
+        #     end
+
+        #     @testset "get_default_dist_params" begin
+        #         new_bounds =
+        #             ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+
+        #         factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+        #         @test all(factor_params.dist_params .== factor_params.default_dist_params)
+        #         scens = ADRIA.sample(dom, num_samples)
+
+        #         @test _test_bounds(scens, factor_mask, new_bounds)
+        #     end
+        # end
+
+        # @testset "DiscreteOrderedUniformDist distributions" begin
+        #     factor_mask =
+        #         ms.component .∈ [test_components] .&&
+        #         ms.dist .== ADRIA.DiscreteOrderedUniformDist .&&
+        #         .!contains.(String.(ms.fieldname), "reactive")
+        #     factors = ms[factor_mask, :]
+        #     factor_fieldnames = (factors.fieldname...,)
+        #     @testset "set_factor_bounds!" begin
+        #         bounds_ranges = [b[1]:b[3]:b[2] for b in factors.default_dist_params]
+        #         new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+
+        #         new_dist_params = [
+        #             (b[1], b[2], old_dist_params[3]) for
+        #             (b, old_dist_params) in zip(new_bounds, factors.default_dist_params)
+        #         ]
+        #         dom = ADRIA.set_factor_bounds!(
+        #             dom; NamedTuple{factor_fieldnames}(new_dist_params)...
+        #         )
+        #         scens = ADRIA.sample_guided(dom, num_samples)
+
+        #         @test _test_bounds(scens, factor_mask, bounds_ranges)
+        #     end
+
+        #     @testset "get_default_dist_params" begin
+        #         new_bounds =
+        #             ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+
+        #         factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+        #         @test all(factor_params.dist_params .== factor_params.default_dist_params)
+        #         scens = ADRIA.sample(dom, num_samples)
+
+        #         @test _test_bounds(scens, factor_mask, new_bounds)
+        #     end
+        # end
+
+        @testset "TriangularDist distributions" begin
+            factor_mask = ms.component .∈ [test_components] .&& ms.dist .== TriangularDist
+            factors = ms[factor_mask, :]
+            factor_fieldnames = (factors.fieldname...,)
+            @testset "set_factor_bounds!" begin
+                bounds_ranges = [range(b[1], b[2], 5) for b in factors.default_dist_params]
+                new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+                mode_ranges = [range(nb[1], nb[2], 5) for nb in new_bounds]
+                new_modes = (rand.(mode_ranges))
+                new_dist_params = [(b[1], b[2], p) for (b, p) in zip(new_bounds, new_modes)]
+                dom = set_factor_bounds!(
+                    dom; NamedTuple{factor_fieldnames}(new_dist_params)...
+                )
+                scens = ADRIA.sample_guided(dom, num_samples)
+
+                @test _test_bounds(scens, factor_mask, new_bounds)
+            end
+
+            @testset "get_default_dist_params" begin
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
+                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+                @test all(factor_params.dist_params .== factor_params.default_dist_params)
+                scens = ADRIA.sample(dom, num_samples)
+
+                @test _test_bounds(scens, factor_mask, new_bounds)
+            end
+        end
+
+        @testset "DiscreteTriangularDist distributions" begin
+            factor_mask =
+                (ms.component .∈ [test_components]) .&&
+                (ms.dist .== ADRIA.DiscreteTriangularDist) .&&
+                .!contains.(String.(ms.fieldname), "reactive")
+            factors = ms[factor_mask, :]
+
+            if nrow(factors) == 0
+                @test_skip "No non-reactive DiscreteTriangularDist factors to test"
+            else
+                factor_fieldnames = (factors.fieldname...,)
+                @testset "set_factor_bounds!" begin
+                    bounds_ranges = [b[1]:b[2] for b in factors.default_dist_params]
+                    new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+                    new_mode_ranges = [nb[1]:nb[2] for nb in new_bounds]
+                    new_peaks = (rand.(new_mode_ranges))
+                    new_dist_params = [
+                        (b[1], b[2], p) for (b, p) in zip(new_bounds, new_peaks)
+                    ]
+                    dom = set_factor_bounds!(
+                        dom; NamedTuple{factor_fieldnames}(new_dist_params)...
+                    )
+                    scens = ADRIA.sample_guided(dom, num_samples)
+
+                    @test _test_bounds(scens, factor_mask, new_bounds)
+                end
+
+                @testset "get_default_dist_params" begin
+                    new_bounds = ADRIA.get_attr.(
+                        [dom], factor_fieldnames, [:default_dist_params]
+                    )
+                    dom = set_factor_bounds!(
+                        dom; NamedTuple{factor_fieldnames}(new_bounds)...
+                    )
+
+                    factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+                    @test all(
+                        factor_params.dist_params .== factor_params.default_dist_params
+                    )
+                    scens = ADRIA.sample(dom, num_samples)
+
+                    @test _test_bounds(scens, factor_mask, new_bounds)
+                end
+            end
+        end
+    end
+end

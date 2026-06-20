@@ -1,0 +1,17 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+
+[compat]
+CairoMakie = "0.12"
+PackageCompiler = "2"
+julia = "1.11"
+
+# ADRIAanalysis, ADRIA, ADRIAviz are Pkg.develop'd in the builder stage
+# (not listed here to avoid pinning local path UUIDs in the Manifest).
+#
+# NOTE: MLJ and SIRUS are hard deps of ADRIAanalysis until the planned
+# weak-dep extension refactor is merged.  They are intentionally absent from
+# the create_sysimage package list and from precompile_analysis.jl so that
+# their specialisations are NOT baked into the sysimage.  They will still be
+# installed in the environment and loadable at runtime.
