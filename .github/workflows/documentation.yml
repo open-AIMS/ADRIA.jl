@@ -27,9 +27,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
         run: julia --project=ADRIA/docs/ ADRIA/docs/make.jl
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
-        with:
-          folder: ADRIA/docs/build/final_site
-          branch: gh-pages
