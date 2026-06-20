@@ -4,6 +4,7 @@ examples/Outputs/
 ADRIA/docs/scripts/Outputs/
 ADRIA/docs/scripts/plotly_viz_output/
 ADRIA/docs/scripts/makie_viz_output/
+ADRIA/docs/package-lock.json
 
 /build/*.dll
 /build/*.so
