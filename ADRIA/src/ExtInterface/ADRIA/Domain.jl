@@ -156,10 +156,9 @@ function Domain(
     if !isempty(calib_params_fn) && isfile(calib_params_fn)
         @info "Loading calibrated coral parameters from $(calib_params_fn)"
 
-        # Use do block to ensure file is closed even in the event of an error
-        coral_overrides, growth_accel_overrides = open_dataset(calib_params_fn) do nc_ds
-            _coral_calib_overrides(nc_ds), _growth_accel_calib_overrides(nc_ds)
-        end
+        nc_ds = open_dataset(calib_params_fn)
+        coral_overrides, growth_accel_overrides = _coral_calib_overrides(nc_ds),
+        _growth_accel_calib_overrides(nc_ds)
 
         coral_instance = create_coral_instance(; overrides=coral_overrides)
         growth_accel_instance = create_growth_acceleration_instance(;
