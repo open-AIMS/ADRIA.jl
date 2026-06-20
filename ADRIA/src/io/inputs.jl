@@ -223,6 +223,16 @@ function load_cyclone_data(data_fn::String)
     return sort_axis(cyclone_cube, :locations)
 end
 function load_cyclone_data(
+    timeframe::Vector{Int64}, location_ids::Vector{String}
+)::YAXArray
+    return ZeroDataCube(;
+        timesteps=1:length(timeframe),
+        locations=sort(location_ids),
+        species=ADRIA.coral_spec().taxa_names,
+        scenarios=1:1
+    )
+end
+function load_cyclone_data(
     data_fn::String, timeframe::Vector{Int64}, location_ids::Vector{String}
 )::YAXArray
     cyclone_mortality = if !ispath(data_fn)
