@@ -58,9 +58,11 @@ function ADRIA.viz.rules_scatter(
         ADRIA_LAYOUT_DEFAULTS...,
         title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
         font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
-        legend=PlotlyBase.attr(; orientation="v", x=1.02, xanchor="left", y=1.0, title_text="Clusters"),
+        legend=PlotlyBase.attr(;
+            orientation="v", x=1.02, xanchor="left", y=1.0, title_text="Clusters"
+        ),
         width=max(700, 360 * n_cols),
-        height=max(400, 320 * n_rows),
+        height=max(400, 320 * n_rows)
     )
 
     traces = PlotlyBase.AbstractTrace[]

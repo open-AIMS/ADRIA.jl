@@ -65,7 +65,7 @@ function ADRIA.viz.taxonomy(
     taxa_names = if n_groups == length(fg_names)
         human_readable_name(fg_names; title_case=true)
     else
-        ["Group $(g)" for g in 1:n_groups]
+        ["Group $(g)" for g = 1:n_groups]
     end
 
     n_subplots = if by_functional_groups
@@ -87,10 +87,12 @@ function ADRIA.viz.taxonomy(
         ADRIA_LAYOUT_DEFAULTS...,
         title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
         font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
-        legend=PlotlyBase.attr(; orientation="h", x=0.5, xanchor="center", y=legend_y, yanchor="top"),
+        legend=PlotlyBase.attr(;
+            orientation="h", x=0.5, xanchor="center", y=legend_y, yanchor="top"
+        )
     )
 
-    for i in 1:n_subplots
+    for i = 1:n_subplots
         sfx = i == 1 ? "" : string(i)
         y1 = 1.0 - (i - 1) * (panel_h + y_gap)
         y0 = y1 - panel_h
