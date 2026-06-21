@@ -171,6 +171,80 @@ function effective_dhw_at_depth(
 end
 
 """
+    ps_effective_dhw_at_depth(dhw_surface, depth; R, ζ₁, ζ₂, mixing_scale)
+
+Compute effective DHW at a given depth using a dual-band exponential decay model
+(Paulson & Simpson 1977), which separately accounts for infrared and visible-light
+heat penetration.
+
+The standard Beer-Lambert single-exponential overestimates heat penetration at depth
+because it cannot simultaneously represent two physically distinct regimes:
+- **Infrared** (~58% of solar energy) is absorbed within the first ~0.35 m. Deeper
+  sites never receive this fraction regardless of water clarity or mixing.
+- **Visible light** (~42%) penetrates to 5–25 m depending on water clarity (Jerlov
+  water type) and is the dominant heat source for coral habitat.
+
+At high surface DHW, wind/convective mixing erodes thermal stratification, redistributing
+heat downward. This is captured by scaling `ζ₂` with DHW, so that under extreme events
+the visible-band effective scale depth increases and deeper sites experience more stress.
+
+DHW at depth is computed relative to the SST reference depth (2 m):
+
+    fraction(z) = [R·exp(-z/ζ₁) + (1−R)·exp(-z/ζ₂_eff)] /
+                  [R·exp(-z_ref/ζ₁) + (1−R)·exp(-z_ref/ζ₂_eff)]
+
+    effective_dhw = dhw_surface × clamp(fraction, 0, 1)
+
+# Arguments
+- `dhw_surface` : Surface DHW at the SST reference depth (~2 m)
+- `depth` : Site depth in metres
+- `R` : Infrared fraction of solar energy (default 0.58; range 0.50–0.62)
+- `ζ₁` : Infrared e-folding depth in metres (default 0.35); fixed — property of water,
+    not affected by mixing
+- `ζ₂` : Visible-light e-folding depth in metres under calm conditions (default 15.0,
+    Jerlov Type II — typical of mid-shelf GBR); range 5 m (turbid inshore) to 25 m
+    (clear oceanic)
+- `mixing_scale` : DHW at which mixing doubles `ζ₂` (default 12.0)
+
+# Notes
+This function models accumulated thermal stress (DHW), not instantaneous solar flux.
+The dual-band formulation is physically motivated by how solar energy is deposited at
+depth; temperature anomaly propagation via mixing dynamics is approximated through the
+`mixing_scale` parameter.
+
+This method is hypothetical and untested. It requires further empirical data for comparison
+and assessment.
+
+# References
+1. Paulson, C. A., & Simpson, J. J. (1977).
+   Irradiance measurements in the upper ocean.
+   Journal of Physical Oceanography, 7(6), 952–956.
+   https://doi.org/10.1175/1520-0485(1977)007<0952:IMITUO>2.0.CO;2
+2. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+   Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+   warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257–264.
+   https://doi.org/10.3354/meps12732
+"""
+function ps_effective_dhw_at_depth(
+    dhw_surface::Float64, depth::Float64;
+    R::Float64=0.58,            # infrared fraction of solar energy
+    ζ₁::Float64=0.35,           # infrared e-folding depth (m) — fixed, water property
+    ζ₂::Float64=15.0,           # visible e-folding depth (m) — Jerlov Type II
+    mixing_scale::Float64=12.0  # DHW at which mixing doubles ζ₂
+)::Float64
+    z_ref = 2.0   # Reference depth of SST measurement
+    ζ₂_eff = ζ₂ * (1.0 + dhw_surface / mixing_scale)  # Mixing increases visible penetration
+
+    I_ref = R * exp(-z_ref / ζ₁) + (1.0 - R) * exp(-z_ref / ζ₂_eff)
+    I_z = R * exp(-depth / ζ₁) + (1.0 - R) * exp(-depth / ζ₂_eff)
+
+    fraction = I_z / I_ref
+    return dhw_surface * clamp(fraction, 0.0, 1.0)
+end
+
+"""
     bleaching_mortality!(
         cover::AbstractArray{Float64,3},
         eff_dhw::Vector{Float64},
@@ -186,8 +260,9 @@ Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpub
 data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily
 represented by other factors (i.e., background mortality; see Álvarez-Noriega et al., [3]).
 The proportion of the population which bleached is estimated with the Cumulative Density
-Function. Bleaching mortality is then estimated with a depth-adjusted coefficient
-(from Baird et al., [4]).
+Function. Bleaching mortality is then estimated by incorporating light absorption principles
+(with the Beer-Lambert Law) as a proxy for heat dissipation at depths. The approach loosely
+aligns with the depth-adjusted coefficient from Baird et al., [4].
 
 # Arguments
 - `cover` : Coral cover for current timestep
@@ -227,6 +302,9 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
      warming in most coral taxa.
    Marine Ecology Progress Series, 603, 257-264.
    https://doi.org/10.3354/meps12732
+
+# See also
+- `effective_dhw_at_depth()`
 """
 function bleaching_mortality!(
     cover::AbstractArray{Float64,3},
