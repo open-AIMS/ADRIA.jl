@@ -29,7 +29,7 @@ SIRUS = "cdeec39e-fb35-4959-aadb-a1dd5dede958"
 ADRIAanalysisRulesExt = ["SIRUS", "MLJ"]
 
 [compat]
-ADRIA = "0.16, 0.17"
+ADRIA = "0.17"
 Bootstrap = "2"
 Clustering = "0.15"
 DataEnvelopmentAnalysis = "0.9"

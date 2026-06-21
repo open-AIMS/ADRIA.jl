@@ -39,7 +39,7 @@ ADRIAvizPlotlyExt = ["PlotlyBase"]
 ADRIAvizPlotlyKaleidoExt = ["PlotlyBase", "PlotlyKaleido"]
 
 [compat]
-ADRIA = "0.16, 0.17"
+ADRIA = "0.17"
 ArchGDAL = "0.10"
 DataFrames = "1"
 Distances = "0.10"
