@@ -45,6 +45,7 @@ function setup_cache(domain::Domain)::NamedTuple
         fec_scope=zeros(n_groups, n_locs),  # fecundity scope
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
+        eff_dhw_step=zeros(n_locs),  # effective DHW at each location's depth
         C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
@@ -807,6 +808,7 @@ function run_model(
     fec_scope = cache.fec_scope
     recruitment = cache.recruitment
     dhw_t = cache.dhw_step
+    eff_dhw_t = cache.eff_dhw_step
     C_cover_t = cache.C_cover_t
     depth_coeff = cache.depth_coeff
 
@@ -1776,10 +1778,11 @@ function run_model(
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
+        eff_dhw_t .= effective_dhw_at_depth.(dhw_t, loc_data.depth_med)
         bleaching_mortality!(
             C_cover_t,
-            dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
-            depth_coeff,
+            eff_dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
+            depth_coeff,  # unused; kept temporarily — see bleaching_mortality_fix.md cleanup list
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
