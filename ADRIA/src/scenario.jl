@@ -1771,18 +1771,21 @@ function run_model(
         # update the settler's DHW tolerance dists.
         c_mean_t_1 .= c_mean_t
 
-        # Bleaching
+        # Bleaching mortality
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
-        #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
-        #    attempts to account for the cooling effect of storms / high wave activity
+        # but mortality may occur within this timeframe or some time after it.
+        # An earlier attempt to account for the cooling effect of storms / high wave
+        # activity involves a linear reduction:
+        #    `dhw_t .* (1.0 .- wave_scen[tstep, :])`
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
+        # Wave activity is said to also promote nutrient cycling, and improve growth.
+        # Removed as I could not find any justification behind the implementation.
         eff_dhw_t .= effective_dhw_at_depth.(dhw_t, loc_data.depth_med)
         bleaching_mortality!(
             C_cover_t,
-            eff_dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
-            depth_coeff,  # unused; kept temporarily — see bleaching_mortality_fix.md cleanup list
+            eff_dhw_t,
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
