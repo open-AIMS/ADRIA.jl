@@ -4,10 +4,11 @@
 #     This page covers functions provided by `ADRIAanalysis`. Ensure it is installed
 #     before running the examples (see [Getting Started](@ref)).
 #
-# !!! note
-#     Visualizations and examples are still being developed, so take the examples below as
-#     illustrations of what analysis and visualizations are possible, but not the intended
-#     quality.
+# !!! warning
+#     Examples of analysis and visualizations are still being developed, so take the
+#     examples below as illustrations of what analysis and visualizations are possible,
+#     but not the intended quality. Caution is advised when interpreting results as they
+#     are misleading without in-depth assessment.
 #
 # This section presents tools for analysing model generated data, including functions to
 # extract metrics and plot graphs.
