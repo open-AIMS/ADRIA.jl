@@ -136,27 +136,22 @@ function depth_coefficient(d::Union{Int64,Float64})::Float64
 end
 
 """
-    bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
-        depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
-        s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
-        n_adapt::Real)::Nothing
+    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.07551, mixing_scale=12.0)
 
-Calculates and applies bleaching mortality, taking into account depth and bleaching
-sensitivity of corals. Model is adapted from Bozec et al., [2], itself based on data
-from Hughes et al., [3] (bleaching sensitivity) and Baird et al., [1] (relationship
-between bleaching and depth).
+Compute effective DHW at a given depth using Beer-Lambert attenuation with
+mixing-dependent attenuation decay.
+
+At low surface DHW, thermal stratification is intact and deeper sites experience
+substantially less thermal stress. At high surface DHW, convective/wind mixing
+erodes stratification, reducing the effective attenuation coefficient towards zero
+(well-mixed conditions) so that mortality approaches the surface rate at extreme DHW.
 
 # Arguments
-- `Y` : Matrix to save results into, of shape \$n_{species} ⋅ n_{locations}\$
-- `tstep` : Current time step
-- `depth` : Mean site depth (m) for each site
-- `s` : Bleaching sensitivity of corals (relative values) for each taxa/size class
-- `dhw` : Degree Heating Week experienced at site
-- `a_adapt` : Level of assisted adaptation (DHW reduction)
-- `n_adapt` : Level of natural adaptation (DHW reduction linearly scaled over time)
-
-# Returns
-Nothing
+- `dhw_surface` : Surface (or reference depth ~2m) DHW
+- `depth` : Site depth in meters
+- `κ_base` : Base attenuation coefficient (m⁻¹); yields ~73% of surface DHW at 10m
+    under low-stress conditions, consistent with Baird et al. (2018) observations
+- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient
 
 # References
 1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
@@ -165,66 +160,94 @@ Nothing
      warming in most coral taxa.
    Marine Ecology Progress Series, 603, 257-264.
    https://doi.org/10.3354/meps12732
-
-2. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
-     Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
-   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
-   Ecological Monographs, 92(1), e01494.
-   https://doi.org/10.1002/ecm.1494
-
-3. Hughes, T. P., Kerry, J. T., Baird, A. H., Connolly, S. R., Dietzel, A., Eakin, C. M.,
-     Heron, S. F., Hoey, A. S., Hoogenboom, M. O., Liu, G., McWilliam, M. J., Pears, R. J.,
-     Pratchett, M. S., Skirving, W. J., Stella, J. S., & Torda, G. (2018).
-   Global warming transforms coral reef assemblages.
-   Nature, 556(7702), 492-496.
-   https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(
-    Y::AbstractArray{Float64,2},
-    capped_dhw::AbstractArray{Float64,2},
-    depth_coeff::AbstractArray{Float64},
-    tstep::Int64,
-    depth::Vector{Float64},
-    s::Vector{Float64},
-    dhw::AbstractArray{Float64},
-    a_adapt::Vector{Float64},
-    n_adapt::Real
-)::Nothing
-    # Initial mortality
-    # Bozec et al., (2022) derive their model from Hughes et al., (2018, Fig 2C).
-    # They digitized data from the figure and fit a linear model to obtain
-    # intercept of 0.168 and slope of 0.347 (rounded below).
-    # In exponential form, this is: `InitMort(%) = exp(0.168+0.347*DHW) - 1.`
-    # Bozec et al., state this is valid for DHW values 0 - 10, but also
-    # assume it remains valid for values > 10.0
-    # A depth coefficient is also introduced to account for the reduced
-    # experienced heat at greater depths.
+function effective_dhw_at_depth(
+    dhw_surface::Float64, depth::Float64;
+    κ_base::Float64=0.04, mixing_scale::Float64=12.0
+)::Float64
+    κ_eff = κ_base / (1.0 + dhw_surface / mixing_scale)
+    Δz = max(0.0, depth - 2.0)
+    return dhw_surface * exp(-κ_eff * Δz)
+end
 
-    # The model is modified to incorporate adaptation effect but maximum
-    # reduction is to capped to 0.
-    @. capped_dhw = min.(
-        ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0
-    )
-    @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
+"""
+    ps_effective_dhw_at_depth(dhw_surface, depth; R, ζ₁, ζ₂, mixing_scale)
 
-    # Estimate long-term bleaching mortality with an estimated depth coefficient and
-    # initial bleaching mortality (models from Bozec et al., 2022)
-    #
-    # BleachMort(%) = 100*(1-(1-capped_dhw/100)^6)
-    #
-    # As we want values between 0 - 1 rather than %, we drop the `100 *`
-    # We also want remaining population, so we also drop the initial `1 - `
-    # End result is how much coral survives a bleaching event.
-    @. Y = (1.0 - ((depth_coeff' * s) * (capped_dhw / 100.0)))^6.0
+Compute effective DHW at a given depth using a dual-band exponential decay model
+(Paulson & Simpson 1977), which separately accounts for infrared and visible-light
+heat penetration.
 
-    return nothing
+The standard Beer-Lambert single-exponential overestimates heat penetration at depth
+because it cannot simultaneously represent two physically distinct regimes:
+- **Infrared** (~58% of solar energy) is absorbed within the first ~0.35 m. Deeper
+  sites never receive this fraction regardless of water clarity or mixing.
+- **Visible light** (~42%) penetrates to 5–25 m depending on water clarity (Jerlov
+  water type) and is the dominant heat source for coral habitat.
+
+At high surface DHW, wind/convective mixing erodes thermal stratification, redistributing
+heat downward. This is captured by scaling `ζ₂` with DHW, so that under extreme events
+the visible-band effective scale depth increases and deeper sites experience more stress.
+
+DHW at depth is computed relative to the SST reference depth (2 m):
+
+    fraction(z) = [R·exp(-z/ζ₁) + (1−R)·exp(-z/ζ₂_eff)] /
+                  [R·exp(-z_ref/ζ₁) + (1−R)·exp(-z_ref/ζ₂_eff)]
+
+    effective_dhw = dhw_surface × clamp(fraction, 0, 1)
+
+# Arguments
+- `dhw_surface` : Surface DHW at the SST reference depth (~2 m)
+- `depth` : Site depth in metres
+- `R` : Infrared fraction of solar energy (default 0.58; range 0.50–0.62)
+- `ζ₁` : Infrared e-folding depth in metres (default 0.35); fixed — property of water,
+    not affected by mixing
+- `ζ₂` : Visible-light e-folding depth in metres under calm conditions (default 15.0,
+    Jerlov Type II — typical of mid-shelf GBR); range 5 m (turbid inshore) to 25 m
+    (clear oceanic)
+- `mixing_scale` : DHW at which mixing doubles `ζ₂` (default 12.0)
+
+# Notes
+This function models accumulated thermal stress (DHW), not instantaneous solar flux.
+The dual-band formulation is physically motivated by how solar energy is deposited at
+depth; temperature anomaly propagation via mixing dynamics is approximated through the
+`mixing_scale` parameter.
+
+This method is hypothetical and untested. It requires further empirical data for comparison
+and assessment.
+
+# References
+1. Paulson, C. A., & Simpson, J. J. (1977).
+   Irradiance measurements in the upper ocean.
+   Journal of Physical Oceanography, 7(6), 952–956.
+   https://doi.org/10.1175/1520-0485(1977)007<0952:IMITUO>2.0.CO;2
+2. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+   Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+   warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257–264.
+   https://doi.org/10.3354/meps12732
+"""
+function ps_effective_dhw_at_depth(
+    dhw_surface::Float64, depth::Float64;
+    R::Float64=0.58,            # infrared fraction of solar energy
+    ζ₁::Float64=0.35,           # infrared e-folding depth (m) — fixed, water property
+    ζ₂::Float64=15.0,           # visible e-folding depth (m) — Jerlov Type II
+    mixing_scale::Float64=12.0  # DHW at which mixing doubles ζ₂
+)::Float64
+    z_ref = 2.0   # Reference depth of SST measurement
+    ζ₂_eff = ζ₂ * (1.0 + dhw_surface / mixing_scale)  # Mixing increases visible penetration
+
+    I_ref = R * exp(-z_ref / ζ₁) + (1.0 - R) * exp(-z_ref / ζ₂_eff)
+    I_z = R * exp(-depth / ζ₁) + (1.0 - R) * exp(-depth / ζ₂_eff)
+
+    fraction = I_z / I_ref
+    return dhw_surface * clamp(fraction, 0.0, 1.0)
 end
 
 """
     bleaching_mortality!(
         cover::AbstractArray{Float64,3},
-        dhw::Vector{Float64},
-        depth_coeff::Vector{Float64},
+        eff_dhw::Vector{Float64},
         stdev::AbstractMatrix{Float64},
         dist_t::AbstractArray{Float64,3},
         prop_mort::SubArray{Float64}
@@ -237,13 +260,13 @@ Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpub
 data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily
 represented by other factors (i.e., background mortality; see Álvarez-Noriega et al., [3]).
 The proportion of the population which bleached is estimated with the Cumulative Density
-Function. Bleaching mortality is then estimated with a depth-adjusted coefficient
-(from Baird et al., [4]).
+Function. Bleaching mortality is then estimated by incorporating light absorption principles
+(with the Beer-Lambert Law) as a proxy for heat dissipation at depths. The approach loosely
+aligns with the depth-adjusted coefficient from Baird et al., [4].
 
 # Arguments
 - `cover` : Coral cover for current timestep
-- `dhw` : DHW for all represented locations
-- `depth_coeff` : Pre-calculated depth coefficient for all locations
+- `eff_dhw` : Effective DHW for all represented locations at their depths
 - `stdev` : Standard deviation of DHW tolerance
 - `dist_t` : Critical DHW threshold distribution for current timestep, for all species and
     locations
@@ -279,11 +302,13 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
      warming in most coral taxa.
    Marine Ecology Progress Series, 603, 257-264.
    https://doi.org/10.3354/meps12732
+
+# See also
+- `effective_dhw_at_depth()`
 """
 function bleaching_mortality!(
     cover::AbstractArray{Float64,3},
-    dhw::Vector{Float64},
-    depth_coeff::Vector{Float64},
+    eff_dhw::Vector{Float64},
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
     bleach_dhw::SubArray{Float64},
@@ -301,7 +326,7 @@ function bleaching_mortality!(
 
     # Potential bleaching locations (skip locations with no heat stress)
     # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
-    active_locs = findall(dhw .> HEAT_LB)
+    active_locs = findall(eff_dhw .> HEAT_LB)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -324,14 +349,15 @@ function bleaching_mortality!(
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous bleaching DHW as the distribution lower bound,
                     # with 4.0 DHW-weeks as the minimum susceptibility threshold
-                    dhw[loc], μ, stdev[grp, sc], max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
+                    eff_dhw[loc], μ, stdev[grp, sc],
+                    max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
                 )
 
                 mort_pop::Float64 = 0.0
                 if affected_pop > 0.0
-                    # Calculate depth-adjusted bleaching mortality
-                    mort_pop = (affected_pop * depth_coeff[loc])
+                    # Depth effect is now handled via effective_dhw_at_depth (see scenario.jl).
+                    mort_pop = affected_pop
 
                     # Set values close to 0.0 (e.g., 1e-214) to 0.0
                     # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
@@ -345,7 +371,7 @@ function bleaching_mortality!(
                 # dimensional mismatch: the value was used as a lower bound on the DHW
                 # tolerance distribution (units: DHW-weeks) in the next timestep, making
                 # the truncation effectively identical to truncating at 0.
-                bleach_dhw[2, grp, sc, loc] = dhw[loc]
+                bleach_dhw[2, grp, sc, loc] = eff_dhw[loc]
                 if mort_pop > 0.0
                     # 1. Re-create distribution truncated at current bleaching DHW: survivors
                     # must have had tolerance above dhw[loc], so this is the correct lower
