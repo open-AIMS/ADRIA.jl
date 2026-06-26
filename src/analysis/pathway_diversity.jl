@@ -117,7 +117,7 @@ Compute switching probability for all defined pathway diversity options.
 - `mcda_method` : MCDA method used in selec_locations.
 - `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
 - `ports` : Dataframe with name and coordinate of ports.
-- `weights` : 5-tuple of weights for `(cum_rel_tac_diff, cum_fd_diff, distance_to_port, dispersion, option_similarity)`. Defaults to `(0.35, 0.25, 0.1, 0.1, 0.2)`.
+- `weights` : 4-tuple of weights for `(cum_rel_tac_diff, cum_fd_diff, distance_to_port, option_similarity)`. Defaults to `(0.35, 0.25, 0.2, 0.2)`.
 - `option_perf` : Pre-computed per-option performance metrics for the relevant timestep (from `_compute_option_perf`), keyed by option symbol.
 
 # Returns
@@ -131,7 +131,7 @@ function switching_probability(
     min_locs::Int64,
     option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{5,Float64}=(0.35, 0.25, 0.1, 0.1, 0.2),
+    weights::NTuple{4,Float64}=(0.35, 0.25, 0.2, 0.2),
 )::DataFrame
     options = copy(PD_OPTIONS())
     options.probability = zeros(size(options, 1))
@@ -175,12 +175,11 @@ function switching_probability(
             row.probability += weights[2] * two_sided_cvar(δ_fd; σ=_σ_fd)
         end
 
-        # Spatial metrics: distance_to_port, dispersion, option_similarity (weights[3..5])
+        # Spatial metrics: distance_to_port, option_similarity (weights[3..4])
         row.probability +=
             distance_port_score(unique_option_locs, unique_past_locs, ports) * weights[3]
-        row.probability += dispersion_score(option_locations, past_locations) * weights[4]
         row.probability +=
-            option_similarity(unique_option_locs, unique_past_locs) * weights[5]
+            option_similarity(unique_option_locs, unique_past_locs) * weights[4]
     end
 
     # Normalize probabilities
@@ -198,7 +197,7 @@ function switching_probability(
     option::Symbol,
     option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{5,Float64}=(0.35, 0.25, 0.1, 0.1, 0.2),
+    weights::NTuple{4,Float64}=(0.35, 0.25, 0.2, 0.2),
 )::Float64
     result = switching_probability(
         past_option, decision_matrix, loc_data, mcda_method, min_locs, option_perf;
@@ -367,41 +366,6 @@ function _ports()
     ])
 end
 const PD_PORTS = _ports()
-
-"""
-    _dispersion(locations::DataFrame)
-
-Compute the mean pairwise distance (meters) across locations.
-"""
-function _dispersion(locations::DataFrame)::Float64
-    if isempty(locations)
-        return 0.0
-    else
-        return mean(ADRIA.mean_distance(locations))
-    end
-end
-
-"""
-    dispersion_score(option_locs, past_locs; amplify_ranges=true)
-
-Scale-invariant score in [0, 1] comparing the dispersion of option locations relative to past
-locations. Values above 0.5 mean option is less dispersed than past; below 0.5 means more dispersed.
-If `amplify_ranges=true` (default), uses `(d²_past − d²_option)/(d²_past + d²_option)` which
-amplifies moderate ratios; otherwise uses the basic `(d_past − d_option)/(d_past + d_option)`.
-Returns 0.5 when both dispersions are zero.
-"""
-function dispersion_score(
-    option_locs::DataFrame, past_locs::DataFrame; amplify_ranges::Bool=true
-)::Float64
-    d_option = _dispersion(option_locs)
-    d_past = _dispersion(past_locs)
-    if amplify_ranges
-        score = (d_past^2 - d_option^2) / (d_past^2 + d_option^2)
-    else
-        score = (d_past - d_option) / (d_past + d_option)
-    end
-    return (score + 1) / 2
-end
 
 """
     _entropy(x::Float64)::Float64
