@@ -27,17 +27,16 @@ DataFrames of mean and total deployment for each coral group
 function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataFrame}
     deployed_corals = logs.coral_id
 
-    mean_deployment = [
-        mean(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
-        for c_id in deployed_corals
-    ]
+    n = length(deployed_corals)
+    mean_deployment = Vector{Vector{Float64}}(undef, n)
+    total_deployment = Vector{Vector{Float64}}(undef, n)
+    for (i, c_id) in enumerate(deployed_corals)
+        ts = sum(logs[:, c_id, :, :]; dims=:timesteps)
+        mean_deployment[i] = mean(ts; dims=:locations).data[:]
+        total_deployment[i] = sum(ts; dims=:locations).data[:]
+    end
 
-    total_deployment = [
-        sum(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
-        for c_id in deployed_corals
-    ]
-
-    col_names = ["fg_$(i)" for i in string.(collect(deployed_corals))]
+    col_names = string.(ADRIA.functional_group_names())
     μ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
     T = DataFrame(hcat(total_deployment...), "$(prefix)volume_total_" .* col_names)
 
@@ -64,16 +63,13 @@ function feature_set(rs::ResultSet)::DataFrame
     dhw_stdevs = dhw_stat[stat = At("std")].data[:]
     dhw_complexities = dhw_stat[stat = At("complexity")].data[:]
 
-    insertcols!(scens, 2, :dhw_mean => -99.0, :dhw_stdev => -99.0, :dhw_complexity => -99.0)
-    for (i, r) in enumerate(eachrow(scens))
-        scens[i, :dhw_mean] = dhw_means[Int64(r.dhw_scenario)]
-        scens[i, :dhw_stdev] = dhw_stdevs[Int64(r.dhw_scenario)]
-        scens[i, :dhw_complexity] = dhw_complexities[Int64(r.dhw_scenario)]
-    end
-
-    @assert all(scens.dhw_mean .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
-    @assert all(scens.dhw_stdev .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
-    @assert all(scens.dhw_complexity .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_complexity .== -99.0))"
+    idx = Int64.(scens.dhw_scenario)
+    insertcols!(
+        scens, 2,
+        :dhw_mean => dhw_means[idx],
+        :dhw_stdev => dhw_stdevs[idx],
+        :dhw_complexity => dhw_complexities[idx]
+    )
 
     # Add indicators of deployments
     seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
