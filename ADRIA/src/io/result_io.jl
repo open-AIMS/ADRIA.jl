@@ -19,18 +19,24 @@ function summarize_env_data(
         baseline_data = data[:, :, :, mcb_duration_idx, mcb_albedo_idx]
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
-        stats_store = zeros(2, size(baseline_data, 3), size(baseline_data, 2))
+        stats_store = zeros(3, size(baseline_data, 3), size(baseline_data, 2))
         μ = mean(baseline_data; dims=1)
         stats_store[1, :, :] .= dropdims(μ; dims=1)'
         stats_store[2, :, :] .= dropdims(std(baseline_data; mean=μ, dims=1); dims=1)'
+        for l in axes(baseline_data, 2)
+            stats_store[3, :, l] .= analysis._complexity(baseline_data[:, l, :])
+        end
         return stats_store
     end
 
     # TODO: Update once
-    stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
+    stats_store::Array{Float64} = zeros(3, size(data, 3), size(data, 2))
     μ = mean(data; dims=1)
     stats_store[1, :, :] .= dropdims(μ; dims=1)'
     stats_store[2, :, :] .= dropdims(std(data; mean=μ, dims=1); dims=1)'
+    for l in axes(data, 2)
+        stats_store[3, :, l] .= analysis._complexity(data[:, l, :])
+    end
     return stats_store
 end
 
@@ -66,12 +72,12 @@ function store_env_summary(
 
     stats_store = zcreate(
         Float32,
-        (2, size(stats, 2), size(stats, 3))...;
+        (3, size(stats, 2), size(stats, 3))...;
         fill_value=nothing, fill_as_missing=false,
         path=joinpath(file_loc, rcp),
         attrs=Dict(
             :structure => ("stat", type, "locations"),
-            :stats => ["mean", "std"],
+            :stats => ["mean", "std", "complexity"],
             :scenarios => string.(1:size(stats, 2)),
             :locations => string.(1:size(stats, 3)),
             :rcp => rcp),

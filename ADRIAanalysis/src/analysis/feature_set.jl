@@ -62,15 +62,18 @@ function feature_set(rs::ResultSet)::DataFrame
     dhw_stat = mean(rs.dhw_stats[rcp_id]; dims=:locations)
     dhw_means = dhw_stat[stat = At("mean")].data[:]
     dhw_stdevs = dhw_stat[stat = At("std")].data[:]
+    dhw_complexities = dhw_stat[stat = At("complexity")].data[:]
 
-    insertcols!(scens, 2, :dhw_mean => -99.0, :dhw_stdev => -99.0)
+    insertcols!(scens, 2, :dhw_mean => -99.0, :dhw_stdev => -99.0, :dhw_complexity => -99.0)
     for (i, r) in enumerate(eachrow(scens))
         scens[i, :dhw_mean] = dhw_means[Int64(r.dhw_scenario)]
         scens[i, :dhw_stdev] = dhw_stdevs[Int64(r.dhw_scenario)]
+        scens[i, :dhw_complexity] = dhw_complexities[Int64(r.dhw_scenario)]
     end
 
     @assert all(scens.dhw_mean .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
     @assert all(scens.dhw_stdev .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
+    @assert all(scens.dhw_complexity .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_complexity .== -99.0))"
 
     # Add indicators of deployments
     seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)

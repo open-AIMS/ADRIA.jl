@@ -69,17 +69,18 @@ include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 include("interventions/moving_corals.jl")
 
-include("io/ResultSet.jl")
 include("spatial/spatial.jl")
-include("io/result_io.jl")
-include("io/rme_result_io.jl")
-include("io/result_post_processing.jl")
-include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
 include("scenario.jl")
 include("analysis/analysis.jl")
+
+include("io/ResultSet.jl")
+include("io/result_io.jl")
+include("io/rme_result_io.jl")
+include("io/result_post_processing.jl")
+include("io/sampling/sampling.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/RMEDomain.jl")
