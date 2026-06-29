@@ -1,13 +1,30 @@
 """
-    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64})::DataFrame
-    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64}, option::Symbol)::Vector{Float64}
+    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64}; removed_pathways::Int64=0, scenario_probabilities::Bool=false)::DataFrame
+    pathway_diversity(rs::ResultSet, idx_scens::Vector{Int64}, decoded_ts::Dict{Int64,Vector{Symbol}}, option::Symbol)::DataFrame
 
-Compute pathway diversity for all options or only one option. If one option is passed it returns
-the vector of probabilities and if no option is passed it returns a dataframe with the probability
-and pathway diversity value.
+Compute pathway diversity.
+
+The first method aggregates over all options and, by default, returns a DataFrame with columns
+`[:option_name, :pathway_diversity]`. When `scenario_probabilities=true`, it instead returns a
+per-scenario DataFrame with columns `[:scenario_index, :probability, :decoded_ts]`, where
+`probability` is the within-option normalized (pre-resample) probability of each scenario; the
+per-option pathway diversity summary is not computed in this case.
+
+The second (per-option) method returns a DataFrame with columns `[:scenario_index, :probability]`
+for a single starting `option`, where `probability` is the raw product probability across
+timesteps.
+
+# Arguments
+- `rs` : ResultSet.
+- `idx_scens` : Indices of the scenarios to consider.
+- `removed_pathways` : Number of additional pathways to sample (with replacement) before computing
+  pathway diversity. Ignored when `scenario_probabilities=true`.
+- `scenario_probabilities` : When true, return per-scenario probabilities instead of the
+  per-option pathway diversity summary.
 """
 function pathway_diversity(
-    rs::ResultSet, idx_scens::Vector{Int64}; removed_pathways::Int64 = 0
+    rs::ResultSet, idx_scens::Vector{Int64};
+    removed_pathways::Int64 = 0, scenario_probabilities::Bool = false
 )::DataFrame
     max_time = size(rs.seed_log, :timesteps)
     decoded_ts = Dict(
@@ -21,8 +38,16 @@ function pathway_diversity(
     options = copy(PD_OPTIONS())
     options.pathway_diversity = zeros(size(options, 1))
 
+    if scenario_probabilities
+        scenario_probs = DataFrame(
+            scenario_idx=idx_scens, probability=zeros(length(idx_scens)), decoded_ts=[decoded_ts[s] for s in idx_scens]
+        )
+        scenario_row = Dict(s => i for (i, s) in enumerate(idx_scens))
+    end
+
     for (idx_option, start_option) in enumerate(options.option_name)
-        probs = pathway_diversity(rs, idx_scens, decoded_ts, start_option)
+        option_probs = pathway_diversity(rs, idx_scens, decoded_ts, start_option)
+        probs = option_probs.probability
         if removed_pathways > 0
             # Sample additional probabilities
             n_total = length(probs) + removed_pathways
@@ -30,13 +55,23 @@ function pathway_diversity(
         end
         probs = probs ./ sum(probs)
         options[idx_option, :pathway_diversity] = sum(_entropy.(probs))
+
+        if scenario_probabilities
+            rows = [scenario_row[s] for s in option_probs.scenario_index]
+            scenario_probs.probability[rows] = option_probs.probability ./ sum(option_probs.probability)
+        end
     end
-    return options[:, [:option_name, :pathway_diversity]]
+
+    if scenario_probabilities
+        return scenario_probs
+    else
+        return options[:, [:option_name, :pathway_diversity]]
+    end
 end
 function pathway_diversity(
     rs::ResultSet, idx_scens::Vector{Int64},
     decoded_ts::Dict{Int64,Vector{Symbol}}, option::Symbol
-)::Vector{Float64}
+)::DataFrame
     idx_scen = idx_scens[1] # index of scenario used to extract model parameters
     start_time::Int64 =
         rs.inputs.seed_year_start[idx_scen] + rs.inputs.pd_frequency[idx_scen]
@@ -85,7 +120,7 @@ function pathway_diversity(
             )
         end
     end
-    return probs
+    return DataFrame(scenario_index=idx_option_scens, probability=probs)
 end
 
 """
