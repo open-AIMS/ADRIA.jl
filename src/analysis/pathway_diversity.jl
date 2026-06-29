@@ -7,7 +7,7 @@ the vector of probabilities and if no option is passed it returns a dataframe wi
 and pathway diversity value.
 """
 function pathway_diversity(
-    rs::ResultSet, idx_scens::Vector{Int64}, removed_pathways::Int64
+    rs::ResultSet, idx_scens::Vector{Int64}; removed_pathways::Int64 = 0
 )::DataFrame
     max_time = size(rs.seed_log, :timesteps)
     decoded_ts = Dict(
@@ -19,36 +19,19 @@ function pathway_diversity(
     )
 
     options = copy(PD_OPTIONS())
-    options.probabilities = fill(Float64[], size(options, 1))
     options.pathway_diversity = zeros(size(options, 1))
 
     for (idx_option, start_option) in enumerate(options.option_name)
         probs = pathway_diversity(rs, idx_scens, decoded_ts, start_option)
-        options[idx_option, :probabilities] = probs
         if removed_pathways > 0
+            # Sample additional probabilities
             n_total = length(probs) + removed_pathways
-            resampled = ADRIA.StatsBase.sample(probs, n_total; replace=true)
-            resampled = resampled ./ sum(resampled)
-            options[idx_option, :pathway_diversity] = sum(_entropy.(resampled))
-        else
-            probs = probs ./ sum(probs)
-            options[idx_option, :pathway_diversity] = sum(_entropy.(probs))
+            probs = ADRIA.StatsBase.sample(probs, n_total; replace=true)
         end
+        probs = probs ./ sum(probs)
+        options[idx_option, :pathway_diversity] = sum(_entropy.(probs))
     end
     return options[:, [:option_name, :pathway_diversity]]
-end
-function pathway_diversity(
-    rs::ResultSet, idx_scens::Vector{Int64}, option::Symbol
-)::Vector{Float64}
-    max_time = size(rs.seed_log, :timesteps)
-    decoded_ts = Dict(
-        i => decode_option_ts(
-            rs.inputs.option_ts[i], rs.inputs.seed_year_start[i],
-            rs.inputs.seed_years[i], rs.inputs.pd_frequency[i], max_time
-        )
-        for i in idx_scens
-    )
-    return pathway_diversity(rs, idx_scens, decoded_ts, option)
 end
 function pathway_diversity(
     rs::ResultSet, idx_scens::Vector{Int64},
