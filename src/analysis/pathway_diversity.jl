@@ -436,28 +436,34 @@ const _σ_rel_tac = 0.004   # cum_rel_tac_diff
 const _σ_fd = 0.003        # cum_fd_diff
 
 """
-    two_sided_cvar(delta; tail_fraction, σ)
+    two_sided_cvar(delta; tail_fraction, σ, cvar_neutral)
 
-Map the two-sided CVaR of `delta` to [0, 1] via tanh. Returns > 0.5 when the upper
-tail dominates (net beneficial), < 0.5 when the lower tail dominates (net detrimental),
-and 0.5 when `delta` is empty.
+Map the two-sided CVaR of `delta` to [0, 1] via tanh. Returns 0.5 when there is
+no net benefit, approaches 1 when the upper tail dominates
+(net beneficial), and approaches 0 when the lower tail dominates (net detrimental).
 
 `delta` is a per-location relative change vector (`candidate ./ past .- 1`).
 `tail_fraction` is the fraction of locations in each tail (default 3%).
+`cvar_neutral` is the score returned for a neutral (no net benefit) switch (default 0.2).
 """
 function two_sided_cvar(
     delta::AbstractVector;
     tail_fraction::Float64=0.03,
     σ::Float64=0.001,
+    cvar_neutral::Float64=0.3,
 )::Float64
-    isempty(delta) && return 0.5
+    all(iszero, delta) && return 0.5
     N = length(delta)
     k = max(1, min(floor(Int, tail_fraction * N), N ÷ 2))
     s = sort(delta)
     cvar_lower = mean(s[1:k])
     cvar_upper = mean(s[(end - k + 1):end])
     raw = cvar_upper - abs(cvar_lower)
-    return (tanh(raw / σ) + 1) / 2
+    # Asymmetric mapping around `cvar_neutral`, equivalent to:
+    # n + (t + (1 - 2n) * abs(t)) / 2
+    t = tanh(raw / σ)
+    n = cvar_neutral
+    return t ≥ 0 ? n + (1 - n) * t : n * (1 + t)
 end
 
 """
