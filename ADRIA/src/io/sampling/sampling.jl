@@ -112,7 +112,7 @@ function sample(
 
     # Create distribution types
     vary_dists = try
-        map(x -> x.dist(x.dist_params...), eachrow(vary_vars))
+        _build_dist_types(vary_vars)
     catch err
         err_msg = "Some dist_params could not be converted to integer"
 
@@ -125,13 +125,15 @@ function sample(
     )
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
-    samples_tmp = Matrix(
-        Distributions.quantile.(vary_dists, samples_tmp)'
-    )
+    samples_tmp = _quantile_scale(vary_dists, samples_tmp)
 
     # Combine varying and constant values (constant params use their indicated default vals)
-    samples = hcat(fill.(spec.val, n_samples)...)
-    samples[:, spec.is_constant .== false] .= samples_tmp
+    const_mask = spec.is_constant
+    vary_mask = .!const_mask
+
+    samples = Matrix{Float64}(undef, n_samples, size(spec, 1))
+    samples[:, const_mask] .= Float64.(spec.val[const_mask])'
+    samples[:, vary_mask] .= samples_tmp
 
     # Ensure unguided scenarios do not have superfluous factor combinations
     return adjust_samples(spec, DataFrame(samples, spec.fieldname))

@@ -88,15 +88,24 @@ function feature_set(rs::ResultSet)::DataFrame
     scens.depth_max = scens.depth_min .+ scens.depth_offset
     scens = scens[:, Not(:depth_offset)]
 
+    # Transform aggregate deployment totals into units of millions
     seed_volume_mean, seed_volume_total = _iv_log_stats(rs.seed_log; prefix="seed_")
+    seed_volume_total_M = DataFrame(
+        Matrix(seed_volume_total) ./ 1e6,
+        replace.(names(seed_volume_total), "volume_total_" => "volume_total_M_")
+    )
     DataFrames.hcat!(scens, seed_volume_mean)
-    DataFrames.hcat!(scens, seed_volume_total)
-    scens.seed_total_deployed_coral = sum.(eachrow(seed_volume_total))
+    DataFrames.hcat!(scens, seed_volume_total_M)
+    scens.seed_total_deployed_coral_M = vec(sum(Matrix(seed_volume_total_M); dims=2))
 
     mc_volume_mean, mc_volume_total = _iv_log_stats(rs.mc_log; prefix="mc_")
+    mc_volume_total_M = DataFrame(
+        Matrix(mc_volume_total) ./ 1e6,
+        replace.(names(mc_volume_total), "volume_total_" => "volume_total_M_")
+    )
     DataFrames.hcat!(scens, mc_volume_mean)
-    DataFrames.hcat!(scens, mc_volume_total)
-    scens.mc_total_deployed_coral = sum.(eachrow(mc_volume_total))
+    DataFrames.hcat!(scens, mc_volume_total_M)
+    scens.mc_total_deployed_coral_M = vec(sum(Matrix(mc_volume_total_M); dims=2))
 
     # Remove `dhw_scenario` as Scenario IDs are not very informative for analyses
     scens = scens[:, Not(:dhw_scenario)]

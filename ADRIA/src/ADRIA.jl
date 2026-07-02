@@ -73,13 +73,13 @@ include("io/ResultSet.jl")
 include("spatial/spatial.jl")
 include("io/rme_result_io.jl")
 include("io/result_post_processing.jl")
+include("io/result_io.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
 include("scenario.jl")
 include("analysis/analysis.jl")
-include("io/result_io.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/RMEDomain.jl")
@@ -128,10 +128,89 @@ const COMPAT_DPKG = ["0.8.0"]
     # coral_evenness: in_dims = (:timesteps, :groups, :locations)
     metrics.coral_evenness(rand(Float64, 5, 3, 10))
 
+    precompile(CSV.read, (String, Type{DataFrame}))
+    # kwargs are dispatched through a generated "kwfunc" — precompile that too:
+    precompile(
+        Core.kwcall,
+        (NamedTuple{(:comment,),Tuple{String}}, typeof(CSV.read), String, Type{DataFrame})
+    )
+
+    precompile(ADRIA.sample, (ADRIADomain, Int))
+    precompile(ADRIA.sample_cf, (ADRIADomain, Int))
+    precompile(ADRIA.sample_guided, (ADRIADomain, Int))
+    precompile(ADRIA.sample_unguided, (ADRIADomain, Int))
+    precompile(ADRIA.model_spec, (ADRIADomain, DataFrame))
+
+    # Sampling dispatch — synthetic spec covers QMC + Distributions path without file IO
+    # let
+    #     spec = DataFrame(
+    #         fieldname=[:p1, :p2],
+    #         val=[0.5, 0.5],
+    #         is_constant=[false, false],
+    #         dist=[Uniform, Uniform],
+    #         dist_params=[(0.0, 1.0), (0.0, 1.0)]
+    #     )
+    #     sample(spec, 4)
+    # end
+
+    # MCDA dispatch chain — 5 production methods, mixed directions for MooraMethod
     redirect_stdio(stdout=devnull, stderr=devnull) do
-        d = load_domain(joinpath(pkgdir(ADRIA), "test", "data", "Test_domain"), "45")
-        sample(d, 16)
+        let
+            n_locs, n_crit = 10, 4
+            loc_names = Symbol.(:loc_, 1:n_locs)
+            crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
+
+            # Non-constant data (all-constant triggers filter_criteria, a separate path)
+            dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
+
+            # Mixed directions: MooraMethod requires at least one min and one max
+            weights = fill(0.25, n_crit)
+            directions = [maximum, maximum, minimum, maximum]
+
+            dp = decision.DecisionPreferences(crit_names, weights, directions)
+            dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
+
+            for method in decision.mcda_methods()
+                try
+                    decision.criteria_aggregated_scores(dp, dm, method)
+                catch
+                end
+            end
+        end
     end
 end
+
+# @compile_workload begin
+#     if !isinteractive()
+#         redirect_stdio(stdout=devnull, stderr=devnull) do
+#             d = load_domain(joinpath(pkgdir(ADRIA), "test", "data", "Test_domain"), "45")
+#             sample(d, 16)
+#         end
+#     end
+
+#     # Cover the MCDA dispatch chain
+#     # let
+#     #     n_locs, n_crit = 10, 4
+#     #     loc_names = Symbol.(:loc_, 1:n_locs)
+#     #     crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
+
+#     #     # Non-constant data (all-constant triggers filter_criteria, a separate path)
+#     #     dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
+
+#     #     # Mixed directions: Moora requires at least one min and one max
+#     #     weights = fill(0.25, n_crit)
+#     #     directions = [maximum, maximum, minimum, maximum]
+
+#     #     dp = decision.DecisionPreferences(crit_names, weights, directions)
+#     #     dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
+
+#     #     for method in decision.mcda_methods()
+#     #         try
+#     #             decision.criteria_aggregated_scores(dp, dm, method)
+#     #         catch
+#     #         end
+#     #     end
+#     # end
+# end
 
 end
