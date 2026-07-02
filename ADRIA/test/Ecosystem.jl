@@ -38,8 +38,7 @@ using ADRIA.Random
         mean_diffs[i] = abs(expected - calculated)
     end
 
-    @test all(mean_diffs .< 1e-4) ||
-        "calculated truncated normal mean differs signficantly from Distributions.jl"
+    @test all(mean_diffs .< 1e-4)
 end
 
 @testset "Truncated normal cdf" begin
