@@ -14,6 +14,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }}
           subdir: ADRIA
+          branch: main
+          lookback: 7
 
   TagBot-ADRIAanalysis:
     if: github.event_name == 'workflow_dispatch' || github.actor == 'JuliaTagBot'
@@ -24,6 +26,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }}
           subdir: ADRIAanalysis
+          branch: main
+          lookback: 7
 
   TagBot-ADRIAviz:
     if: github.event_name == 'workflow_dispatch' || github.actor == 'JuliaTagBot'
@@ -34,3 +38,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }}
           subdir: ADRIAviz
+          branch: main
+          lookback: 7
