@@ -308,17 +308,10 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
         0.0
 
     # Treat weight parameters as Gamma quantiles and transform so they sum to 1
-    for (i, r) in enumerate(eachrow(samples))
-        if r.guided > 0
-            samples[i, seed_weights.fieldname] .= gamma_to_dirichlet(
-                collect(r[seed_weights.fieldname])
-            )
-            samples[i, fog_weights.fieldname] .= gamma_to_dirichlet(
-                collect(r[fog_weights.fieldname])
-            )
-            samples[i, mc_weights.fieldname] .= gamma_to_dirichlet(
-                collect(r[mc_weights.fieldname])
-            )
+    guided_mask = samples.guided .> 0
+    if any(guided_mask)
+        for wf in (seed_weights.fieldname, fog_weights.fieldname, mc_weights.fieldname)
+            samples[guided_mask, wf] .= gamma_to_dirichlet(Matrix(samples[guided_mask, wf]))
         end
     end
 
@@ -415,9 +408,15 @@ end
 
 """
     get_attr(dom::Domain, factor::Symbol, attr::Symbol)
+    get_attr(ms::DataFrame, factor::Symbol, attr::Symbol)
+
+Extract the model attribute details.
 """
 function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     ms = model_spec(dom)
+    return get_attr(ms, factor, attr)
+end
+function get_attr(ms::DataFrame, factor::Symbol, attr::Symbol)
     return ms[ms.fieldname .== factor, attr][1]
 end
 

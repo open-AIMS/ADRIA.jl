@@ -27,17 +27,16 @@ DataFrames of mean and total deployment for each coral group
 function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataFrame}
     deployed_corals = logs.coral_id
 
-    mean_deployment = [
-        mean(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
-        for c_id in deployed_corals
-    ]
+    n = length(deployed_corals)
+    mean_deployment = Vector{Vector{Float64}}(undef, n)
+    total_deployment = Vector{Vector{Float64}}(undef, n)
+    for (i, c_id) in enumerate(deployed_corals)
+        ts = sum(logs[:, c_id, :, :]; dims=:timesteps)
+        mean_deployment[i] = mean(ts; dims=:locations).data[:]
+        total_deployment[i] = sum(ts; dims=:locations).data[:]
+    end
 
-    total_deployment = [
-        sum(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
-        for c_id in deployed_corals
-    ]
-
-    col_names = ["fg_$(i)" for i in string.(collect(deployed_corals))]
+    col_names = string.(ADRIA.functional_group_names())
     μ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
     T = DataFrame(hcat(total_deployment...), "$(prefix)volume_total_" .* col_names)
 
@@ -62,15 +61,15 @@ function feature_set(rs::ResultSet)::DataFrame
     dhw_stat = mean(rs.dhw_stats[rcp_id]; dims=:locations)
     dhw_means = dhw_stat[stat = At("mean")].data[:]
     dhw_stdevs = dhw_stat[stat = At("std")].data[:]
+    dhw_complexities = dhw_stat[stat = At("complexity")].data[:]
 
-    insertcols!(scens, 2, :dhw_mean => -99.0, :dhw_stdev => -99.0)
-    for (i, r) in enumerate(eachrow(scens))
-        scens[i, :dhw_mean] = dhw_means[Int64(r.dhw_scenario)]
-        scens[i, :dhw_stdev] = dhw_stdevs[Int64(r.dhw_scenario)]
-    end
-
-    @assert all(scens.dhw_mean .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
-    @assert all(scens.dhw_stdev .> -99.0) "Unknown DHW scenario found, check rows: $(findall(scens.dhw_mean .== -99.0))"
+    idx = Int64.(scens.dhw_scenario)
+    insertcols!(
+        scens, 2,
+        :dhw_mean => dhw_means[idx],
+        :dhw_stdev => dhw_stdevs[idx],
+        :dhw_complexity => dhw_complexities[idx]
+    )
 
     # Add indicators of deployments
     seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
@@ -89,15 +88,24 @@ function feature_set(rs::ResultSet)::DataFrame
     scens.depth_max = scens.depth_min .+ scens.depth_offset
     scens = scens[:, Not(:depth_offset)]
 
+    # Transform aggregate deployment totals into units of millions
     seed_volume_mean, seed_volume_total = _iv_log_stats(rs.seed_log; prefix="seed_")
+    seed_volume_total_M = DataFrame(
+        Matrix(seed_volume_total) ./ 1e6,
+        replace.(names(seed_volume_total), "volume_total_" => "volume_total_M_")
+    )
     DataFrames.hcat!(scens, seed_volume_mean)
-    DataFrames.hcat!(scens, seed_volume_total)
-    scens.seed_total_deployed_coral = sum.(eachrow(seed_volume_total))
+    DataFrames.hcat!(scens, seed_volume_total_M)
+    scens.seed_total_deployed_coral_M = vec(sum(Matrix(seed_volume_total_M); dims=2))
 
     mc_volume_mean, mc_volume_total = _iv_log_stats(rs.mc_log; prefix="mc_")
+    mc_volume_total_M = DataFrame(
+        Matrix(mc_volume_total) ./ 1e6,
+        replace.(names(mc_volume_total), "volume_total_" => "volume_total_M_")
+    )
     DataFrames.hcat!(scens, mc_volume_mean)
-    DataFrames.hcat!(scens, mc_volume_total)
-    scens.mc_total_deployed_coral = sum.(eachrow(mc_volume_total))
+    DataFrames.hcat!(scens, mc_volume_total_M)
+    scens.mc_total_deployed_coral_M = vec(sum(Matrix(mc_volume_total_M); dims=2))
 
     # Remove `dhw_scenario` as Scenario IDs are not very informative for analyses
     scens = scens[:, Not(:dhw_scenario)]

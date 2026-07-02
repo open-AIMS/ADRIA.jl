@@ -43,7 +43,7 @@ end
     CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where {T}
     CategoricalDistribution(categories...)::CategoricalDistribution
 
-Construct a categorical variable. Default to a uniform categorical variable if the 
+Construct a categorical variable. Default to a uniform categorical variable if the
 probability weightings are not provided.
 """
 function CategoricalDistribution(
@@ -268,4 +268,46 @@ function DiscreteOrderedUniformDist(
     n_opts = length(options)
 
     return DiscreteNonParametric(options, fill(1.0 / n_opts, n_opts))
+end
+
+"""
+    _build_dist_types(vary_vars::DataFrame)
+
+Construct a concretely-typed vector of distribution instances from the `dist`
+and `dist_params` columns of a model spec DataFrame.
+
+The `dist` column may contain either types (e.g. `Uniform`) or plain constructor
+functions (e.g. `DiscreteOrderedUniformDist`), so the Union is derived from
+`typeof` on constructed instances rather than from the column values directly.
+
+One instance per unique constructor is built to determine the Union type, then
+all rows are constructed into a `Vector{T}` where `T` is that Union. This allows
+Julia to compile specialised methods (e.g. for `quantile`) via union-splitting
+rather than falling back to `Vector{Any}`.
+"""
+function _build_dist_types(vary_vars::DataFrame)
+    unique_rows = unique(vary_vars, :dist)
+    T = Union{(typeof(row.dist(row.dist_params...)) for row in eachrow(unique_rows))...}
+    return T[row.dist(row.dist_params...) for row in eachrow(vary_vars)]
+end
+
+"""
+    _quantile_scale(vary_dists::Vector{T}, u_samples::Matrix) where {T}
+
+Function barrier to scale uniform samples to their target distributions using
+the inverse CDF method.
+
+Julia compiles a specialization of this method for each concrete `T` it
+encounters. Without this barrier, `quantile` would be compiled generically
+against `Vector{Any}` and recompiled on each call.
+
+# Arguments
+- `vary_dists` : Vector of distribution instances, one per uncertain parameter.
+- `u_samples` : Matrix of uniform `[0, 1]` samples (n_params × n_samples).
+
+# Returns
+Matrix of samples scaled to each parameter's target distribution (n_samples × n_params).
+"""
+function _quantile_scale(vary_dists::Vector{T}, u_samples::Matrix) where {T}
+    return Matrix(Distributions.quantile.(vary_dists, u_samples)')
 end
