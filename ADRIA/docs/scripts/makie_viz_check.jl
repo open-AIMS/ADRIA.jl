@@ -67,9 +67,9 @@ end
 # ----------------------------------------------------------------------------
 
 _viz_tsa(rs, si) = ADRIA.viz.tsa(rs, si)
-_viz_rsa(rs, rsa_ds, foi) = ADRIA.viz.rsa(rs, rsa_ds, foi)
-_viz_outcome_map(rs, om_ds, foi) = ADRIA.viz.outcome_map(rs, om_ds, foi)
-_viz_rules_scatter(rs, scens, tgt, rules) = ADRIA.viz.rules_scatter(rs, scens, tgt, rules)
+_viz_rsa(scens, y, foi) = ADRIA.viz.rsa(scens, y, foi)
+_viz_outcome_map(scens, y, foi) = ADRIA.viz.outcome_map(scens, y, foi)
+_viz_rules_scatter(rs, X, tgt, rules) = ADRIA.viz.rules_scatter(rs, X, tgt, rules)
 _viz_tsc_map(rs, tac_sites, tac_clusters) = ADRIA.viz.map(rs, tac_sites, tac_clusters)
 
 function _viz_backend_extras()

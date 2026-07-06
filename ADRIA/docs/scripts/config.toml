@@ -1,0 +1,7 @@
+[operation]
+threshold = 1e-6  # Result values below this will be set to 0.0
+debug = false
+log_dhw_tols = false
+
+[results]
+output_dir = "./Outputs"  # save to current working directory

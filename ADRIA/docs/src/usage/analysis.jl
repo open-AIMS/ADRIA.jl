@@ -454,110 +454,103 @@
 #
 # ### Regional Sensitivity Analysis
 #
-# Regional Sensitivity Analysis is a Monte Carlo filtering approach. The aim of RSA is to aid
-# in identifying which (group of) factors drive model outputs and their active areas of
-# factor space.
-#
-# This implementation divides factors into bins and compares the distribution of a selected outcome
-# within each bin to the distribution outside the bin.
+# Regional Sensitivity Analysis visualises how two factors jointly relate to an outcome.
+# Scenarios are plotted as a 2D scatter of two factors of interest, coloured by outcome value.
 #
 # ```julia
+# using ADRIAanalysis
+#
 # s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
+# mean_s_tac = vec(mean(s_tac; dims=1))
 #
-# foi = [
-#     :dhw_scenario,
-#     :wave_scenario,
-#     :N_seed_TA,
-#     :N_seed_CA,
-#     :fogging,
-#     :SRM
-# ]
+# # Build feature DataFrame (scenario inputs + environmental summary statistics)
+# X = ADRIA.feature_set(rs)
 #
-# # Divide factors into 10 bins
-# tac_rs = rsa(rs, mean_s_tac, foi; S=10)
-# rsa_fig = ADRIA.viz.rsa(rs, tac_rs, foi; opts, fig_opts)
+# # Plot DHW scenario vs wave scenario, coloured by mean total cover
+# rsa_fig = ADRIA.viz.rsa(X, mean_s_tac, (:dhw_scenario, :wave_scenario))
 # ADRIA.viz.savefig(rsa_fig, "rsa.html")
 # ```
 #
 # ![Plots of Regional Sensitivities](../assets/imgs/analysis/rsa.png)
 #
-# For this test data package, the results would suggest that bins that have very different coral cover to those outside that bin include:
+# **How to read this figure:**
+# Each point is one scenario. The x- and y-axes show the sampled values of the two
+# chosen factors; the colour shows the outcome for that scenario (see colorbar).
+# The contour fill interpolates the outcome surface across the factor space, making
+# regional patterns easier to spot.
 #
-# - DHW Scenario: The 5 scenarios in the bin around scenario 30
-# - Wave Scenario: The first 5 scenarios
-# - Seeded Tabular Acropora and Seeded Corymbose Acropora: Low numbers of coral seeded
-# - Fogging: Low effectiveness
-# - SRM: Low and high levels of SRM. Scenarios with a DHW reduction of about 2.5 are most similar to those outside that bin.
-#
-# Results are likely to be dependent on how the sample of scenarios was obtained. A different sample might result in different sensitivities. Testing of convergence may be needed.
+# - **Colour gradient along one axis** — that factor is the primary driver; the other
+#   contributes little on its own.
+# - **Colour gradient diagonal / interaction pattern** — both factors jointly influence
+#   the outcome; no single factor dominates.
+# - **Uniform colour throughout** — neither factor explains much of the outcome variance;
+#   look elsewhere in the factor set.
+# - **Sharp colour boundary** — a threshold exists: outcomes change abruptly once a
+#   factor crosses a particular value.
 #
 # ### Outcome mapping
 #
-# As the name implies, outcome mapping aims to identify the relationship between model outputs and the region of factor space that led to those outputs.
-# Similarly to Regional Sensitivity Analysis, it does this by filtering scenarios that match a specific outcome.
-#
-# This implementation then calculates the mean value of an outcome as a function of a factor.
-# This is a form of scenario discovery that summarises scenarios matching an outcome in terms of values of a factor and the average value of one outcome.
-#
-# This example aims to identify DHW and wave scenarios and interventions which lead to top outcomes for coral cover. Note that it uses a test dataset rather than real data.
+# Outcome mapping plots the value of each factor against a scalar outcome, allowing visual
+# identification of which regions of factor space are associated with high or low outcomes.
+# Pass a `Vector{Symbol}` to plot multiple factors as subplots.
 #
 # ```julia
 # s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
+# mean_s_tac = vec(mean(s_tac; dims=1))
 #
-# foi = [
-#     :dhw_scenario,
-#     :wave_scenario,
-#     :N_seed_TA,
-#     :N_seed_CA,
-#     :fogging,
-#     :SRM
-# ]
+# X = ADRIA.feature_set(rs)
 #
-# # Indicate factor values that are in the top half of the range
-# tac_top_50 = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-# fig_top_50 = ADRIA.viz.outcome_map(
-#     rs,
-#     tac_top_50,
-#     foi;
-#     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m2]")
-# )
-# ADRIA.viz.savefig(fig_top_50, "outcome_map_top50.html")
+# foi = [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM]
 #
-# # Indicate factor values that are in the top 30% of the range
-# tac_top_30 = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
-# fig_top_30 = ADRIA.viz.outcome_map(
-#     rs,
-#     tac_top_30,
-#     foi;
-#     axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m2]")
-# )
-# ADRIA.viz.savefig(fig_top_30, "outcome_map_top30.html")
+# om_fig = ADRIA.viz.outcome_map(X, mean_s_tac, foi)
+# ADRIA.viz.savefig(om_fig, "outcome_map.html")
 # ```
 #
 # ![Outcome mapping](../assets/imgs/analysis/outcome_map.png)
 #
-# The figure shows the mean values of total coral cover (TAC) obtained as a function of each factor value, across scenarios in which outcomes in the top 50% or 30% of the range are obtained. The ribbon shows the estimated 95% confidence interval around the mean.
+# **How to read this figure:**
+# Each point is one scenario. The x-axis shows the factor value and the y-axis shows
+# the outcome. The density fill (blue shading) shows where scenarios are most
+# concentrated in (factor, outcome) space.
 #
-# There is less uncertainty in the mean for the top 30% because there were fewer scenarios in this group. The top 30% scenarios are a subset of the scenarios in the top 50%.
+# - **Density gradient along one axis** — the factor positively or negatively influences
+#   the outcome; scenarios with higher factor values tend to concentrate at higher or lower
+#   outcomes respectively.
+# - **Uniform density across factor values** — the factor has little marginal effect on
+#   the outcome; other factors are likely more important.
+# - **Wide vertical scatter at any given factor value** — high outcome variance that
+#   cannot be explained by this factor alone; additional factors must be considered.
+# - **Dense region offset from the bulk** — a subset of scenarios cluster away from
+#   the main distribution, which may indicate an interaction with another factor.
 #
-# While this example uses a test data package rather than real data, we can still interpret the results:
+# ### Feature Ranking
 #
-# - DHW scenario: These are categorical values representing 50 different scenarios. There is no specific order to the scenarios - they are just interpreted individually. Note that as `S=20`, only 20 bins are shown - multiple scenarios have been aggregated. All 50 scenarios are represented in the top 50% of the range - it is possible to get results in the top half of the range in all scenarios.
-# - Wave scenario: categorical variable representing each scenario in the test data package. Note that wave scenarios are no longer active as of ADRIA v0.7.0.
-# - Seeded Tabular Acropora and Seeded Corymbose Acropora: Coral cover in the scenarios varies substantially as number of seeded corals increase. Outcomes are likely more heavily influenced by other factors in the scenario set.
-# - Fogging: Similar to seeding, there is no clear pattern to coral cover as fogging effectiveness increases. Only scenarios with at least 0.1 fogging effectiveness are in the top 30% of the range.
-# - SRM: As expected, coral cover increases with shade (decreases with DHW) in both groups of scenarios.
+# Feature ranking uses the Mann-Whitney U test to score each factor by how well it
+# discriminates between scenarios with high outcomes and all other scenarios.
+# A higher `prob_superiority` indicates the factor more reliably separates high-outcome
+# scenarios from the rest. `effect_size` is the rank-biserial correlation.
 #
-# For this test dataset, according to this analysis:
+# ```julia
+# using ADRIAanalysis
 #
-# 1) **Ensuring conditions for success**: Shade (SRM) is dominating the analysis. To be in the top 30% of the range, shade with at least ~4.5 DHW reduction is necessary. Fogging with an effectiveness of at least 0.1 is also needed.
-# 2) **Avoiding failure**: In some DHW scenarios, none of the sampled interventions are able to achieve performance in the top 30% of the range. Whether this is a problem depends on what those scenarios represent.
-# 3) **Planning for failure modes**: There are DHW scenarios for which high levels of SRM are not in the top 30% of the range - despite its cost, SRM has not delivered. This might warrant investigation as to why SRM was not sufficient in those scenarios.
-# 4) **Further deliberation**: High levels of SRM may be controversial both in terms of feasibility and cost. There is likely to be further debate about whether these scenarios should be considered, and whether top 30% of the range is an appropriate criteria for success.
+# s_tac = ADRIA.metrics.scenario_total_cover(rs)
+# mean_s_tac = vec(mean(s_tac; dims=1))
 #
-# Additional sampling may be needed to confirm findings where no matching scenarios were found.
+# X = ADRIA.feature_set(rs)
+#
+# # Rank-based RSA: score each factor by how well it distinguishes the top 10% of outcomes
+# ranking = ADRIAanalysis.sensitivity.rsa(X, mean_s_tac)
+# ```
+#
+# The returned `DataFrame` has columns `feature`, `statistic`, `prob_superiority`, and
+# `effect_size`, sorted descending by `prob_superiority`.
+#
+# A `selection_mask` overload is available for custom outcome filters:
+#
+# ```julia
+# mask = mean_s_tac .>= quantile(mean_s_tac, 0.7)
+# ranking = ADRIAanalysis.sensitivity.rsa(X, mask)
+# ```
 #
 # ### Data Envelopment Analysis
 #

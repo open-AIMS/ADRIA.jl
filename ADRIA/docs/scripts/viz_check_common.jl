@@ -7,9 +7,11 @@
 #   _activate_backend()            -> calls ADRIAviz.activate(...)
 #   _save_fig(fig, name)           -> saves figure, returns path string
 #   _viz_tsa(rs, si)               -> ADRIA.viz.tsa with backend signature
-#   _viz_rsa(rs, rsa_ds, foi)      -> ADRIA.viz.rsa with backend signature
-#   _viz_outcome_map(rs, om_ds, foi) -> ADRIA.viz.outcome_map with backend signature
-#   _viz_rules_scatter(rs, scens, tgt, rules) -> ADRIA.viz.rules_scatter with backend signature
+#   _viz_rsa(X, y, foi)            -> ADRIA.viz.rsa with backend signature
+#                                     foi may be AbstractVector{Symbol} (multi-panel) or
+#                                     NTuple{2,Symbol} (factor-vs-factor scatter)
+#   _viz_outcome_map(X, y, foi)     -> ADRIA.viz.outcome_map with backend signature
+#   _viz_rules_scatter(rs, X, tgt, rules) -> ADRIA.viz.rules_scatter with backend signature
 #   _viz_backend_extras()          -> optional extra checks (no-op default)
 #   RESULTS::Vector{NamedTuple} -> (name::String, ok::Bool, msg::String, elapsed::Float64)
 
@@ -31,8 +33,8 @@ using MLJ, SIRUS
 using ADRIA.analysis: cluster_scenarios, cluster_series
 using ADRIAanalysis:
     find_scenarios, target_clusters, cluster_rules,
-    data_envelopment_analysis
-using ADRIAanalysis.sensitivity: pawn, tsa, rsa, outcome_map, convergence
+    data_envelopment_analysis, feature_set
+using ADRIAanalysis.sensitivity: pawn, tsa, convergence, rsa
 
 # Activate the backend (hook defined by the including file)
 _activate_backend()
@@ -56,6 +58,7 @@ function check(build_fn, name::String)
         msg = sprint(showerror, err)
         push!(RESULTS, (name=name, ok=false, msg=msg, elapsed=elapsed))
         println("    [FAIL] $msg ($(Printf.@sprintf("%.2f", elapsed))s)")
+        println(sprint(showerror, err, catch_backtrace()))
         return nothing
     end
 end
@@ -96,8 +99,20 @@ rs = if !isempty(existing_rs)
     @info "Reusing existing result set (skipping run)" rs_path
     ADRIA.load_results(rs_path)
 else
-    @info "No existing result set found; sampling and running 128 scenarios."
-    run_scens = ADRIA.sample_set(example_dom, 128, "45")
+    n_scens = 2048
+    @info "No existing result set found; sampling and running $(n_scens) scenarios."
+    @info "Using $(Threads.nthreads()) threads."
+
+    ADRIA.set_factor_bounds!(
+        example_dom;
+        N_seed_TA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_CA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_CNA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_SM=(1000000.0, 15000000.0, 100000.0),
+        N_seed_LM=(1000000.0, 15000000.0, 100000.0)
+    )
+
+    run_scens = ADRIA.sample_set(example_dom, n_scens, "45")
     ADRIA.run_scenarios(example_dom, run_scens, "45")
 end
 
@@ -110,8 +125,26 @@ scens = DataFrame(rs.inputs)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = vec(mean(s_tac; dims=1))
 
-const CANDIDATE_FOI = [:N_seed_TA, :N_seed_CA, :fogging, :SRM, :a_adapt]
-foi = Symbol[f for f in CANDIDATE_FOI if string(f) in names(rs.inputs)]
+# Feature set: rs.inputs enriched with DHW statistics and deployment summary stats,
+# with N_seed_* replaced by actual deployment volume/location summaries.
+# Used for RSA, outcome mapping, and rule induction.
+fs = feature_set(rs)
+
+# Outcome: number of years where mean relative cover exceeded 20%.
+s_rc = ADRIA.metrics.scenario_relative_cover(rs)
+y_outcome = collect(ADRIA.metrics.years_above_threshold(s_rc; threshold=0.20))
+
+# Deployment-location-only outcome: same metric restricted to seeded locations.
+deployed_locs = ADRIA.metrics.deployed_locations(rs; intervention=:seed)
+s_rc_dep = ADRIA.metrics.scenario_relative_cover(rs; locations=deployed_locs)
+y_dep = collect(ADRIA.metrics.years_above_threshold(s_rc_dep; threshold=0.20))
+
+# Rank all features by Mann-Whitney RSA against the deployment-location outcome,
+# then take the top 6 as the factors of interest. This replaces a hardcoded
+# candidate list and ensures the most outcome-discriminating features drive all
+# downstream visualizations (RSA, outcome map, rule induction).
+rsa_si = rsa(fs, y_dep)
+foi = rsa_si.feature[1:min(6, nrow(rsa_si))]
 
 # ----------------------------------------------------------------------------
 # 1. Scenario outcomes
@@ -167,9 +200,11 @@ end
 
 check("convergence_factors_series") do
     outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
-    conv_foi = Symbol[f for f in (:dhw_scenario, :guided) if string(f) in names(rs.inputs)]
+    # dhw_scenario is removed by feature_set; prefer dhw_mean as its replacement.
+    # guided survives into fs unchanged.
+    conv_foi = Symbol[f for f in (:dhw_mean, :guided) if string(f) in names(fs)]
     isempty(conv_foi) && (conv_foi = foi[1:min(2, length(foi))])
-    Si_conv = convergence(scens, outcome, conv_foi)
+    Si_conv = convergence(fs, outcome, conv_foi)
     ADRIA.viz.convergence(Si_conv, conv_foi)
 end
 
@@ -178,8 +213,24 @@ end
 # ----------------------------------------------------------------------------
 
 check("rsa") do
-    rsa_ds = rsa(rs, mean_s_tac, foi; S=10)
-    _viz_rsa(rs, rsa_ds, foi)
+    length(foi) < 2 && return nothing
+    _viz_rsa(fs, y_dep, (foi[1], foi[2]))
+end
+
+check("rsa_multi_panel") do
+    length(foi) < 4 && return nothing
+    n = length(foi)
+    # Span the importance ranking: pair top factor with 2nd and 3rd, then
+    # pair mid-ranked factors together. Duplicates collapse if foi is short.
+    panels = unique(
+        NTuple{2,Symbol}[
+            (foi[1], foi[2]),
+            (foi[1], foi[min(3, n)]),
+            (foi[2], foi[min(4, n)]),
+            (foi[min(3, n)], foi[min(5, n)])
+        ]
+    )
+    _viz_rsa(fs, y_dep, panels)
 end
 
 # ----------------------------------------------------------------------------
@@ -187,8 +238,14 @@ end
 # ----------------------------------------------------------------------------
 
 check("outcome_map") do
-    om_ds = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-    _viz_outcome_map(rs, om_ds, foi)
+    isempty(foi) && return nothing
+    _viz_outcome_map(fs, y_outcome, foi)
+end
+
+check("outcome_map_deployed_locs") do
+    isempty(deployed_locs) && return nothing
+    isempty(foi) && return nothing
+    _viz_outcome_map(fs, y_dep, foi)
 end
 
 # ----------------------------------------------------------------------------
@@ -233,13 +290,18 @@ check("rules_scatter") do
     tgt = target_clusters(clusters6, s_tac)
 
     rule_foi = try
-        ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+        # component_params returns raw input parameter names; filter to those
+        # that survive feature_set post-processing (e.g. N_seed_* are removed).
+        fs_cols = Set(names(fs))
+        raw = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+        Symbol[f for f in raw if string(f) in fs_cols]
     catch
         foi
     end
+    isempty(rule_foi) && (rule_foi = foi)
 
-    rules_iv = cluster_rules(rs, tgt, scens, rule_foi, 10; remove_duplicates=true)
-    _viz_rules_scatter(rs, scens, tgt, rules_iv)
+    rules_iv = cluster_rules(rs, tgt, fs, rule_foi, 10; remove_duplicates=true)
+    _viz_rules_scatter(rs, fs, tgt, rules_iv)
 end
 
 # ----------------------------------------------------------------------------
@@ -359,18 +421,18 @@ check("cyclone_scenario") do
 end
 
 # ----------------------------------------------------------------------------
+# Backend-specific extras (no-op unless overridden)
+# ----------------------------------------------------------------------------
+
+_viz_backend_extras()
+
+# ----------------------------------------------------------------------------
 # 15. Connectivity graph
 # ----------------------------------------------------------------------------
 
 check("connectivity") do
     ADRIA.viz.connectivity(example_dom)
 end
-
-# ----------------------------------------------------------------------------
-# Backend-specific extras (no-op unless overridden)
-# ----------------------------------------------------------------------------
-
-_viz_backend_extras()
 
 # ----------------------------------------------------------------------------
 # Summary and report generation
