@@ -69,7 +69,7 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
-        dist_params=(5.0, 20.0),
+        dist_params=(5.0, 100.0),
         name="Minimum intervention locations",
         description="Minimum number of locations to perform intervention"
     )
@@ -77,7 +77,7 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
-        dist_params=(5.0, 20.0),
+        dist_params=(5.0, 100.0),
         name="Moving corals minimum intervention locations",
         description="Minimum number of locations to perform moving corals intervention"
     )
@@ -93,7 +93,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0.0;
         ptype="continuous",
         dist=TriangularDist,
-        dist_params=(0.0, 7.0, 0.0),
+        dist_params=(0.0, 10.0, 0.0),
         name="SRM",
         description="Reduction in DHWs due to shading."
     )
@@ -106,12 +106,12 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Assisted adaptation in terms of DHW resistance."
     )
     a_adapt_ref::Param = Factor(
-        0.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
+        5.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 15.0, 1.0),
         name="Assisted adaptation reference",
-        description="Distance from current year used as referece for assisted adaptation."
+        description="Distance from current year used as reference for assisted adaptation."
     )
     seed_years::Param = Factor(
         10;
