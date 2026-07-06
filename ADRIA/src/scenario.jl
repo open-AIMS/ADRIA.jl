@@ -151,7 +151,7 @@ function run_scenarios(
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
-    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    env_debug = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
     @info "ADRIA_DEBUG = $env_debug"
 
     parallel::Bool = !env_debug && (Threads.nthreads() > 1)
@@ -161,11 +161,35 @@ function run_scenarios(
     # per-scenario via a channel, so chunk_size is purely an I/O tuning parameter.
     # In serial mode: fall back to the env var (default 1).
     active_threads::Int = Threads.nthreads()
+
+    # Estimate the uncompressed size of one scenario's worth of Float32 output arrays to
+    # derive the largest chunk count that keeps every Zarr chunk file below the 2 GB limit
+    # enforced by BloscCompressor.  Only the always-present arrays are counted; the
+    # optional coral_dhw_log / coral_cover_log arrays are excluded, so the estimate is
+    # a lower bound and the cap is slightly conservative.
+    _n_locs_cz = dom.coral_growth.n_locs
+    _n_groups_cz = dom.coral_growth.n_groups
+    _tf_cz = length(timesteps(dom))
+    _n_ivs_cz = length(interventions())
+    _n_metrics_cz = length(LOC_METRIC_NAMES)
+    _bytes_per_scen::Int =
+        4 * _tf_cz *
+        (
+            _n_locs_cz * _n_metrics_cz +   # loc_out
+            _n_groups_cz +                  # relative_taxa_cover
+            _n_locs_cz * 2 +               # shading_log (fog + shade channels)
+            _n_locs_cz * _n_ivs_cz +       # site_ranks
+            _n_groups_cz * _n_locs_cz * 2  # mc_log + seed_log
+        )
+    # Stay below the hard 2 GB limit with a conservative 1.8 GB working budget
+    _max_chunk_by_size::Int = max(1, floor(Int, 1_800_000_000 / _bytes_per_scen))
+
     env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
     chunk_size::Int = if env_chunk > 0
         env_chunk  # explicit override always wins
     elseif parallel
-        ceil(Int, nrow(scens) / active_threads)
+        # One chunk per thread keeps scheduling balanced; size budget is the hard cap
+        min(cld(nrow(scens), active_threads), _max_chunk_by_size)
     else
         1
     end

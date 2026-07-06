@@ -225,3 +225,29 @@ function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
         locations=data.locations  # Note: assumes data holds location dimension
     )
 end
+
+"""
+    deployed_locations(rs::ResultSet; intervention::Symbol=:seed)::Vector{Int}
+
+Return the integer indices of locations that received at least one deployment of the
+given intervention type, across all timesteps and scenarios.
+
+# Arguments
+- `rs`           : ResultSet
+- `intervention` : Intervention type — one of `:seed`, `:fog`, `:mc` (default: `:seed`)
+
+# Returns
+Vector of 1-based integer location indices. Pass directly to metrics that accept a
+`locations` keyword argument, e.g.:
+
+```julia
+locs = ADRIA.metrics.deployed_locations(rs; intervention=:seed)
+rc   = ADRIA.metrics.scenario_relative_cover(rs; locations=locs)
+```
+"""
+function deployed_locations(rs::ResultSet; intervention::Symbol=:seed)::Vector{Int}
+    iv_ranks = rs.ranks[intervention = At(intervention)]
+    # reduce over timesteps (dim 1) and scenarios (dim 3), leaving locations (dim 2)
+    ever_deployed = vec(any(Array(iv_ranks) .> 0.0; dims=(1, 3)))
+    return findall(ever_deployed)
+end

@@ -1,4 +1,4 @@
-const COMPRESSOR = Zarr.BloscCompressor(; cname="zstd", clevel=5, shuffle=true)
+const COMPRESSOR = Zarr.ZstdCompressor(; level=6)
 
 """
     summarize_env_data(data_cube::AbstractArray)
