@@ -56,8 +56,7 @@ include("sensitivity/sensitivity.jl")
     sensitivity.pawn(_X, _y, ["a", "b", "c"]; S=2)
     sensitivity.pawn(_df, _y; S=2)
     sensitivity.tsa(_df, _Y2)
-    sensitivity.rsa(_df, _y, _ms; S=2)
-    sensitivity.outcome_map(_df, _y, _bv, [:a, :b, :c], _ms; S=2, n_boot=2)
+    sensitivity.rsa(_df, _y; top_proportion=0.9)
 
     find_pareto_optimal(_df_rcp, hcat(_y, rand(_n)), [45, 60])
 end
