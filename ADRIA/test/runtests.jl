@@ -55,10 +55,11 @@ _abort_if_failed(tier2, "Tier 2 (I/O Smokescreen)")
 # so that the ADRIA_DOM_45 global is shared via the @isdefined guard in mcda.jl.
 # ─────────────────────────────────────────────────────────────────────────────
 tier3 = @testset "Tier 3: Spec & Domain Loads" begin
-    include("spec.jl")
-    include("sampling.jl")
-    include("decisions/mcda.jl")
-    include("decisions/location_spread.jl")
+    @info "Starting Tier 3"
+    @time include("spec.jl")
+    @time include("sampling.jl")
+    @time include("decisions/mcda.jl")
+    @time include("decisions/location_spread.jl")
 end
 _abort_if_failed(tier3, "Tier 3 (Spec & Domain Loads)")
 

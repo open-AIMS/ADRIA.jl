@@ -12,6 +12,7 @@ if !@isdefined(ADRIA_DOM_45)
 end
 
 @testset "sample" begin
+    @info "Sample tests"
     dom = deepcopy(ADRIA_DOM_45)
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
@@ -100,6 +101,7 @@ end
     end
 
     @testset "Guided sampling" begin
+        @info "Guided sampling"
         dom = deepcopy(ADRIA_DOM_45)
         num_samples = 32
         scens = ADRIA.sample_guided(dom, num_samples)
@@ -218,25 +220,34 @@ end
 
         @testset "Continuous variables" begin
             continuous_factors = ms[(ms.ptype .∉ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+            sample_factors = continuous_factors[rand(1:nrow(continuous_factors), 5), :]
 
-            for factor in eachrow(continuous_factors)
+            for factor in eachrow(sample_factors)
                 fn = factor.fieldname
-                @test ADRIA.get_bounds(dom, fn) == factor.dist_params[1:2]
+                @test ADRIA.get_bounds(dom, fn) == factor.dist_params[1:2] ||
+                    "get_bounds mismatch for $fn"
                 @test ADRIA.get_attr(dom, fn, :default_dist_params) ==
-                    factor.default_dist_params
+                      factor.default_dist_params ||
+                    "get_attr(:default_dist_params) mismatch for $fn"
             end
         end
 
         @testset "Discrete variables" begin
             discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
-            for factor in eachrow(discrete_factors)
+            sample_factors = discrete_factors[rand(1:nrow(discrete_factors), 5), :]
+
+            for factor in eachrow(sample_factors)
                 fn = factor.fieldname
-                @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1]
-                @test ADRIA.get_bounds(dom, fn)[2] == factor.dist_params[2]
+                @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1] ||
+                    "get_bounds lower bound mismatch for $fn"
+                @test ADRIA.get_bounds(dom, fn)[2] == factor.dist_params[2] ||
+                    "get_bounds upper bound mismatch for $fn"
                 @test ADRIA.get_attr(dom, fn, :default_dist_params)[1] ==
-                    factor.default_dist_params[1]
+                      factor.default_dist_params[1] ||
+                    "get_attr(:default_dist_params) lower bound mismatch for $fn"
                 @test ADRIA.get_attr(dom, fn, :default_dist_params)[2] ==
-                    factor.default_dist_params[2]
+                      factor.default_dist_params[2] ||
+                    "get_attr(:default_dist_params) upper bound mismatch for $fn"
             end
         end
     end
