@@ -1,5 +1,6 @@
 using ADRIA: DataCube
 using ADRIAviz
+using DataFrames
 using Random
 
 @testset "sensitivity" begin
@@ -14,5 +15,26 @@ using Random
         )
 
         @test ADRIA.viz.pawn(Si) isa Figure
+    end
+
+    @testset "rsa(X, y, foi) returns Figure" begin
+        Random.seed!(1)
+        X = DataFrame(; a=rand(30), b=rand(30), c=rand(30))
+        y = rand(30)
+        @test ADRIA.viz.rsa(X, y, (:a, :b)) isa Figure
+    end
+
+    @testset "outcome_map(X, y, factor) returns Figure" begin
+        Random.seed!(2)
+        X = DataFrame(; a=rand(30), b=rand(30))
+        y = rand(30)
+        @test ADRIA.viz.outcome_map(X, y, :a) isa Figure
+    end
+
+    @testset "outcome_map(X, y, factors) returns Figure" begin
+        Random.seed!(3)
+        X = DataFrame(; a=rand(30), b=rand(30), c=rand(30))
+        y = rand(30)
+        @test ADRIA.viz.outcome_map(X, y, [:a, :b, :c]) isa Figure
     end
 end

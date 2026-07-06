@@ -46,50 +46,14 @@ end
 
 # ----------------------------------------------------------------------------
 # Backend-specific viz dispatch
-#
-# Plotly tsa takes Si directly (no ResultSet); rsa/outcome_map take stacked
-# YAXArrays rather than the Dataset returned by the analysis functions.
 # ----------------------------------------------------------------------------
-
-import ADRIA.YAXArrays: At
-
-function _stack_rsa(rsa_ds, factors::Vector{Symbol}, rs)
-    si_q = collect(rsa_ds[factors[1]].axes[1])
-    rows = [coalesce.(collect(rsa_ds[f][Si = At("Si")]), NaN) for f in factors]
-    mat = permutedims(reduce(hcat, rows))
-    Si = ADRIA.DataCube(Matrix{Float64}(mat); factors=factors, si_quantile=si_q)
-    fvals = Matrix{Float64}(rs.inputs[:, factors])
-    return Si, fvals
-end
-
-function _stack_outcome_map(om_ds, factors::Vector{Symbol}, rs)
-    si_q = collect(om_ds[factors[1]].axes[1])
-    CI = [:lower, :mean, :upper]
-    arr = Array{Float64}(undef, length(factors), 3, length(si_q))
-    for (i, f) in enumerate(factors)
-        da = om_ds[f]
-        arr[i, 1, :] = coalesce.(collect(da[CI = At("lower")]), NaN)
-        arr[i, 2, :] = coalesce.(collect(da[CI = At("mean")]), NaN)
-        arr[i, 3, :] = coalesce.(collect(da[CI = At("upper")]), NaN)
-    end
-    outcomes = ADRIA.DataCube(arr; factors=factors, CI=CI, si_quantile=si_q)
-    fvals = Matrix{Float64}(rs.inputs[:, factors])
-    return outcomes, fvals
-end
 
 _viz_tsa(rs, si) = ADRIA.viz.tsa(si)
 
-function _viz_rsa(rs, rsa_ds, foi)
-    Si, fvals = _stack_rsa(rsa_ds, foi, rs)
-    return ADRIA.viz.rsa(Si, fvals)
-end
+_viz_rsa(scens, y, foi) = ADRIA.viz.rsa(scens, y, foi)
+_viz_outcome_map(scens, y, foi) = ADRIA.viz.outcome_map(scens, y, foi)
 
-function _viz_outcome_map(rs, om_ds, foi)
-    outcomes, fvals = _stack_outcome_map(om_ds, foi, rs)
-    return ADRIA.viz.outcome_map(outcomes, fvals)
-end
-
-_viz_rules_scatter(rs, scens, tgt, rules) = ADRIA.viz.rules_scatter(scens, tgt, rules)
+_viz_rules_scatter(rs, X, tgt, rules) = ADRIA.viz.rules_scatter(X, tgt, rules)
 
 _viz_tsc_map(rs, tac_sites, tac_clusters) = ADRIA.viz.map(rs, tac_sites, tac_clusters)
 

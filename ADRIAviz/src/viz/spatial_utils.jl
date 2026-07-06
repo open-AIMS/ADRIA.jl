@@ -159,7 +159,12 @@ function _get_populated_places(
     lons = Float64[c[1] for c in cents]
     lats = Float64[c[2] for c in cents]
 
-    places_gdf = naturalearth("cities", 50)
+    places_gdf = try
+        naturalearth("cities", 50)
+    catch
+        NaturalEarth.set_mirror!("github")
+        naturalearth("cities", 50)
+    end
 
     # Filter by population and proximity
     result = CoastalPlace[]
