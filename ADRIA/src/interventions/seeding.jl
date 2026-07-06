@@ -50,7 +50,7 @@ function distribute_seeded_corals(
     if n_devices > max_n_devices
         seed_volume_tmp .*= (max_n_devices / n_devices)
         cap = n_devices - sum(seed_volume_tmp)
-        @warn """
+        @debug """
         Number of seeding devices exceeds available space.
         Excluding $cap devices to fit.
         Total available space: $(round(total_available_space))

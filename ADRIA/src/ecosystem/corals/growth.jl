@@ -872,7 +872,7 @@ function constrain_recruitment!(
     agg_cover_above_threshold_mask .= rec_above_threshold .&& .!cover_above_threshold_mask
 
     if any(agg_cover_above_threshold_mask)
-        is_test_env() ? nothing : @warn "Constraining recruits within error bounds."
+        is_test_env() ? nothing : @debug "Constraining recruits within error bounds."
 
         exceeded_agg_cover_locs = habitable_loc_areas[agg_cover_above_threshold_mask]
         threshold_cap = round_threshold .* exceeded_agg_cover_locs

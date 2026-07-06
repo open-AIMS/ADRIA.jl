@@ -61,7 +61,7 @@ function distribute_moving_corals(
 
         # If increase in area will exceed available space, decrease the
         if sum(area_increase_per_coral_m2) > available_space_per_loc_m2[i]
-            @warn "MC area increase exceeds available space for some locations. " .*
+            @debug "MC area increase exceeds available space for some locations. " .*
                 "Constraining area and number of larvae."
 
             # Cap increase in cover for each group proportional to the increase in each one
