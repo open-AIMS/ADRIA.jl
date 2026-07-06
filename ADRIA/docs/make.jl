@@ -87,5 +87,6 @@ deploydocs(;
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",
-    push_preview=false
+    push_preview=false,
+    tag_prefix="ADRIA-"
 )
