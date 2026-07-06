@@ -115,7 +115,8 @@ end
                 0.6 0.6 0.0;
                 0.4 0.6 0.0;
                 0.8 0.6 0.0];
-            timesteps=1:4, scenarios=1:3
+            timesteps=1:4,
+            scenarios=1:3
         )
         result = metrics.years_above_threshold(data; threshold=0.5)
         @test Array(result) == [2, 4, 0]
