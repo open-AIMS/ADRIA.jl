@@ -471,118 +471,75 @@ end
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8. rsa(Si, factor_values)  — Plotly-specific signature
+# 8. rsa(X, y, foi)  — Plotly-specific signature
 #
-# Contract: ADRIA.viz.rsa(Si::YAXArray, factor_values::AbstractMatrix; opts=...)
-#           Si dims: factors × si_quantile
-#           factor_values: n_scenarios × n_factors
+# Contract: ADRIA.viz.rsa(X::DataFrame, y::AbstractVector{<:Real}, foi::NTuple{2,Symbol})
 # ─────────────────────────────────────────────────────────────────────────────
 
-@testset "rsa(Si, factor_values)" begin
-    Si, fvals = _plotly_rsa_data(; n_factors=3, n_quantiles=10, n_scenarios=20)
+@testset "rsa(X, y, foi)" begin
+    X, y, foi = _plotly_rsa_data(; n_factors=3, n_scenarios=20)
 
     @testset "return type is PlotlyBase.Plot" begin
-        @test ADRIA.viz.rsa(Si, fvals) isa PlotlyBase.Plot
+        @test ADRIA.viz.rsa(X, y, foi) isa PlotlyBase.Plot
     end
 
-    @testset "at least one trace per factor" begin
-        p = ADRIA.viz.rsa(Si, fvals)
-        @test length(p.data) >= 3
+    @testset "exactly one scatter trace" begin
+        p = ADRIA.viz.rsa(X, y, foi)
+        @test length(p.data) == 1
+        @test p.data[1].type == "scatter"
     end
 
-    @testset "all traces are scatter type" begin
-        p = ADRIA.viz.rsa(Si, fvals)
-        @test all(t.type == "scatter" for t in p.data)
-    end
-
-    @testset "3 factors → subplot grid (xaxis2 present in layout)" begin
-        p = ADRIA.viz.rsa(Si, fvals)
-        # Plotly uses xaxis, xaxis2, ... for multi-subplot layouts
-        @test !isnothing(get(p.layout, :xaxis2, nothing))
-    end
-
-    @testset "single-factor rsa does not produce xaxis2" begin
-        Si1, fv1 = _plotly_rsa_data(; n_factors=1)
-        p = ADRIA.viz.rsa(Si1, fv1)
-        @test p isa PlotlyBase.Plot
-        @test length(p.data) >= 1
-        @test isnothing(get(p.layout, :xaxis2, nothing))
-    end
-
-    @testset "x-axis label defaults to 'Factor Value' or similar" begin
-        p = ADRIA.viz.rsa(Si, fvals)
-        xlabel = lowercase(
-            string(
-                get(
-                    p.layout.xaxis,
-                    :title_text,
-                    get(get(p.layout.xaxis, :title, Dict()), :text, "")
-                )
-            )
-        )
-        @test contains(xlabel, "factor") || contains(xlabel, "value") ||
-            contains(xlabel, "param")
-    end
-
-    @testset "custom axis label kwarg is applied" begin
-        p = ADRIA.viz.rsa(Si, fvals; xlabel="My X")
+    @testset "x-axis label matches foi[1]" begin
+        p = ADRIA.viz.rsa(X, y, foi)
         xlabel = string(
-            get(
-                p.layout.xaxis,
-                :title_text,
-                get(get(p.layout.xaxis, :title, Dict()), :text, "")
-            )
+            get(p.layout.xaxis, :title_text,
+                get(get(p.layout.xaxis, :title, Dict()), :text, ""))
         )
-        @test xlabel == "My X"
+        @test xlabel == string(foi[1])
+    end
+
+    @testset "marker colorscale is Viridis and showscale=true" begin
+        p = ADRIA.viz.rsa(X, y, foi)
+        marker = p.data[1].marker
+        cs = lowercase(string(get(marker, :colorscale, "")))
+        @test contains(cs, "viridis")
+        @test get(marker, :showscale, false) == true
     end
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9. outcome_map(outcomes, factor_values)  — Plotly-specific signature
+# 9. outcome_map(X, y, factor/factors)  — Plotly-specific signature
 #
-# Contract: ADRIA.viz.outcome_map(outcomes::YAXArray, factor_values::AbstractMatrix; opts=...)
-#           outcomes dims: factors × CI × si_quantile
+# Contract: ADRIA.viz.outcome_map(X::DataFrame, y::AbstractVector{<:Real}, factor::Symbol)
+#           ADRIA.viz.outcome_map(X::DataFrame, y::AbstractVector{<:Real}, factors::AbstractVector{Symbol})
 # ─────────────────────────────────────────────────────────────────────────────
 
-@testset "outcome_map(outcomes, factor_values)" begin
-    outcomes, fvals = _plotly_outcome_map_data(; n_factors=3, n_quantiles=10)
+@testset "outcome_map(X, y, factor/factors)" begin
+    X, y, factors = _plotly_outcome_map_data(; n_factors=3, n_scenarios=20)
 
-    @testset "return type is PlotlyBase.Plot" begin
-        @test ADRIA.viz.outcome_map(outcomes, fvals) isa PlotlyBase.Plot
+    @testset "single-factor: return type is PlotlyBase.Plot" begin
+        @test ADRIA.viz.outcome_map(X, y, factors[1]) isa PlotlyBase.Plot
     end
 
-    @testset "at least 2 traces per factor (mean line + CI ribbon)" begin
-        p = ADRIA.viz.outcome_map(outcomes, fvals)
-        @test length(p.data) >= 2 * 3
+    @testset "single-factor: exactly one scatter trace" begin
+        p = ADRIA.viz.outcome_map(X, y, factors[1])
+        @test length(p.data) == 1
+        @test p.data[1].type == "scatter"
     end
 
-    @testset "has scatter traces (mean lines)" begin
-        p = ADRIA.viz.outcome_map(outcomes, fvals)
-        @test any(t.type == "scatter" for t in p.data)
+    @testset "multi-factor: return type is PlotlyBase.Plot" begin
+        @test ADRIA.viz.outcome_map(X, y, factors) isa PlotlyBase.Plot
     end
 
-    @testset "3 factors → subplot grid (xaxis2 present)" begin
-        p = ADRIA.viz.outcome_map(outcomes, fvals)
-        @test !isnothing(get(p.layout, :xaxis2, nothing))
+    @testset "multi-factor: has n_factors scatter traces" begin
+        p = ADRIA.viz.outcome_map(X, y, factors)
+        scatter_count = count(t -> t.type == "scatter", p.data)
+        @test scatter_count == length(factors)
     end
 
-    @testset "single-factor variant works" begin
-        oc1, fv1 = _plotly_outcome_map_data(; n_factors=1)
-        p = ADRIA.viz.outcome_map(oc1, fv1)
-        @test p isa PlotlyBase.Plot
-        @test isnothing(get(p.layout, :xaxis2, nothing))
-    end
-
-    @testset "custom x-axis label is applied" begin
-        p = ADRIA.viz.outcome_map(outcomes, fvals; xlabel="FactorAxis")
-        xlabel = string(
-            get(
-                p.layout.xaxis,
-                :title_text,
-                get(get(p.layout.xaxis, :title, Dict()), :text, "")
-            )
-        )
-        @test xlabel == "FactorAxis"
+    @testset "multi-factor: subplot grid (yaxis2 present for 3 factors)" begin
+        p = ADRIA.viz.outcome_map(X, y, factors)
+        @test !isnothing(get(p.layout, :yaxis2, nothing))
     end
 end
 

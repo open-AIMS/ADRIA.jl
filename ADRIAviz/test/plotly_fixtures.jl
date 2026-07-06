@@ -126,38 +126,27 @@ end
 factor values. Used for `rsa(Si, factor_values)` Plotly-specific signature
 (no `ResultSet` needed).
 """
-function _plotly_rsa_data(; n_factors=3, n_quantiles=10, n_scenarios=20)
+function _plotly_rsa_data(; n_factors=3, n_scenarios=20)
     factor_names = Symbol.("Factor" .* string.(1:n_factors))
-    quantile_positions = collect(range(0.05, 0.95; length=n_quantiles))
-    Si = DataCube(
-        abs.(rand(n_factors, n_quantiles));
-        factors=factor_names, si_quantile=quantile_positions
-    )
-    factor_values = rand(n_scenarios, n_factors)
-    return Si, factor_values
+    X = DataFrame(rand(n_scenarios, n_factors), string.(factor_names))
+    y = rand(n_scenarios)
+    foi = (factor_names[1], factor_names[2])
+    return X, y, foi
 end
 
 """
-    _plotly_outcome_map_data(; n_factors=3, n_quantiles=10, n_scenarios=20)
-    -> (outcomes::YAXArray, factor_values::Matrix{Float64})
+    _plotly_outcome_map_data(; n_factors=3, n_scenarios=20)
+    -> (X::DataFrame, y::Vector{Float64}, factors::Vector{Symbol})
 
-3-D YAXArray (factors × CI × si_quantile) with valid lower ≤ mean ≤ upper CI
-ordering, plus a raw factor values matrix. Used for `outcome_map(outcomes,
-factor_values)` Plotly-specific signature.
+DataFrame of scenario inputs plus a scalar outcome per scenario and a list of
+factor column names. Used for `outcome_map(X, y, factor)` and
+`outcome_map(X, y, factors)` Plotly-specific signatures.
 """
-function _plotly_outcome_map_data(; n_factors=3, n_quantiles=10, n_scenarios=20)
+function _plotly_outcome_map_data(; n_factors=3, n_scenarios=20)
     factor_names = Symbol.("Factor" .* string.(1:n_factors))
-    quantile_pos = collect(range(0.05, 0.95; length=n_quantiles))
-    CI_labels = [:lower, :mean, :upper]
-
-    raw = abs.(rand(n_factors, length(CI_labels), n_quantiles))
-    # Enforce lower ≤ mean ≤ upper
-    raw[:, 1, :] .= raw[:, 2, :] .- 0.1
-    raw[:, 3, :] .= raw[:, 2, :] .+ 0.1
-
-    outcomes = DataCube(raw; factors=factor_names, CI=CI_labels, si_quantile=quantile_pos)
-    factor_values = rand(n_scenarios, n_factors)
-    return outcomes, factor_values
+    X = DataFrame(rand(n_scenarios, n_factors), string.(factor_names))
+    y = rand(n_scenarios)
+    return X, y, factor_names
 end
 
 """
