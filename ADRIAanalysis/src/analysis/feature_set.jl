@@ -111,8 +111,8 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:dhw_scenario)]
 
     # Remove correlated features
-    # Remove desired seed deployment targets
-    # N_seed factors indicate maximum deployment effort, not actual simulated deployment
+    # Remove seed deployment target values as `N_seed_*` factors indicate
+    # maximum (desired) deployment effort, not actual simulated deployment
     scens = scens[:, .!contains.(names(scens), "N_seed")]
 
     # Set missing values to 0
