@@ -111,10 +111,12 @@ end
 
         # Correctness: known counts for 2D input
         data = DataCube(
-            [0.2 0.6 0.0;
+            [
+                0.2 0.6 0.0;
                 0.6 0.6 0.0;
                 0.4 0.6 0.0;
-                0.8 0.6 0.0];
+                0.8 0.6 0.0
+            ];
             timesteps=1:4,
             scenarios=1:3
         )
