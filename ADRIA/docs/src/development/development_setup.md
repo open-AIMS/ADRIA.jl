@@ -218,6 +218,40 @@ format(".")
 Formatter configuration is defined in `.JuliaFormatter.toml`, see
 [JuliaFormatter docs](https://domluna.github.io/JuliaFormatter.jl/stable/).
 
+### With the pre-commit hook (recommended)
+
+The repository ships a `.pre-commit-config.yaml` that automatically formats staged `.jl`
+files before every commit, using the same JuliaFormatter version pinned by CI. This means
+formatting issues are caught locally rather than in a CI review cycle.
+
+!!! note
+    These steps assume Python is available on your system. If not, install it first via
+    [python.org](https://www.python.org/downloads/) or your system package manager.
+
+**One-time setup:**
+
+1. Install [pre-commit](https://pre-commit.com/):
+
+   ```bash
+   pip install pre-commit
+   ```
+
+2. Activate the hook in your local clone:
+
+   ```bash
+   pre-commit install
+   ```
+
+After this, every `git commit` will auto-format any staged Julia files. The first commit
+after installation will be slower (~30 s) while the hook's Julia environment is cached;
+subsequent commits are fast.
+
+To run the formatter manually across all files without committing:
+
+```bash
+pre-commit run --all-files
+```
+
 ## Git blame ignore revs
 
 If you have GitLens (or similar extension), it will show the author of a line of code using git blame.
