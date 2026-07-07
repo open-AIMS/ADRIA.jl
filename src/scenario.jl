@@ -1137,7 +1137,7 @@ function run_model(
     # Decision matrix log
     if log_dm
         decision_matrix_log = ZeroDataCube(; T=Float32, timesteps=1:tf,
-            location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
+            location=domain.loc_ids[habitable_locs], criteria=SeedPreferences(domain, param_set).names)
     else
         decision_matrix_log = false
     end

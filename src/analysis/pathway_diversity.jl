@@ -86,8 +86,9 @@ function pathway_diversity(
     syrs::Int64 = rs.inputs.seed_years[idx_scen]
     pd_freq = Int64(rs.inputs.pd_frequency[idx_scen])
     decision_times = collect(sys:pd_freq:(sys + syrs - 1))
-    # Candidate options at every decision after the first also include :nothing (do nothing)
-    candidate_options = vcat(copy(PD_OPTIONS()).option_name, :nothing)
+    # Real options plus :nothing. :nothing is not a switch candidate; it is only fetched so
+    # switching_probability can use the do-nothing pathway as the counterfactual baseline.
+    perf_options = vcat(copy(PD_OPTIONS()).option_name, :nothing)
 
     idx_option_scens = filter(
         i -> decoded_ts[i][Int(rs.inputs.seed_year_start[i])] == option, idx_scens
@@ -100,17 +101,19 @@ function pathway_diversity(
         rs.decision_matrix_log[timesteps=tsteps, scenarios=idx_option_scens]
     )
 
-    # Cache outcome metrics and pre-compute per-tstep option performance (read-only in threads)
-    rel_cover_data = Array(rs.outcomes[:relative_cover][scenarios=idx_scens])
+    # Cache outcome metrics and pre-compute per-tstep option performance (read-only in threads).
+    # Use per-location total absolute cover (km²) rather than relative cover for the outcome metric.
+    abs_cover_data =
+        Array(ADRIA.metrics.total_absolute_cover(rs)[scenarios=idx_scens]) .* 1e-6
     fd_data = Array(rs.outcomes[:coral_evenness][scenarios=idx_scens])
-    max_time = size(rel_cover_data, 1)
+    max_time = size(abs_cover_data, 1)
     scen_to_idx = Dict(s => i for (i, s) in enumerate(idx_scens))
 
     # Window performance keyed by the pathway prefix through the current decision block, so
     # that the keep-vs-switch comparison holds the deciding scenario's history fixed.
     perf_by_prefix = Dict(
         t => _prefix_option_perf(
-            rel_cover_data, fd_data, idx_option_scens, scen_to_idx,
+            abs_cover_data, fd_data, idx_option_scens, scen_to_idx,
             decoded_ts, decision_times, t, min(t + pd_freq - 1, max_time)
         )
         for t in tsteps
@@ -119,6 +122,12 @@ function pathway_diversity(
     Threads.@threads for idx_prob in eachindex(idx_option_scens)
         idx_scen = idx_option_scens[idx_prob]
         option_ts = decoded_ts[idx_scen]
+        # Pathways that do nothing at any decision get probability 0. These scenarios remain in
+        # idx_option_scens so _prefix_option_perf can still use them as counterfactual references.
+        if any(option_ts[t] == :nothing for t in decision_times)
+            probs[idx_prob] = 0.0
+            continue
+        end
         for tstep in tsteps
             # Options adopted before this decision (shared prefix); each candidate option's
             # performance is the pathway that keeps this prefix and then adopts that option.
@@ -126,7 +135,7 @@ function pathway_diversity(
             prefix_prev = Tuple(decoded_ts[idx_scen][t] for t in key_times[1:(end - 1)])
             option_perf = Dict{Symbol,YAXArray}(
                 o => perf_by_prefix[tstep][(prefix_prev..., o)]
-                for o in candidate_options
+                for o in perf_options
                 if haskey(perf_by_prefix[tstep], (prefix_prev..., o))
             )
 
@@ -175,14 +184,6 @@ function switching_probability(
     options.probability = zeros(size(options, 1))
     options.selected_locations = [Vector{loc_type}() for _ in 1:size(options, 1)]
 
-    # The :nothing option (do nothing this block) selects no locations
-    push!(options, (
-        option_name=:nothing,
-        preference=options.preference[1],   # placeholder; unused for :nothing
-        probability=0.0,
-        selected_locations=Vector{loc_type}()
-    ))
-
     valid_locs = collect(1:size(loc_data, 1))
 
     if ports === nothing
@@ -190,7 +191,6 @@ function switching_probability(
     end
 
     for row in eachrow(options)
-        row.option_name == :nothing && continue
         row.selected_locations = ADRIA.select_locations(
             row.preference, decision_matrix, mcda_method, valid_locs, min_locs
         )
@@ -208,14 +208,18 @@ function switching_probability(
         unique_past_locs = past_locations[past_locations.UNIQUE_ID .∉ [common_ids], :]
 
         # Outcome-based metrics: cum_rel_tac_diff, cum_fd_diff (weights[1..2])
-        # Compares the per-location performance of a scenario holding past_option against
-        # a (possibly different) scenario holding the candidate option, paired by location.
-        if haskey(option_perf, past_option) && haskey(option_perf, row.option_name)
-            past_perf = option_perf[past_option]
+        # Keeping the current option is neutral; switching is scored by comparing the candidate
+        # option against the do-nothing counterfactual (:nothing), paired by location. The
+        # counterfactual shares the candidate's past pathway prefix (see option_perf keys), so
+        # the only difference is the current block's action.
+        if row.option_name == past_option
+            row.probability += (weights[1] + weights[2]) * 0.5
+        elseif haskey(option_perf, :nothing) && haskey(option_perf, row.option_name)
+            counter = option_perf[:nothing]
             cand_perf = option_perf[row.option_name]
 
-            δ_rel_tac = cand_perf[metric=At(:rel_tac)] ./ past_perf[metric=At(:rel_tac)] .- 1
-            δ_fd = cand_perf[metric=At(:fd)] ./ past_perf[metric=At(:fd)] .- 1
+            δ_rel_tac = cand_perf[metric=At(:rel_tac)] ./ counter[metric=At(:rel_tac)] .- 1
+            δ_fd = cand_perf[metric=At(:fd)] ./ counter[metric=At(:fd)] .- 1
 
             row.probability += weights[1] * two_sided_cvar(δ_rel_tac; σ=_σ_rel_tac)
             row.probability += weights[2] * two_sided_cvar(δ_fd; σ=_σ_fd)
@@ -339,9 +343,6 @@ end
 Filter locations based on the index, reef_siteid or UNIQUE_ID.
 """
 function _filter_locations(loc_data::DataFrame, selected_locations::Vector{String})
-    if isempty(selected_locations)
-        return loc_data[Int[], :]
-    end
     if all(isdigit, selected_locations[1])
         return loc_data[loc_data.UNIQUE_ID .∈ [selected_locations], :]
     end
@@ -506,7 +507,7 @@ function two_sided_cvar(
 end
 
 """
-    _prefix_option_perf(rel_cover_data, fd_data, scens, scen_to_idx,
+    _prefix_option_perf(cover_data, fd_data, scens, scen_to_idx,
                         decoded_ts, decision_times, tstep, t_end)
 
 Cumulative per-location performance over the window `[tstep, t_end]`, keyed by the
@@ -524,7 +525,7 @@ Returns a `Dict{Tuple, YAXArray}` mapping a prefix tuple to a YAXArray with dims
 `(metric=[:rel_tac, :fd], location=1:n_locs)`.
 """
 function _prefix_option_perf(
-    rel_cover_data::AbstractArray{<:Real,3},
+    cover_data::AbstractArray{<:Real,3},
     fd_data::AbstractArray{<:Real,3},
     scens::AbstractVector{Int64},
     scen_to_idx::Dict{Int64,Int64},
@@ -533,7 +534,7 @@ function _prefix_option_perf(
     tstep::Int64,
     t_end::Int64
 )::Dict{Tuple,YAXArray}
-    n_locs = size(rel_cover_data, 2)
+    n_locs = size(cover_data, 2)
     key_times = decision_times[decision_times .<= tstep]   # d_1 .. d_j
 
     perf = Dict{Tuple,YAXArray}()
@@ -541,11 +542,11 @@ function _prefix_option_perf(
         key = Tuple(decoded_ts[scen][t] for t in key_times) # options at d_1 .. d_j
         haskey(perf, key) && continue                       # first match is enough
         scen_idx = scen_to_idx[scen]
-        rel_cover_window = rel_cover_data[tstep:t_end, :, scen_idx]   # (n_ts, n_locs)
+        cover_window = cover_data[tstep:t_end, :, scen_idx]          # (n_ts, n_locs)
         evenness_window = fd_data[tstep:t_end, :, scen_idx]           # (n_ts, n_locs)
 
-        # cum_rel_tac / cum_fd: sum over time, per location
-        rel_tac_vals = vec(sum(rel_cover_window; dims=1))
+        # cum total absolute cover (km²) / cum_fd: sum over time, per location
+        rel_tac_vals = vec(sum(cover_window; dims=1))
         fd_vals = vec(sum(evenness_window; dims=1))
 
         perf[key] = DataCube(

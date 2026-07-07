@@ -18,8 +18,6 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         rand(length(valid_locations), length(seed_pref_names))
     )
     option_names = ADRIA.analysis.option_seed_preference().option_name
-    # switching_probability also returns the :nothing (do nothing) option
-    switch_option_names = vcat(option_names, :nothing)
     option_perf = Dict{Symbol,ADRIA.YAXArrays.YAXArray}()
 
     @testset "when only necessary inputs are passed" begin
@@ -28,7 +26,7 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         )
 
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
-        @test result.option_name == switch_option_names
+        @test result.option_name == option_names
     end
 
     @testset "when option is passed" begin
@@ -45,7 +43,7 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
         result = ADRIA.analysis.switching_probability(past_option, decision_matrix,
             DOM.loc_data, mcda_method, min_locs, option_perf; ports=filtered_ports)
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
-        @test result.option_name == switch_option_names
+        @test result.option_name == option_names
     end
 
     @testset "when custom weights are passed" begin
@@ -54,7 +52,7 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
             weights=(0.4, 0.3, 0.2, 0.1)
         )
         @test isapprox(sum(result.probability), 1.0, atol=0.01)
-        @test result.option_name == switch_option_names
+        @test result.option_name == option_names
     end
 
     @testset "option_seed_preference return correctly" begin
