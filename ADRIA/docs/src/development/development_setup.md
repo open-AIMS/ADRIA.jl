@@ -225,8 +225,16 @@ files before every commit, using the same JuliaFormatter version pinned by CI. T
 formatting issues are caught locally rather than in a CI review cycle.
 
 !!! note
-    These steps assume Python is available on your system. If not, install it first via
-    [python.org](https://www.python.org/downloads/) or your system package manager.
+    These steps assume Python is available on your system. If not, the easiest way to get
+    it is via [uv](https://docs.astral.sh/uv/getting-started/installation/) — a fast Python
+    package manager that also manages Python installations:
+
+    ```bash
+    # Install uv, then use it to run pre-commit without a separate pip install
+    uv tool install pre-commit
+    ```
+
+    Skip the `pip install pre-commit` step below if you install via `uv`.
 
 **One-time setup:**
 
