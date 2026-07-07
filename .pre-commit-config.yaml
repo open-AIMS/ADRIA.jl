@@ -1,0 +1,6 @@
+repos:
+  - repo: https://github.com/domluna/JuliaFormatter.jl
+    rev: v2.5.1  # pin to match CI (Format.yml)
+    hooks:
+      - id: julia-formatter
+        files: '\.jl$'  # only run on Julia source files
