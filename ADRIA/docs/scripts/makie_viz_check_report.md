@@ -1,124 +1,134 @@
 # Visualization Check Report
 
-**Date:** 2026-06-20T14:06:33.834
+**Date:** 2026-07-06T21:15:09.642
 
 ## Summary
-- **Total Checks:** 22
-- **Passed:** 22
+- **Total Checks:** 24
+- **Passed:** 24
 - **Failed:** 0
-- **Total Time:** 939.38s
+- **Total Time:** 1259.54s
 
 ## Results
 
-### ✓ PASS — scenarios_tac [28.70s]
+### ✓ PASS — scenarios_tac [28.81s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\scenarios_tac.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\scenarios_tac.png`
 
-### ✓ PASS — tsc [1.77s]
+### ✓ PASS — tsc [1.65s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc.png`
 
-### ✓ PASS — scenarios_by_cluster [208ms]
+### ✓ PASS — scenarios_by_cluster [199ms]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\scenarios_by_cluster.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\scenarios_by_cluster.png`
 
-### ✓ PASS — taxonomy [4.30s]
+### ✓ PASS — taxonomy [4.14s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\taxonomy.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\taxonomy.png`
 
-### ✓ PASS — pawn_si [7.03s]
+### ✓ PASS — pawn_si [8.47s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\pawn_si.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\pawn_si.png`
 
-### ✓ PASS — tsa [17.50s]
+### ✓ PASS — tsa [38.40s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsa.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsa.png`
 
-### ✓ PASS — convergence_factors_series [2.39s]
+### ✓ PASS — convergence_factors_series [3.32s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\convergence_factors_series.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\convergence_factors_series.png`
 
-### ✓ PASS — rsa [6.32s]
+### ✓ PASS — rsa [13.62s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\rsa.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\rsa.png`
 
-### ✓ PASS — outcome_map [2.50s]
+### ✓ PASS — rsa_multi_panel [470ms]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\outcome_map.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\rsa_multi_panel.png`
 
-### ✓ PASS — example_dea_fig [13.59s]
+### ✓ PASS — outcome_map [531ms]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\example_dea_fig.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\outcome_map.png`
 
-### ✓ PASS — rules_scatter [15.43s]
+### ✓ PASS — outcome_map_deployed_locs [252ms]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\rules_scatter.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\outcome_map_deployed_locs.png`
 
-### ✓ PASS — tsc_map [46.13s]
+### ✓ PASS — example_dea_fig [69.69s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc_map.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\example_dea_fig.png`
 
-### ✓ PASS — tsc_asv [26.42s]
+### ✓ PASS — rules_scatter [19.63s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc_asv.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\rules_scatter.png`
 
-### ✓ PASS — single_rank_plot [5.13s]
+### ✓ PASS — tsc_map [92.16s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\single_rank_plot.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc_map.png`
 
-### ✓ PASS — ranks_by_intervention [7.54s]
+### ✓ PASS — tsc_asv [47.26s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\ranks_by_intervention.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\tsc_asv.png`
 
-### ✓ PASS — criteria_spatial_plots [23.03s]
+### ✓ PASS — single_rank_plot [12.21s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\criteria_spatial_plots.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\single_rank_plot.png`
 
-### ✓ PASS — dhw_scenario [25.01s]
+### ✓ PASS — ranks_by_intervention [28.01s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\dhw_scenario.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\ranks_by_intervention.png`
 
-### ✓ PASS — dhw_scenarios [2.01s]
+### ✓ PASS — criteria_spatial_plots [22.73s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\dhw_scenarios.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\criteria_spatial_plots.png`
 
-### ✓ PASS — cyclone_scenario [20.25s]
+### ✓ PASS — dhw_scenario [27.22s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\cyclone_scenario.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\dhw_scenario.png`
 
-### ✓ PASS — connectivity [674.36s]
+### ✓ PASS — dhw_scenarios [1.70s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\connectivity.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\dhw_scenarios.png`
 
-### ✓ PASS — convergence_components_heatmap [665ms]
+### ✓ PASS — cyclone_scenario [16.16s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\convergence_components_heatmap.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\cyclone_scenario.png`
 
-### ✓ PASS — ranks_plot [9.09s]
+### ✓ PASS — convergence_components_heatmap [1.87s]
 
-Location: `C:\Users\tiwanaga\projects\DS_projects\claude_agents\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\ranks_plot.png`
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\convergence_components_heatmap.png`
+
+### ✓ PASS — ranks_plot [150.97s]
+
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\ranks_plot.png`
+
+### ✓ PASS — connectivity [670.07s]
+
+Location: `C:\Users\tiwanaga\projects\DS_projects\ADRIA.jl\ADRIA\docs\scripts\makie_viz_output\connectivity.png`
 
 ## Timings by Check
 
-- ✓ connectivity: 674.36s
-- ✓ tsc_map: 46.13s
-- ✓ scenarios_tac: 28.70s
-- ✓ tsc_asv: 26.42s
-- ✓ dhw_scenario: 25.01s
-- ✓ criteria_spatial_plots: 23.03s
-- ✓ cyclone_scenario: 20.25s
-- ✓ tsa: 17.50s
-- ✓ rules_scatter: 15.43s
-- ✓ example_dea_fig: 13.59s
-- ✓ ranks_plot: 9.09s
-- ✓ ranks_by_intervention: 7.54s
-- ✓ pawn_si: 7.03s
-- ✓ rsa: 6.32s
-- ✓ single_rank_plot: 5.13s
-- ✓ taxonomy: 4.30s
-- ✓ outcome_map: 2.50s
-- ✓ convergence_factors_series: 2.39s
-- ✓ dhw_scenarios: 2.01s
-- ✓ tsc: 1.77s
-- ✓ convergence_components_heatmap: 665ms
-- ✓ scenarios_by_cluster: 208ms
+- ✓ connectivity: 670.07s
+- ✓ ranks_plot: 150.97s
+- ✓ tsc_map: 92.16s
+- ✓ example_dea_fig: 69.69s
+- ✓ tsc_asv: 47.26s
+- ✓ tsa: 38.40s
+- ✓ scenarios_tac: 28.81s
+- ✓ ranks_by_intervention: 28.01s
+- ✓ dhw_scenario: 27.22s
+- ✓ criteria_spatial_plots: 22.73s
+- ✓ rules_scatter: 19.63s
+- ✓ cyclone_scenario: 16.16s
+- ✓ rsa: 13.62s
+- ✓ single_rank_plot: 12.21s
+- ✓ pawn_si: 8.47s
+- ✓ taxonomy: 4.14s
+- ✓ convergence_factors_series: 3.32s
+- ✓ convergence_components_heatmap: 1.87s
+- ✓ dhw_scenarios: 1.70s
+- ✓ tsc: 1.65s
+- ✓ outcome_map: 531ms
+- ✓ rsa_multi_panel: 470ms
+- ✓ outcome_map_deployed_locs: 252ms
+- ✓ scenarios_by_cluster: 199ms

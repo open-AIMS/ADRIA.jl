@@ -174,6 +174,7 @@ function ADRIA.viz.selection_criteria_map(
     ADRIA.viz.selection_criteria_map!(
         g, rs, decision_matrix, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
     )
+    resize_to_layout!(f)
     return f
 end
 function ADRIA.viz.selection_criteria_map!(

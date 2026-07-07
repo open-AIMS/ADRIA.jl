@@ -118,54 +118,166 @@ function ADRIA.viz.tsa(
 end
 
 # ──────────────────────────────────────────────────────────────────────────────
-# rsa(Si, factor_values) — response surface for each factor
+# rsa(X, y, foi) — 2D scatter of two factors colored by outcome
 # ──────────────────────────────────────────────────────────────────────────────
 
+"""
+    ADRIA.viz.rsa(X, y, foi; with_contour=true, title, kwargs...) -> PlotlyBase.Plot
+
+2D scatter of two input factors colored by outcome metric, with optional binned-average
+contour overlay (histogram2dcontour with histfunc="avg").
+
+# Arguments
+- `X`            : Feature matrix (DataFrame, columns = factors)
+- `y`            : Outcome values per scenario
+- `foi`          : NTuple{2,Symbol} -- (x-axis factor, y-axis factor)
+- `with_contour` : Add a histogram2dcontour overlay showing mean outcome per bin.
+"""
 function ADRIA.viz.rsa(
-    Si::YAXArray,
-    factor_values::AbstractMatrix;
-    xlabel::String="Factor Value",
-    ylabel::String="Sensitivity Index",
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    foi::NTuple{2,Symbol};
+    with_contour::Bool=true,
     title::String="Regional Sensitivity",
     kwargs...
 )::PlotlyBase.Plot
-    factor_names = collect(Si.factors)
-    n_factors = length(factor_names)
-    quantile_pos = collect(Si.si_quantile)
-    mat = collect(Si)  # (n_factors × n_si_quantile) — avoids DimensionalData cat warnings
+    x_vals = Float64.(X[!, foi[1]])
+    y_vals = Float64.(X[!, foi[2]])
+    z_vals = Float64.(y)
 
-    fallback_colors = ["#377eb8", "#ff7f00", "#4daf4a", "#984ea3", "#e41a1c",
-        "#a65628", "#f781bf", "#999999"]
+    fsz = _plotly_font_sizes(1)
 
     traces = PlotlyBase.AbstractTrace[]
 
-    for (i, fname) in enumerate(factor_names)
-        si_vals = mat[i, :]
-        fv_col = factor_values[:, i]
-        fv_range = quantile(fv_col, quantile_pos)
-        color = fallback_colors[mod1(i, length(fallback_colors))]
-        axis_sfx = i == 1 ? "" : string(i)
-
+    if with_contour
         push!(
             traces,
-            PlotlyBase.scatter(;
-                x=fv_range, y=si_vals, mode="lines+markers",
-                line_color=_hex_to_rgb(color), name=string(fname),
-                xaxis="x$(axis_sfx)", yaxis="y$(axis_sfx)",
-                type="scatter"
+            PlotlyBase.histogram2dcontour(;
+                x=x_vals,
+                y=y_vals,
+                z=z_vals,
+                histfunc="avg",
+                colorscale="Viridis",
+                showscale=false,
+                opacity=0.4,
+                ncontours=15,
+                contours=PlotlyBase.attr(; coloring="fill", showlines=false),
+                type="histogram2dcontour"
             )
         )
     end
 
-    fsz = _plotly_font_sizes(n_factors)
-    layout = _grid_layout(
-        factor_names,
-        n_factors;
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        fsz=fsz
+    push!(
+        traces,
+        PlotlyBase.scatter(;
+            x=x_vals,
+            y=y_vals,
+            mode="markers",
+            marker=PlotlyBase.attr(;
+                color=z_vals,
+                colorscale="Viridis",
+                showscale=true,
+                opacity=0.6,
+                size=5,
+                colorbar=PlotlyBase.attr(; title="outcome")
+            ),
+            type="scatter"
+        )
     )
+
+    layout = PlotlyBase.Layout(;
+        ADRIA_LAYOUT_DEFAULTS...,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        xaxis=PlotlyBase.attr(;
+            title_text=string(foi[1]), tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text=string(foi[2]), tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
+    )
+    return PlotlyBase.Plot(traces, layout)
+end
+function ADRIA.viz.rsa(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor_pairs::AbstractVector{<:NTuple{2,Symbol}};
+    with_contour::Bool=true,
+    title::String="Regional Sensitivity",
+    kwargs...
+)::PlotlyBase.Plot
+    n_pairs = length(factor_pairs)
+    domains, n_rows, n_cols = _grid_domains(n_pairs)
+    fsz = _plotly_font_sizes(n_pairs)
+    z_vals = Float64.(y)
+
+    traces = PlotlyBase.AbstractTrace[]
+    layout = PlotlyBase.Layout(;
+        ADRIA_LAYOUT_DEFAULTS...,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        width=max(600, 500 * n_cols),
+        height=max(400, 450 * n_rows),
+        showlegend=false
+    )
+
+    for (i, pair) in enumerate(factor_pairs)
+        x_vals = Float64.(X[!, pair[1]])
+        y_vals = Float64.(X[!, pair[2]])
+        sfx = i == 1 ? "" : string(i)
+        xd, yd, _, _ = domains[i]
+
+        if with_contour
+            push!(
+                traces,
+                PlotlyBase.histogram2dcontour(;
+                    x=x_vals,
+                    y=y_vals,
+                    z=z_vals,
+                    histfunc="avg",
+                    colorscale="Viridis",
+                    showscale=false,
+                    opacity=0.4,
+                    ncontours=15,
+                    contours=PlotlyBase.attr(; coloring="fill", showlines=false),
+                    xaxis="x$(sfx)",
+                    yaxis="y$(sfx)",
+                    type="histogram2dcontour"
+                )
+            )
+        end
+
+        push!(
+            traces,
+            PlotlyBase.scatter(;
+                x=x_vals,
+                y=y_vals,
+                mode="markers",
+                marker=PlotlyBase.attr(;
+                    color=z_vals,
+                    colorscale="Viridis",
+                    showscale=(i == n_pairs),
+                    opacity=0.6,
+                    size=5,
+                    colorbar=PlotlyBase.attr(; title="outcome")
+                ),
+                showlegend=false,
+                xaxis="x$(sfx)",
+                yaxis="y$(sfx)",
+                type="scatter"
+            )
+        )
+
+        layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text=string(pair[1]), anchor="y$(sfx)", domain=xd,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
+        layout[Symbol("yaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text=string(pair[2]), anchor="x$(sfx)", domain=yd,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
+    end
+
     return PlotlyBase.Plot(traces, layout)
 end
 
@@ -188,123 +300,147 @@ function _grid_domains(n::Int; x_gap::Float64=0.08, y_gap::Float64=0.12)
     return domains, n_rows, n_cols
 end
 
-# helper: build a subplot-grid Layout for the per-factor sensitivity plots.
-# Each panel gets its own x/y axes (rotated x ticks + automargin so labels stay
-# legible for large factor sets), a shared `xlabel`/`ylabel`, and a factor-name
-# subplot title placed above each panel.
-function _grid_layout(
-    factor_names,
-    n_factors::Int;
-    title::String,
-    xlabel::String,
-    ylabel::String,
-    fsz=(title=12, label=12, tick=12)
-)
-    domains, n_rows, n_cols = _grid_domains(n_factors)
-    annotations = PlotlyBase.PlotlyAttribute[]
+# ──────────────────────────────────────────────────────────────────────────────
+# outcome_map(X, y, factor/factors) — scatter of factor value vs outcome
+# ──────────────────────────────────────────────────────────────────────────────
+
+"""
+    ADRIA.viz.outcome_map(X, y, factor; with_density=true, title, kwargs...) -> PlotlyBase.Plot
+    ADRIA.viz.outcome_map(X, y, factors; with_density=true, title, kwargs...) -> PlotlyBase.Plot
+
+Per-scenario scatter of factor value vs outcome, with optional 2D density contour overlay.
+
+The multi-factor overload produces one subplot per factor using make_subplots.
+
+# Arguments
+- `X`            : Feature matrix (DataFrame, columns = factors)
+- `y`            : Outcome values per scenario
+- `factor`       : Symbol naming the factor (single-factor form)
+- `factors`      : Vector of Symbols (multi-factor form)
+- `with_density` : Add a histogram2dcontour density fill.
+"""
+function ADRIA.viz.outcome_map(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor::Symbol;
+    with_density::Bool=true,
+    title::String="Outcome Map",
+    kwargs...
+)::PlotlyBase.Plot
+    x_f = Float64.(X[!, factor])
+    y_f = Float64.(y)
+
+    fsz = _plotly_font_sizes(1)
+
+    traces = PlotlyBase.AbstractTrace[]
+
+    if with_density && length(unique(x_f)) > 3
+        push!(
+            traces,
+            PlotlyBase.histogram2dcontour(;
+                x=x_f,
+                y=y_f,
+                colorscale="Blues",
+                showscale=false,
+                opacity=0.5,
+                ncontours=12,
+                contours=PlotlyBase.attr(; coloring="fill", showlines=false),
+                type="histogram2dcontour"
+            )
+        )
+    end
+
+    push!(
+        traces,
+        PlotlyBase.scatter(;
+            x=x_f,
+            y=y_f,
+            mode="markers",
+            marker=PlotlyBase.attr(; color="#4477aa", opacity=0.4, size=5),
+            type="scatter"
+        )
+    )
+
     layout = PlotlyBase.Layout(;
         ADRIA_LAYOUT_DEFAULTS...,
         title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
         font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
-        width=max(700, 360 * n_cols),
-        height=max(400, 320 * n_rows),
-        showlegend=false
+        xaxis=PlotlyBase.attr(;
+            title_text=string(factor), tickfont=PlotlyBase.attr(; size=fsz.tick)
+        ),
+        yaxis=PlotlyBase.attr(;
+            title_text="outcome", tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
     )
-    for i = 1:n_factors
-        xd, yd, _, col = domains[i]
-        sfx = i == 1 ? "" : string(i)
-        layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
-            title_text=xlabel, domain=xd, anchor="y$(sfx)",
-            tickangle=-45, automargin=true, tickfont=PlotlyBase.attr(; size=fsz.tick)
-        )
-        layout[Symbol("yaxis$(sfx)")] = PlotlyBase.attr(;
-            title_text=(col == 1 ? ylabel : ""), domain=yd, anchor="x$(sfx)",
-            automargin=true, tickfont=PlotlyBase.attr(; size=fsz.tick)
-        )
-        push!(
-            annotations,
-            PlotlyBase.attr(;
-                text=string(factor_names[i]), x=(xd[1] + xd[2]) / 2, y=yd[2],
-                xref="paper", yref="paper", xanchor="center", yanchor="bottom",
-                showarrow=false, font=PlotlyBase.attr(; size=fsz.label)
-            )
-        )
-    end
-    layout[:annotations] = annotations
-    return layout
+    return PlotlyBase.Plot(traces, layout)
 end
-
-# ──────────────────────────────────────────────────────────────────────────────
-# outcome_map(outcomes, factor_values)
-# ──────────────────────────────────────────────────────────────────────────────
-
 function ADRIA.viz.outcome_map(
-    outcomes::YAXArray,
-    factor_values::AbstractMatrix;
-    xlabel::String="Factor Value",
-    ylabel::String="Outcome",
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    with_density::Bool=true,
     title::String="Outcome Map",
-    alpha::Real=0.2,
     kwargs...
 )::PlotlyBase.Plot
-    factor_names = collect(outcomes.factors)
-    n_factors = length(factor_names)
-    quantile_pos = collect(outcomes.si_quantile)
-    CI_vals = collect(outcomes.CI)
-    lo_idx = findfirst(==(:lower), CI_vals)
-    mid_idx = findfirst(==(:mean), CI_vals)
-    hi_idx = findfirst(==(:upper), CI_vals)
-    mat = collect(outcomes)  # (n_factors × n_CI × n_si_quantile) — avoids DimensionalData cat warnings
-
-    fallback_colors = ["#377eb8", "#ff7f00", "#4daf4a", "#984ea3", "#e41a1c",
-        "#a65628", "#f781bf", "#999999"]
+    n_factors = length(factors)
+    domains, n_rows, n_cols = _grid_domains(n_factors)
+    fsz = _plotly_font_sizes(n_factors)
 
     traces = PlotlyBase.AbstractTrace[]
+    layout = PlotlyBase.Layout(;
+        ADRIA_LAYOUT_DEFAULTS...,
+        title=PlotlyBase.attr(; text=title, font=PlotlyBase.attr(; size=fsz.title)),
+        font=PlotlyBase.attr(; family="Open Sans, sans-serif", size=fsz.label),
+        width=max(600, 380 * n_cols),
+        height=max(400, 350 * n_rows),
+        showlegend=false
+    )
 
-    for (i, fname) in enumerate(factor_names)
-        lo = mat[i, lo_idx, :]
-        mid = mat[i, mid_idx, :]
-        hi = mat[i, hi_idx, :]
-        fv_col = factor_values[:, i]
-        fv_range = quantile(fv_col, quantile_pos)
-        color = fallback_colors[mod1(i, length(fallback_colors))]
-        axis_sfx = i == 1 ? "" : string(i)
+    for (i, factor) in enumerate(factors)
+        x_f = Float64.(X[!, factor])
+        sfx = i == 1 ? "" : string(i)
+        xd, yd, _, _ = domains[i]
 
-        fill_x = vcat(vec(fv_range), reverse(vec(fv_range)))
-        fill_y = vcat(hi, reverse(lo))
+        if with_density && length(unique(x_f)) > 3
+            push!(
+                traces,
+                PlotlyBase.histogram2dcontour(;
+                    x=x_f,
+                    y=Float64.(y),
+                    colorscale="Blues",
+                    showscale=false,
+                    opacity=0.5,
+                    ncontours=12,
+                    contours=PlotlyBase.attr(; coloring="fill", showlines=false),
+                    xaxis="x$(sfx)",
+                    yaxis="y$(sfx)",
+                    type="histogram2dcontour"
+                )
+            )
+        end
         push!(
             traces,
             PlotlyBase.scatter(;
-                x=fill_x, y=fill_y, fill="toself",
-                fillcolor=_hex_to_rgba(color, alpha),
-                line_color="rgba(0,0,0,0)",
-                showlegend=false, hoverinfo="skip",
-                name=string(fname) * "_band",
-                xaxis="x$(axis_sfx)", yaxis="y$(axis_sfx)",
+                x=x_f,
+                y=Float64.(y),
+                mode="markers",
+                marker=PlotlyBase.attr(; color="#4477aa", opacity=0.4, size=5),
+                showlegend=false,
+                xaxis="x$(sfx)",
+                yaxis="y$(sfx)",
                 type="scatter"
             )
         )
-        push!(
-            traces,
-            PlotlyBase.scatter(;
-                x=fv_range, y=mid, mode="lines",
-                line_color=_hex_to_rgb(color), line_width=2,
-                name=string(fname),
-                xaxis="x$(axis_sfx)", yaxis="y$(axis_sfx)",
-                type="scatter"
-            )
+        layout[Symbol("xaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text=string(factor), anchor="y$(sfx)", domain=xd,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
+        )
+        layout[Symbol("yaxis$(sfx)")] = PlotlyBase.attr(;
+            title_text="outcome", anchor="x$(sfx)", domain=yd,
+            tickfont=PlotlyBase.attr(; size=fsz.tick)
         )
     end
 
-    fsz = _plotly_font_sizes(n_factors)
-    layout = _grid_layout(
-        factor_names,
-        n_factors;
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        fsz=fsz
-    )
     return PlotlyBase.Plot(traces, layout)
 end
 
