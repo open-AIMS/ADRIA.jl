@@ -245,4 +245,5 @@ end
     include("negative_cluster_rules.jl")
     include("ext_activation.jl")
     include("integration_cluster_rules.jl")
+    include("test_rsa.jl")
 end
