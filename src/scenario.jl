@@ -1732,6 +1732,10 @@ function run_model(
 
                         if !isnothing(_option_ts)
                             option = _option_ts[tstep]
+                            if option == :nothing
+                                # Do-nothing block: skip seeding for this timestep
+                                continue
+                            end
                             seed_pref = options[
                                 options.option_name .== option, :preference
                             ][1]

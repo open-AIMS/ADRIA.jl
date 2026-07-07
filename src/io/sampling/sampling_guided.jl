@@ -64,17 +64,21 @@ end
     options_combinations(options_name::Vector, number_repetitions::Int64)::Vector{Tuple}
 
 Generate all combinations with repetition and considering order of pathway diversity options.
+The first decision block uses only the real `options_name`; every subsequent block also allows
+the `:nothing` option (do nothing this block — no seeding).
 """
 #
 function options_combinations(options_name::Vector, number_repetitions::Int64)::Vector{Tuple}
-    mat = collect(ADRIA.Iterators.product(ADRIA.Iterators.repeated(options_name, number_repetitions)...))
+    with_nothing = vcat(options_name, :nothing)
+    iterables = [i == 1 ? options_name : with_nothing for i in 1:number_repetitions]
+    mat = collect(ADRIA.Iterators.product(iterables...))
     return vec(mat)
 end
 
 """
     build_option_ts(combinations, scen, pd_frequency, max_time[, sample_fraction])::Vector{Int}
 
-Encode each option combination as a base-5 integer. Use `decode_option_ts` to recover the
+Encode each option combination as a base-6 integer. Use `decode_option_ts` to recover the
 full time-series at model-run time.
 
 `sample_fraction` (∈ (0, 1], default 1.0) randomly keeps that fraction of all combinations

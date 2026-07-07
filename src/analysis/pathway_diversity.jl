@@ -86,7 +86,8 @@ function pathway_diversity(
     syrs::Int64 = rs.inputs.seed_years[idx_scen]
     pd_freq = Int64(rs.inputs.pd_frequency[idx_scen])
     decision_times = collect(sys:pd_freq:(sys + syrs - 1))
-    option_names = copy(PD_OPTIONS()).option_name
+    # Candidate options at every decision after the first also include :nothing (do nothing)
+    candidate_options = vcat(copy(PD_OPTIONS()).option_name, :nothing)
 
     idx_option_scens = filter(
         i -> decoded_ts[i][Int(rs.inputs.seed_year_start[i])] == option, idx_scens
@@ -125,7 +126,7 @@ function pathway_diversity(
             prefix_prev = Tuple(decoded_ts[idx_scen][t] for t in key_times[1:(end - 1)])
             option_perf = Dict{Symbol,YAXArray}(
                 o => perf_by_prefix[tstep][(prefix_prev..., o)]
-                for o in option_names
+                for o in candidate_options
                 if haskey(perf_by_prefix[tstep], (prefix_prev..., o))
             )
 
@@ -169,11 +170,19 @@ function switching_probability(
     ports::Union{DataFrame,Nothing}=nothing,
     weights::NTuple{4,Float64}=(0.6, 0.3, 0.05, 0.05),
 )::DataFrame
+    loc_type = eltype(decision_matrix.location)
     options = copy(PD_OPTIONS())
     options.probability = zeros(size(options, 1))
-    options.selected_locations = [
-        Vector{eltype(decision_matrix.location)}() for _ in 1:size(options, 1)
-    ]
+    options.selected_locations = [Vector{loc_type}() for _ in 1:size(options, 1)]
+
+    # The :nothing option (do nothing this block) selects no locations
+    push!(options, (
+        option_name=:nothing,
+        preference=options.preference[1],   # placeholder; unused for :nothing
+        probability=0.0,
+        selected_locations=Vector{loc_type}()
+    ))
+
     valid_locs = collect(1:size(loc_data, 1))
 
     if ports === nothing
@@ -181,6 +190,7 @@ function switching_probability(
     end
 
     for row in eachrow(options)
+        row.option_name == :nothing && continue
         row.selected_locations = ADRIA.select_locations(
             row.preference, decision_matrix, mcda_method, valid_locs, min_locs
         )
@@ -329,6 +339,9 @@ end
 Filter locations based on the index, reef_siteid or UNIQUE_ID.
 """
 function _filter_locations(loc_data::DataFrame, selected_locations::Vector{String})
+    if isempty(selected_locations)
+        return loc_data[Int[], :]
+    end
     if all(isdigit, selected_locations[1])
         return loc_data[loc_data.UNIQUE_ID .∈ [selected_locations], :]
     end
@@ -418,19 +431,23 @@ end
 """
     encode_option_ts(combination::Tuple)::Int
 
-Encode a tuple of option symbols as a base-5 integer.
-Each position maps to an index 0–4 matching the order of `option_seed_preference()`.
+Encode a tuple of option symbols as a base-6 integer.
+The five real options map to indices 0–4 matching the order of `option_seed_preference()`,
+and the `:nothing` option (do nothing this block) maps to index 5.
 """
 function encode_option_ts(combination::Tuple)::Int
     option_names = PD_OPTIONS().option_name
-    option_to_idx = Dict(name => i - 1 for (i, name) in enumerate(option_names))
-    return sum(option_to_idx[opt] * 5^(i - 1) for (i, opt) in enumerate(combination))
+    base = length(option_names) + 1
+    option_to_idx = Dict{Symbol,Int}(name => i - 1 for (i, name) in enumerate(option_names))
+    option_to_idx[:nothing] = length(option_names)
+    return sum(option_to_idx[opt] * base^(i - 1) for (i, opt) in enumerate(combination))
 end
 
 """
     decode_option_ts(encoded, seed_year_start, seed_years, pd_frequency, max_time)
 
-Decode a base-5 integer back into a full option time-series vector of length `max_time`.
+Decode a base-6 integer back into a full option time-series vector of length `max_time`.
+Index 5 decodes to the `:nothing` option (do nothing this block — no seeding).
 Positions outside the seeding window `[seed_year_start, seed_year_start+seed_years)` are `:nothing`.
 """
 function decode_option_ts(
@@ -440,8 +457,12 @@ function decode_option_ts(
     encoded, seed_year_start, seed_years, pd_frequency, max_time =
         Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
     option_names = PD_OPTIONS().option_name
+    base = length(option_names) + 1
     number_changes = seed_years ÷ pd_frequency
-    decoded_combo = [option_names[(encoded ÷ 5^(i - 1)) % 5 + 1] for i in 1:number_changes]
+    decoded_combo = map(1:number_changes) do i
+        idx = (encoded ÷ base^(i - 1)) % base
+        idx == length(option_names) ? :nothing : option_names[idx + 1]
+    end
     ts = fill(:nothing, max_time)
     for t in seed_year_start:(seed_year_start + seed_years - 1)
         ts[t] = decoded_combo[(t - seed_year_start) ÷ pd_frequency + 1]
