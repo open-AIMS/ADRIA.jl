@@ -26,13 +26,13 @@ At each location, the local COTS density vector $N_t = [N_1, N_2, N_3]^T$ tracks
 ### B. Maternal Nutrition & Body Condition
 Adult fecundity and larval quality depend heavily on the availability of coral prey. The submodel tracks a maternal nutrition index called **body condition** ($BC \in [0, 1]$), modeled as an exponential moving average of food availability:
 
-$$\text{food\_signal}_t = \min\left(1.0, \frac{F_t + S_t}{C_{max} \times 0.5}\right)$$
+$$\text{food signal}_t = \min\left(1.0, \frac{F_t + S_t}{C_{max} \times 0.5}\right)$$
 
-$$BC_t = (1 - \alpha) \cdot BC_{t-1} + \alpha \cdot \text{food\_signal}_t$$
+$$BC_t = (1 - \alpha) \cdot BC_{t-1} + \alpha \cdot \text{food signal}_t$$
 
 *   $F_t$ and $S_t$ are the relative covers of fast-growing and slow-growing corals, respectively.
 *   $C_{max}$ is the carrying capacity/reference coral cover level at which starvation mortality is zero.
-*   $\alpha = 1/\tau_{condition}$ is the update rate (where $\tau_{condition}$ is the moving average timescale, typically set to 3.0 years).
+*   $\alpha = 1/\tau_{\text{condition}}$ is the update rate (where $\tau_{\text{condition}}$ is the moving average timescale, typically set to 3.0 years).
 
 ### C. Starvation Mortality
 When coral cover falls below a critical starvation threshold ($15\%$ of $C_{max}$), adult COTS experience a rapid, non-linear increase in mortality:
@@ -47,14 +47,14 @@ $$\text{If } (F_t + S_t) \le 0.15 \cdot C_{max}: \quad f = (1.0 - \tilde{p}) + \
 ### D. Reproduction (Ricker Dynamics & Allee Effect)
 COTS recruitment combines Ricker density-dependent overcompensation with an Allee effect (representing fertilization failure when adult densities are too low to spawn successfully):
 
-$$\text{fecundity} = a_{ricker} \cdot BC_t^2$$
+$$\text{fecundity} = a_{\text{ricker}} \cdot BC_t^2$$
 
-$$\text{allee\_effect} = \frac{N_3^2}{A^2 + N_3^2}$$
+$$\text{allee effect} = \frac{N_3^2}{A^2 + N_3^2}$$
 
-$$R = \text{fecundity} \cdot N_3 \cdot \exp(-b_{ricker} \cdot N_3) \cdot \text{allee\_effect}$$
+$$R = \text{fecundity} \cdot N_3 \cdot \exp(-b_{\text{ricker}} \cdot N_3) \cdot \text{allee effect}$$
 
-*   $a_{ricker}$ is the Ricker reproductive rate parameter.
-*   $b_{ricker}$ is the Ricker density-dependent suppression parameter.
+*   $a_{\text{ricker}}$ is the Ricker reproductive rate parameter.
+*   $b_{\text{ricker}}$ is the Ricker density-dependent suppression parameter.
 *   $A$ (`allee_threshold`) is the adult density at which fertilization success drops to $50\%$.
 
 ### E. Transition Equations
@@ -68,7 +68,7 @@ N_{t+1}[1] &= R + \text{imm}_t
 
 *   $s_i = 1 - m_i$ are the baseline survival rates for age class $i$.
 *   $\text{imm}_t$ is the background larval immigration from external sources, gated by coral cover:
-    $$\text{imm}_t = \text{IMM} \cdot \min\left(1.0, \left(\frac{F_t + S_t}{\text{imm\_threshold} \times C_{max}}\right)^{\eta_{imm}}\right)$$
+    $$\text{imm}_t = \text{IMM} \cdot \min\left(1.0, \left(\frac{F_t + S_t}{\text{imm threshold} \times C_{max}}\right)^{\eta_{\text{imm}}}\right)$$
 
 ---
 
@@ -97,8 +97,8 @@ $$\text{surv}_F = \max\left(0.0, 1.0 - \frac{\min(\text{Cons}_F, F)}{F}\right)$$
 $$\text{surv}_S = \max\left(0.0, 1.0 - \frac{\min(\text{Cons}_S, S)}{S}\right)$$
 
 $$\begin{aligned}
-C_{cover, t}[g, s, \text{loc}] &\leftarrow C_{cover, t}[g, s, \text{loc}] \times \text{surv}_F \quad (\text{for } g \in \text{fast\_groups}) \\
-C_{cover, t}[g, s, \text{loc}] &\leftarrow C_{cover, t}[g, s, \text{loc}] \times \text{surv}_S \quad (\text{for } g \in \text{slow\_groups})
+C_{\text{cover}, t}[g, s, \text{loc}] &\leftarrow C_{\text{cover}, t}[g, s, \text{loc}] \times \text{surv}_F \quad (\text{for } g \in \text{fast groups}) \\
+C_{\text{cover}, t}[g, s, \text{loc}] &\leftarrow C_{\text{cover}, t}[g, s, \text{loc}] \times \text{surv}_S \quad (\text{for } g \in \text{slow groups})
 \end{aligned}$$
 
 ---
