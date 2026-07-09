@@ -14,7 +14,8 @@ makedocs(;
         "Concepts" =>
             [
                 "concepts/dMCDA.md",
-                "concepts/disturbances.md"
+                "concepts/disturbances.md",
+                "concepts/cots_submodel.md"
             ],
         "Usage" => [
             "usage/getting_started.md",

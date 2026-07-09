@@ -26,10 +26,13 @@ for i in 1:5
     p.a_F = top5.a_F[i]
     p.a_S = top5.a_S[i]
     p.IMM = top5.IMM[i]
-    p.a_ricker = top5.a_ricker[i]
-    p.b_ricker = top5.b_ricker[i]
-    p.tau_condition = top5.tau_condition[i]
     ENV["COTS_INITIAL_MULTIPLIER"] = string(top5.seed_mult[i])
+    
+    # Enable external larval pulse (Cairns Initiation Box)
+    ENV["COTS_EXTERNAL_PULSE"] = "true"
+    ENV["COTS_PULSE_PERIOD"] = "15"
+    ENV["COTS_PULSE_OFFSET"] = "1"
+    ENV["COTS_PULSE_VAL"] = "1.5"
     
     rs = ADRIA.run_scenario(dom, p)
     adult_cots_site = rs.cots_log[:, 3, :]

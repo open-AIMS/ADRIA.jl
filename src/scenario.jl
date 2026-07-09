@@ -1902,10 +1902,16 @@ function run_model(
         _cots_imm_scalar = parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0"))
         disperse_cots_larvae!(cots_models, cots_conn; immigration_scalar=_cots_imm_scalar)
 
-        # Mimic incoming larvae/recruitment from upstream outbreak every 15 years
+        # Mimic incoming larvae/recruitment from upstream outbreak (Cairns Initiation Box)
         _cots_pulse_enabled = cots_enabled && get(ENV, "COTS_EXTERNAL_PULSE", "false") == "true"
-        if _cots_pulse_enabled && !isnothing(_cots_seed_locs) && mod(tstep, 15) == 0
-            inject_upstream_pulse!(cots_models, _cots_seed_locs)
+        if _cots_pulse_enabled && !isnothing(_cots_seed_locs)
+            _pulse_period = parse(Int, get(ENV, "COTS_PULSE_PERIOD", "15"))
+            _pulse_offset = parse(Int, get(ENV, "COTS_PULSE_OFFSET", "1"))
+            _pulse_val = parse(Float64, get(ENV, "COTS_PULSE_VAL", "2.0"))
+            
+            if mod(tstep - _pulse_offset, _pulse_period) == 0
+                inject_upstream_pulse!(cots_models, _cots_seed_locs; pulse_val=_pulse_val)
+            end
         end
 
         # Log COTS populations
