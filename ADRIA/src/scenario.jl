@@ -1171,6 +1171,10 @@ function run_model(
     _cots_seed_locs_str = get(ENV, "ADRIA_DEBUG_SEED_LOCATIONS", "")
     _cots_seed_n_str = get(ENV, "ADRIA_DEBUG_SEED_FIRST_N", "")
     _cots_init_density = parse(Float64, get(ENV, "ADRIA_DEBUG_INIT_DENSITY", "0.1"))
+    _cots_pulse_start = parse(Int, get(ENV, "COTS_PULSE_START", "1"))
+    _cots_pulse_duration = max(1, parse(Int, get(ENV, "COTS_PULSE_DURATION", "1")))
+    _cots_pulse_repeat_interval = parse(Int, get(ENV, "COTS_PULSE_REPEAT_INTERVAL", "0"))
+    _cots_pulse_relative_magnitude = parse(Float64, get(ENV, "COTS_PULSE_RELATIVE_MAGNITUDE", "0.0"))
     _cots_seed_locs = if _cots_seed_locs_str != ""
         Set(parse.(Int, split(_cots_seed_locs_str, ",")))
     elseif _cots_seed_n_str != ""
@@ -1197,6 +1201,7 @@ function run_model(
     # Get connectivity for COTS larval dispersal
     # TODO: Replace coral connectivity with COTS-specific connectivity when available
     cots_conn = sparse(domain.conn.data)
+    cots_max_larval_supply = zeros(Float64, n_locs)
 
     # COTS population log: [timesteps, 3 age classes, locations]
     Ycots = zeros(tf, 3, n_locs)
@@ -1919,16 +1924,22 @@ function run_model(
         _cots_imm_scalar = parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0"))
         disperse_cots_larvae!(cots_models, cots_conn; immigration_scalar=_cots_imm_scalar)
 
-        # Mimic incoming larvae/recruitment from upstream outbreak (Cairns Initiation Box)
+        # Mimic incoming larvae/recruitment from upstream outbreak (Cairns Initiation Box).
+        # External pulses are off by default. When enabled, they add a relative
+        # pulse scaled to each location's running maximum internal larval supply.
+        for loc in 1:n_locs
+            cots_max_larval_supply[loc] = max(cots_max_larval_supply[loc], cots_models[loc].N[1])
+        end
+
         _cots_pulse_enabled = cots_enabled && get(ENV, "COTS_EXTERNAL_PULSE", "false") == "true"
-        if _cots_pulse_enabled && !isnothing(_cots_seed_locs)
-            _pulse_period = parse(Int, get(ENV, "COTS_PULSE_PERIOD", "15"))
-            _pulse_offset = parse(Int, get(ENV, "COTS_PULSE_OFFSET", "1"))
-            _pulse_val = parse(Float64, get(ENV, "COTS_PULSE_VAL", "2.0"))
-            
-            if mod(tstep - _pulse_offset, _pulse_period) == 0
-                inject_upstream_pulse!(cots_models, _cots_seed_locs; pulse_val=_pulse_val)
-            end
+        _pulse_elapsed = tstep - _cots_pulse_start
+        _pulse_in_window = _pulse_elapsed >= 0 && (
+            (_cots_pulse_repeat_interval <= 0 && _pulse_elapsed < _cots_pulse_duration) ||
+            (_cots_pulse_repeat_interval > 0 && mod(_pulse_elapsed, _cots_pulse_repeat_interval) < _cots_pulse_duration)
+        )
+        if _cots_pulse_enabled && !isnothing(_cots_seed_locs) && _cots_pulse_relative_magnitude > 0.0 && _pulse_in_window
+            pulse_vals = _cots_pulse_relative_magnitude .* cots_max_larval_supply
+            inject_upstream_pulse!(cots_models, _cots_seed_locs, pulse_vals)
         end
 
         # Log COTS populations
