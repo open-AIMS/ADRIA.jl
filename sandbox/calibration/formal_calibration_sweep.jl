@@ -26,23 +26,19 @@ end
 
 # 3. Create LHS Ensemble
 N_samples = 250
-# Bounds: a_F, a_S, IMM, seed_mult, a_ricker, b_ricker, tau_condition
-lhs_plan = scaleLHC(randomLHC(N_samples, 7), [
+# Bounds: a_F, a_S, IMM, seed_mult
+lhs_plan = scaleLHC(randomLHC(N_samples, 4), [
     (0.1, 2.0),    # a_F
     (0.01, 0.9),   # a_S
     (0.0, 0.1),    # IMM
     (0.5, 3.0),    # seed_mult
-    (2.0, 10.0),   # a_ricker
-    (0.1, 1.0),    # b_ricker
-    (1.0, 5.0)     # tau_condition
 ])
 
 println("Starting sequential LHS sweep of $N_samples scenarios...")
 
 p_df = ADRIA.param_table(dom)
 results_df = DataFrame(
-    run_id=Int[], a_F=Float64[], a_S=Float64[], IMM=Float64[], seed_mult=Float64[],
-    a_ricker=Float64[], b_ricker=Float64[], tau_condition=Float64[], loss=Float64[]
+    run_id=Int[], a_F=Float64[], a_S=Float64[], IMM=Float64[], seed_mult=Float64[], loss=Float64[]
 )
 losses = zeros(Float64, N_samples)
 
@@ -52,12 +48,15 @@ for i in 1:N_samples
     p.a_F = lhs_plan[i, 1]
     p.a_S = lhs_plan[i, 2]
     p.IMM = lhs_plan[i, 3]
-    p.a_ricker = lhs_plan[i, 5]
-    p.b_ricker = lhs_plan[i, 6]
-    p.tau_condition = lhs_plan[i, 7]
     
     # Inject initial_seed_multiplier via ENV variable
     ENV["COTS_INITIAL_MULTIPLIER"] = string(lhs_plan[i, 4])
+    
+    # Enable external larval pulse (Cairns Initiation Box)
+    ENV["COTS_EXTERNAL_PULSE"] = "true"
+    ENV["COTS_PULSE_PERIOD"] = "15"
+    ENV["COTS_PULSE_OFFSET"] = "1"
+    ENV["COTS_PULSE_VAL"] = "1.5"
     
     rs = ADRIA.run_scenario(dom, p)
     adult_cots_site = rs.cots_log[:, 3, :] 
@@ -110,8 +109,7 @@ for i in 1:N_samples
 end
 
 for i in 1:N_samples
-    push!(results_df, (i, lhs_plan[i, 1], lhs_plan[i, 2], lhs_plan[i, 3], lhs_plan[i, 4], 
-                       lhs_plan[i, 5], lhs_plan[i, 6], lhs_plan[i, 7], losses[i]))
+    push!(results_df, (i, lhs_plan[i, 1], lhs_plan[i, 2], lhs_plan[i, 3], lhs_plan[i, 4], losses[i]))
 end
 
 CSV.write("sandbox/data/formal_calibration_ensemble.csv", results_df)

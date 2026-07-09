@@ -183,3 +183,8 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
         cots_init
     )
 end
+
+function ADRIA.switch_RCPs!(d::LizardDomain, RCP::String)::LizardDomain
+    return d
+end
+
