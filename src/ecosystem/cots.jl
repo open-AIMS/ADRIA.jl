@@ -363,3 +363,20 @@ function inject_upstream_pulse!(
     end
     return nothing
 end
+
+# Inject location-specific upstream recruitment pulses (larvae).
+#
+# `pulse_vals` is indexed by location and lets external supply scale with each
+# location's expected larval supply rather than adding the same value everywhere.
+function inject_upstream_pulse!(
+    cots_models::Vector{CotsHuman},
+    pulse_locs::Set{Int},
+    pulse_vals::AbstractVector{Float64}
+)
+    for loc in pulse_locs
+        if loc <= length(cots_models) && loc <= length(pulse_vals)
+            cots_models[loc].N[1] += pulse_vals[loc]
+        end
+    end
+    return nothing
+end

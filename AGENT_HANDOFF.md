@@ -95,6 +95,92 @@ Our lowest loss achieved to date is **`Loss = 23.0897`** (Candidate **`run_id = 
 
 ## 5. Known Gotchas & Troubleshooting Guide
 
+### Current Codex Phase: Stochastic Best-Fit Diagnostics
+Codex is actively expanding `sandbox/calibration/simulate_best_stochastic.jl` and
+`sandbox/plotting/plot_best_stochastic.py` to separate three different sources of
+spread:
+1. **Across-run environmental spread** from `ADRIA.sample`.
+2. **Within-reef site spread** from site-level COTS/coral trajectories.
+3. **Controlled COTS demographic spread** around the best-fit candidate.
+
+Completed so far:
+- `simulate_best_stochastic.jl` now writes reef-level trajectories with
+  `sim_cots_adult` plus shared reef-level normalization, and also writes
+  `sandbox/data/best_stochastic_site_trajectories.csv`.
+- `plot_best_stochastic.py` now reads the site-level CSV, plots site p10-p90
+  envelopes, fixes the hardcoded run-count label, and uses the same COTS
+  normalization scale for site bands and reef medians.
+- The external Cairns pulse now has explicit diagnostic seed locations via
+  `ENV["ADRIA_DEBUG_SEED_FIRST_N"] = "10"` in the stochastic simulation script.
+
+Observed diagnostic result:
+- Across-run stochastic spread remains very small when only environmental/sample
+  fields vary.
+- Within-reef site spread is substantial, especially for reefs with many sites
+  (Lizard Island Reef and Eyrie Reef).
+
+Completed implementation step:
+- `simulate_best_stochastic.jl` now supports `COTS_STOCHASTIC_MODE=environmental|demographic`.
+- Default mode is `demographic`: `a_F`, `a_S`, and `IMM` stay locked to the best candidate, while other COTS demographic parameters, initial seed multiplier, and Cairns pulse amplitude get controlled lognormal jitter.
+- Per-run values are written to `sandbox/data/best_stochastic_metadata.csv`.
+
+In progress:
+- The first demographic jitter pass (`COTS_DEMOGRAPHIC_CV=0.15`, seed/pulse CV `0.10`) created visible across-run spread but scattered peak timing too widely.
+- Defaults were tightened to `COTS_DEMOGRAPHIC_CV=0.08`, `COTS_SEED_MULT_CV=0.05`, and `COTS_PULSE_VAL_CV=0.05` before regenerating the baseline plot.
+
+
+Validation metrics completed:
+- Pearson correlation, Spearman rank correlation, RMSE, and Percent Bias have been added to the calibration plotting workflow.
+- Metrics are calculated on matched observation years only.
+- `plot_best_stochastic.py` compares observations against the simulated median trajectory, displays the COTS metrics in each panel subtitle, and writes `sandbox/data/best_stochastic_validation_metrics.csv` for both COTS and coral.
+- `plot_calibration.py` compares observations against the single simulated trajectory, displays the COTS metrics in each panel subtitle, and writes `sandbox/data/calibration_validation_metrics.csv` for both COTS and coral.
+- Regenerated figures: `sandbox/best_stochastic_plot.png` and `sandbox/calibration_plot.png`.
+- Current stochastic COTS metrics are weak on several reefs, so use the new metrics as calibration diagnostics rather than as evidence that the current stochastic envelope is final.
+
+Pulse +15 comparison completed:
+- Baseline periodic pulse already fires at model timesteps `1, 16, 31` because `COTS_PULSE_OFFSET=1` and `COTS_PULSE_PERIOD=15`.
+- `src/scenario.jl` now supports optional extra one-off pulses through `COTS_EXTRA_PULSE_TIMESTEPS`.
+- `simulate_best_stochastic.jl` and `plot_best_stochastic.py` support tagged outputs via `COTS_OUTPUT_TAG`.
+- Generated a `plus15` diagnostic with `COTS_OUTPUT_TAG=plus15` and `COTS_EXTRA_PULSE_TIMESTEPS=16`, which adds an extra pulse at timestep `16` (year 2000) on top of the baseline schedule.
+- Outputs: `sandbox/data/best_stochastic_plus15_trajectories.csv`, `sandbox/data/best_stochastic_plus15_site_trajectories.csv`, `sandbox/data/best_stochastic_plus15_metadata.csv`, `sandbox/data/best_stochastic_plus15_validation_metrics.csv`, and `sandbox/best_stochastic_plus15_plot.png`.
+- Result: the extra timestep-16 pulse did **not** materially change validation metrics or median peak years. Second-peak years on the median trajectories remained Lizard `2019`, MacGillivray `2022`, North Direction `2017`, and Eyrie `2016`.
+- Interpretation: because the baseline already includes a periodic timestep-16 pulse, adding an additional pulse at the same timestep is not enough to bring the second peak forward. A more direct next test would shift or add the later pulse around timestep `29` or `30` (2013-2014) rather than reinforcing timestep `16`.
+
+No-pulse comparison completed:
+- Goal was to test whether the external Cairns pulse schedule materially affects the current stochastic best-fit trajectories.
+- `simulate_best_stochastic.jl` now respects `COTS_EXTERNAL_PULSE=false` and records `external_pulse_enabled` in metadata.
+- Generated a `nopulse` diagnostic with `COTS_OUTPUT_TAG=nopulse`, `COTS_EXTERNAL_PULSE=false`, and no extra pulse timesteps.
+- Outputs: `sandbox/data/best_stochastic_nopulse_trajectories.csv`, `sandbox/data/best_stochastic_nopulse_site_trajectories.csv`, `sandbox/data/best_stochastic_nopulse_metadata.csv`, `sandbox/data/best_stochastic_nopulse_validation_metrics.csv`, and `sandbox/best_stochastic_nopulse_plot.png`.
+- Result: baseline, `plus15`, and `nopulse` had the same overall median peak years on the plotted reefs: Lizard `1993`, MacGillivray `1993`, North Direction `1994`, Eyrie `1993`.
+- Result: baseline, `plus15`, and `nopulse` also had the same second-peak years (`>=2010`) on the plotted median trajectories: Lizard `2019`, MacGillivray `2022`, North Direction `2017`, Eyrie `2016`.
+- Validation metrics were effectively unchanged across all three variants. Direct trajectory comparison showed a small local pulse effect (`max adult COTS abs diff ~0.325`, mean abs diff ~0.00032), but not enough to affect reef-level median timing or fit metrics.
+- Interpretation: in the current stochastic best-fit workflow, the external pulses are not the dominant driver of the plotted reef-level timing. The second peak appears to be governed more by internal COTS/coral dynamics, demographic perturbations, environmental fields, and/or normalization than by the pulse schedule.
+
+Pulse mechanism redesign completed:
+- External COTS pulses are now **off by default** (`COTS_EXTERNAL_PULSE=false`).
+- New ENV controls are `COTS_EXTERNAL_PULSE`, `COTS_PULSE_START`, `COTS_PULSE_DURATION`, `COTS_PULSE_REPEAT_INTERVAL`, and `COTS_PULSE_RELATIVE_MAGNITUDE`.
+- Relative magnitude scales pulse input to each location as a proportion of that location's running maximum internally generated age-0 larval supply, giving a tunable proxy for external upstream supply until a real external source layer is implemented.
+- `simulate_best_stochastic.jl` records the pulse controls in metadata (`external_pulse_enabled`, `pulse_start`, `pulse_duration`, `pulse_repeat_interval`, `pulse_relative_magnitude`).
+- `docs/src/concepts/cots_submodel.md` now documents the new pulse controls and replaces the old absolute `pulse_val` description.
+- Smoke test with `COTS_EXTERNAL_PULSE=false`, `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=pulse_smoke` completed successfully; metadata showed pulses disabled and relative magnitude `0.0`.
+- Smoke test with `COTS_EXTERNAL_PULSE=true`, `COTS_PULSE_START=16`, `COTS_PULSE_DURATION=1`, `COTS_PULSE_REPEAT_INTERVAL=15`, `COTS_PULSE_RELATIVE_MAGNITUDE=0.5`, `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=pulse_smoke_on` completed successfully; metadata recorded those settings and trajectories differed from the no-pulse smoke test (`max adult COTS abs diff ~9.48`, mean abs diff ~0.688).
+- Example diagnostic command:
+  `$env:COTS_OUTPUT_TAG='pulse_timing_test'; $env:COTS_EXTERNAL_PULSE='true'; $env:COTS_PULSE_START='29'; $env:COTS_PULSE_DURATION='1'; $env:COTS_PULSE_REPEAT_INTERVAL='15'; $env:COTS_PULSE_RELATIVE_MAGNITUDE='0.5'; julia sandbox\calibration\simulate_best_stochastic.jl`
+
+Pulse scenario plotting and pulse-only calibration sweep completed:
+- Requested scenario plots used `COTS_PULSE_START=20` (~2004/2005 depending timestep convention), `COTS_PULSE_RELATIVE_MAGNITUDE=0.5`, and durations `1`, `2`, and `3` years.
+- Added `sandbox/calibration/run_pulse_start20_scenarios.ps1` to generate the three requested start-20 duration variants and their individual plots.
+- Generated tagged outputs for `best_stochastic_pulse_start20_dur1`, `best_stochastic_pulse_start20_dur2`, and `best_stochastic_pulse_start20_dur3`.
+- Added and ran `sandbox/plotting/plot_pulse_scenario_comparison.py`; outputs are `sandbox/pulse_start20_scenario_comparison.png` and `sandbox/data/pulse_start20_scenario_comparison_metrics.csv`.
+- Result: start-20 pulses with duration 1/2/3 and relative magnitude 0.5 barely changed matched-year metrics or peak years compared with `nopulse`; duration 1 and 3 had a tiny mean absolute percent-bias improvement, but no meaningful timing shift.
+- Added `sandbox/calibration/pulse_calibration_sweep.jl` to keep current biological parameters fixed and vary only pulse controls (`start`, `duration`, `repeat_interval`, `relative_magnitude`) to rank pulse timing/magnitude fits using matched-year validation metrics.
+- Smoke-tested the sweep with `PULSE_SWEEP_STARTS=20`, `PULSE_SWEEP_DURATIONS=1`, `PULSE_SWEEP_REPEAT_INTERVALS=0`, and `PULSE_SWEEP_RELATIVE_MAGNITUDES=0.0,0.5`; it wrote `sandbox/data/pulse_calibration_sweep_by_reef.csv` and `sandbox/data/pulse_calibration_sweep_summary.csv` successfully.
+
+COTS documentation update completed:
+- `docs/src/concepts/cots_submodel.md` now documents how the COTS submodel hooks into ADRIA's main `scenario.jl` ecosystem loop.
+- Added details on how COTS reads and mutates CoralBlox-managed coral cover through `C_cover_t`, including absolute-vs-relative cover conventions.
+- Added state ownership and side-effect boundaries for `cots_timestep!`, `cots_mortality!`, larval dispersal, external supply, and logging.
+- Added a forward-looking design section for a possible `CotsBlox.jl` package, including proposed API boundaries, data contracts with CoralBlox, responsibilities ADRIA should retain, migration steps, and risks.
 ### A. `switch_RCPs!` on `LizardDomain`
 When running `ADRIA.run_scenarios(dom, scens, "45")` multi-threaded, internal ADRIA logic calls `switch_RCPs!(dom, rcp)`. We have explicitly added the method to `src/ExtInterface/Lizard/LizardDomain.jl`:
 ```julia
