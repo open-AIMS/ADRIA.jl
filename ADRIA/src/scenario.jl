@@ -1135,8 +1135,8 @@ function run_model(
 
     cots_prey_map = CotsPreyMap([1, 2, 3], [4, 5])  # Fast: Acropora spp; Slow: Massives
 
-    # COTS parameters — read from the sampled param_set
-    cots_params = (
+    # COTS parameters - read from the sampled param_set and converted to COTSMod runtime params
+    cots_params = COTSMod.COTSParams(
         a = param_set[At("a")],
         b = param_set[At("b")],
         IMM = cots_enabled ? param_set[At("IMM")] : 0.0,

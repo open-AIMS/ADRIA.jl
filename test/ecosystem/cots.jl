@@ -9,7 +9,7 @@ const MVector = StaticArrays.MVector
 
 # Default COTS parameter set for testing
 function test_cots_params()
-    return (
+    return ADRIA.COTSMod.COTSParams(
         a = 1.5,
         b = 0.5,
         IMM = 0.002,

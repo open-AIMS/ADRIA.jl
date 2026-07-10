@@ -34,6 +34,7 @@ using
     Distances,
     Distributions,
     CoralBlox,
+    COTSMod,
     LinearAlgebra,
     OrderedCollections,
     Setfield,

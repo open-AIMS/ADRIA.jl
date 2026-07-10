@@ -257,3 +257,14 @@ COTSMod standalone package skeleton completed (2026-07-10):
 - Ported the behavior-contract tests into the package test suite.
 - Verification passed: `julia --project=COTSMod COTSMod\test\runtests.jl` returned 49/49 passing assertions.
 - Next migration step: make ADRIA depend on `COTSMod` and replace ADRIA-local COTS implementations with package calls while preserving the existing ADRIA smoke outputs.
+COTSMod ADRIA integration checkpoint completed (2026-07-10):
+- Added sibling `../COTSMod.jl` as a local development dependency of `ADRIA/Project.toml` and `sandbox/Project.toml`.
+- Replaced `ADRIA/src/ecosystem/cots.jl` with a compatibility adapter that delegates COTS runtime behavior to `COTSMod` while preserving ADRIA-facing names such as `CotsHuman`, `CotsPreyMap`, `initialize_cots`, `apply_predation!`, `disperse_larvae!`, and `apply_external_supply!`.
+- Updated `ADRIA/src/scenario.jl` so sampled ADRIA COTS factors are converted into `COTSMod.COTSParams` before runtime initialization.
+- ADRIA still owns `ADRIA/src/ecosystem/cots_factors.jl` because those are ModelParameters/EcoModel sampling factors, not package runtime state.
+- Verification passed: `julia --project=ADRIA test\ecosystem\cots.jl` returned 54/54 passing assertions.
+- Verification passed: `julia --project=sandbox test\ecosystem\cots.jl` returned 54/54 passing assertions after refreshing the sandbox environment.
+- Verification passed: `julia --project=sandbox -e "using ADRIA; using COTSMod; println(ADRIA.CotsHuman === COTSMod.COTSHuman)"` printed `true`.
+- Verification passed: `julia --project=..\COTSMod.jl ..\COTSMod.jl\test\runtests.jl` returned 49/49 passing assertions.
+- Verification passed: two-scenario stochastic smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=cotsmod_integration_smoke`, and `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_cotsmod_integration_smoke_*`.
+- Note: sandbox/Manifest.toml changed substantially when adding COTSMod; review before commit if you want to keep the sandbox lockfile minimal.
