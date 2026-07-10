@@ -1072,9 +1072,9 @@ function run_model(
         n_groups
     )
 
-    biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
-    biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
-    for i in 1:n_cb_calib_groups
+    biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, total_calib_groups)
+    biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, total_calib_groups)
+    for i in 1:total_calib_groups
         biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
         biogrp_survival[:, :, i] .= apply_survival_scaling(
             biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
@@ -1233,7 +1233,7 @@ function run_model(
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .>= cover_transition_ub
-        for idx in 1:n_cb_calib_groups
+        for idx in 1:total_calib_groups
             cover_threshold_mask .=
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
@@ -1253,7 +1253,7 @@ function run_model(
             cover_transition_ub
         )
         if sum(growth_threshold_mask_cache) > 0
-            for idx in 1:n_cb_calib_groups
+            for idx in 1:total_calib_groups
                 cover_threshold_mask .=
                     growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
                 transition_scale =
@@ -1285,7 +1285,7 @@ function run_model(
         end
         growth_threshold_mask_cache .=
             relative_habitable_cover_cache .< cover_transition_lb
-        for idx in 1:n_cb_calib_groups
+        for idx in 1:total_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
             growth_constraints[cover_threshold_mask] .= growth_acceleration.(

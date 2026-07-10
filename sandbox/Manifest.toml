@@ -2,6 +2,7 @@
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
+<<<<<<<< HEAD:sandbox/Manifest.toml
 project_hash = "fc415ce6c32dcac1ff88487bbf38eeae8feaef68"
 
 [[deps.ADRIA]]
@@ -18,6 +19,9 @@ version = "0.15.1"
     GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
     GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
     Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+========
+project_hash = "6710ae51dc7d321df807a4e0bb200f49bef2d860"
+>>>>>>>> af4036c4d15e7e5e9dcfbeb191220a482d7a4114:Manifest-v1.11.toml
 
 [[deps.ADRIAIndicators]]
 git-tree-sha1 = "252eaf580873f59a9bcb3d351d03b59d699736e2"
@@ -278,6 +282,13 @@ version = "0.9.10"
 git-tree-sha1 = "0691e34b3bb8be9307330f88d1a3c3f25466c24d"
 uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
 version = "0.1.9"
+
+[[deps.BlackBoxOptim]]
+deps = ["Compat", "Distributed", "Distributions", "LinearAlgebra", "Printf", "Random", "Requires", "SpatialIndexing", "StatsBase"]
+git-tree-sha1 = "870e8b6e05cbf498491392b911c71e97b9fe1423"
+uuid = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
+version = "0.6.5"
+weakdeps = ["HTTP", "Sockets"]
 
 [[deps.Blosc]]
 deps = ["Blosc_jll"]
@@ -2302,6 +2313,11 @@ version = "1.2.2"
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 version = "1.11.0"
+
+[[deps.SpatialIndexing]]
+git-tree-sha1 = "84efe17c77e1f2156a7a0d8a7c163c1e1c7bdaed"
+uuid = "d4ead438-fe20-5cc5-a293-4fd39a41b74c"
+version = "0.1.6"
 
 [[deps.SpecialFunctions]]
 deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
