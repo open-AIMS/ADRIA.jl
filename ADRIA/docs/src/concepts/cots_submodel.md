@@ -285,18 +285,18 @@ Through a 250-scenario Latin Hypercube Sweep (LHS) calibrated against empirical 
 
 ## 7. If COTS Became a Separate Package
 
-A future `CotsBlox.jl` package, analogous to `CoralBlox`, should separate COTS ecology from ADRIA scenario orchestration. ADRIA would remain responsible for domain loading, scenario sampling, intervention policy, environmental drivers, and output collation. The COTS package would own COTS state transitions, predation calculations, larval dispersal, and external supply boundary conditions.
+A future `COTSMod.jl` package, analogous to `CoralBlox`, should separate COTS ecology from ADRIA scenario orchestration. ADRIA would remain responsible for domain loading, scenario sampling, intervention policy, environmental drivers, and output collation. The COTS package would own COTS state transitions, predation calculations, larval dispersal, and external supply boundary conditions.
 
 ### A. Proposed Package Boundary
 
 A clean package boundary would expose a small API:
 
 ```julia
-cots = CotsBlox.initialize(n_locs, params; init_density, seed_locs, rng)
-consumption = CotsBlox.step!(cots, prey_state, env_state)
-CotsBlox.apply_predation!(coral_state, consumption, prey_map)
-CotsBlox.disperse_larvae!(cots, cots_connectivity; scalar=1.0)
-CotsBlox.apply_external_supply!(cots, supply_config, supply_state)
+cots = COTSMod.initialize(n_locs, params; init_density, seed_locs, rng)
+consumption = COTSMod.step!(cots, prey_state, env_state)
+COTSMod.apply_predation!(coral_state, consumption, prey_map)
+COTSMod.disperse_larvae!(cots, cots_connectivity; scalar=1.0)
+COTSMod.apply_external_supply!(cots, supply_config, supply_state)
 ```
 
 ADRIA would call those functions from `scenario.jl`, but would not need to know the details of Ricker recruitment, starvation functions, Allee effects, or external pulse scaling.
@@ -334,7 +334,7 @@ This keeps CoralBlox as the owner of coral demography while allowing COTS to ope
 
 ### C. What ADRIA Would Still Own
 
-Even if COTS became `CotsBlox.jl`, ADRIA should still own:
+Even if COTS became `COTSMod.jl`, ADRIA should still own:
 
 - domain loading and validation;
 - scenario parameter tables and sampling;
@@ -350,10 +350,10 @@ In that design, ADRIA's timestep would read more like an orchestration layer:
 CoralBlox.step!(coral_state, coral_env, interventions)
 Disturbances.apply!(coral_state, disturbance_state)
 prey_state = ADRIA.to_cots_prey_state(coral_state, prey_map)
-consumption = CotsBlox.step!(cots_state, prey_state)
+consumption = COTSMod.step!(cots_state, prey_state)
 ADRIA.apply_cots_consumption!(coral_state, consumption, prey_map)
-CotsBlox.disperse_larvae!(cots_state, cots_connectivity)
-CotsBlox.apply_external_supply!(cots_state, external_supply)
+COTSMod.disperse_larvae!(cots_state, cots_connectivity)
+COTSMod.apply_external_supply!(cots_state, external_supply)
 ```
 
 ### D. Why This Separation Would Help
@@ -382,7 +382,7 @@ The package should also avoid hard-coded assumptions about:
 A practical migration path would be:
 
 1. Move `CotsHuman`, `CotsParams`, `CotsPreyMap`, and pure COTS functions into a package module.
-2. Keep ADRIA's `scenario.jl` integration unchanged except for qualified calls such as `CotsBlox.cots_mortality!`.
+2. Keep ADRIA's `scenario.jl` integration unchanged except for qualified calls such as `COTSMod.cots_mortality!`.
 3. Replace ENV pulse controls with a typed `ExternalSupplyConfig` passed from ADRIA.
 4. Add package-level unit tests for population transitions, starvation, predation, larval dispersal, and external supply.
 5. Add ADRIA integration tests that verify event ordering and coral-cover feedbacks are unchanged.

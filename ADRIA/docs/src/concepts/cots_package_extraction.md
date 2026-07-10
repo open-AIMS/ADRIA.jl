@@ -1,6 +1,6 @@
 # COTS Package Extraction Plan
 
-This document defines the migration path from the current ADRIA-owned COTS submodel to a separate `CotsBlox.jl` package, plus a separate reproducible calibration-study repository.
+This document defines the migration path from the current ADRIA-owned COTS submodel to a separate `COTSMod.jl` package, plus a separate reproducible calibration-study repository.
 
 ## Goals
 
@@ -15,7 +15,7 @@ The migration should preserve current ADRIA behavior at each step. Do not move c
 
 COTS is currently split across these ADRIA files:
 
-| Area | Current file | Should move to CotsBlox? |
+| Area | Current file | Should move to COTSMod? |
 | :--- | :--- | :---: |
 | COTS age-class state | `ADRIA/src/ecosystem/cots.jl` | Yes |
 | COTS local timestep | `ADRIA/src/ecosystem/cots.jl` | Yes |
@@ -32,12 +32,12 @@ COTS is currently split across these ADRIA files:
 | Calibration scripts | `sandbox/calibration` | Study repo |
 | Plots and validation metrics | `sandbox/plotting` | Study repo |
 
-## Proposed CotsBlox API
+## Proposed COTSMod API
 
 A first package API should be intentionally small:
 
 ```julia
-module CotsBlox
+module COTSMod
 
 export CotsParams, CotsState, CotsPreyMap, CotsPreyState
 export initialize_cots, step_cots!, apply_predation!, disperse_larvae!, apply_external_supply!
@@ -90,10 +90,10 @@ The package should not depend on ADRIA, YAXArrays, DataFrames, Documenter, Zarr,
 ADRIA should keep the orchestration layer. In `scenario.jl`, ADRIA should:
 
 1. Read sampled COTS parameters from `param_set`.
-2. Convert them into `CotsBlox.CotsParams`.
-3. Build a `CotsBlox.CotsPreyMap` from the active coral functional-group ordering.
+2. Convert them into `COTSMod.CotsParams`.
+3. Build a `COTSMod.CotsPreyMap` from the active coral functional-group ordering.
 4. Initialize COTS state using domain initial density or seed locations.
-5. At the correct timestep point, pass the current relative coral cover to CotsBlox.
+5. At the correct timestep point, pass the current relative coral cover to COTSMod.
 6. Apply returned predation to the ADRIA/CoralBlox cover tensor.
 7. Run larval dispersal using selected COTS connectivity.
 8. Apply optional external supply.
@@ -137,17 +137,17 @@ Latest focused COTS test result: 54 passing assertions. The scenario smoke wrote
 - Remove any direct `ENV` reads from core COTS functions where feasible; keep ENV parsing in `scenario.jl`.
 - Introduce a package-like namespace or adapter boundary if useful, but avoid large code movement.
 
-### Step 2: Create CotsBlox.jl Skeleton
+### Step 2: Create COTSMod.jl Skeleton
 
-- Create a new Julia package with `Project.toml`, `src/CotsBlox.jl`, and `test/runtests.jl`.
+- Create a new Julia package with `Project.toml`, `src/COTSMod.jl`, and `test/runtests.jl`.
 - Copy the tested biological code from ADRIA.
 - Convert ADRIA factor definitions into package defaults plus an ADRIA-specific factor adapter.
 - Run package tests without ADRIA loaded.
 
-### Step 3: Make ADRIA Depend on CotsBlox
+### Step 3: Make ADRIA Depend on COTSMod
 
-- Add `CotsBlox` as an ADRIA dependency.
-- Replace unqualified calls in `scenario.jl` with `CotsBlox` calls.
+- Add `COTSMod` as an ADRIA dependency.
+- Replace unqualified calls in `scenario.jl` with `COTSMod` calls.
 - Keep ADRIA result names unchanged: `cots_log`, `cots_condition_log`.
 - Run the post-rebase smoke and compare trajectories against a saved baseline.
 
@@ -155,7 +155,7 @@ Latest focused COTS test result: 54 passing assertions. The scenario smoke wrote
 
 - Delete or deprecate `ADRIA/src/ecosystem/cots.jl` once ADRIA calls the package.
 - Keep `ADRIA/src/ecosystem/cots_factors.jl` only if ADRIA still needs factors for sampling.
-- Update docs to link to CotsBlox for biological model details.
+- Update docs to link to COTSMod for biological model details.
 
 ### Step 5: Extract Calibration Study Repo
 
@@ -175,8 +175,8 @@ Do not move large raw RME/vendor data into the study repo until licensing and st
 
 Before creating the external repos, decide:
 
-- Package name: `CotsBlox.jl`, `COTSBlox.jl`, or another lab-preferred name.
+- Package name is currently `COTSMod.jl`.
 - Whether `CotsParams` in the package is a plain struct or remains compatible with ADRIA `Factor` definitions.
-- Whether predation should mutate coral cover inside CotsBlox or return a survival/consumption object for ADRIA to apply.
+- Whether predation should mutate coral cover inside COTSMod or return a survival/consumption object for ADRIA to apply.
 - Whether external pulses are a generic external supply model or a Lizard-specific calibration diagnostic.
 - How large input data are versioned for the calibration study.

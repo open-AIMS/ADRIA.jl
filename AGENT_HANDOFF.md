@@ -180,7 +180,7 @@ COTS documentation update completed:
 - `docs/src/concepts/cots_submodel.md` now documents how the COTS submodel hooks into ADRIA's main `scenario.jl` ecosystem loop.
 - Added details on how COTS reads and mutates CoralBlox-managed coral cover through `C_cover_t`, including absolute-vs-relative cover conventions.
 - Added state ownership and side-effect boundaries for `cots_timestep!`, `cots_mortality!`, larval dispersal, external supply, and logging.
-- Added a forward-looking design section for a possible `CotsBlox.jl` package, including proposed API boundaries, data contracts with CoralBlox, responsibilities ADRIA should retain, migration steps, and risks.
+- Added a forward-looking design section for a possible `COTSMod.jl` package, including proposed API boundaries, data contracts with CoralBlox, responsibilities ADRIA should retain, migration steps, and risks.
 ### A. `switch_RCPs!` on `LizardDomain`
 When running `ADRIA.run_scenarios(dom, scens, "45")` multi-threaded, internal ADRIA logic calls `switch_RCPs!(dom, rcp)`. We have explicitly added the method to `src/ExtInterface/Lizard/LizardDomain.jl`:
 ```julia
@@ -237,7 +237,7 @@ Post-rebase smoke check completed (2026-07-10):
 COTS package extraction planning note (2026-07-10):
 - Supervisor direction: extract the COTS dynamics into a separate package that ADRIA calls in the same spirit as CoralBlox, and move calibration workflows into a separate reproducible study repository.
 - Current ADRIA-owned COTS code lives in `ADRIA/src/ecosystem/cots.jl` and `ADRIA/src/ecosystem/cots_factors.jl`, with integration in `ADRIA/src/scenario.jl` around initialization (`CotsPreyMap`, sampled params, initial density, pulse config), timestep execution (`cots_mortality!`, `disperse_cots_larvae!`, pulse injection), and result logging (`cots_log`, `cots_condition_log`).
-- Recommended package boundary for a future `CotsBlox.jl`: own `CotsParams`, `CotsState`/`CotsHuman`, prey mapping, local timestep, predation survival calculation, larval dispersal, external supply/pulse application, initialization helpers, and small deterministic tests. Avoid depending on ADRIA. Depend only on standard Julia libraries plus `StaticArrays`/`SparseArrays` unless a strong need emerges.
+- Recommended package boundary for a future `COTSMod.jl`: own `CotsParams`, `CotsState`/`CotsHuman`, prey mapping, local timestep, predation survival calculation, larval dispersal, external supply/pulse application, initialization helpers, and small deterministic tests. Avoid depending on ADRIA. Depend only on standard Julia libraries plus `StaticArrays`/`SparseArrays` unless a strong need emerges.
 - Recommended ADRIA boundary after extraction: ADRIA should own parameter-table integration, conversion from ADRIA/CoralBlox coral cover tensors into COTS prey inputs, domain-specific connectivity selection, result logging/Zarr output, and orchestration order within `run_model`.
 - Recommended calibration-study repo boundary: move `sandbox/calibration/*.jl`, `sandbox/plotting/*.py`, validation CSV inputs, lightweight domain-build instructions, run scripts, manifests/lockfiles, and output-generation README into a new repo. Do not move large raw RME/vendor datasets unless licensing/storage is explicit; reference them through documented input paths or data-release artifacts.
 - Migration sequence should be incremental: first create a pure COTS package from current code with tests matching current ADRIA behavior; then make ADRIA call that package while preserving the current smoke outputs; then extract the calibration study once ADRIA's package-facing API is stable.
@@ -251,3 +251,9 @@ COTS package-shaped adapter refactor completed (2026-07-10):
 - Added wrapper API coverage to `test/ecosystem/cots.jl`.
 - Verification passed: `julia --project=sandbox test\ecosystem\cots.jl` returned 54/54 passing assertions.
 - Verification passed: two-scenario adapter smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=adapter_smoke`, `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_adapter_smoke_*`.
+COTSMod standalone package skeleton completed (2026-07-10):
+- Created `COTSMod/` as the initial extraction target, with `Project.toml`, `src/COTSMod.jl`, and `test/runtests.jl`.
+- Ported the current pure COTS model types/functions into `module COTSMod` without depending on ADRIA.
+- Ported the behavior-contract tests into the package test suite.
+- Verification passed: `julia --project=COTSMod COTSMod\test\runtests.jl` returned 49/49 passing assertions.
+- Next migration step: make ADRIA depend on `COTSMod` and replace ADRIA-local COTS implementations with package calls while preserving the existing ADRIA smoke outputs.
