@@ -233,3 +233,15 @@ Post-rebase smoke check completed (2026-07-10):
 - Verification passed: two-scenario no-pulse stochastic smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=post_rebase_smoke`, `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_post_rebase_smoke_*`.
 - Verification passed: plot generation completed with `COTS_OUTPUT_TAG=post_rebase_smoke`; output `sandbox/best_stochastic_post_rebase_smoke_plot.png` and validation metrics CSV were written.
 - Note: `sandbox/Manifest.toml` is currently staged from conflict resolution in Git; other repair files are unstaged. Review staging before commit.
+
+COTS package extraction planning note (2026-07-10):
+- Supervisor direction: extract the COTS dynamics into a separate package that ADRIA calls in the same spirit as CoralBlox, and move calibration workflows into a separate reproducible study repository.
+- Current ADRIA-owned COTS code lives in `ADRIA/src/ecosystem/cots.jl` and `ADRIA/src/ecosystem/cots_factors.jl`, with integration in `ADRIA/src/scenario.jl` around initialization (`CotsPreyMap`, sampled params, initial density, pulse config), timestep execution (`cots_mortality!`, `disperse_cots_larvae!`, pulse injection), and result logging (`cots_log`, `cots_condition_log`).
+- Recommended package boundary for a future `CotsBlox.jl`: own `CotsParams`, `CotsState`/`CotsHuman`, prey mapping, local timestep, predation survival calculation, larval dispersal, external supply/pulse application, initialization helpers, and small deterministic tests. Avoid depending on ADRIA. Depend only on standard Julia libraries plus `StaticArrays`/`SparseArrays` unless a strong need emerges.
+- Recommended ADRIA boundary after extraction: ADRIA should own parameter-table integration, conversion from ADRIA/CoralBlox coral cover tensors into COTS prey inputs, domain-specific connectivity selection, result logging/Zarr output, and orchestration order within `run_model`.
+- Recommended calibration-study repo boundary: move `sandbox/calibration/*.jl`, `sandbox/plotting/*.py`, validation CSV inputs, lightweight domain-build instructions, run scripts, manifests/lockfiles, and output-generation README into a new repo. Do not move large raw RME/vendor datasets unless licensing/storage is explicit; reference them through documented input paths or data-release artifacts.
+- Migration sequence should be incremental: first create a pure COTS package from current code with tests matching current ADRIA behavior; then make ADRIA call that package while preserving the current smoke outputs; then extract the calibration study once ADRIA's package-facing API is stable.
+COTS behavior-contract tests updated (2026-07-10):
+- Strengthened `test/ecosystem/cots.jl` before package extraction.
+- Added tests that lock proportional predation behavior, non-prey coral group preservation, larval dispersal self-connectivity exclusion plus scalar scaling, and vector external pulse injection.
+- Verification passed: `julia --project=sandbox test\ecosystem\cots.jl` returned 46/46 passing assertions.

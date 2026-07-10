@@ -29,7 +29,9 @@ makedocs(;
         "index.md",
         "Concepts" => [
             joinpath("concepts", "dMCDA.md"),
-            joinpath("concepts", "disturbances.md")
+            joinpath("concepts", "disturbances.md"),
+            joinpath("concepts", "cots_submodel.md"),
+            joinpath("concepts", "cots_package_extraction.md")
         ],
         "Usage" => [
             joinpath("usage", "getting_started.md"),
@@ -75,7 +77,7 @@ if Sys.iswindows()
         end
     end
 
-    # Fix nav/sidebar link values in config.mts (safe global replace — no math here).
+    # Fix nav/sidebar link values in config.mts (safe global replace - no math here).
     config_path = joinpath(build_dir, ".vitepress", "config.mts")
     if isfile(config_path)
         content = read(config_path, String)

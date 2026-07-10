@@ -204,4 +204,66 @@ end
         @test models[3].N[1] == 0.0
     end
 
+    @testset "cots_mortality! preserves non-prey groups and applies proportional mortality" begin
+        p = test_cots_params()
+        prey_map = CotsPreyMap([1], [2])
+        C_cover_t = zeros(3, 2, 1)
+        C_cover_t[1, :, 1] .= [0.2, 0.4]
+        C_cover_t[2, :, 1] .= [0.1, 0.3]
+        C_cover_t[3, :, 1] .= [0.7, 0.9]
+        non_prey_before = copy(C_cover_t[3, :, 1])
+
+        models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 1.5), 0.8, p)]
+        ADRIA.cots_mortality!(C_cover_t, models, prey_map)
+
+        @test C_cover_t[1, 1, 1] / 0.2 ≈ C_cover_t[1, 2, 1] / 0.4
+        @test C_cover_t[2, 1, 1] / 0.1 ≈ C_cover_t[2, 2, 1] / 0.3
+        @test C_cover_t[3, :, 1] == non_prey_before
+        @test sum(C_cover_t[1:2, :, 1]) < 1.0
+        @test all(0.0 .<= C_cover_t .<= 1.0)
+    end
+
+    @testset "disperse_cots_larvae! skips self-connectivity and applies scalar" begin
+        p = test_cots_params()
+        n_locs = 4
+        models = [
+            CotsHuman(MVector{3, Float64}(10.0, 0.0, 0.0), 0.8, p),
+            CotsHuman(MVector{3, Float64}(1.0, 0.0, 0.0), 0.8, p),
+            CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, p),
+            CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, p)
+        ]
+
+        conn = SparseArrays.sparse(
+            [1, 1, 1, 2, 2],
+            [1, 2, 3, 2, 4],
+            [0.9, 0.5, 0.3, 0.1, 0.25],
+            n_locs, n_locs
+        )
+
+        ADRIA.disperse_cots_larvae!(models, conn; immigration_scalar=2.0)
+
+        @test models[1].N[1] == 10.0
+        @test models[2].N[1] == 11.0
+        @test models[3].N[1] == 6.0
+        @test models[4].N[1] == 0.5
+    end
+
+    @testset "inject_upstream_pulse! vector pulse values" begin
+        p = test_cots_params()
+        n_locs = 10
+        models = [
+            CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, p) for _ in 1:n_locs
+        ]
+        pulse_locs = Set([2, 5, 8, 99])
+        pulse_vals = collect(0.1:0.1:1.0)
+
+        ADRIA.inject_upstream_pulse!(models, pulse_locs, pulse_vals)
+
+        @test models[2].N[1] == pulse_vals[2]
+        @test models[5].N[1] == pulse_vals[5]
+        @test models[8].N[1] == pulse_vals[8]
+        @test models[1].N[1] == 0.0
+        @test models[3].N[1] == 0.0
+    end
+
 end
