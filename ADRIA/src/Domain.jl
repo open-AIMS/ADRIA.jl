@@ -182,7 +182,7 @@ function model_spec(d::Domain, filepath::String)::Nothing
 
     current_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
     open(filepath, "w") do io
-        write(io, "# Generated with ADRIA.jl $(vers_id) on $(current_time)\n")
+        return write(io, "# Generated with ADRIA.jl $(vers_id) on $(current_time)\n")
     end
 
     ms = model_spec(d)
@@ -193,8 +193,10 @@ function model_spec(d::Domain, filepath::String)::Nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
-    # Model parameter distributions have at least one argument
-    spec[!, :dist_params] = Vector{Tuple{Float64,Vararg{Float64}}}(spec.dist_params)
+    # Model parameter distributions have at least one argument.
+    # dist_params is stored as Vector{Float64} internally; convert each element to a Tuple
+    # so that downstream callers (e.g. distribution constructors) receive the expected type.
+    spec[!, :dist_params] = Tuple.(spec.dist_params)
 
     DataFrames.hcat!(
         spec,

@@ -44,12 +44,24 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     coral_params = ADRIA.component_params(d.model, ADRIA.Coral).fieldname
     ADRIA.fix_factor!(d, coral_params)
 
+    # Assume the same for growth acceleration parameters
+    growth_acc_params = ADRIA.component_params(d.model, ADRIA.GrowthAcceleration).fieldname
+    ADRIA.fix_factor!(d, growth_acc_params)
+
     # Fix coral seeding weights
     seed_criteria_params = ADRIA.component_params(
         d.model,
         ADRIA.SeedCriteriaWeights
     )
     ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
+
+    # Fix moving coral weights
+    # Fix coral seeding weights
+    mc_criteria_params = ADRIA.component_params(
+        d.model,
+        ADRIA.MCCriteriaWeights
+    )
+    ADRIA.fix_factor!(d, mc_criteria_params.fieldname)
 
     scenarios = ADRIA.sample(d, n)
 

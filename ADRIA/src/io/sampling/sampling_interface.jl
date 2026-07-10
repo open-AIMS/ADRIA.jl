@@ -174,7 +174,7 @@ fix_factor!(dom; guided=3, N_seed_TA=1e6)
 ```
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
-    params = DataFrame(d.model)
+    params = model_spec(d)
     default_val = params[params.fieldname .== factor, :val][1]
 
     dist_params = params[params.fieldname .== factor, :dist_params][1]
@@ -185,7 +185,7 @@ function fix_factor!(d::Domain, factor::Symbol)::Nothing
     return nothing
 end
 function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
-    params = DataFrame(d.model)
+    params = model_spec(d)
     params[params.fieldname .== factor, :val] .= val
 
     dist_params = params[params.fieldname .== factor, :dist_params][1]
@@ -196,7 +196,7 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     return nothing
 end
 function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
-    params = DataFrame(d.model)
+    params = model_spec(d)
     factor_rows = findall(in(factors), params.fieldname)
 
     # Get current values and dist_params lengths
@@ -214,14 +214,14 @@ function fix_factor!(d::Domain; factors...)::Nothing
     factor_names = keys(factors)
     factor_vals = collect(values(factors))
 
-    params = DataFrame(d.model)
+    params = model_spec(d)
 
     target_order = vcat([findall(x -> x == y, params.fieldname) for y in factor_names]...)
     params[target_order, :val] .= factor_vals
 
     dist_params = params[target_order, :dist_params]
     new_dist_params = [
-        Tuple(fill(v, length(d))) for (v, d) in zip(factor_vals, dist_params)
+        Tuple(fill(Float64(v), length(dp))) for (v, dp) in zip(factor_vals, dist_params)
     ]
     params[target_order, :dist_params] .= new_dist_params
 

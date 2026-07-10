@@ -104,19 +104,15 @@ end
 """
     _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel)
 
-`@noinline` + `@nospecialize` barrier around `ModelParameters.Model` construction.
+Wrapper around `ModelParameters.Model` construction so it can be targeted by
+`@compile_workload`.
 
-`Coral` and `GrowthAcceleration` are built via `eval` with ~330 and ~36 `Param` fields
-respectively. Letting Julia specialize `Flatten._reconstruct` for the full concrete
-8-tuple causes ~15 min of compile time on the first `load_domain` call.
+`Coral` (331 `Param` fields) and `GrowthAcceleration` (36 fields) formerly caused
+`Flatten._flatten` / `_reconstruct` (`@generated` functions) to have O(N²)
+compile-time cost. This is now fixed by concrete method overrides in
+`Corals.jl` / `GrowthAcceleration.jl` that bypass the `@generated` path entirely.
 
-All 8 arguments are `@nospecialize`d so their static types inside this function body are
-all `Any`, meaning `Flatten._reconstruct` is compiled for `Tuple{Any,...,Any}` — a
-trivially cheap specialization. Marking only `coral` and `growth_accel` is insufficient:
-the remaining concrete-typed args (`EnvironmentalLayer`, `Intervention`, etc.) still give
-Flatten enough type information to trigger the expensive full-tuple specialization.
-`@noinline` prevents the compiler from inlining through the barrier and recovering the
-concrete types from the call site.
+The `@noinline` annotation prevents the compiler from inlining through the barrier.
 """
 @noinline function _assemble_domain_model(
     @nospecialize(el),
@@ -152,7 +148,6 @@ function Domain(
     calib_params_fn::String=""
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
-
     if has_mcb_scenarios(DHW)
         albedos = collect(DHW.albedo)
         durations = collect(DHW.mcb_durations)
