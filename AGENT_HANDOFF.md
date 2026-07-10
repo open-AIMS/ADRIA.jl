@@ -221,3 +221,15 @@ Currently, COTS larval dispersal (`disperse_cots_larvae!`) uses coral connectivi
 
 ### Phase 11+: Regional & Full-Scale GBR Cross-Validation
 * **Action:** Validate the calibrated COTS parameter set against empirical AIMS tow datasets across broader Moore/Cairns regional domains (`RMEDomain`) to confirm generalizability outside the Lizard Island cluster.
+
+Post-rebase smoke check completed (2026-07-10):
+- Restored active-package COTS includes in `ADRIA/src/ADRIA.jl` (`ecosystem/cots_factors.jl`, `ecosystem/cots.jl`). Without these, `CotsParams` and COTS runtime types were missing after the rebase.
+- Migrated the existing Lizard custom loader from old root `src/ExtInterface/Lizard/LizardDomain.jl` into active package path `ADRIA/src/ExtInterface/Lizard/LizardDomain.jl`, included/exported `LizardDomain`, and kept `switch_RCPs!` for the historical Lizard workflow.
+- Fixed `ADRIA/src/io/ResultSet.jl` rebase duplication that left an invalid/incomplete `cots_condition_log` ternary and duplicated COTS log loading block.
+- Adjusted `ADRIA/src/scenario.jl` to use the installed CoralBlox API: removed `LinearExtensionCache` and pass `_bin_edges` directly to `linear_extension_scale_factors`.
+- Fixed `sandbox/Manifest.toml` conflict markers and pointed its ADRIA path at `../ADRIA` instead of stale root `..`; `sandbox/Project.toml` now declares direct script deps `CSV` and `DataFrames`.
+- Updated `sandbox/calibration/simulate_best_stochastic.jl` and `sandbox/calibration/pulse_calibration_sweep.jl` to activate `sandbox/Project.toml` based on `@__DIR__` and `cd` to repo root, so they are not sensitive to launch directory.
+- Verification passed: `julia --project=sandbox -e "using ADRIA"` precompiled/loaded successfully.
+- Verification passed: two-scenario no-pulse stochastic smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=post_rebase_smoke`, `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_post_rebase_smoke_*`.
+- Verification passed: plot generation completed with `COTS_OUTPUT_TAG=post_rebase_smoke`; output `sandbox/best_stochastic_post_rebase_smoke_plot.png` and validation metrics CSV were written.
+- Note: `sandbox/Manifest.toml` is currently staged from conflict resolution in Git; other repair files are unstaged. Review staging before commit.

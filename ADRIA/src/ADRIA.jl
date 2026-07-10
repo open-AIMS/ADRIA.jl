@@ -56,6 +56,8 @@ include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/cyclones.jl")
+include("ecosystem/cots_factors.jl")
+include("ecosystem/cots.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
@@ -84,6 +86,7 @@ include("analysis/analysis.jl")
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/RMEDomain.jl")
 include("ExtInterface/ReefMod/ReefModDomain.jl")
+include("ExtInterface/Lizard/LizardDomain.jl")
 
 include("viz/viz.jl")
 
@@ -93,7 +96,7 @@ export
     create_growth_acceleration_instance, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
-    Domain, ADRIADomain,
+    Domain, ADRIADomain, LizardDomain,
     metrics, select, timesteps, env_stats, viz
 
 using .analysis: AnnotatedOutcomes, attach_scenario_metadata
@@ -102,6 +105,7 @@ export AnnotatedOutcomes, attach_scenario_metadata
 # Interfaces for external models
 export RMEDomain
 export ReefModDomain
+export LizardDomain
 
 export RMEResultSet
 # metric helper methods
@@ -111,25 +115,25 @@ export RMEResultSet
 const COMPAT_DPKG = ["0.8.0"]
 
 @compile_workload begin
-    # DataCube / ZeroDataCube constructors — covers Dim{:timesteps/:scenarios/:locations} triples
+    # DataCube / ZeroDataCube constructors Ã¢â‚¬â€ covers Dim{:timesteps/:scenarios/:locations} triples
     dc = DataCube(zeros(Float64, 5, 3, 10); timesteps=1:5, scenarios=1:3, locations=1:10)
     ZeroDataCube((:timesteps, :scenarios, :locations), (5, 3, 10))
 
-    # Analysis helpers — pure computation, no filesystem I/O
+    # Analysis helpers Ã¢â‚¬â€ pure computation, no filesystem I/O
     analysis.series_confint(randn(Float64, 10, 4))
     analysis.normalize(randn(Float64, 20))
     analysis.discretize_outcomes(randn(Float64, 20))
 
-    # Metric dispatch paths — cover common array-input routing
+    # Metric dispatch paths Ã¢â‚¬â€ cover common array-input routing
     # scenario_total_cover: in_dims = (:timesteps, :locations, :scenarios)
     metrics.scenario_total_cover(rand(Float64, 5, 10, 3))
-    # relative_cover: 5D plain-array path (timesteps×groups×sizes×locations×scenarios)
+    # relative_cover: 5D plain-array path (timestepsÃƒâ€”groupsÃƒâ€”sizesÃƒâ€”locationsÃƒâ€”scenarios)
     metrics.relative_cover(rand(Float64, 5, 3, 10, 8, 2))
     # coral_evenness: in_dims = (:timesteps, :groups, :locations)
     metrics.coral_evenness(rand(Float64, 5, 3, 10))
 
     precompile(CSV.read, (String, Type{DataFrame}))
-    # kwargs are dispatched through a generated "kwfunc" — precompile that too:
+    # kwargs are dispatched through a generated "kwfunc" Ã¢â‚¬â€ precompile that too:
     precompile(
         Core.kwcall,
         (NamedTuple{(:comment,),Tuple{String}}, typeof(CSV.read), String, Type{DataFrame})
@@ -141,7 +145,7 @@ const COMPAT_DPKG = ["0.8.0"]
     precompile(ADRIA.sample_unguided, (ADRIADomain, Int))
     precompile(ADRIA.model_spec, (ADRIADomain, DataFrame))
 
-    # Sampling dispatch — synthetic spec covers QMC + Distributions path without file IO
+    # Sampling dispatch Ã¢â‚¬â€ synthetic spec covers QMC + Distributions path without file IO
     # let
     #     spec = DataFrame(
     #         fieldname=[:p1, :p2],
@@ -153,7 +157,7 @@ const COMPAT_DPKG = ["0.8.0"]
     #     sample(spec, 4)
     # end
 
-    # MCDA dispatch chain — 5 production methods, mixed directions for MooraMethod
+    # MCDA dispatch chain Ã¢â‚¬â€ 5 production methods, mixed directions for MooraMethod
     redirect_stdio(stdout=devnull, stderr=devnull) do
         let
             n_locs, n_crit = 10, 4

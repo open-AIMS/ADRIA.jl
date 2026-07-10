@@ -185,26 +185,8 @@ function ResultSet(
         # COTS body condition log (optional — not present in older stores)
         haskey(log_set, "cots_condition_log") ?
         DataCube(
-            log_set["coral_dhw_log"],
-            Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
-        ),
-        haskey(log_set, "coral_cover_log") ?
-        DataCube(
-            log_set["coral_cover_log"],
-            Symbol.(Tuple(log_set["coral_cover_log"].attrs["structure"]))
-        ) : nothing,
-        # COTS population log (optional — not present in older stores)
-        haskey(log_set, "cots_pop_log") ?
-        DataCube(
-            log_set["cots_pop_log"],
-            Symbol.(Tuple(log_set["cots_pop_log"].attrs["structure"]))
-        ) : nothing,
-        # COTS body condition log (optional — not present in older stores)
-        haskey(log_set, "cots_condition_log") ?
-        DataCube(
             log_set["cots_condition_log"],
             Symbol.(Tuple(log_set["cots_condition_log"].attrs["structure"]))
-        ) : nothing
         ) : nothing
     )
 end

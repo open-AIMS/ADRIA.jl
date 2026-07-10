@@ -1,4 +1,7 @@
-using Pkg; Pkg.activate(".")
+using Pkg
+const REPO_ROOT = normpath(joinpath(@__DIR__, "..", ".."))
+Pkg.activate(joinpath(REPO_ROOT, "sandbox"))
+cd(REPO_ROOT)
 using ADRIA
 using CSV, DataFrames, Statistics, Random
 
