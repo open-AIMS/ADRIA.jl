@@ -380,3 +380,68 @@ function inject_upstream_pulse!(
     end
     return nothing
 end
+# Package-shaped COTS API -----------------------------------------------------
+# These wrappers define the interface ADRIA should eventually call from an
+# external CotsBlox.jl package. Legacy function names remain above for backward
+# compatibility while scenario orchestration moves to this narrower boundary.
+const CotsState = Vector{CotsHuman}
+
+function initialize_cots(
+    n_locs::Int,
+    params::NamedTuple;
+    enabled::Bool=true,
+    spatial_initial_density::Union{AbstractVector{<:Real},Nothing}=nothing,
+    seed_locs::Union{Set{Int},Nothing}=nothing,
+    init_density::Float64=0.1,
+    rng=Random.GLOBAL_RNG
+)::CotsState
+    if !enabled
+        return [
+            CotsHuman(MVector{3,Float64}(0.0, 0.0, 0.0), 0.8, params) for _ in 1:n_locs
+        ]
+    end
+
+    if !isnothing(spatial_initial_density)
+        return init_cots_from_spatial(n_locs, params, Float64.(spatial_initial_density))
+    end
+
+    return init_cots_populations(
+        n_locs,
+        params;
+        seed_locs=seed_locs,
+        init_density=init_density,
+        rng=rng
+    )
+end
+
+function apply_predation!(
+    coral_cover::AbstractArray{Float64,3},
+    cots_state::CotsState,
+    prey_map::CotsPreyMap
+)::Nothing
+    return cots_mortality!(coral_cover, cots_state, prey_map)
+end
+
+function disperse_larvae!(
+    cots_state::CotsState,
+    conn::SparseMatrixCSC{Float64,Int64};
+    scalar::Float64=1.0
+)::Nothing
+    return disperse_cots_larvae!(cots_state, conn; immigration_scalar=scalar)
+end
+
+function apply_external_supply!(
+    cots_state::CotsState,
+    pulse_locs::Set{Int};
+    pulse_val::Float64=2.0
+)::Nothing
+    return inject_upstream_pulse!(cots_state, pulse_locs; pulse_val=pulse_val)
+end
+
+function apply_external_supply!(
+    cots_state::CotsState,
+    pulse_locs::Set{Int},
+    pulse_vals::AbstractVector{Float64}
+)::Nothing
+    return inject_upstream_pulse!(cots_state, pulse_locs, pulse_vals)
+end

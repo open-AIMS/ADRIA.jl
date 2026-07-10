@@ -1178,20 +1178,21 @@ function run_model(
         nothing  # let init_cots_populations use its default random seeding
     end
 
-    if cots_enabled
-        if hasproperty(domain, :cots_init_density) && !isnothing(domain.cots_init_density)
-            cots_models = init_cots_from_spatial(n_locs, cots_params, domain.cots_init_density)
-        else
-            cots_models = init_cots_populations(
-                n_locs, cots_params;
-                seed_locs=_cots_seed_locs,
-                init_density=_cots_init_density,
-                rng=rng
-            )
-        end
+    _cots_spatial_initial_density = if hasproperty(domain, :cots_init_density) && !isnothing(domain.cots_init_density)
+        domain.cots_init_density
     else
-        cots_models = [CotsHuman(MVector{3, Float64}(0.0, 0.0, 0.0), 0.8, cots_params) for _ in 1:n_locs]
+        nothing
     end
+
+    cots_models = initialize_cots(
+        n_locs,
+        cots_params;
+        enabled=cots_enabled,
+        spatial_initial_density=_cots_spatial_initial_density,
+        seed_locs=_cots_seed_locs,
+        init_density=_cots_init_density,
+        rng=rng
+    )
 
     # Get connectivity for COTS larval dispersal
     # TODO: Replace coral connectivity with COTS-specific connectivity when available
@@ -1913,11 +1914,11 @@ function run_model(
         end
 
         # COTS predation mortality (operates on relative cover)
-        cots_mortality!(C_cover_t, cots_models, cots_prey_map)
+        apply_predation!(C_cover_t, cots_models, cots_prey_map)
 
         # Disperse COTS larvae between locations via connectivity
         _cots_imm_scalar = parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0"))
-        disperse_cots_larvae!(cots_models, cots_conn; immigration_scalar=_cots_imm_scalar)
+        disperse_larvae!(cots_models, cots_conn; scalar=_cots_imm_scalar)
 
         # Mimic incoming larvae/recruitment from upstream outbreak (Cairns Initiation Box).
         # External pulses are off by default. When enabled, they add a relative
@@ -1934,7 +1935,7 @@ function run_model(
         )
         if _cots_pulse_enabled && !isnothing(_cots_seed_locs) && _cots_pulse_relative_magnitude > 0.0 && _pulse_in_window
             pulse_vals = _cots_pulse_relative_magnitude .* cots_max_larval_supply
-            inject_upstream_pulse!(cots_models, _cots_seed_locs, pulse_vals)
+            apply_external_supply!(cots_models, _cots_seed_locs, pulse_vals)
         end
 
         # Log COTS populations

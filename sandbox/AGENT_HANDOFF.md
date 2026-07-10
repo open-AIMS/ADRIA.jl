@@ -245,3 +245,9 @@ COTS behavior-contract tests updated (2026-07-10):
 - Strengthened `test/ecosystem/cots.jl` before package extraction.
 - Added tests that lock proportional predation behavior, non-prey coral group preservation, larval dispersal self-connectivity exclusion plus scalar scaling, and vector external pulse injection.
 - Verification passed: `julia --project=sandbox test\ecosystem\cots.jl` returned 46/46 passing assertions.
+COTS package-shaped adapter refactor completed (2026-07-10):
+- Added internal package-shaped wrappers in `ADRIA/src/ecosystem/cots.jl`: `initialize_cots`, `apply_predation!`, `disperse_larvae!`, and `apply_external_supply!`.
+- Updated `ADRIA/src/scenario.jl` to call those wrappers instead of direct legacy implementation functions. Legacy names remain available for compatibility and tests.
+- Added wrapper API coverage to `test/ecosystem/cots.jl`.
+- Verification passed: `julia --project=sandbox test\ecosystem\cots.jl` returned 54/54 passing assertions.
+- Verification passed: two-scenario adapter smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=adapter_smoke`, `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_adapter_smoke_*`.

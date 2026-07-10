@@ -266,4 +266,32 @@ end
         @test models[3].N[1] == 0.0
     end
 
+    @testset "package-shaped API wrappers" begin
+        p = test_cots_params()
+        seed = Set([1, 3])
+        cots_state = ADRIA.initialize_cots(4, p; seed_locs=seed, init_density=1.2)
+
+        @test cots_state isa Vector{CotsHuman}
+        @test cots_state[1].N[3] == 1.2
+        @test cots_state[2].N[3] == 0.0
+        @test cots_state[3].N[3] == 1.2
+
+        disabled_state = ADRIA.initialize_cots(3, p; enabled=false)
+        @test all(m -> all(m.N .== 0.0), disabled_state)
+
+        C_cover_t = fill(0.05, 5, 2, 4)
+        cover_before = sum(C_cover_t)
+        ADRIA.apply_predation!(C_cover_t, cots_state, CotsPreyMap([1, 2, 3], [4, 5]))
+        @test sum(C_cover_t) < cover_before
+
+        conn = SparseArrays.sparse([1], [2], [0.5], 4, 4)
+        before_recruits = cots_state[2].N[1]
+        ADRIA.disperse_larvae!(cots_state, conn; scalar=2.0)
+        @test cots_state[2].N[1] >= before_recruits
+
+        pulse_vals = [0.0, 0.2, 0.4, 0.6]
+        ADRIA.apply_external_supply!(cots_state, Set([2, 4]), pulse_vals)
+        @test cots_state[4].N[1] >= pulse_vals[4]
+    end
+
 end

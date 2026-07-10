@@ -119,6 +119,17 @@ ADRIA should retain an integration smoke test that runs the Lizard historical do
 
 ## Migration Steps
 
+
+Status update: ADRIA now includes a package-shaped internal COTS API: `initialize_cots`, `apply_predation!`, `disperse_larvae!`, and `apply_external_supply!`. `scenario.jl` calls these wrappers instead of the legacy implementation names. The legacy functions remain in place for compatibility and as implementation details until the external package exists.
+
+Verification passed:
+
+```powershell
+julia --project=sandbox test\ecosystem\cots.jl
+$env:COTS_N_STOCHASTIC_SCENS='2'; $env:COTS_OUTPUT_TAG='adapter_smoke'; $env:COTS_EXTERNAL_PULSE='false'; julia sandbox\calibration\simulate_best_stochastic.jl
+```
+
+Latest focused COTS test result: 54 passing assertions. The scenario smoke wrote `sandbox/data/best_stochastic_adapter_smoke_*` outputs.
 ### Step 1: Stabilize Contract Inside ADRIA
 
 - Keep current files in ADRIA.
