@@ -3,7 +3,7 @@ using Dates: now
 using Zarr
 
 using Setfield: @set!
-using DataFrames: DataFrame
+using DataFrames: DataFrame, colmetadata!
 using ADRIA: Domain, EnvLayer
 
 const CONNECTIVITY = "connectivity"
@@ -96,6 +96,26 @@ function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
     )
 end
 
+"""
+    _tag_inputs_metadata!(inputs::DataFrame, model_spec::DataFrame)::DataFrame
+
+Tag each column of `inputs` that has a matching entry (by `fieldname`) in `model_spec`
+with `"ptype"` and `"label"` column metadata (sourced from `model_spec`'s `ptype` and
+`name` columns respectively). Uses `style=:note` so the metadata survives `copy()` and
+column-/row-subsetting operations performed by downstream analysis code.
+"""
+function _tag_inputs_metadata!(inputs::DataFrame, model_spec::DataFrame)::DataFrame
+    for row in eachrow(model_spec)
+        col = row.fieldname
+        if hasproperty(inputs, col)
+            colmetadata!(inputs, col, "ptype", row.ptype; style=:note)
+            colmetadata!(inputs, col, "label", row.name; style=:note)
+        end
+    end
+
+    return inputs
+end
+
 function ResultSet(
     input_set::AbstractArray,
     env_layer_md::EnvLayer,
@@ -109,6 +129,9 @@ function ResultSet(
     model_spec::DataFrame
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
+
+    _tag_inputs_metadata!(inputs_used, model_spec)
+
     return ADRIAResultSet(
         input_set.attrs["name"],
         string(rcp),
