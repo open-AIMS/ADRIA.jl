@@ -453,16 +453,20 @@ Positions outside the seeding window `[seed_year_start, seed_year_start+seed_yea
 """
 function decode_option_ts(
     encoded::Real, seed_year_start::Real, seed_years::Real, pd_frequency::Real,
-    max_time::Real
+    max_time::Real; legacy::Bool = false
 )::Vector{Symbol}
     encoded, seed_year_start, seed_years, pd_frequency, max_time =
         Int.((encoded, seed_year_start, seed_years, pd_frequency, max_time))
     option_names = PD_OPTIONS().option_name
-    base = length(option_names) + 1
     number_changes = seed_years ÷ pd_frequency
-    decoded_combo = map(1:number_changes) do i
-        idx = (encoded ÷ base^(i - 1)) % base
-        idx == length(option_names) ? :nothing : option_names[idx + 1]
+    if legacy
+        decoded_combo = [option_names[(encoded ÷ 5^(i - 1)) % 5 + 1] for i in 1:number_changes]
+    else
+        base = length(option_names) + 1
+        decoded_combo = map(1:number_changes) do i
+            idx = (encoded ÷ base^(i - 1)) % base
+            idx == length(option_names) ? :nothing : option_names[idx + 1]
+        end
     end
     ts = fill(:nothing, max_time)
     for t in seed_year_start:(seed_year_start + seed_years - 1)
