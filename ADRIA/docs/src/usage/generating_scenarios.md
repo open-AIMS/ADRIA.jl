@@ -35,7 +35,10 @@ values (where necessary), as is in the case with categorical factors. The Sobol'
 scheme is therefore disrupted due to the adjustment and so a Sobol' sensitivity
 analysis may exhibit comparatively poor convergence. Subsequent assessment of
 uncertainty and sensitivity is instead conducted with the distribution-based
-PAWN method (Pianosi and Wagener 2015, 2018).
+PAWN method (Pianosi and Wagener 2015, 2018). See
+[Conditional factor dependencies](@ref) below for what this adjustment does in practice,
+and the [architecture overview](@ref "Conditional sampling dependencies") for how it is
+implemented.
 
 !!! note "Sobol' samples"
     The convergence properties of the Sobol' sequence is only valid if the number of
@@ -146,9 +149,60 @@ ADRIA.set_factor_bounds!(dom;
 # List of available MCDA decision methods
 ADRIA.decision.mcda_method_names()
 
-# Constrain guided options, selecting a specific MCDA decision method
-ADRIA.set_factor_bounds!(dom, :guided, ("counterfactual", "COCOSO"))
+# Constrain guided/counterfactual regime, and separately select a specific MCDA decision method
+ADRIA.set_factor_bounds!(dom, :guided, (0.0, 1.0))  # unguided or guided only, no counterfactual
+ADRIA.set_factor_bounds!(dom, :mcda_method, ("COCOSO",))
 ```
+
+## Conditional factor dependencies
+
+Some factors are only meaningful under certain scenario regimes. For example,
+seeding-related deployment factors have no effect on a counterfactual (no intervention)
+scenario, and decision-strategy criteria weights have no effect unless a `guided` MCDA
+approach is selected. Rather than sampling these factors unconditionally and discarding
+the result, ADRIA resolves such dependencies automatically, either by:
+
+- fixing the affected factors to a constant *before* sampling, when the governing setting
+  (currently `guided`) is known for the whole call (e.g. `ADRIA.sample_cf`,
+  `ADRIA.sample_guided`, `ADRIA.sample_unguided`), or
+- zeroing/adjusting the affected factors *after* sampling, on a per-scenario (row) basis,
+  when the governing setting is itself sampled (as with plain `ADRIA.sample(dom, n)`, where
+  `guided` varies from row to row) or when the dependency is only evaluable from a drawn
+  value (e.g. gating on whether a sampled `fogging` value is greater than zero).
+
+See the [architecture overview](@ref "Conditional sampling dependencies") for how this is
+implemented, if extending or debugging this behavior.
+
+This means the returned scenario DataFrame will commonly contain columns set to `0.0` (or
+another sentinel constant) for rows where the corresponding intervention/strategy is
+inactive, rather than a value drawn from that factor's nominal distribution.
+
+```julia
+cf_scens = ADRIA.sample_cf(dom, 128)
+
+# Intervention and criteria weight columns are fixed to a sentinel value for
+# counterfactual scenarios rather than sampled, since they have no effect.
+cf_scens[:, [:N_seed_TA, :fogging, :seed_heat_stress]]
+```
+
+Marine Cloud Brightening factors are handled the same way — see
+[Marine Cloud Brightening (MCB) Scenarios](@ref) below for a concrete example of fixing
+those factors to values available in a given dataset.
+
+!!! warning "Effect on Sobol' sensitivity analysis"
+    Fixing or adjusting sampled values after the fact disrupts the low-discrepancy
+    structure of the underlying Sobol' sequence. Scenario sets produced this way should
+    **not** be treated as valid Sobol' samples for the purpose of estimating Sobol'
+    indices — such samples exist only to explore plausible factor combinations. Where
+    Sobol' indices are required, PAWN is used instead (see
+    [PAWN sensitivity (heatmap overview)](@ref)), which does not require this structure to
+    be preserved.
+
+!!! note "Duplicate scenarios"
+    Because multiple distinct pre-adjustment samples can collapse onto the same fixed
+    values (e.g. every counterfactual sample ends up with `fogging = 0.0`), it is expected
+    for a scenario set to contain some duplicate rows. ADRIA will emit a warning
+    reporting the proportion of duplicates when this occurs.
 
 ## Marine Cloud Brightening (MCB) Scenarios
 

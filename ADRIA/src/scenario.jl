@@ -874,7 +874,7 @@ function run_model(
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set[At("guided")] > 0
     if is_guided
-        MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
+        MCDA_approach = mcda_methods()[Int64(param_set[At("mcda_method")])]
     end
 
     # Number of time steps in environmental layers to look ahead when making decisions

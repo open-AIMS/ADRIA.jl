@@ -144,7 +144,7 @@ function rank_locations(
             @warn "No valid fogging locations found for scenario $(scen_idx)"
         end
 
-        MCDA_approach = mcda_methods()[Int64(scen[factors = At("guided")][1])]
+        MCDA_approach = mcda_methods()[Int64(scen[factors = At("mcda_method")][1])]
 
         seed_pref = SeedPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)

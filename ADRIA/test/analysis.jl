@@ -40,6 +40,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
             :dhw_scenario,
             :wave_scenario,
             :guided,
+            :mcda_method,
             :N_seed_TA,
             :N_seed_CA,
             :fogging,
@@ -131,7 +132,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # Bands represent the 95% confidence interval derived from the number of conditioning
     # points, the default for which is ten (i.e., 10 samples).
     # Due to the limited sample size, care should be taken when interpreting the figure.
-    foi = [:dhw_scenario, :wave_scenario, :guided]
+    foi = [:dhw_scenario, :wave_scenario, :guided, :mcda_method]
     Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
     ADRIA.viz.convergence(Si_conv, foi)
 

@@ -9,9 +9,20 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
     guided_col = spec_df.fieldname .== :guided
     g_upper = Float64(spec_df[guided_col, :upper_bound][1])
 
+    # `guided` is a CategoricalDistribution, so dist_params are explicit category
+    # values, not a continuous range -- CategoricalDistribution errors on duplicate
+    # category values. Since the guided/mcda_method split narrowed `guided` to
+    # {-1,0,1}, `lower` and `g_upper` now coincide when restricting to the
+    # guided-only regime (lower=1, g_upper=1). Mark the row constant in that case
+    # so `sample()` never constructs a CategoricalDistribution for it at all (constant
+    # rows are filtered out before `_build_dist_types` and use `:val` directly);
+    # the `dist_params` column still requires >=2 elements, so it's left as the
+    # (possibly-duplicate) 2-tuple, which is harmless once the row is constant.
+    is_const = lower == g_upper
+
     # Update entries, standardizing values for bounds as floats
-    spec_df[guided_col, [:val, :lower_bound, :dist_params]] .=
-        [lower Float64(lower) (Float64(lower), g_upper)]
+    spec_df[guided_col, [:val, :lower_bound, :dist_params, :is_constant]] .=
+        [lower Float64(lower) (Float64(lower), g_upper) is_const]
 
     return spec_df
 end
@@ -94,7 +105,7 @@ end
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
-Update the model spec with the tuple of MCDA methods to use.
+Update the model spec `mcda_method` factor with the tuple of MCDA methods to use.
 
 Converts named MCDA methods to known IDs.
 The nominal default is set to the first MCDA method provided.
@@ -105,12 +116,14 @@ function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_idxs = decision.decision_method_encoding.(new_method_names)
 
     ms = model_spec(dom)
-    guided_row = findfirst(ms.fieldname .== :guided)
-    @assert !isnothing(guided_row) "Guided variable not found in model spec."
+    mcda_method_row = findfirst(ms.fieldname .== :mcda_method)
+    @assert !isnothing(mcda_method_row) "mcda_method variable not found in model spec."
 
-    ms[guided_row, :dist_params] = Tuple(new_method_idxs)
-    ms[guided_row, :val] = first(new_method_idxs)
-    ms[guided_row, :is_constant] = length(new_method_idxs) == 1
+    dp = Float64.(new_method_idxs)
+    length(dp) == 1 && (dp = [dp[1], dp[1]])
+    ms[mcda_method_row, :dist_params] = Tuple(dp)
+    ms[mcda_method_row, :val] = first(new_method_idxs)
+    ms[mcda_method_row, :is_constant] = length(new_method_idxs) == 1
     update!(dom, ms)
 
     return dom
@@ -164,13 +177,16 @@ Note: Changes are permanent. To reset, either specify the original value(s)
 fix_factor!(dom, :guided)
 
 # Fix `guided` to specified value
-fix_factor!(dom, :guided, 3)
+fix_factor!(dom, :guided, 1)
+
+# Fix `mcda_method` to a specific MCDA method (only relevant when `guided > 0`)
+fix_factor!(dom, :mcda_method, 3)
 
 # Fix a set of factors to their default values
 fix_factor!(dom, [:guided, :N_seed_TA])
 
 # Fix specified factors to provided values
-fix_factor!(dom; guided=3, N_seed_TA=1e6)
+fix_factor!(dom; guided=1, N_seed_TA=1e6)
 ```
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
@@ -216,7 +232,8 @@ function fix_factor!(d::Domain; factors...)::Nothing
 
     params = model_spec(d)
 
-    target_order = vcat([findall(x -> x == y, params.fieldname) for y in factor_names]...)
+    # target_order = vcat([findall(x -> x == y, params.fieldname) for y in factor_names]...)
+    target_order = indexin(collect(factor_names), params.fieldname)
     params[target_order, :val] .= factor_vals
 
     dist_params = params[target_order, :dist_params]
@@ -279,124 +296,12 @@ function get_bounds(param::Param)::NTuple{2,Float64}
     return param.dist_params[1:2]
 end
 
-"""
-    adjust_samples(dom::Domain, samples::DataFrame)::DataFrame
-    adjust_samples!(spec::DataFrame, samples::DataFrame)::DataFrame
-
-Adjust given samples to ensure parameter value combinations for unguided
-scenarios are plausible.
-"""
-function adjust_samples(dom::Domain, samples::DataFrame)::DataFrame
-    return adjust_samples(model_spec(dom), samples)
-end
-function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
-    samples[:, :a_adapt_ref] .= floor.(samples[:, :a_adapt_ref])
-
-    interv = component_params(spec, Intervention)
-    seed_weights = component_params(spec, SeedCriteriaWeights)
-    fog_weights = component_params(spec, FogCriteriaWeights)
-    mc_weights = component_params(spec, MCCriteriaWeights)
-    depth_offsets = component_params(spec, DepthThresholds)
-
-    counterfactual_mask = (samples.guided .== -1.0)
-    unguided_mask = (samples.guided .== 0.0)
-
-    # If counterfactual, set all intervention options to 0.0
-    samples[
-        counterfactual_mask, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)
-    ] .=
-        0.0
-
-    # Treat weight parameters as Gamma quantiles and transform so they sum to 1
-    guided_mask = samples.guided .> 0
-    if any(guided_mask)
-        for wf in (seed_weights.fieldname, fog_weights.fieldname, mc_weights.fieldname)
-            samples[guided_mask, wf] .= gamma_to_dirichlet(Matrix(samples[guided_mask, wf]))
-        end
-    end
-
-    # Collect MCDA weight parameters
-    non_depth_names = vcat(
-        seed_weights.fieldname,
-        fog_weights.fieldname,
-        mc_weights.fieldname
-    )
-
-    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
-    samples[samples.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
-    samples[counterfactual_mask, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
-
-    # Also deactivate strategy parameters for counterfactuals and unguided
-    (samples[unguided_mask, [:seed_strategy, :fog_strategy, :mc_strategy]]) .= DECISION_STRATEGY[:periodic]
-    samples[counterfactual_mask, [:seed_strategy, :fog_strategy, :mc_strategy]] .= -1.0
-
-    # If unguided, set planning horizon to 0.
-    samples[unguided_mask, :plan_horizon] .= 0.0
-
-    # If no seeding is to occur, set related variables to 0
-    not_seeded::BitVector = no_seeding(samples)
-    samples[not_seeded, contains.(names(samples), "seed_")] .= 0.0
-    samples[not_seeded, :a_adapt] .= 0.0
-
-    # Same for fogging/shading
-    not_fogged = (samples.fogging .== 0)
-    samples[not_fogged, contains.(names(samples), "fog_")] .= 0.0
-
-    # # Same for moving corals
-    not_moving_corals = (samples.N_mc_settlers .== 0)
-    samples[not_moving_corals, contains.(names(samples), "mc_")] .= 0.0
-
-    not_shaded = (samples.SRM .== 0)
-    samples[not_shaded, contains.(names(samples), "shade_")] .= 0.0
-
-    # Reactive
-    not_reactive =
-        .!is_reactive(samples.seed_strategy) .&
-        .!is_reactive(samples.fog_strategy) .&
-        .!is_reactive(samples.mc_strategy)
-    reactive_params = [
-        :reactive_absolute_threshold,
-        :reactive_loss_threshold,
-        :reactive_min_cover_remaining,
-        :reactive_response_delay,
-        :reactive_cooldown_period
-    ]
-    samples[not_reactive, reactive_params] .= 0.0
-
-    # Deactivate periodic parameters when reactive strategy is in place
-    samples[is_reactive(samples.seed_strategy), [:seed_deployment_freq]] .= 0.0
-    samples[is_reactive(samples.mc_strategy), [:mc_deployment_freq]] .= 0.0
-
-    not_periodic_fog = (samples.fog_strategy .!= 1)
-    samples[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
-
-    # Normalize MCDA weights for fogging scenarios
-    guided_fogged = (samples.fogging .> 0.0) .& (samples.guided .> 0)
-    samples[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
-        samples[guided_fogged, fog_weights.fieldname]
-    )
-    # Normalize MCDA weights for seeding scenarios
-    guided_seeded = .!(not_seeded) .& (samples.guided .> 0)
-    samples[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
-        samples[guided_seeded, seed_weights.fieldname]
-    )
-    # Normalize MCDA weights for mc scenarios
-    guided_mc = .!(not_moving_corals) .& (samples.guided .> 0)
-    samples[guided_mc, mc_weights.fieldname] .= mcda_normalize(
-        samples[guided_mc, mc_weights.fieldname]
-    )
-
-    # Disable wave decisions if no wave stress is used
-    no_wave_scenario = samples.wave_scenario .== 0.0
-    samples[no_wave_scenario, :seed_wave_stress] .= 0.0
-
-    if size(unique(Matrix(samples); dims=1), 1) < nrow(samples)
-        perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(samples)) / nrow(samples))) * 100.0))%"
-        @warn "Non-unique samples created: $perc of the samples are duplicates."
-    end
-
-    return samples
-end
+@deprecate adjust_samples(dom::Domain, samples::DataFrame) _apply_transforms!(
+    model_spec(dom), samples
+)
+@deprecate adjust_samples(spec::DataFrame, samples::DataFrame) _apply_transforms!(
+    spec, samples
+)
 
 """
     get_default_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
@@ -451,7 +356,7 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     return dom
 end
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    if factor == :guided
+    if factor == :mcda_method
         return _update_decision_method!(dom, new_dist_params)
     end
 
@@ -483,11 +388,11 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     factor_symbols = collect(keys(factors))
     new_params = collect(values(factors))
 
-    # Handle categorical guided factor separately
+    # Handle categorical mcda_method factor separately
     # Converts named MCDA methods to known IDs.
     # The nominal default is set to the first MCDA method provided.
-    if :guided in factor_symbols
-        factor_idx::Int64 = findfirst(factor_symbols .== :guided)
+    if :mcda_method in factor_symbols
+        factor_idx::Int64 = findfirst(factor_symbols .== :mcda_method)
         dom = _update_decision_method!(dom, new_params[factor_idx])
 
         keep_idx = 1:length(factor_symbols) .!= factor_idx
@@ -498,7 +403,7 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     ms = model_spec(dom)
     for (i, fn) in enumerate(factor_symbols)
         idx = findfirst(ms.fieldname .== fn)
-        ms[idx, :dist_params] = new_params[i]
+        ms[idx, :dist_params] = Tuple(new_params[i])
 
         lb = new_params[i][1]
         ub = new_params[i][2]

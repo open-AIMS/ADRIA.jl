@@ -197,12 +197,13 @@ function model_spec(m::Model)::DataFrame
     # dist_params is stored as Vector{Float64} internally; convert each element to a Tuple
     # so that downstream callers (e.g. distribution constructors) receive the expected type.
     spec[!, :dist_params] = Tuple.(spec.dist_params)
+    spec[!, :default_dist_params] = Tuple.(spec.default_dist_params)
 
     DataFrames.hcat!(
         spec,
         DataFrame(
-            :lower_bound => factor_lower_bounds.(eachrow(spec)),
-            :upper_bound => factor_upper_bounds.(eachrow(spec))
+            :lower_bound => distribution_lower_bound.(spec.dist, spec.dist_params),
+            :upper_bound => distribution_upper_bound.(spec.dist, spec.dist_params)
         )
     )
 

@@ -79,6 +79,51 @@ end
             # sampling test below
         end
     end
+
+    @testset "guided-dependent params are resolved for plain sample()" begin
+        cf_rows = scens.guided .== -1
+        unguided_rows = scens.guided .== 0
+        non_guided_rows = .!(scens.guided .> 0)
+
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), Intervention).fieldname
+        )
+        strategy_params = ["seed_strategy", "fog_strategy", "mc_strategy"]
+        non_strategy_interv_params = String[
+            ip for ip in interv_params if ip ∉ vcat(["guided"], strategy_params)
+        ]
+        strategy_interv_params = String[ip for ip in strategy_params if ip ∈ interv_params]
+
+        # CF (guided == -1): all intervention params zeroed, strategies sentineled to -1
+        if any(cf_rows)
+            @test all(
+                all.(==(0), eachrow(scens[cf_rows, non_strategy_interv_params]))
+            ) || "CF rows in plain sample() have non-zero intervention params"
+            @test all(
+                all.(.==(-1), eachrow(scens[cf_rows, strategy_interv_params]))
+            ) || "CF rows in plain sample() do not have strategy sentinel -1"
+            @test all(scens[cf_rows, :depth_min] .== 0) &&
+                  all(scens[cf_rows, :depth_offset] .== 0) ||
+                "CF rows in plain sample() have non-zero depth thresholds"
+        end
+
+        # Criteria weights only matter when guided > 0
+        seed_w = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+        fog_w = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
+        mc_w = ADRIA.component_params(ms, ADRIA.MCCriteriaWeights).fieldname
+        criteria_cols = string.(vcat(seed_w, fog_w, mc_w))
+        if any(non_guided_rows)
+            @test all(
+                all.(==(0), eachrow(scens[non_guided_rows, criteria_cols]))
+            ) || "Non-guided rows in plain sample() have non-zero criteria weights"
+        end
+
+        # plan_horizon only matters when guided != 0
+        if any(unguided_rows)
+            @test all(scens[unguided_rows, :plan_horizon] .== 0) ||
+                "Unguided rows in plain sample() have non-zero plan_horizon"
+        end
+    end
 end
 
 @testset "Targeted sampling" begin
@@ -94,10 +139,21 @@ end
             ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
         )
 
-        # Ensure all interventions are deactivated (ignoring the "guided" factor)
-        interv_params = String[ip for ip in interv_params if ip != "guided"]
-        @test all(all.(==(0), eachrow(scens[:, interv_params]))) ||
-            "Intervention factors with values > 0 found"
+        # Ensure all interventions are deactivated (ignoring "guided").
+        # Strategy params (seed_strategy/fog_strategy/mc_strategy) are set to -1.0
+        # as a CF sentinel (see §2.3 change 2 in component_dependency_dag_v3.md);
+        # all other intervention params are 0.
+        strategy_params = ["seed_strategy", "fog_strategy", "mc_strategy"]
+        non_strategy_params = String[
+            ip for ip in interv_params
+                   if ip != "guided" && ip ∉ strategy_params
+        ]
+        strategy_interv_params = String[ip for ip in strategy_params if ip ∈ interv_params]
+
+        @test all(all.(==(0), eachrow(scens[:, non_strategy_params]))) ||
+            "Non-strategy intervention factors with values != 0 found"
+        @test all(all.(.==(-1), eachrow(scens[:, strategy_interv_params]))) ||
+            "Strategy params not set to -1 sentinel in CF scenarios"
     end
 
     @testset "Guided sampling" begin
@@ -132,24 +188,64 @@ end
 
     @testset "Specific Intervention strategy" begin
         dom = deepcopy(ADRIA_DOM_45)
-        num_samples = 32
 
-        test_inputs = [
-            ("Cocoso",), ("Mairca",), ("counterfactual", "unguided"),
-            ("counterfactual", "unguided", "Piv"),
-            ("counterfactual", "unguided", "Cocoso", "Moora", "Piv", "Vikor"),
-            ("Cocoso", "Mairca", "Moora", "Piv", "Vikor")
-        ]
-        test_output = [
-            [1], [2], [-1, 0], [-1, 0, 4], [-1, 0, 1, 3, 4, 5]
-        ]
+        # :guided is now a strict ordinal {-1, 0, 1} (CF / unguided / guided);
+        # `set_factor_bounds!` restricts sampling to plain numeric bounds.
+        test_bounds = [(-1.0, -1.0), (0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (-1.0, 1.0)]
 
-        for (inp, out) in zip(test_inputs, test_output)
-            ADRIA.set_factor_bounds!(dom, :guided, inp)
+        for bounds in test_bounds
+            ADRIA.set_factor_bounds!(dom, :guided, bounds)
             scens = ADRIA.sample(dom, 32)
 
-            @test all(scens.guided .∈ [out])
+            @test all(bounds[1] .<= scens.guided .<= bounds[2])
         end
+    end
+
+    @testset "Specific MCDA method" begin
+        dom = deepcopy(ADRIA_DOM_45)
+
+        test_inputs = [
+            ("Cocoso",), ("Mairca",),
+            ("Cocoso", "Moora", "Piv", "Vikor"),
+            ("Cocoso", "Mairca", "Moora", "Piv", "Vikor")
+        ]
+
+        for inp in test_inputs
+            ADRIA.set_factor_bounds!(dom, :mcda_method, inp)
+            # Ensure guided is in the "guided" regime so mcda_method isn't
+            # sentineled to 0 by the guided<=0 dependency rule.
+            ADRIA.set_factor_bounds!(dom, :guided, (1.0, 1.0))
+            scens = ADRIA.sample(dom, 32)
+
+            expected = sort(ADRIA.decision.decision_method_encoding.(collect(inp)))
+            @test all(scens.mcda_method .∈ [expected])
+        end
+    end
+
+    @testset "mcda_method sentineled when not guided" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        ADRIA.set_factor_bounds!(dom, :guided, (-1.0, 0.0))  # CF + unguided only
+        scens = ADRIA.sample(dom, 32)
+
+        @test all(scens.mcda_method .== 0.0)
+    end
+
+    @testset "guided/mcda_method split" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        scens = ADRIA.sample(dom, 32)
+
+        @test :guided in propertynames(scens)
+        @test :mcda_method in propertynames(scens)
+        @test all(scens.guided .∈ [[-1.0, 0.0, 1.0]])
+
+        # mcda_method must be 0 (sentinel) on every row where guided <= 0,
+        # and a valid 1..N index on every row where guided == 1.
+        not_guided = scens.guided .<= 0
+        is_guided = scens.guided .== 1
+        @test all(scens.mcda_method[not_guided] .== 0.0)
+        n_methods = length(ADRIA.decision.mcda_methods())
+        @test !any(is_guided) ||
+            all(1.0 .<= scens.mcda_method[is_guided] .<= n_methods)
     end
 
     @testset "Unguided sampling" begin
@@ -446,5 +542,148 @@ end
                 end
             end
         end
+    end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for component_dependency_dag_v3 implementation
+# (sampling_dependencies.jl + sampling_transforms.jl)
+# Ref: .claude/plans/components/component_dependency_dag_v3.md §4 Steps 5,6,8,9
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "Dependency DAG — _validate_dependencies" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    spec = ADRIA.model_spec(dom)
+    @test_nowarn ADRIA._validate_dependencies(spec)
+end
+
+@testset "Dependency DAG — _resolve_conditional_spec!" begin
+    PERIODIC = ADRIA.DECISION_STRATEGY[:periodic]
+
+    @testset "CF regime (guided=-1)" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        spec = ADRIA.model_spec(dom)
+        ADRIA._resolve_conditional_spec!(spec, (guided=-1.0,))
+
+        for col in ADRIA._GROUP_MEMBERS[:intervention_group]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], 0.0) ||
+                "CF: :$col should be fixed to 0.0, got val=$(row.val[1])"
+        end
+
+        # PINNED REGRESSION (§2.3 changes 1 & 2): strategy cols must be -1.0 for CF.
+        # Previously had negate-sign inversion AND wrong fix_to (0.0 not -1.0).
+        for col in ADRIA._GROUP_MEMBERS[:strategy_group]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], -1.0) ||
+                "CF: :$col should be -1.0 sentinel (§2.3 change 2). " *
+                  "Got val=$(row.val[1]). Check negate-sign or fix_to."
+        end
+
+        for col in ADRIA._GROUP_MEMBERS[:criteria_weights]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], 0.0) ||
+                "CF: criteria weight :$col should be 0.0"
+        end
+
+        for col in ADRIA._GROUP_MEMBERS[:depth_thresholds]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], 0.0) ||
+                "CF: depth threshold :$col should be 0.0"
+        end
+    end
+
+    @testset "Unguided regime (guided=0)" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        spec = ADRIA.model_spec(dom)
+        ADRIA._resolve_conditional_spec!(spec, (guided=0.0,))
+
+        ph_row = spec[spec.fieldname .== :plan_horizon, :]
+        if !isempty(ph_row)
+            @test ph_row.is_constant[1] && isequal(ph_row.val[1], 0.0) ||
+                "Unguided: :plan_horizon should be 0.0"
+        end
+
+        for col in ADRIA._GROUP_MEMBERS[:criteria_weights]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], 0.0) ||
+                "Unguided: criteria weight :$col should be 0.0"
+        end
+
+        # PINNED REGRESSION (§2.3 change 1): strategy cols must be PERIODIC for unguided.
+        for col in ADRIA._GROUP_MEMBERS[:strategy_group]
+            row = spec[spec.fieldname .== col, :]
+            isempty(row) && continue
+            @test row.is_constant[1] && isequal(row.val[1], Float64(PERIODIC)) ||
+                "Unguided: :$col should be PERIODIC ($PERIODIC). " *
+                  "Got val=$(row.val[1]). Check negate-sign (§2.3 change 1)."
+        end
+    end
+
+    @testset "Guided regime (guided=1)" begin
+        dom = deepcopy(ADRIA_DOM_45)
+        spec = ADRIA.model_spec(dom)
+        already_constant = Set(spec[spec.is_constant, :fieldname])
+        ADRIA._resolve_conditional_spec!(spec, (guided=1.0,))
+
+        newly_fixed = setdiff(Set(spec[spec.is_constant, :fieldname]), already_constant)
+        @test isempty(newly_fixed) ||
+            "Guided: unexpected columns newly fixed: $newly_fixed"
+    end
+end
+
+@testset "Dependency DAG — _transform_group_columns snapshot (E4)" begin
+    # Pinned snapshot: strategy cols must NOT appear in prefix-based groups.
+    # Their inclusion was the d5871840 regression (overwrites -1.0 CF sentinel).
+    dom = deepcopy(ADRIA_DOM_45)
+    scens = ADRIA.sample(dom, 8)
+
+    seed_cols = ADRIA._transform_group_columns(scens, :seed_group)
+    fog_cols = ADRIA._transform_group_columns(scens, :fog_group)
+    mc_cols = ADRIA._transform_group_columns(scens, :mc_group)
+
+    @test :seed_strategy ∉ seed_cols ||
+        ":seed_strategy in :seed_group reproduces d5871840 regression"
+    @test :fog_strategy ∉ fog_cols ||
+        ":fog_strategy in :fog_group reproduces d5871840 regression"
+    @test :mc_strategy ∉ mc_cols ||
+        ":mc_strategy in :mc_group reproduces d5871840 regression"
+
+    @test !isempty(seed_cols) || ":seed_group resolved empty — prefix filter broken"
+    @test !isempty(fog_cols) || ":fog_group resolved empty — prefix filter broken"
+    @test !isempty(mc_cols) || ":mc_group resolved empty — prefix filter broken"
+end
+
+@testset "Dependency DAG — seed_wave_stress ordering (§2.12 pt 1)" begin
+    # seed_wave_stress is zeroed AFTER mcda_normalize. For wave_scenario==0
+    # guided+seeded rows, remaining 7 seed weights must sum to <1 (not renormalised).
+    dom = deepcopy(ADRIA_DOM_45)
+    num_samples = 128
+    scens = ADRIA.sample_guided(dom, num_samples)
+    ms = ADRIA.model_spec(dom)
+    seed_weights = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+
+    not_seeded = ADRIA.no_seeding(scens)
+    guided_seeded_mask = .!not_seeded .& (scens.guided .> 0)
+    wave_zero_mask = (scens.wave_scenario .== 0.0)
+    target_mask = guided_seeded_mask .& wave_zero_mask
+
+    if any(target_mask)
+        @test all(scens[target_mask, :seed_wave_stress] .== 0.0) ||
+            "seed_wave_stress should be 0 for wave_scenario==0 guided+seeded rows"
+
+        other_seed_weights = filter(w -> w != :seed_wave_stress, seed_weights)
+        row_sums = vec(sum(Matrix(scens[target_mask, other_seed_weights]); dims=2))
+        @test all(row_sums .< 1.0) ||
+            "Remaining seed weights sum to 1 — ordering wrong: mcda_normalize ran " *
+              "AFTER zeroing seed_wave_stress (§2.12 pt 1)"
+    else
+        @info "No wave_scenario==0 guided+seeded rows in $num_samples samples; " *
+            "seed_wave_stress ordering test inconclusive"
     end
 end
