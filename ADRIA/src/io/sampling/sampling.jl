@@ -20,6 +20,7 @@ include("sampling_unguided.jl")
 include("sampling_guided.jl")
 include("sampling_interventions.jl")
 include("sampling_balanced.jl")
+include("sampling_stratified.jl")
 
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
