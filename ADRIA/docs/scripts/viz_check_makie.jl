@@ -67,7 +67,7 @@ end
 # ----------------------------------------------------------------------------
 
 _viz_tsa(rs, si) = ADRIA.viz.tsa(rs, si)
-_viz_rsa(scens, y, foi) = ADRIA.viz.rsa(scens, y, foi)
+_viz_rsa(scens, y, foi; kwargs...) = ADRIA.viz.rsa(scens, y, foi; kwargs...)
 _viz_outcome_map(scens, y, foi) = ADRIA.viz.outcome_map(scens, y, foi)
 _viz_rules_scatter(rs, X, tgt, rules) = ADRIA.viz.rules_scatter(rs, X, tgt, rules)
 _viz_tsc_map(rs, tac_sites, tac_clusters) = ADRIA.viz.map(rs, tac_sites, tac_clusters)
@@ -76,7 +76,8 @@ function _viz_backend_extras()
     check("convergence_components_heatmap") do
         outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
         conv_foi = Symbol[
-            f for f in (:dhw_scenario, :guided) if string(f) in names(rs.inputs)
+            f for
+            f in (:dhw_scenario, :guided, :mcda_method) if string(f) in names(rs.inputs)
         ]
         isempty(conv_foi) && (conv_foi = foi[1:min(2, length(foi))])
         Si_conv = convergence(scens, outcome, conv_foi)

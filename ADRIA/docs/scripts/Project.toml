@@ -15,6 +15,7 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SIRUS = "cdeec39e-fb35-4959-aadb-a1dd5dede958"
 SnoopCompile = "aa65fe97-06da-5843-b5b1-d5d13cad87d2"
 SnoopCompileCore = "e2b509da-e806-4183-be48-004708413034"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [extras]
 NaturalEarth = "436b0209-26ab-4e65-94a9-6526d86fea76"
