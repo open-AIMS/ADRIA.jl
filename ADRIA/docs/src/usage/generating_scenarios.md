@@ -229,13 +229,86 @@ ADRIA.fix_factor!(dom, :mcb_albedo, 0.3)
 scens = ADRIA.sample(dom, 128)
 ```
 
-## Sampling counterfactuals only
+## Sampling by intervention regime
 
-A convenience function to create scenarios with no interventions (counterfactuals).
+Alongside plain `ADRIA.sample(dom, n)` (which samples the `guided` factor together with
+everything else, so each row may land in a different intervention regime), ADRIA provides
+a family of convenience functions that fix the intervention regime for the whole call
+up-front. This avoids wasting samples on factor combinations that are meaningless for the
+regime under study (e.g. seeding-related factors when only counterfactual scenarios are
+wanted), and lets the conditional factor dependencies described above be resolved *before*
+sampling rather than row-by-row afterwards (see
+[Conditional factor dependencies](@ref)).
+
+| Function | Regime sampled | `n` refers to |
+|----------|-----------------|---------------|
+| `ADRIA.sample(dom, n)` | All regimes (`guided` itself is sampled) | total scenarios |
+| `ADRIA.sample_cf(dom, n)` | Counterfactual only (no interventions) | total scenarios |
+| `ADRIA.sample_unguided(dom, n)` | Unguided interventions only | total scenarios |
+| `ADRIA.sample_guided(dom, n)` | Guided (MCDA-driven) interventions only | total scenarios |
+| `ADRIA.sample_balanced(dom, n)` | Equal parts counterfactual, unguided and guided | scenarios *per regime* (returns `3n` rows) |
+| `ADRIA.sample_selection(dom, n)` | Guided location-selection factors only; coral factors held at their defaults | total scenarios |
+| `ADRIA.sample_paired(dom, n)` | Guided scenarios paired 1:1 with a derived counterfactual row sharing the same non-intervention factor values | guided scenarios drawn (returns `2n` rows) |
+| `ADRIA.sample_paired_stratified(dom, n, ssps)` | As `sample_paired`, repeated independently for each RCP/SSP in `ssps` | guided scenarios drawn *per SSP stratum* |
+| `ADRIA.sample_matched(dom, n)` | Guided scenarios paired 1:1 with derived rows for each regime in `regimes` (default: counterfactual **and** unguided) | guided scenarios drawn (returns `(1 + length(regimes)) * n` rows) |
+| `ADRIA.sample_matched_stratified(dom, n, ssps)` | As `sample_matched`, repeated independently for each RCP/SSP in `ssps` | guided scenarios drawn *per SSP stratum* |
 
 ```julia
+# Counterfactual scenarios only (no interventions)
 cf_scens = ADRIA.sample_cf(dom, 1024)
+
+# Unguided intervention scenarios only
+ug_scens = ADRIA.sample_unguided(dom, 1024)
+
+# Guided (MCDA-driven) intervention scenarios only
+gd_scens = ADRIA.sample_guided(dom, 1024)
+
+# 1024 scenarios of each regime (3072 rows total)
+balanced_scens = ADRIA.sample_balanced(dom, 1024)
 ```
+
+For causal comparisons between an intervention and "no intervention", `sample_paired`
+draws guided scenarios and derives a matching counterfactual row for each one, holding all
+non-intervention factors (environmental layers, etc.) fixed between the pair so that
+outcome differences can be attributed to the intervention itself. `sample_paired_stratified`
+extends this across multiple RCP/SSP scenarios, using an independent Owen scramble per
+stratum:
+
+```julia
+# 128 guided/counterfactual pairs (256 rows), tagged by `:run_type`
+paired_scens = ADRIA.sample_paired(dom, 128)
+
+# As above, repeated for each listed RCP/SSP, tagged by `:ssp` and `:run_type`
+strat_scens = ADRIA.sample_paired_stratified(dom, 128, ["45", "60", "85"])
+```
+
+`sample_paired` only pairs guided scenarios against a derived counterfactual row, so it
+cannot support a 3-way cross-comparison against unguided scenarios. `sample_matched`
+generalises this: it draws guided scenarios and derives a matched row for each regime
+requested via `regimes` (any non-empty subset of `(:counterfactual, :unguided)`, default
+both), all sharing the same non-intervention factor draws — `sample_paired` is just
+`sample_matched` with `regimes=(:counterfactual,)`. Note that unguided rows keep the same
+intervention deployment amounts as their guided counterpart (only the MCDA criteria
+weights/`plan_horizon` are zeroed and the strategy is fixed to periodic) — unlike
+counterfactual rows, where deployment amounts are zeroed too:
+
+```julia
+# 128 guided/counterfactual/unguided triples (384 rows), tagged by `:run_type`
+matched_scens = ADRIA.sample_matched(dom, 128)
+
+# Only guided + unguided (256 rows)
+matched_ug_scens = ADRIA.sample_matched(dom, 128; regimes=(:unguided,))
+
+# As `sample_matched`, repeated for each listed RCP/SSP
+strat_matched_scens = ADRIA.sample_matched_stratified(dom, 128, ["45", "60", "85"])
+```
+
+This differs from `sample_balanced`, which draws each regime *independently* — those rows
+are not matched row-for-row and cannot be used for this kind of differencing.
+
+!!! note "Sobol' samples"
+    As with plain `ADRIA.sample`, `n` (or `n_per_stratum`) should be a power of 2 when
+    using the default Sobol' sampler.
 
 ## References
 

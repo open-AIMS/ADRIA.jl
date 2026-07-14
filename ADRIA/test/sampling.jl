@@ -729,3 +729,237 @@ end
             "seed_wave_stress ordering test inconclusive"
     end
 end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests for paired counterfactual sampling (sampling_design_plan_v4.md §5 Step 3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@testset "derive_cf" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    num_samples = 32
+    spec = ADRIA.model_spec(dom)
+    intervention_samples = ADRIA.sample_guided(dom, num_samples)
+    cf_samples = ADRIA.derive_cf(intervention_samples, spec)
+
+    zeroed_cols = [
+        :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM,
+        :fogging, :SRM, :N_mc_settlers
+    ]
+    zeroed_cols = filter(c -> c in propertynames(cf_samples), zeroed_cols)
+    strategy_cols = filter(
+        c -> c in propertynames(cf_samples), [:seed_strategy, :fog_strategy, :mc_strategy]
+    )
+
+    @testset "CF zeroing" begin
+        @test all(all(cf_samples[:, c] .== 0.0) for c in zeroed_cols) ||
+            "Expected all of $zeroed_cols to be 0.0 in CF rows"
+    end
+
+    @testset "strategy sentinel" begin
+        @test all(all(cf_samples[:, c] .== -1.0) for c in strategy_cols) ||
+            "Expected all of $strategy_cols to be -1.0 (CF sentinel) in CF rows"
+    end
+
+    @testset "env params unchanged" begin
+        # Columns derive_cf may fix (per _PARAM_DEPENDENCIES/_GROUP_MEMBERS) are not
+        # "non-intervention" even though some (criteria weights, depth thresholds)
+        # fall outside the Intervention component.
+        cf_affected_cols = Set(
+            vcat(
+                [:guided],
+                reduce(
+                    vcat,
+                    [
+                        get(ADRIA._GROUP_MEMBERS, dep.child, [dep.child])
+                        for dep in ADRIA._PARAM_DEPENDENCIES
+                    ]
+                )
+            )
+        )
+        env_cols = [
+            c for c in propertynames(intervention_samples) if c ∉ cf_affected_cols
+        ]
+        @test intervention_samples[:, env_cols] == cf_samples[:, env_cols] ||
+            "Non-intervention parameter columns differ between paired rows"
+    end
+
+    @testset "parent params zeroed" begin
+        nonzero_mask = vec(
+            any(Matrix(intervention_samples[:, zeroed_cols]) .> 0; dims=2)
+        )
+        @test any(nonzero_mask) ||
+            "No sampled guided rows had non-zero intervention parent values to test against"
+        @test all(all(cf_samples[nonzero_mask, c] .== 0.0) for c in zeroed_cols) ||
+            "Expected $zeroed_cols to be 0.0 in CF rows paired to non-zero intervention rows"
+    end
+end
+
+@testset "sample_paired" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    n = 16
+    scens = ADRIA.sample_paired(dom, n)
+
+    @testset "shape" begin
+        @test nrow(scens) == 2n || "Expected 2n rows, got $(nrow(scens))"
+        @test count(==("intervention"), scens.run_type) == n
+        @test count(==("counterfactual"), scens.run_type) == n
+    end
+
+    @testset "pairing" begin
+        cf_affected_cols = Set(
+            vcat(
+                [:guided],
+                reduce(
+                    vcat,
+                    [
+                        get(ADRIA._GROUP_MEMBERS, dep.child, [dep.child])
+                        for dep in ADRIA._PARAM_DEPENDENCIES
+                    ]
+                )
+            )
+        )
+        env_cols = [
+            c for c in propertynames(scens) if c ∉ cf_affected_cols && c != :run_type
+        ]
+
+        interv_rows = scens[scens.run_type .== "intervention", env_cols]
+        cf_rows = scens[scens.run_type .== "counterfactual", env_cols]
+        @test interv_rows == cf_rows ||
+            "Non-intervention parameters do not match between paired rows"
+    end
+
+    @testset "run_type type" begin
+        @test eltype(scens.run_type) == String
+    end
+end
+
+@testset "sample_paired_stratified" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    n_per_stratum = 8
+    # Test_domain only ships RCP45 DHW/wave data; repeat the same RCP as two
+    # independently-scrambled strata to validate shape/labelling without
+    # requiring additional RCP datasets.
+    ssp_strata = ["45", "45"]
+    scens = ADRIA.sample_paired_stratified(dom, n_per_stratum, ssp_strata)
+
+    @testset "shape" begin
+        @test nrow(scens) == 2 * n_per_stratum * length(ssp_strata) ||
+            "Expected $(2 * n_per_stratum * length(ssp_strata)) rows, got $(nrow(scens))"
+        @test count(==("45"), scens.ssp) == 2 * n_per_stratum * length(ssp_strata)
+    end
+end
+
+@testset "derive_unguided" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    num_samples = 32
+    spec = ADRIA.model_spec(dom)
+    intervention_samples = ADRIA.sample_guided(dom, num_samples)
+    ug_samples = ADRIA.derive_unguided(intervention_samples, spec)
+
+    # Unlike CF, unguided rows keep intervention deployment amounts and depth
+    # thresholds unchanged (:intervention_group / :depth_thresholds stay active
+    # at guided=0.0) — only criteria weights / plan_horizon are zeroed.
+    zeroed_cols = filter(
+        c -> c in propertynames(ug_samples),
+        [
+            :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,
+            :fog_heat_stress, :mc_heat_stress, :plan_horizon
+        ]
+    )
+    unchanged_cols = filter(
+        c -> c in propertynames(ug_samples),
+        [:N_seed_TA, :N_seed_CA, :fogging, :SRM, :N_mc_settlers, :depth_min]
+    )
+    strategy_cols = filter(
+        c -> c in propertynames(ug_samples), [:seed_strategy, :fog_strategy, :mc_strategy]
+    )
+
+    @testset "criteria weights/plan_horizon zeroed" begin
+        @test all(all(ug_samples[:, c] .== 0.0) for c in zeroed_cols) ||
+            "Expected all of $zeroed_cols to be 0.0 in unguided rows"
+    end
+
+    @testset "strategy fixed to periodic" begin
+        periodic = ADRIA.decision.DECISION_STRATEGY[:periodic]
+        @test all(all(ug_samples[:, c] .== periodic) for c in strategy_cols) ||
+            "Expected all of $strategy_cols to be $periodic (periodic) in unguided rows"
+    end
+
+    @testset "intervention deployment amounts unchanged" begin
+        @test intervention_samples[:, unchanged_cols] == ug_samples[:, unchanged_cols] ||
+            "Expected intervention deployment amounts to be unchanged in unguided rows"
+    end
+
+    @testset "guided column set to 0.0" begin
+        @test all(ug_samples.guided .== 0.0)
+    end
+end
+
+@testset "sample_matched" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    n = 16
+
+    @testset "default regimes (3-way)" begin
+        scens = ADRIA.sample_matched(dom, n)
+
+        @test nrow(scens) == 3n || "Expected 3n rows, got $(nrow(scens))"
+        @test count(==("intervention"), scens.run_type) == n
+        @test count(==("counterfactual"), scens.run_type) == n
+        @test count(==("unguided"), scens.run_type) == n
+        @test eltype(scens.run_type) == String
+
+        cf_affected_cols = Set(
+            vcat(
+                [:guided],
+                reduce(
+                    vcat,
+                    [
+                        get(ADRIA._GROUP_MEMBERS, dep.child, [dep.child])
+                        for dep in ADRIA._PARAM_DEPENDENCIES
+                    ]
+                )
+            )
+        )
+        env_cols = [
+            c for c in propertynames(scens) if c ∉ cf_affected_cols && c != :run_type
+        ]
+
+        interv_rows = scens[scens.run_type .== "intervention", env_cols]
+        cf_rows = scens[scens.run_type .== "counterfactual", env_cols]
+        ug_rows = scens[scens.run_type .== "unguided", env_cols]
+        @test interv_rows == cf_rows ||
+            "Non-intervention parameters do not match between guided/CF rows"
+        @test interv_rows == ug_rows ||
+            "Non-intervention parameters do not match between guided/unguided rows"
+    end
+
+    @testset "regimes subsetting" begin
+        ug_only = ADRIA.sample_matched(dom, n; regimes=(:unguided,))
+        @test nrow(ug_only) == 2n
+        @test count(==("counterfactual"), ug_only.run_type) == 0
+        @test count(==("unguided"), ug_only.run_type) == n
+
+        cf_only = ADRIA.sample_matched(dom, n; regimes=(:counterfactual,))
+        @test nrow(cf_only) == 2n
+        @test count(==("unguided"), cf_only.run_type) == 0
+        @test count(==("counterfactual"), cf_only.run_type) == n
+    end
+
+    @testset "invalid regimes" begin
+        @test_throws ArgumentError ADRIA.sample_matched(dom, n; regimes=())
+        @test_throws ArgumentError ADRIA.sample_matched(dom, n; regimes=(:bogus,))
+    end
+end
+
+@testset "sample_matched_stratified" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    n_per_stratum = 8
+    ssp_strata = ["45", "45"]
+    scens = ADRIA.sample_matched_stratified(dom, n_per_stratum, ssp_strata)
+
+    @testset "shape" begin
+        @test nrow(scens) == 3 * n_per_stratum * length(ssp_strata) ||
+            "Expected $(3 * n_per_stratum * length(ssp_strata)) rows, got $(nrow(scens))"
+        @test count(==("45"), scens.ssp) == 3 * n_per_stratum * length(ssp_strata)
+    end
+end
