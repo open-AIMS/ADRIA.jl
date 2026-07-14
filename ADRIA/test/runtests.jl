@@ -82,6 +82,7 @@ _abort_if_failed(tier4, "Tier 4 (Simulation Gate)")
 @testset "Tier 5: Simulation-Dependent" begin
     include("domain.jl")
     include("io/result_io.jl")
+    include("io/result_set_metadata.jl")
     include("example_run.jl")
     include("interventions/interventions.jl")
     include("interventions/seeding.jl")
