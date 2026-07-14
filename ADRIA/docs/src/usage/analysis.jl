@@ -102,6 +102,7 @@
 #         :dhw_scenario,
 #         :wave_scenario,
 #         :guided,
+#         :mcda_method,
 #         :N_seed_TA,
 #         :N_seed_CA,
 #         :fogging,
@@ -252,7 +253,7 @@
 # # Display convergence for specific factors of interest ("foi") within a single figure.
 # # Bands represent the 95% confidence interval derived from the number of conditioning
 # # points (default is 10 samples).
-# foi = [:dhw_scenario, :wave_scenario, :guided]
+# foi = [:dhw_scenario, :wave_scenario, :guided, :mcda_method]
 # Si_conv = convergence(scens, outcome, foi)
 # conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
 # ADRIA.viz.savefig(conv_series_fig, "convergence_factors_series.html")

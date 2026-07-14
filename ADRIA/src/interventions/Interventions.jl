@@ -3,11 +3,19 @@ Base.@kwdef struct Intervention <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::Param = Factor(
         0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(-1.0, 0.0, 1.0),
+        name="Guided",
+        description="Intervention effort level: -1 no intervention (counterfactual), 0 unguided, 1 guided (MCDA-driven)."
+    )
+    mcda_method::Param = Factor(
+        1;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(Tuple(-1:Float64(length(decision.mcda_methods())))),
-        name="Guided",
-        description="Choice of MCDA approach."
+        dist_params=(Tuple(1:Float64(length(decision.mcda_methods())))),
+        name="MCDA Method",
+        description="Which multi-criteria decision analysis method to use for location selection (only active when `guided` > 0)."
     )
     N_seed_TA::Param = Factor(
         0;
