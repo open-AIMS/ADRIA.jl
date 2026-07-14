@@ -30,7 +30,7 @@ The following build args and defaults are available to configure the build behav
 
 - ARG ADRIA_VERSION="0.11.0": What version of ADRIA from package registry to install in adria-base
 
-- ARG JULIA_VERSION="1.11.5": See https://hub.docker.com/\*/julia for valid versions.
+- ARG JULIA_VERSION="1.12.6": See https://hub.docker.com/\*/julia for valid versions.
 
 ## adria-base
 
@@ -75,7 +75,7 @@ You can also opt to specify some custom [build arguments](https://docs.docker.co
 
 - `ADRIA_REPO`: URL for the repository that ADRIA.jl should be cloned from. Defaults to <https://github.com/open-AIMS/ADRIA.jl.git>
 - `ADRIA_REFSPEC`: the branch-name or tag of the `ADRIA_REPO` that you want to install. Defaults to `main`.
-- `JULIA_VERSION`: The version of the Julia platform you want to install ADRIA.jl into. This must be one of the versions available for the official [Julia base image](https://hub.docker.com/_/julia). Defaults to `1.10.1`.
+- `JULIA_VERSION`: The version of the Julia platform you want to install ADRIA.jl into. This must be one of the versions available for the official [Julia base image](https://hub.docker.com/_/julia). Defaults to `1.12.6`.
 
 See the `docker-compose.yaml` file for an example of how to specify build arguments in docker compose.
 

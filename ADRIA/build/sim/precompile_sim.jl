@@ -5,11 +5,9 @@
 # Keep this representative of the actual EC2/Batch hot path.
 
 using ADRIA
-using ADRIAviz
-using CairoMakie           # triggers ADRIAvizMakieExt
 
 # ── Domain + simulation (mirrors existing build/precompile_script.jl) ──────
-const FIXTURE_DIR = joinpath(dirname(dirname(@__DIR__)), "test", "data", "Test_domain")
+const FIXTURE_DIR = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 
 if isdir(FIXTURE_DIR)
     ENV["ADRIA_DEBUG"] = "false"
@@ -23,10 +21,6 @@ if isdir(FIXTURE_DIR)
     ADRIA.metrics.scenario_relative_cover(rs)
     ADRIA.metrics.scenario_coral_evenness(rs)
     ADRIA.metrics.scenario_absolute_shelter_volume(rs)
-
-    # Headless CairoMakie plotting – exercises ADRIAvizMakieExt dispatch
-    fig = ADRIAviz.ADRIA_outcomes(rs)
-    save(joinpath(tempdir(), "_adria_precompile_sim.png"), fig)
 
     delete!(ENV, "ADRIA_DEBUG")
     @info "Simulation precompile fixture executed successfully"
