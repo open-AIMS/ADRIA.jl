@@ -476,7 +476,7 @@ function decode_option_ts(
 end
 
 # Sigma sensitivity parameters for two_sided_cvar, tuned per metric's relative-change scale
-const _σ_rel_tac = 0.001   # cum_rel_tac_diff
+const _σ_rel_tac = 0.002   # cum_rel_tac_diff
 const _σ_fd = 0.001        # cum_fd_diff
 
 """
