@@ -279,7 +279,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0.95;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.7, 0.95, 0.05),
+        dist_params=(0.2, 0.95, 0.05),
         name="Cover Absolute Threshold",
         description="Deploy when coral cover falls below this proportion (for reactive strategy)"
     )
