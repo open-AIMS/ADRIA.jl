@@ -13,7 +13,13 @@
 # the :seed_group/:fog_group/:mc_group substring matches (commit d5871840,
 # 2025-12-15, fixed a regression where including them here conflicted with
 # :strategy_group in sampling_dependencies.jl, which already owns them with
-# fix_to=-1.0 for CF).
+# fix_to=-1.0 for CF). fog_strategy/mc_strategy are instead gated on their own
+# intervention's activity via the dedicated :fog_strategy_gate/:mc_strategy_gate
+# rules below (fix_to=periodic when fogging/N_mc_settlers == 0), which check
+# the CF sentinel before touching the column so they don't reintroduce that
+# regression. seed_strategy is deliberately left out of this: it isn't gated
+# on :any_seeding here, so a seeding-inactive scenario can still draw
+# seed_strategy=reactive independently.
 #
 # Reuses _CONDITIONS from sampling_dependencies.jl via broadcast; no re-import
 # needed since sampling_dependencies.jl is included first.
@@ -37,7 +43,7 @@
 #    Use when "active" depends on MORE than one column at once (e.g. "any of
 #    the five N_seed_* columns is > 0"). Two steps:
 #      a. Add a combiner function to _TRANSFORM_GATE_COMBINERS if none of the
-#         existing ones (`:any_gt0`, `:any_reactive`) fit. It takes the
+#         existing ones (`:any_gt0`, `:any_reactive`, `:strategy_gate`) fit. It takes the
 #         parents' columns as a sub-DataFrame and returns a BitVector/Vector{Bool}
 #         of per-row "active".
 #      b. Add a row to _TRANSFORM_GATE_DEFS naming the parents and combiner,
@@ -84,7 +90,14 @@ const _TRANSFORM_GATE_COMBINERS = Dict{Symbol,Function}(
     :any_reactive =>
         cols -> reduce(
             .|, (is_reactive(cols[:, c]) for c in propertynames(cols))
-        )
+        ),
+    # cols[:,1] is the intervention-activity column (e.g. fogging,
+    # N_mc_settlers), cols[:,2] is the *_strategy column itself. "active"
+    # (i.e. leave alone) when the intervention is on, OR when the strategy
+    # column already holds the CF sentinel (-1.0, set pre-sampling by
+    # :strategy_group / re-applied by _apply_guided_dependencies!); this
+    # gate must never overwrite that sentinel.
+    :strategy_gate => cols -> (cols[:, 1] .!= 0) .| (cols[:, 2] .== -1.0)
 )
 
 const _TRANSFORM_GATE_DEFS = [
@@ -92,7 +105,10 @@ const _TRANSFORM_GATE_DEFS = [
         parents=[:N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM],
         combine=:any_gt0),
     (name=:any_reactive, parents=[:seed_strategy, :fog_strategy, :mc_strategy],
-        combine=:any_reactive)
+        combine=:any_reactive),
+    (name=:fog_strategy_gate, parents=[:fogging, :fog_strategy], combine=:strategy_gate),
+    (name=:mc_strategy_gate, parents=[:N_mc_settlers, :mc_strategy],
+        combine=:strategy_gate)
 ]
 
 # ---------------------------------------------------------------------------
@@ -151,6 +167,13 @@ const _TRANSFORM_DEPENDENCIES = [
 const _TRANSFORM_GATE_RULES = [
     (child=:seed_group, gate=:any_seeding, fix_to=0.0),
     (child=:a_adapt, gate=:any_seeding, fix_to=0.0),
+    # Must run BEFORE :reactive_group's :any_reactive rule below: that rule
+    # reads :fog_strategy/:mc_strategy, and needs to see them already fixed
+    # to periodic here for fogging/N_mc_settlers-inactive rows, otherwise an
+    # orphaned reactive draw on an inactive intervention keeps reactive_group
+    # alive as pure sampling noise (see file header).
+    (child=:fog_strategy, gate=:fog_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
+    (child=:mc_strategy, gate=:mc_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
     (child=:reactive_group, gate=:any_reactive, fix_to=0.0)
 ]
 

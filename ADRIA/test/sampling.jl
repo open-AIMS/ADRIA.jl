@@ -659,6 +659,48 @@ end
     @test !isempty(mc_cols) || ":mc_group resolved empty — prefix filter broken"
 end
 
+@testset "Dependency DAG — fog_strategy/mc_strategy gated on intervention activity (Issue #1132)" begin
+    # fog_strategy/mc_strategy used to be free to draw reactive even when their
+    # own intervention (fogging/N_mc_settlers) was fixed inactive across all
+    # rows, keeping reactive_group alive as sampling noise. They should now be
+    # fixed to PERIODIC whenever their intervention is inactive.
+    PERIODIC = ADRIA.DECISION_STRATEGY[:periodic]
+
+    dom = deepcopy(ADRIA_DOM_45)
+    ADRIA.fix_factor!(dom; fogging=0.0, N_mc_settlers=0.0)
+    scens = ADRIA.sample(dom, 64)
+
+    @testset "fog_strategy fixed when fogging inactive" begin
+        if :fog_strategy in propertynames(scens) && :fogging in propertynames(scens)
+            not_cf = scens.fog_strategy .!= -1.0
+            @test all(scens[not_cf, :fog_strategy] .== Float64(PERIODIC)) ||
+                "fog_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
+                  "fogging is fixed inactive"
+        end
+    end
+
+    @testset "mc_strategy fixed when N_mc_settlers inactive" begin
+        if :mc_strategy in propertynames(scens) && :N_mc_settlers in propertynames(scens)
+            not_cf = scens.mc_strategy .!= -1.0
+            @test all(scens[not_cf, :mc_strategy] .== Float64(PERIODIC)) ||
+                "mc_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
+                  "N_mc_settlers is fixed inactive"
+        end
+    end
+
+    @testset "reactive_group dropped when seed is the only reactive-capable lever" begin
+        if all(
+            c -> c in propertynames(scens),
+            [:seed_strategy, :fog_strategy, :mc_strategy, :reactive_response_delay]
+        )
+            periodic_seed = scens.seed_strategy .== Float64(PERIODIC)
+            @test all(scens[periodic_seed, :reactive_response_delay] .== 0.0) ||
+                "reactive_group should be 0.0 when seed_strategy is periodic and " *
+                  "fog/mc are fixed inactive (no reactive-capable lever remains)"
+        end
+    end
+end
+
 @testset "Dependency DAG — seed_wave_stress ordering (§2.12 pt 1)" begin
     # seed_wave_stress is zeroed AFTER mcda_normalize. For wave_scenario==0
     # guided+seeded rows, remaining 7 seed weights must sum to <1 (not renormalised).
