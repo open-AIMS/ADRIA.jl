@@ -101,8 +101,12 @@ function ADRIAanalysis.cluster_rules(
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
     ms = model_spec(result_set)
 
-    variable_factors_filter::BitVector = .!ms[in.(ms.fieldname, Ref(factors)), :is_constant]
-    variable_factors::Vector{Symbol} = factors[variable_factors_filter]
+    # Build a set of non-constant fieldnames from the model spec.
+    # Using a Set + filter (rather than logical indexing back into `factors`) avoids a
+    # BoundsError when one or more elements of `factors` are not present in ms.fieldname
+    # (e.g. DHW-derived columns added by feature_set, or `guided`).
+    non_constant_in_spec = Set(ms[.!ms.is_constant, :fieldname])
+    variable_factors::Vector{Symbol} = filter(f -> f in non_constant_in_spec, factors)
 
     if isempty(variable_factors)
         throw(ArgumentError("Factors of interest cannot be constant"))

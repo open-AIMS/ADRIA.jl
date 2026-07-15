@@ -1,5 +1,7 @@
 module sensitivity
 
+import ..feature_set
+
 using Logging
 
 using

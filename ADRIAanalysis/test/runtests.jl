@@ -246,4 +246,9 @@ end
     include("ext_activation.jl")
     include("integration_cluster_rules.jl")
     include("test_rsa.jl")
+    include("test_rsa_dispatch.jl")
+    include("test_cramers_v.jl")
+    include("test_stratified_rsa.jl")
+    include("test_counterfactual_delta.jl")
+    include("test_feature_set_metadata.jl")
 end
