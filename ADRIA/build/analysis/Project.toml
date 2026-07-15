@@ -1,10 +1,12 @@
 [deps]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
+PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 
 [compat]
-CairoMakie = "0.12"
 PackageCompiler = "2"
+PlotlyBase = "0.8"
+PlotlyKaleido = "2"
 julia = "1.11"
 
 # ADRIAanalysis, ADRIA, ADRIAviz are Pkg.develop'd in the builder stage
