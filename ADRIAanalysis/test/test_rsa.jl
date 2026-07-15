@@ -13,12 +13,15 @@ using ADRIAanalysis
         y = collect(1.0:10.0)
         result = ADRIAanalysis.sensitivity.rsa(X, y)
         @test result isa DataFrame
-        @test names(result) == ["feature", "statistic", "prob_superiority", "effect_size"]
+        @test names(result) ==
+            ["feature", "test", "statistic", "prob_superiority", "effect_size"]
         @test nrow(result) == 3
         @test eltype(result.feature) == Symbol
+        @test eltype(result.test) == Symbol
         @test eltype(result.statistic) == Float64
         @test eltype(result.prob_superiority) == Float64
         @test eltype(result.effect_size) == Float64
+        @test all(result.test .== :mann_whitney)
     end
 
     # ------------------------------------------------------------------
