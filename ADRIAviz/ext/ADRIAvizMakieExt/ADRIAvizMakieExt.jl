@@ -26,7 +26,8 @@ using ADRIAviz:
     relative_sensitivities, outcome_probability,
     outcome_title, outcome_label, set_plot_opts!,
     OPT_TYPE, DEFAULT_OPT_TYPE,
-    _time_labels, _calc_gridsize, timesteps
+    _time_labels, _calc_gridsize, timesteps,
+    _outcome_mask, _empirical_cdf
 
 import ADRIA: timesteps as AD_timesteps
 
