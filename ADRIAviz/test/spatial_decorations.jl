@@ -67,7 +67,7 @@ end
 
 if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
     # _figure_size and _adaptive_gap live in the Makie extension
-    using GLMakie
+    using CairoMakie
     using ADRIAvizMakieExt: _figure_size, _adaptive_gap
 
     @testset "_figure_size" begin
@@ -113,7 +113,7 @@ if get(ENV, "ADRIA_RUN_MAKIE_SPATIAL_INTEGRATION", "0") == "1"
     if isempty(dom_path) || !isdir(dom_path)
         @warn "ADRIA_RUN_MAKIE_SPATIAL_INTEGRATION=1 but ADRIA_TEST_DOMAIN not set or invalid; skipping"
     else
-        using GLMakie, ADRIA
+        using CairoMakie, ADRIA
 
         @testset "Spatial map decorations (integration)" begin
             dom = ADRIA.load_domain(dom_path)
