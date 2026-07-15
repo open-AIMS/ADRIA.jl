@@ -74,6 +74,11 @@ As a meta-metric, it can be applied to any combination of
 metrics (including itself), assuming \$x\$ is bound between 0 and 1.
 If this is not the case, consider normalizing values first.
 
+By default (`detrend=true`), variability is assessed on the first differences
+of \$x\$ (i.e. step-to-step change), so a smoothly trending series is treated
+as stable while an erratic one is not. Set `detrend=false` to instead assess
+variability on the raw values of \$x\$ (order-independent spread of levels).
+
 # Examples
 ```julia
 # Apply V to a time series
@@ -90,11 +95,12 @@ julia> temporal_variability(x, temporal_variabilty, temporal_variability(P(x)))
 julia> temporal_variability(x, temporal_variabilty, P(x), D(x), E(x))
 ```
 """
-function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1])
-    return mean([median(x), 1.0 - gmd(x)], weights(w))
+function temporal_variability(x::AbstractVector{<:Real}; w=[0.9, 0.1], detrend::Bool=true)
+    spread = detrend ? gmd(diff(x)) / 2 : gmd(x)
+    return mean([median(x), 1.0 - spread], weights(w))
 end
-function temporal_variability(x::AbstractArray{<:Real,2}; w=[0.9, 0.1])
-    return temporal_variability.(eachcol(x); w=w)
+function temporal_variability(x::AbstractArray{<:Real,2}; w=[0.9, 0.1], detrend::Bool=true)
+    return temporal_variability.(eachcol(x); w=w, detrend=detrend)
 end
 function temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
     return mean([map(f -> f isa Function ? f(x) : f, func_or_data)...])
