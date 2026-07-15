@@ -16,7 +16,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/adria-base
-  JULIA_VERSION: 1.11.7
+  JULIA_VERSION: 1.12.6
   # Set to true to use a fixed ADRIA version for debugging, false to use the release version
   USE_FIXED_ADRIA_VERSION: true
   # The fixed ADRIA version to use when USE_FIXED_ADRIA_VERSION is true
