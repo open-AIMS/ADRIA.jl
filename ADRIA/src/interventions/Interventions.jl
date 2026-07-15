@@ -85,7 +85,7 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
-        dist_params=(5.0, 100.0),
+        dist_params=(1.0, 400.0),
         name="Moving corals minimum intervention locations",
         description="Minimum number of locations to perform moving corals intervention"
     )
