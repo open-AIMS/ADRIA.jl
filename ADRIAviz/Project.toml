@@ -1,6 +1,6 @@
 name = "ADRIAviz"
 uuid = "a7bb1955-b5ed-4954-ba3d-ac9734139a95"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["open-AIMS contributors"]
 
 [deps]
