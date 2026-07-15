@@ -153,6 +153,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year)."
     )
+    projection_confidence::Param = Factor(
+        0.0;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        name="Projection Confidence",
+        description="Confidence in far-future environmental projections when weighting them for site selection (only active when `guided` > 0)."
+    )
     seed_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",

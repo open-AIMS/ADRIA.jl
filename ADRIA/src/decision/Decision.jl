@@ -41,6 +41,7 @@ export
     unguided_selection,
     decision_frequency,
     weighted_projection,
+    build_decay,
     identify_within_depth_bounds,
     summary_stat_env,
     mcda_methods,

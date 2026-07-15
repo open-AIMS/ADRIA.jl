@@ -289,8 +289,8 @@ requested via `regimes` (any non-empty subset of `(:counterfactual, :unguided)`,
 both), all sharing the same non-intervention factor draws — `sample_paired` is just
 `sample_matched` with `regimes=(:counterfactual,)`. Note that unguided rows keep the same
 intervention deployment amounts as their guided counterpart (only the MCDA criteria
-weights/`plan_horizon` are zeroed and the strategy is fixed to periodic) — unlike
-counterfactual rows, where deployment amounts are zeroed too:
+weights/`plan_horizon`/`projection_confidence` are zeroed and the strategy is fixed to
+periodic) — unlike counterfactual rows, where deployment amounts are zeroed too:
 
 ```julia
 # 128 guided/counterfactual/unguided triples (384 rows), tagged by `:run_type`

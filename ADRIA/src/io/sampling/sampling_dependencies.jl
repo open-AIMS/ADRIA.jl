@@ -95,6 +95,23 @@ const _PARAM_DEPENDENCIES = [
     # since decision.mcda_methods() is indexed from 1.
     (parent=:guided, child=:mcda_method, op=:gt, value=0.0, negate=false, fix_to=0.0),
     (parent=:guided, child=:plan_horizon, op=:neq, value=0.0, negate=false, fix_to=0.0),
+    # fix_to must match :intervention_group's fix_to=0.0 above, since
+    # `projection_confidence` is also a member of that group (see
+    # _GROUP_MEMBERS) and _validate_dependencies rejects two child symbols
+    # disagreeing on a fix_to for the same physical column. The value is
+    # cosmetic either way, not correctness-affecting: `plan_horizon`'s own row
+    # above already collapses the decay window to a single element whenever
+    # this row fires, and `1^exponent == 1` for any exponent -- so this
+    # factor's fixed value has no effect on `build_decay`'s output once
+    # `plan_horizon` is inactive.
+    (
+        parent=:guided,
+        child=:projection_confidence,
+        op=:neq,
+        value=0.0,
+        negate=false,
+        fix_to=0.0
+    ),
     (
         parent=:guided,
         child=:depth_thresholds,
@@ -136,7 +153,7 @@ const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM,
         :N_mc_settlers, :seeding_devices_per_m2, :min_iv_locations,
         :mc_min_iv_locations, :fogging, :SRM, :a_adapt, :a_adapt_ref,
-        :seed_years, :shade_years, :fog_years, :plan_horizon,
+        :seed_years, :shade_years, :fog_years, :plan_horizon, :projection_confidence,
         :seed_deployment_freq, :fog_deployment_freq, :shade_deployment_freq,
         :mc_deployment_freq, :seed_year_start, :shade_year_start,
         :fog_year_start, :mc_year_start, :mc_years,

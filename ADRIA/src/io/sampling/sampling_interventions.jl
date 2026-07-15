@@ -152,7 +152,8 @@ under guided = 0.0, using the pre-sampling dependency tables.
 Unlike the counterfactual regime, intervention deployment amounts (`:intervention_group`)
 and `:depth_thresholds` remain **active** (unchanged) under guided = 0.0 — unguided
 scenarios still deploy interventions, just without MCDA-driven site selection. Only
-`:criteria_weights` and `:plan_horizon` are zeroed, and `:strategy_group` columns
+`:criteria_weights`, `:plan_horizon`, and `:projection_confidence` are zeroed, and
+`:strategy_group` columns
 (`seed_strategy`/`fog_strategy`/`mc_strategy`) are fixed to `DECISION_STRATEGY[:periodic]`
 — mirroring what `sample_unguided`'s pre-sampling `_resolve_conditional_spec!(spec,
 (guided=0.0,))` does.
