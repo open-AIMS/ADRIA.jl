@@ -19,6 +19,8 @@ jobs:
         with:
           version: '1.11'
       - uses: julia-actions/cache@v3
+        with:
+          cache-name: adriaanalysis-setup-cache-v2
       - name: Dev ADRIA into ADRIAanalysis environment
         run: |
           cd ADRIAanalysis

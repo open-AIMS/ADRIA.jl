@@ -19,6 +19,8 @@ jobs:
         with:
           version: '1.11'
       - uses: julia-actions/cache@v3
+        with:
+          cache-name: adriaviz-setup-cache-v2
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
@@ -40,6 +42,8 @@ jobs:
         with:
           version: '1.11'
       - uses: julia-actions/cache@v3
+        with:
+          cache-name: adriaviz-setup-cache-v2
       - name: Dev ADRIA into ADRIAviz environment
         run: |
           cd ADRIAviz
