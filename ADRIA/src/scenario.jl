@@ -880,10 +880,11 @@ function run_model(
     # Number of time steps in environmental layers to look ahead when making decisions
     plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
 
-    # Decisions should place more weight on environmental conditions
-    # closer to the decision point
-    α = 0.99
-    decay = α .^ (1:(plan_horizon + 1)) .^ 2
+    # Decisions should place more weight on environmental conditions closer to
+    # the decision point. `projection_confidence` shapes how aggressively that
+    # weighting decays with lead time (see decision.build_decay).
+    projection_confidence::Float64 = param_set[At("projection_confidence")]
+    decay = build_decay(plan_horizon, projection_confidence)
 
     # Years at which intervention locations are re-evaluated and deployed
     # seed_decision_years = decision_frequency(

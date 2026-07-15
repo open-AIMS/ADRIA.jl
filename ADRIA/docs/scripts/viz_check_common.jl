@@ -518,7 +518,8 @@ check("criteria_spatial_plots") do
     sum_cover = vec(sum(example_dom.init_coral_cover; dims=1).data)
     dhw_scens = example_dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
     plan_horizon = Int64(scen["plan_horizon"])
-    decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
+    projection_confidence = scen["projection_confidence"]
+    decay = ADRIA.decision.build_decay(plan_horizon, projection_confidence)
     dhw_projection = ADRIA.decision.weighted_projection(
         dhw_scens, 1, plan_horizon, decay, 75
     )

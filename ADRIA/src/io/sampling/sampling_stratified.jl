@@ -17,8 +17,9 @@ because they interact multiplicatively with environment (thermal tolerance chang
 "cooler refugia" means) -- they are a source of exogenous uncertainty, not a lever.
 
 Level 2/3 (independently sampled within each regime, per block): each regime's own active
-factors -- MCDA criteria weights/plan_horizon/mcda_method for `:guided`; seeding/fogging/
-moving-coral deployment amounts, depth thresholds and strategy timing for all regimes --
+factors -- MCDA criteria weights/plan_horizon/projection_confidence/mcda_method for
+`:guided`; seeding/fogging/moving-coral deployment amounts, depth thresholds and strategy
+timing for all regimes --
 are drawn independently via `sample_guided`/`sample_unguided`/`sample_cf`, so RSA/PRIM
 retains full independent, space-filling coverage of each regime's own lever space.
 

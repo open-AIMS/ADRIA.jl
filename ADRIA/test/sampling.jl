@@ -123,6 +123,12 @@ end
             @test all(scens[unguided_rows, :plan_horizon] .== 0) ||
                 "Unguided rows in plain sample() have non-zero plan_horizon"
         end
+
+        # projection_confidence only matters when guided != 0
+        if any(unguided_rows)
+            @test all(scens[unguided_rows, :projection_confidence] .== 0) ||
+                "Unguided rows in plain sample() have non-zero projection_confidence"
+        end
     end
 end
 
@@ -260,10 +266,12 @@ end
             ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
         )
 
-        # Ignore guided, planning horizon, and reactive params (which are conditionally zeroed)
+        # Ignore guided, planning horizon, projection confidence, and reactive
+        # params (which are conditionally zeroed)
         interv_params = String[
             ip for ip in interv_params if
-            ip ∉ ["plan_horizon", "guided"] && !contains(ip, "reactive")
+            ip ∉ ["plan_horizon", "projection_confidence", "guided"] &&
+            !contains(ip, "reactive")
         ]
 
         # Ensure at least one intervention is active
@@ -608,6 +616,12 @@ end
                 "Unguided: :plan_horizon should be 0.0"
         end
 
+        pc_row = spec[spec.fieldname .== :projection_confidence, :]
+        if !isempty(pc_row)
+            @test pc_row.is_constant[1] && isequal(pc_row.val[1], 0.0) ||
+                "Unguided: :projection_confidence should be 0.0"
+        end
+
         for col in ADRIA._GROUP_MEMBERS[:criteria_weights]
             row = spec[spec.fieldname .== col, :]
             isempty(row) && continue
@@ -863,7 +877,7 @@ end
         c -> c in propertynames(ug_samples),
         [
             :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,
-            :fog_heat_stress, :mc_heat_stress, :plan_horizon
+            :fog_heat_stress, :mc_heat_stress, :plan_horizon, :projection_confidence
         ]
     )
     unchanged_cols = filter(

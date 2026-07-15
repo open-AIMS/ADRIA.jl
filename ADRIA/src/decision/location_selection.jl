@@ -113,15 +113,15 @@ function rank_locations(
     fog_pref = FogPreferences(dom, scens[1, :])
     mc_pref = MCPreferences(dom, scens[1, :])
 
-    α = 0.99
-
     loc_data = dom.loc_data
     coral_habitable_locs = loc_data.k .> 0.0
     for (scen_idx, scen) in enumerate(eachrow(scens))
         # Decisions should place more weight on environmental conditions
-        # closer to the decision point
+        # closer to the decision point. `projection_confidence` shapes how
+        # aggressively that weighting decays with lead time.
         plan_horizon = Int64(scen[At("plan_horizon")])
-        decay = α .^ (1:(plan_horizon + 1)) .^ 2
+        projection_confidence = scen[At("projection_confidence")]
+        decay = build_decay(plan_horizon, projection_confidence)
 
         min_depth = scen[factors = At("depth_min")].data[1]
         depth_offset = scen[factors = At("depth_offset")].data[1]
