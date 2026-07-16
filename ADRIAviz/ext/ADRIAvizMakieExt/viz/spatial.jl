@@ -179,7 +179,7 @@ function _figure_size(n_rows::Int, n_cols::Int)::Tuple{Int,Int}
     if n_rows == 1 && n_cols == 1
         return (1000, 800)
     end
-    panel_w, panel_h, gap = 600, 400, 20
+    panel_w, panel_h, gap = 600, 500, 20
     width = n_cols * panel_w + (n_cols - 1) * gap
     height = n_rows * panel_h + (n_rows - 1) * gap
     return (width, height)
