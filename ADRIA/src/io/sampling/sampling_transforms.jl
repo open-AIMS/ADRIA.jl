@@ -207,8 +207,7 @@ const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
         :reactive_min_cover_remaining,
-        :reactive_response_delay,
-        :reactive_cooldown_period
+        :reactive_response_delay
     ]
 )
 
@@ -423,8 +422,17 @@ Ordering is load-bearing:
 3. `gamma_to_dirichlet` on weight columns — must precede the zeroing rules
    below, which depend on the reparameterized values.
 4. `_apply_transform_dependencies!` — single-parent + gate zeroing rules.
-5. `_apply_transform_calls!` — mcda_normalize gates.
-6. `seed_wave_stress` zeroing — must run LAST: mcda_normalize normalizes seed
+5. Floor each `*_revisit_cadence` column at its paired `*_deployment_freq`
+   column (`max(cadence, freq)`) — must run AFTER step 4, since step 4 is what
+   settles each `*_deployment_freq` column to either its real sampled value or
+   `0.0` (via three different mechanisms across seed/fog/mc — the
+   `any_seeding` gate rule, and single-parent `_TRANSFORM_DEPENDENCIES` rows
+   for fog/mc — all applied inside step 4). Without this floor, sensitivity
+   analyses over the raw cadence factor would have a large inert region
+   whenever `deployment_freq` already exceeds it (cadence has zero effect on
+   model behaviour in that region).
+6. `_apply_transform_calls!` — mcda_normalize gates.
+7. `seed_wave_stress` zeroing — must run LAST: mcda_normalize normalizes seed
    weights (including seed_wave_stress) to sum=1 first; zeroing
    seed_wave_stress afterward deliberately leaves the remaining 7 weights
    summing to <1 for wave_scenario==0 rows, matching production behaviour.
@@ -456,6 +464,15 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
     end
 
     masks = _apply_transform_dependencies!(samples)
+
+    # Must run after _apply_transform_dependencies! (see docstring above, point 5).
+    for prefix in ("seed", "fog", "mc")
+        freq_col = Symbol("$(prefix)_deployment_freq")
+        cadence_col = Symbol("$(prefix)_revisit_cadence")
+        (freq_col in sample_cols && cadence_col in sample_cols) || continue
+        samples[:, cadence_col] .= max.(samples[:, cadence_col], samples[:, freq_col])
+    end
+
     _apply_transform_calls!(samples, masks)
 
     # Must run LAST (see docstring above, point 5). seed_wave_stress is a

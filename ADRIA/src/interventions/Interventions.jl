@@ -169,6 +169,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Selection Frequency (Seed)",
         description="Frequency of seeding deployments (0 deploys once)."
     )
+    seed_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Seed)",
+        description="Minimum number of years before a location can be re-selected for seed deployment (0 = no restriction)."
+    )
     fog_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
@@ -176,6 +184,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 15.0),
         name="Selection Frequency (Fog)",
         description="Frequency of fogging deployments (0 deploys once)."
+    )
+    fog_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Fog)",
+        description="Minimum number of years before a location can be re-selected for fog deployment (0 = no restriction)."
     )
     shade_deployment_freq::Param = Factor(
         1;
@@ -192,6 +208,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 15.0),
         name="Deployment Frequency (Moving corals)",
         description="Frequency of moving corals deployments."
+    )
+    mc_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Moving corals)",
+        description="Minimum number of years before a location can be re-selected for mc deployment (0 = no restriction)."
     )
     seed_year_start::Param = Factor(
         2;
@@ -314,14 +338,6 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 5.0),
         name="Response Delay",
         description="Timesteps to wait after trigger before deployment (for reactive strategy)"
-    )
-    reactive_cooldown_period::Param = Factor(
-        4.0;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 10.0),
-        name="Reactive Cooldown Period",
-        description="Timesteps before location becomes eligible again; 0=no cooldown (for reactive strategy)"
     )
 end
 

@@ -60,6 +60,7 @@ tier3 = @testset "Tier 3: Spec & Domain Loads" begin
     @time include("sampling.jl")
     @time include("decisions/mcda.jl")
     @time include("decisions/location_spread.jl")
+    @time include("decisions/revisit_cadence.jl")
 end
 _abort_if_failed(tier3, "Tier 3 (Spec & Domain Loads)")
 
