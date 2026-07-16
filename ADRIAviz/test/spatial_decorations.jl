@@ -67,9 +67,13 @@ end
 
 if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
     # _figure_size and _adaptive_gap live in the Makie extension, which requires
-    # all three of Makie, GeoMakie, and GraphMakie to be loaded to trigger
+    # all three of Makie, GeoMakie, and GraphMakie to be loaded to trigger.
+    # Package extensions aren't `using`-able by name; fetch the module handle
+    # via Base.get_extension instead.
     using CairoMakie, GeoMakie, GraphMakie
-    using ADRIAvizMakieExt: _figure_size, _adaptive_gap
+    _makie_ext = Base.get_extension(ADRIAviz, :ADRIAvizMakieExt)
+    _figure_size = _makie_ext._figure_size
+    _adaptive_gap = _makie_ext._adaptive_gap
 
     @testset "_figure_size" begin
         w, h = _figure_size(1, 1)
