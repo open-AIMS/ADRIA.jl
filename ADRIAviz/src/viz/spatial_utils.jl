@@ -80,17 +80,19 @@ end
 Great-circle distance between two lon/lat points (in degrees) in kilometres.
 """
 function _haversine_km(lon1::Real, lat1::Real, lon2::Real, lat2::Real)::Float64
-    haversine([deg2rad(lat1), deg2rad(lon1)], [deg2rad(lat2), deg2rad(lon2)])
+    # Distances.jl's haversine takes plain degrees (it uses sind/cosd internally)
+    # in (lon, lat) order, and returns metres by default -- not km.
+    haversine([lon1, lat1], [lon2, lat2], 6371.0)
 end
 
 """
     _nice_length(x::Real)::Int
 
 Round a distance down to a cartographically 'nice' scale-bar length (km).
-Capped at 250km for large-scale maps to ensure legibility.
+Capped at 1000km for large-scale maps to ensure legibility.
 """
 function _nice_length(x::Real)::Int
-    options = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250]
+    options = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000]
     idx = findlast(<=(x), options)
     return options[isnothing(idx) ? 1 : idx]
 end
@@ -179,9 +181,7 @@ function _get_populated_places(
         if pop >= min_population
             # Check distance to map extent
             d = minimum(
-                haversine(
-                    [deg2rad(lat), deg2rad(lon)], [deg2rad(lats[i]), deg2rad(lons[i])]
-                )
+                _haversine_km(lon, lat, lons[i], lats[i])
                 for i in eachindex(lons)
             )
             if d <= max_km
