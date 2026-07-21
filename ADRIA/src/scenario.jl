@@ -46,13 +46,18 @@ function setup_cache(domain::Domain)::NamedTuple
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
         eff_dhw_step=zeros(n_locs),  # effective DHW at each location's depth
-        C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_sizes * n_groups, n_locs),  # damage coefficient for each size class
         dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs),  # tmp log for mean dhw tolerances
-        cover_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for per-species cover
+        cover_log=zeros(tf, n_sizes * n_groups, n_locs),  # tmp log for per-species cover
+        # Per-scenario computation buffers: pre-allocated once per-thread and reused
+        # across scenarios to avoid repeated GC-triggering allocations.
+        C_cover=zeros(tf, n_groups, n_sizes, n_locs),     # main coral cover output
+        bleach_dhw=zeros(tf, n_groups, n_sizes, n_locs),  # per-location bleaching DHW history
+        sim_C_cover_t=zeros(n_groups, n_sizes, n_locs),   # coral cover at previous timestep
+        ΔC_cover_t=zeros(n_groups, n_sizes, n_locs),      # cover change this timestep
+        survival_rate_cache=ones(n_groups, n_sizes, n_locs)  # per-group/size/loc survival rate
     )
 
     return cache
@@ -157,9 +162,12 @@ function run_scenarios(
     parallel::Bool = !env_debug && (Threads.nthreads() > 1)
 
     # chunk_size sets the Zarr chunk size along the scenario axis and controls how many
-    # results the writer accumulates before flushing to disk. Compute scheduling is
-    # per-scenario via a channel, so chunk_size is purely an I/O tuning parameter.
-    # In serial mode: fall back to the env var (default 1).
+    # results the writer accumulates before flushing to disk. It also sets the compute
+    # batching granularity (one @threads :static unit per chunk). Coarser batching means
+    # fewer channel touches, which reduces channel-lock contention; finer batching
+    # reduces peak in-memory results but increases channel-lock frequency. The default
+    # (one chunk per thread) is the coarsest useful granularity and minimises channel
+    # contention. In serial mode: fall back to the env var (default 1).
     active_threads::Int = Threads.nthreads()
 
     # Estimate the uncompressed size of one scenario's worth of Float32 output arrays to
@@ -227,18 +235,28 @@ function run_scenarios(
     ]
 
     if parallel
-        # One buffer set per thread. Each set is checked out exclusively via a Channel
-        # pool, so no two scenarios ever share the same FunctionalGroup buffers regardless
-        # of how the dynamic scheduler assigns or migrates tasks between threads.
-        # Buffer sets are allocated in parallel since each set is large (n_locs × n_groups
+        # One buffer set per thread, indexed directly by threadid() — no Channel/lock
+        # involved. This is only safe because the scenario loop below also uses
+        # :static scheduling, which pins each iteration to a fixed thread for its
+        # whole lifetime (unlike :dynamic, whose tasks may migrate between threads,
+        # which is why a Channel-based checkout pool was needed previously). Buffer
+        # sets are allocated in parallel since each set is large (n_locs × n_groups
         # × n_sizes CircularBuffers) and independent.
-        fg_pool = let bufs = Vector{typeof(_make_fg_buffers())}(undef, Threads.nthreads())
-            Threads.@threads :static for i = 1:Threads.nthreads()
-                bufs[i] = _make_fg_buffers()
-            end
-            pool = Channel{eltype(bufs)}(length(bufs))
-            foreach(fg -> put!(pool, fg), bufs)
-            pool
+        # Use maxthreadid() so the buffer vector covers all thread pools
+        # (default + interactive). Threads.nthreads() only counts the default
+        # pool, but Threads.threadid() returns a global ID that can exceed that
+        # count when interactive-pool threads are present (e.g. --threads=6,2).
+        n_thread_bufs = Threads.maxthreadid()
+        fg_bufs = Vector{typeof(_make_fg_buffers())}(undef, n_thread_bufs)
+        sim_caches = Vector{NamedTuple}(undef, n_thread_bufs)
+        Threads.@threads :static for i = 1:Threads.nthreads()
+            fg_bufs[i] = _make_fg_buffers()
+            sim_caches[i] = setup_cache(dom)
+        end
+        # Initialize remaining slots (interactive-pool threads) serially.
+        for i = (Threads.nthreads() + 1):n_thread_bufs
+            fg_bufs[i] = _make_fg_buffers()
+            sim_caches[i] = setup_cache(dom)
         end
 
         # Prevent BLAS internal threads from competing with Julia threads.
@@ -255,7 +273,6 @@ function run_scenarios(
                 _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
             )
             N_rcp = length(scen_args)
-            first_idx = scen_args[1][2]
             n_chunks = cld(N_rcp, chunk_size)
 
             prog =
@@ -263,50 +280,38 @@ function run_scenarios(
                 ProgressMeter.Progress(n_chunks; desc=run_msg, dt=4) :
                 nothing
 
-            # Workers push (write_idx, result) to the channel; the single writer task
-            # buffers results and flushes in chunk_size-aligned chunks so all Zarr writes
-            # are chunk-aligned and contention-free, regardless of completion order.
-            ch = Channel{Tuple{Int,NamedTuple}}(2 * Threads.nthreads())
+            # Batch accumulation: each :static thread collects chunk_size results
+            # serially before a single channel put. This keeps channel-lock touches at
+            # their minimum (1 put per thread = n_chunks total) and avoids any
+            # back-pressure stalls that would arise from per-scenario puts filling a
+            # bounded channel buffer. The writer task is the sole consumer; with the
+            # channel buffer sized at 2×nthreads all chunks can queue without blocking.
+            ch = Channel{Tuple{Int,Vector{NamedTuple}}}(2 * Threads.nthreads())
 
-            chunk_start(c) = first_idx + c * chunk_size
             chunk_len(c) =
                 c < n_chunks - 1 ? chunk_size : N_rcp - (n_chunks - 1) * chunk_size
 
             writer = Threads.@spawn begin
-                buf = Dict{Int,NamedTuple}()
-                chunk_ready = zeros(Int, n_chunks)
-                next_chunk = 0
-
-                for (idx, result) in ch
-                    buf[idx] = result
-                    c = (idx - first_idx) ÷ chunk_size
-                    chunk_ready[c + 1] += 1
-
-                    while next_chunk < n_chunks &&
-                        chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
-                        s = chunk_start(next_chunk)
-                        n = chunk_len(next_chunk)
-                        results = [buf[s + i] for i = 0:(n - 1)]
-                        for i = 0:(n - 1)
-                            delete!(buf, s + i)
-                        end
-                        _write_batch!(data_store, s, results)
-                        isnothing(prog) || ProgressMeter.next!(prog)
-                        next_chunk += 1
-                    end
+                for (start_idx, results) in ch
+                    _write_batch!(data_store, start_idx, results)
+                    isnothing(prog) || ProgressMeter.next!(prog)
                 end
             end
 
             try
-                Threads.@threads :dynamic for i = 1:N_rcp
-                    d, idx, scen = scen_args[i]
-                    fg = take!(fg_pool)
-                    result = try
-                        _collect_scenario_results(d, scen, fg)
-                    finally
-                        put!(fg_pool, fg)
-                    end
-                    put!(ch, (idx, result))
+                Threads.@threads :static for c = 0:(n_chunks - 1)
+                    lo = c * chunk_size + 1
+                    n_c = chunk_len(c)
+                    tid = Threads.threadid()
+                    fg = fg_bufs[tid]
+                    sc = sim_caches[tid]
+                    results = [
+                        _collect_scenario_results(
+                            scen_args[lo + k][1], scen_args[lo + k][3], fg;
+                            sim_cache=sc
+                        ) for k = 0:(n_c - 1)
+                    ]
+                    put!(ch, (scen_args[lo][2], results))
                 end
             finally
                 close(ch)
@@ -376,9 +381,10 @@ Called by `run_scenario` (single write) and by the batched pmap path in `run_sce
 function _collect_scenario_results(
     domain::Domain,
     scenario::Union{AbstractVector,DataFrameRow},
-    functional_groups::Vector{Vector{FunctionalGroup}}
+    functional_groups::Vector{Vector{FunctionalGroup}};
+    sim_cache=nothing
 )::NamedTuple
-    result_set = run_model(domain, scenario, functional_groups)
+    result_set = run_model(domain, scenario, functional_groups; sim_cache)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw::Array{Float64} = result_set.raw
@@ -667,19 +673,26 @@ end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
-    functional_groups::Vector{Vector{FunctionalGroup}}
+    functional_groups::Vector{Vector{FunctionalGroup}};
+    sim_cache=nothing
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups)
+    return run_model(domain, ps, functional_groups; sim_cache)
 end
 function run_model(
     domain::Domain,
     param_set::YAXArray,
-    functional_groups::Vector{Vector{FunctionalGroup}}
+    functional_groups::Vector{Vector{FunctionalGroup}};
+    sim_cache=nothing
 )::NamedTuple
     corals = to_coral_spec(param_set)
-    cache = setup_cache(domain)
+    cache = isnothing(sim_cache) ? setup_cache(domain) : sim_cache
+    if !isnothing(sim_cache)
+        # Reset log accumulators for this new scenario (they are written to each timestep)
+        fill!(cache.dhw_tol_mean_log, 0.0)
+        fill!(cache.cover_log, 0.0)
+    end
 
     factor_names::Vector{String} = collect(param_set.factors.val)
 
@@ -829,21 +842,21 @@ function run_model(
     dropzeros!(TP_data)
 
     # sf = cache.sf  # unused as it is currently deactivated
-    fec_scope = cache.fec_scope
-    recruitment = cache.recruitment
-    dhw_t = cache.dhw_step
-    eff_dhw_t = cache.eff_dhw_step
-    C_cover_t = cache.C_cover_t
-    depth_coeff = cache.depth_coeff
+    fec_scope::Matrix{Float64} = cache.fec_scope
+    recruitment::Matrix{Float64} = cache.recruitment
+    dhw_t::Vector{Float64} = cache.dhw_step
+    eff_dhw_t::Vector{Float64} = cache.eff_dhw_step
+    depth_coeff::Vector{Float64} = cache.depth_coeff
 
     # Used to distribute moving corals settlers
-    prop_fecundity = copy(cache.fec_scope)
+    prop_fecundity::Matrix{Float64} = copy(cache.fec_scope)
 
     loc_data = domain.loc_data
     depth_coeff .= depth_coefficient.(loc_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
+    C_cover = cache.C_cover
+    fill!(C_cover, 0.0)
     C_cover[1, :, :, :] .= _reshape_init_cover(
         domain.init_coral_cover, (n_sizes, n_groups, n_locs)
     )
@@ -908,11 +921,12 @@ function run_model(
     # Set up assisted adaptation values
     a_adapt::Vector{Float64} = fill(param_set[At("a_adapt")], n_groups)
 
-    seed_volume = param_set[At(factor_names[contains.(factor_names, "N_seed")])]
+    seed_idx = findall(n -> contains(n, "N_seed"), factor_names)
+    seed_volume = view(param_set.data, seed_idx)
     seeding_devices_per_m2::Float64 = param_set[At("seeding_devices_per_m2")]
 
     is_unguided = param_set[At("guided")] == 0.0
-    is_seeding = any(seed_volume .> 0)
+    is_seeding = any(>(0), seed_volume)
 
     # Flag indicating whether to seed or not to seed when unguided
     unguided_seeding = is_unguided && is_seeding
@@ -935,6 +949,7 @@ function run_model(
 
     seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
     mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
+    shade_locs_mask::BitVector = domain.loc_ids .∈ [domain.shade_target_locations]
 
     if is_guided
         seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
@@ -993,7 +1008,8 @@ function run_model(
     # Cache for per-location bleaching DHW (DHW-weeks) used as the lower bound of the
     # tolerance distribution in the following timestep. Sliding window over two timesteps:
     # dim-1 index 1 = previous timestep's bleaching DHW, 2 = current (being written).
-    bleach_dhw = zeros(tf, n_groups, n_sizes, n_locs)
+    bleach_dhw = cache.bleach_dhw
+    fill!(bleach_dhw, 0.0)
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
@@ -1021,14 +1037,17 @@ function run_model(
 
     # Empty the old contents of the buffers and add the new blocks
     cover_view = [@view C_cover[1, :, :, loc] for loc = 1:n_locs]
-    functional_groups = reuse_buffers!.(
+    functional_groups::Vector{Vector{FunctionalGroup}} = reuse_buffers!.(
         functional_groups, (cover_view .* vec_abs_k)
     )
 
-    # Preallocate memory for temporaries
-    survival_rate_cache = ones(n_groups, n_sizes, n_locs)
-    C_cover_t::Array{Float64,3} = zeros(n_groups, n_sizes, n_locs)
-    ΔC_cover_t = zeros(n_groups, n_sizes, n_locs)
+    # Reuse pre-allocated buffers from cache to avoid per-scenario GC pressure
+    survival_rate_cache = cache.survival_rate_cache
+    fill!(survival_rate_cache, 1.0)
+    C_cover_t = cache.sim_C_cover_t
+    fill!(C_cover_t, 0.0)
+    ΔC_cover_t = cache.ΔC_cover_t
+    fill!(ΔC_cover_t, 0.0)
 
     # Max projected cover is used on linear extensions scale factors
     habitable_max_projected_cover = max_projected_cover(
@@ -1124,9 +1143,10 @@ function run_model(
 
     # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
     Δcover_loss_proportion = zeros(n_locs)
-    _is_reactive = any(
-        is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
-    )
+    _is_reactive =
+        is_reactive(param_set[At("seed_strategy")]) ||
+        is_reactive(param_set[At("fog_strategy")]) ||
+        is_reactive(param_set[At("mc_strategy")])
     dhw_p = is_guided ? similar(dhw_scen) : nothing
     current_loc_cover = zeros(n_locs)
     _loc_coral_cover = zeros(n_locs)
@@ -1348,7 +1368,6 @@ function run_model(
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if apply_shading && shade_decision_years[tstep]
-            shade_locs_mask = domain.loc_ids .∈ [domain.shade_target_locations]
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
@@ -1762,7 +1781,7 @@ function run_model(
                             proportional_increase, n_corals_seeded = distribute_seeded_corals(
                                 vec_abs_k[seed_loc_idx],
                                 available_space,
-                                seed_volume.data .* seed_share.weight,
+                                seed_volume .* seed_share.weight,
                                 colony_areas[_seed_size_groups],
                                 seeding_devices_per_m2
                             )
@@ -1882,16 +1901,18 @@ function run_model(
     # collated_dhw_tol_log = DataCube(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3);
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
     if log_dhw_tols
+        # copy() prevents aliasing when the underlying buffer is reused across scenarios
         collated_dhw_tol_log = DataCube(
-            dhw_tol_mean_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
+            copy(dhw_tol_mean_log); timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )
     else
         collated_dhw_tol_log = false
     end
 
     if log_cover
+        # copy() prevents aliasing when the underlying buffer is reused across scenarios
         collated_cover_log = DataCube(
-            cover_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
+            copy(cover_log); timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )
     else
         collated_cover_log = false

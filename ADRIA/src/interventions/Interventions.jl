@@ -364,11 +364,18 @@ function setup_guided_intervention(
     valid_locs_mask =
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
+    pref = preference(domain, param_set)
+
+    # No locations meet the criteria (e.g. depth bounds exclude all candidates for this
+    # scenario/year) - skip deployment rather than build an empty decision matrix
+    if !any(valid_locs_mask)
+        return pref, nothing, nothing
+    end
+
     # Calculate cluster diversity and geographic separation scores
     diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
     separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
-    pref = preference(domain, param_set)
     decision_mat = decision_matrix(
         domain.loc_ids[valid_locs_mask],
         pref.names;
