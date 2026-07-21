@@ -5,7 +5,7 @@ manifest_format = "2.0"
 project_hash = "509b19b3154b22a36ba30d4936145ec5b8f1f308"
 
 [[deps.ADRIA]]
-deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
+deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "Flatten", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Serialization", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
 path = "../ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 version = "0.17.0"
@@ -22,7 +22,7 @@ version = "0.2.1"
 deps = ["ADRIA", "Bootstrap", "Clustering", "DataEnvelopmentAnalysis", "DataFrames", "Distances", "Distributions", "HypothesisTests", "Logging", "PrecompileTools", "Random", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "YAXArrays"]
 path = "."
 uuid = "bc4d0ea8-6565-4397-854d-28474bf8c6b3"
-version = "0.1.0"
+version = "0.2.0"
 
     [deps.ADRIAanalysis.extensions]
     ADRIAanalysisRulesExt = ["SIRUS", "MLJ"]
@@ -430,10 +430,10 @@ uuid = "150eb455-5306-5404-9cee-2592286d6298"
 version = "0.6.4"
 
 [[deps.CoralBlox]]
-deps = ["DataStructures", "StaticArrays", "YAXArrays"]
-git-tree-sha1 = "ec64cda7db596126f3d3ef6e7bce7d4b170724da"
+deps = ["DataStructures", "StaticArrays"]
+git-tree-sha1 = "480e4745d3bb0e592e14532f9da13041ce9a2a9f"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.6"
+version = "1.1.8"
 
     [deps.CoralBlox.extensions]
     CoralBloxPlotExt = "Makie"

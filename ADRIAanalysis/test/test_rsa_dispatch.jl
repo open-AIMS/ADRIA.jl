@@ -127,7 +127,10 @@ using Random
         # Sanity check: the eltype heuristic is actually triggered
         @test !(eltype(X.nom_col) <: Real)
 
-        result = @test_logs (:warn, r"No column \"ptype\" metadata found") ADRIAanalysis.sensitivity.rsa(
+        # match_mode=:any: nom_col's random draws may or may not also trip the
+        # ">20% tied values" warning depending on RNG stream, so only assert
+        # the ptype warning is present rather than requiring an exact log set.
+        result = @test_logs (:warn, r"No column \"ptype\" metadata found") match_mode = :any ADRIAanalysis.sensitivity.rsa(
             X, selection_mask
         )
 
