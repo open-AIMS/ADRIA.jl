@@ -35,7 +35,9 @@ using ADRIAviz.viz
     end
 
     @testset "Near-pole extent warns" begin
-        @test_logs (:warn,) validate_extent((0.0, 10.0, 80.0, 89.0))
+        # mean latitude must exceed the 85 deg threshold in validate_extent
+        # for the warning to fire; (80, 89) has a mean of 84.5 and never warns.
+        @test_logs (:warn,) validate_extent((0.0, 10.0, 82.0, 89.0))
     end
 end
 
