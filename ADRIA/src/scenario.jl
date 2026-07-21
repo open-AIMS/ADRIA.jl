@@ -1455,7 +1455,10 @@ function run_model(
                     log_val = is_guided ? (1:length(selected_fog_ranks)) : 1.0
                     log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
                         log_val
-                    last_fog_deployment[candidate_loc_indices] .= tstep
+                    selected_fog_loc_idx = findall(
+                        in.(domain.loc_ids, Ref(selected_fog_ranks))
+                    )
+                    last_fog_deployment[selected_fog_loc_idx] .= tstep
                 end
             end
         end
@@ -1542,7 +1545,10 @@ function run_model(
                         log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
                         log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .=
                             log_val
-                        last_mc_deployment[share_candidate_loc_idx] .= tstep
+                        selected_mc_loc_idx = findall(
+                            in.(domain.loc_ids, Ref(selected_mc_ranks))
+                        )
+                        last_mc_deployment[selected_mc_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected
@@ -1728,7 +1734,10 @@ function run_model(
                         log_val = is_guided ? (1:length(selected_seed_ranks)) : 1.0
                         log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
                             log_val
-                        last_seed_deployment[share_candidate_loc_idx] .= tstep
+                        selected_seed_loc_idx = findall(
+                            in.(domain.loc_ids, Ref(selected_seed_ranks))
+                        )
+                        last_seed_deployment[selected_seed_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected (can reuse previous selection)

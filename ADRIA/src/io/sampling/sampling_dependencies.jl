@@ -162,7 +162,7 @@ const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         # excluded here — they belong exclusively to :strategy_group (see above).
         :reactive_absolute_threshold, :reactive_loss_threshold,
         :reactive_min_cover_remaining, :reactive_response_delay,
-        :reactive_cooldown_period
+        :seed_revisit_cadence, :fog_revisit_cadence, :mc_revisit_cadence
     ],
     :criteria_weights => [
         :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,

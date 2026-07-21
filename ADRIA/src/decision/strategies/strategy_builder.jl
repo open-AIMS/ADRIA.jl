@@ -78,7 +78,10 @@ function build_strategy_params(prefix::String, params::YAXArray, domain::Domain,
         reactive_loss_threshold=Float64(params[At("reactive_loss_threshold")]),
         reactive_min_cover_remaining=Float64(params[At("reactive_min_cover_remaining")]),
         reactive_response_delay=Int64(params[At("reactive_response_delay")]),
-        reactive_cooldown_period=Int64(params[At("reactive_cooldown_period")])
+        revisit_cadence=Int64(params[At("$(prefix)_revisit_cadence")]),
+        min_locations=Int64(
+            params[At(prefix == "mc" ? "mc_min_iv_locations" : "min_iv_locations")]
+        )
     )
 end
 
@@ -90,7 +93,9 @@ function build_strategy(
         params.iv_year_start,
         params.iv_years,
         params.iv_deployment_freq,
-        params.timesteps
+        params.timesteps,
+        params.revisit_cadence,
+        params.min_locations
     )
 end
 function build_strategy(
@@ -104,6 +109,6 @@ function build_strategy(
         params.reactive_loss_threshold,
         params.reactive_min_cover_remaining,
         params.reactive_response_delay,
-        params.reactive_cooldown_period
+        params.revisit_cadence
     )
 end
