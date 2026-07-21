@@ -64,8 +64,8 @@ DataFrame sorted descending by `prob_superiority`:
                                following the same "not meaningful for this row" convention
                                used for the zero-variance sentinel below, except NaN
                                rather than 0.5 since there is no neutral value to report.
-- effect_size      (Float64) : 1 - 2*U / (n1 * n2), in [-1, 1] (signed), for Mann-Whitney
-                               rows; Cramer's V itself, in [0, 1] (unsigned), for
+- effect_size      (Float64) : 1 - 2*U / (n1 * n2), in `[-1, 1]` (signed), for Mann-Whitney
+                               rows; Cramer's V itself, in `[0, 1]` (unsigned), for
                                `:cramers_v` rows. These two are NOT on a comparable scale
                                -- distinguish them via the `test` column, do not compare
                                `effect_size` values across test types directly.
