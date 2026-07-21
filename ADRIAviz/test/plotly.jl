@@ -484,7 +484,9 @@ end
     end
 
     @testset "exactly one scatter trace" begin
-        p = ADRIA.viz.rsa(X, y, foi)
+        # with_contour=false: isolate the bare scatter trace from the
+        # histogram2dcontour overlay that's on by default.
+        p = ADRIA.viz.rsa(X, y, foi; with_contour=false)
         @test length(p.data) == 1
         @test p.data[1].type == "scatter"
     end
@@ -499,7 +501,7 @@ end
     end
 
     @testset "marker colorscale is Viridis and showscale=true" begin
-        p = ADRIA.viz.rsa(X, y, foi)
+        p = ADRIA.viz.rsa(X, y, foi; with_contour=false)
         marker = p.data[1].marker
         cs = lowercase(string(get(marker, :colorscale, "")))
         @test contains(cs, "viridis")
@@ -522,7 +524,9 @@ end
     end
 
     @testset "single-factor: exactly one scatter trace" begin
-        p = ADRIA.viz.outcome_map(X, y, factors[1])
+        # with_density=false: isolate the bare scatter trace from the
+        # histogram2dcontour density overlay that's on by default.
+        p = ADRIA.viz.outcome_map(X, y, factors[1]; with_density=false)
         @test length(p.data) == 1
         @test p.data[1].type == "scatter"
     end
@@ -686,9 +690,11 @@ end
     end
 
     @testset "3-clause rules are silently filtered (same trace count as without them)" begin
-        three_clause = [
-            ["N_seed_TA", "<", 0.3], ["fogging", "<=", 0.2], ["guided", ">", 1.0]
-        ]
+        three_clause = (;
+            condition=[
+                ["N_seed_TA", "<", 0.3], ["fogging", "<=", 0.2], ["guided", ">", 1.0]
+            ]
+        )
         mixed = vcat(rules, [three_clause])
         p_orig = ADRIA.viz.rules_scatter(scens, clusters, rules)
         p_mixed = ADRIA.viz.rules_scatter(scens, clusters, mixed)

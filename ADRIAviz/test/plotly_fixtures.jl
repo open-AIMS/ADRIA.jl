@@ -291,18 +291,22 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 
 """
-    _plotly_rules(; n_rules=4) -> Vector{Vector{Vector}}
+    _plotly_rules(; n_rules=4) -> Vector{<:NamedTuple}
 
-Rules in `Vector{Vector{Vector}}` form — list of rules, each a list of 2-element
-clauses, each a 3-element vector `[feature_name, operator, threshold]`.
+Rules mirroring `ADRIAanalysis.Rule` (a `.condition` field holding a list of
+2-element clauses, each a 3-element vector `[feature_name, operator, threshold]`).
+Built as NamedTuples rather than `ADRIAanalysis.Rule` directly since ADRIAviz's
+test environment does not depend on ADRIAanalysis.
 """
 function _plotly_rules(; n_rules=4)
     features = ["N_seed_TA", "fogging"]
     return [
-        [
-            [features[1], "<", 0.3 + 0.05 * i],
-            [features[2], "<=", 0.2 + 0.05 * i]
-        ]
+        (;
+            condition=[
+                [features[1], "<", 0.3 + 0.05 * i],
+                [features[2], "<=", 0.2 + 0.05 * i]
+            ]
+        )
         for i = 1:n_rules
     ]
 end
