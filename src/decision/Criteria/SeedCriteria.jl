@@ -83,7 +83,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
-        direction=maximum,
+        direction=minimum,
         name="Coral Diversity",
         description="Prefer locations that have a higher Simpson diversity."
     )
