@@ -76,7 +76,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Geographic Separation",
-        description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
+        description="Prefer locations that maximize geographic coverage of the selected set (when maximized) or that are redundant with already covered areas (when minimized)."
     )
     seed_coral_diversity::Param = Factor(
         0.5;

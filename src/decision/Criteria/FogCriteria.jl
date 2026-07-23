@@ -76,7 +76,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Geographic Separation",
-        description="Fog locations that are distant (when maximized) or closer (when minimized) to their neighbors."
+        description="Fog locations that maximize geographic coverage of the selected set (when maximized) or that are redundant with already covered areas (when minimized)."
     )
     fog_coral_diversity::Param = Factor(
         0.5;

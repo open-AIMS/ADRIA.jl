@@ -8,6 +8,7 @@ using ADRIA:
     DataCube,
     Domain,
     EcoModel,
+    farthest_point_ordering,
     n_locations,
     loc_area,
     loc_k_area,

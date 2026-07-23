@@ -166,6 +166,66 @@ function nearest_neighbor_distances(dom::Domain, n_neighbors::Int64)::Vector{Flo
 end
 
 """
+    farthest_point_ordering(coords::Vector{Tuple{Float64,Float64}})::Vector{Int64}
+    farthest_point_ordering(loc_data::DataFrame)::Vector{Int64}
+
+Order locations by Farthest Point Sampling (greedy max-min).
+
+Starts from the location closest to the centroid of all coordinates, then repeatedly
+selects the location whose minimum distance to the already selected set is the largest.
+Every prefix of the returned ordering is therefore a well spread out subset of
+locations, whatever its length.
+
+# Arguments
+- `coords`: Vector of coordinate tuples (longitude, latitude)
+
+# Returns
+Location indices in Farthest Point Sampling order.
+"""
+function farthest_point_ordering(
+    coords::Vector{Tuple{Float64,Float64}}
+)::Vector{Int64}
+    n_locs = length(coords)
+    n_locs == 0 && return Int64[]
+
+    # Start from the location closest to the centroid of all locations
+    centroid = (mean(first.(coords)), mean(last.(coords)))
+    first_idx = argmin([Distances.haversine(coord, centroid) for coord in coords])
+
+    # Distance from each location to the closest selected location (at this point first selected location)
+    min_dist = [Distances.haversine(coord, coords[first_idx]) for coord in coords]
+
+    order = zeros(Int64, n_locs)
+    order[1] = first_idx
+    selected = falses(n_locs)
+    selected[first_idx] = true
+
+    # Mark selected locations so they are never picked again
+    min_dist[first_idx] = -Inf
+
+    for i in 2:n_locs
+        # Location that is farthest away from all previously selected locations
+        next_idx = argmax(min_dist)
+        order[i] = next_idx
+        selected[next_idx] = true
+        min_dist[next_idx] = -Inf
+
+        for j in 1:n_locs
+            selected[j] && continue
+            # Check if distance to newest selected location is smaller than current min_dist
+            min_dist[j] = min(
+                min_dist[j], Distances.haversine(coords[j], coords[next_idx])
+            )
+        end
+    end
+
+    return order
+end
+function farthest_point_ordering(loc_data::DataFrame)::Vector{Int64}
+    return farthest_point_ordering(centroids(loc_data))
+end
+
+"""
     param_table(d::ADRIADomain)::DataFrame
 
 Get model fieldnames and their parameter values.

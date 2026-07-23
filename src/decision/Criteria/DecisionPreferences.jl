@@ -291,19 +291,41 @@ function cluster_diversity(
 end
 
 """
-    geographic_separation(mean_distances::Matrix{Float64})::Vector{Float64}
+    geographic_separation(coords::Vector{Tuple{Float64,Float64}})::Vector{Float64}
 
-Calculate how spatially separated each location is from others.
-Higher scores indicate locations that are more distant from their neighbors.
+Score locations such that any prefix of the resulting ranking is geographically well
+spread out.
+
+Locations are ordered by Farthest Point Sampling and assigned decaying scores. The
+highest scoring location is the one closest to the centroid of all locations, and each
+subsequent location is the one that is farthest away from all higher scoring locations.
+Selecting the `n` highest scoring locations therefore maximizes geographic coverage,
+whatever the value of `n`.
+
+Scores decay with the logarithm of the rank. As the criteria are normalized per column
+by the MCDA methods, it is the slope of the decay around the selection boundary that
+determines how much influence this criteria holds relative to the others. A logarithmic
+decay has a slope proportional to `1 / rank`, which helps to discriminate between candidate
+locations when deploying to a small fraction of the domain.
+
+# Arguments
+- `coords`: Vector of coordinate tuples (longitude, latitude)
+
+# See also
+- `farthest_point_ordering()`
 """
-function geographic_separation(mean_distances::Vector{Float64})::Vector{Float64}
-    # Normalize to [0,1]
-    max_dist = maximum(mean_distances)
-    if max_dist > 0
-        return mean_distances ./ max_dist
+function geographic_separation(
+    coords::Vector{Tuple{Float64,Float64}}
+)::Vector{Float64}
+    n_locs = length(coords)
+    n_locs <= 1 && return ones(n_locs)
+
+    separation_scores = zeros(n_locs)
+    for (rank, loc_idx) in enumerate(farthest_point_ordering(coords))
+        separation_scores[loc_idx] = 1.0 - log(rank) / log(n_locs)
     end
 
-    return zeros(length(mean_distances))
+    return separation_scores
 end
 
 # """

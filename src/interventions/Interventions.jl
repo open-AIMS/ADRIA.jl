@@ -340,15 +340,16 @@ function setup_guided_intervention(
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
     # Calculate cluster diversity and geographic separation scores
+    # Separation scores are ranked over the valid locations only
     diversity_scores = decision.cluster_diversity(domain.loc_data.CB_CALIB_GROUPS)
-    separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
+    separation_scores = decision.geographic_separation(centroids(domain.loc_data[valid_locs_mask, :]))
 
     decision_mat = decision_matrix(
         domain.loc_ids[valid_locs_mask],
         pref.names;
         depth=domain.loc_data.depth_med[valid_locs_mask],
         cluster_diversity=diversity_scores[valid_locs_mask],
-        geographic_separation=separation_scores[valid_locs_mask]
+        geographic_separation=separation_scores
     )
     strategy = build_strategy(param_set, domain, domain.loc_ids[valid_locs_mask])
 
