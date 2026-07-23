@@ -7,7 +7,6 @@ using ADRIA: centroids, farthest_point_ordering
 using ADRIA.decision:
     subtypes,
     SeedPreferences,
-    cluster_diversity,
     geographic_separation,
     decision_matrix,
     select_locations
@@ -98,6 +97,7 @@ end
         end
     end
 
+    #=
     @testset "Select under-represented cluster" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         loc_data = dom.loc_data
@@ -135,7 +135,6 @@ end
             seed_out_connectivity=zeros(n_locs),
             seed_heat_stress=zeros(n_locs),
             seed_coral_cover=Float64.(rand(1:100, n_locs)),
-            seed_cluster_diversity=diversity_scores,
             seed_geographic_separation=separation_scores
         )
 
@@ -154,6 +153,7 @@ end
         @test "reef_$(lpad(n_locs-2, 2, "0"))" ∈ result ||
             "Under-represented cluster 3 not selected!"
     end
+    =#
 
     @testset "Select geographically spread out locations" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -165,7 +165,6 @@ end
         # Make geographic coverage the only criteria that matters
         ADRIA.fix_factor!(dom; seed_geographic_separation=1.0)
 
-        diversity_scores = cluster_diversity(loc_data.cluster_id)
         separation_scores = geographic_separation(loc_coords)
 
         method = first(ADRIA.mcda_methods())
@@ -179,7 +178,6 @@ end
             seed_out_connectivity=zeros(n_locs),
             seed_heat_stress=zeros(n_locs),
             seed_coral_cover=Float64.(rand(1:100, n_locs)),
-            seed_cluster_diversity=diversity_scores,
             seed_geographic_separation=separation_scores
         )
 

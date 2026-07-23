@@ -58,6 +58,7 @@ Base.@kwdef struct MCCriteriaWeights <: DecisionWeights
         name="MC Coral Cover",
         description="Preference locations with lower coral cover (higher available space)."
     )
+    #=
     mc_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",
@@ -67,6 +68,7 @@ Base.@kwdef struct MCCriteriaWeights <: DecisionWeights
         name="MC Cluster Diversity",
         description="Prefer locations from clusters that are under-represented."
     )
+    =#
     mc_geographic_separation::Param = Factor(
         0.8;
         ptype="continuous",

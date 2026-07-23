@@ -60,6 +60,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Seed Coral Cover",
         description="Preference locations with lower coral cover (higher available space) for seeding deployments."
     )
+    #=
     seed_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",
@@ -69,6 +70,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Cluster Diversity",
         description="Prefer locations from clusters that are under-represented."
     )
+    =#
     seed_geographic_separation::Param = Factor(
         0.8;
         ptype="continuous",

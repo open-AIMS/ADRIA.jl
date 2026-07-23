@@ -60,6 +60,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Coral Cover",
         description="Higher values give preference to sites with high coral cover for fogging deployments."
     )
+    #=
     fog_cluster_diversity::Param = Factor(
         0.5;
         ptype="continuous",
@@ -69,6 +70,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Cluster Diversity",
         description="Prefer to fog locations in clusters that are under-represented."
     )
+    =#
     fog_geographic_separation::Param = Factor(
         0.5;
         ptype="continuous",

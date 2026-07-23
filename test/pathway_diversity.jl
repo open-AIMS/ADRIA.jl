@@ -62,7 +62,7 @@ const RME_DOM = ADRIA.load_domain(ADRIA.RMEDomain, joinpath(TEST_DATA_DIR, "RME_
 
         criteria_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
         assumed_names = [:seed_heat_stress, :seed_in_connectivity,
-            :seed_out_connectivity, :seed_depth, :seed_coral_cover, :seed_cluster_diversity,
+            :seed_out_connectivity, :seed_depth, :seed_coral_cover,
             :seed_geographic_separation, :seed_coral_diversity]
 
         msg = """
