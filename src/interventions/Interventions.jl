@@ -327,6 +327,13 @@ function setup_guided_intervention(
     is_intervention::Bool,
     build_strategy::Function
 )
+    pref = preference(domain, param_set)
+
+    # The decision matrix and strategy are only used when the intervention is active
+    if !is_intervention
+        return pref, nothing, nothing
+    end
+
     # Remove locations that cannot support corals or are out of depth bounds
     # from consideration
     valid_locs_mask =
@@ -336,7 +343,6 @@ function setup_guided_intervention(
     diversity_scores = decision.cluster_diversity(domain.loc_data.CB_CALIB_GROUPS)
     separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
-    pref = preference(domain, param_set)
     decision_mat = decision_matrix(
         domain.loc_ids[valid_locs_mask],
         pref.names;
@@ -344,11 +350,7 @@ function setup_guided_intervention(
         cluster_diversity=diversity_scores[valid_locs_mask],
         geographic_separation=separation_scores[valid_locs_mask]
     )
-    strategy =
-        is_intervention ?
-        build_strategy(
-            param_set, domain, domain.loc_ids[valid_locs_mask]
-        ) :
-        nothing
+    strategy = build_strategy(param_set, domain, domain.loc_ids[valid_locs_mask])
+
     return pref, decision_mat, strategy
 end
