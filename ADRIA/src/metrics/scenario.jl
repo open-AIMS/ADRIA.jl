@@ -93,16 +93,18 @@ For 3D input (timesteps x locations x scenarios): returns Matrix[locations x sce
 function _years_above_threshold(
     data::YAXArray{<:Real,2}; threshold::Real=0.1, kwargs...
 )::AbstractArray{<:Real}
-    result = dropdims(sum(data .> threshold; dims=:timesteps); dims=:timesteps)
-    return DataCube(Array(result); scenarios=1:length(result))
+    tf_dim = axis_index(data, :timesteps)
+    result = dropdims(sum(Array(data) .> threshold; dims=tf_dim); dims=tf_dim)
+    return DataCube(result; scenarios=1:length(result))
 end
 function _years_above_threshold(
     data::YAXArray{<:Real,3}; threshold::Real=0.1, kwargs...
 )::AbstractArray{<:Real}
     loc_labels = axis_labels(data, :locations)
     n_scens = length(axis_labels(data, :scenarios))
-    result = dropdims(sum(data .> threshold; dims=:timesteps); dims=:timesteps)
-    return DataCube(Array(result); locations=loc_labels, scenarios=1:n_scens)
+    tf_dim = axis_index(data, :timesteps)
+    result = dropdims(sum(Array(data) .> threshold; dims=tf_dim); dims=tf_dim)
+    return DataCube(result; locations=loc_labels, scenarios=1:n_scens)
 end
 years_above_threshold = Metric(
     _years_above_threshold,
