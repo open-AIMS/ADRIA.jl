@@ -79,16 +79,16 @@ if get(ENV, "ADRIA_RUN_VIZ_TESTS", "0") == "1"
 
     @testset "_figure_size" begin
         w, h = _figure_size(1, 1)
-        @test w == 1000 && h == 800   # single panel landscape
+        @test w == 700 && h == 800   # single panel landscape
 
-        # Multi-panel: 600*ncols + 20*(ncols-1) wide, 500*nrows + 20*(nrows-1) tall
+        # Multi-panel: 400*ncols + 20*(ncols-1) wide, 400*nrows + 20*(nrows-1) tall
         w2, h2 = _figure_size(1, 2)
-        @test w2 == 2 * 600 + 20
-        @test h2 == 500
+        @test w2 == 2 * 400 + 20
+        @test h2 == 400
 
         w3, h3 = _figure_size(2, 3)
-        @test w3 == 3 * 600 + 2 * 20
-        @test h3 == 2 * 500 + 20
+        @test w3 == 3 * 400 + 2 * 20
+        @test h3 == 2 * 400 + 20
 
         # All sizes are positive
         for nr = 1:4, nc = 1:4

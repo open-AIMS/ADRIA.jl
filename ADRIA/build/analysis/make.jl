@@ -18,7 +18,7 @@ const SYSIMAGE_OUT = get(ENV, "SYSIMAGE_OUT",
     joinpath(@__DIR__, "adria_analysis" * _EXT))
 
 const CPU_TARGET = get(ENV, "JULIA_CPU_TARGET",
-    "x86_64;haswell;skylake;skylake-avx512;tigerlake")
+    "generic;haswell;skylake;skylake-avx512;tigerlake")
 
 @info "Building adria_analysis.so" sysimage_path = SYSIMAGE_OUT cpu_target = CPU_TARGET
 
@@ -34,8 +34,10 @@ create_sysimage(
         :DataFrames, :CSV, :JSON,
         :GeoDataFrames, :GeoInterface, :GeoFormatTypes,
         :Graphs, :SimpleWeightedGraphs,
-        # ── Visualisation ───────────────────────────────────────────────────
-        :ADRIAviz, :CairoMakie,
+        # ── Visualisation (headless, PlotlyKaleido export) ───────────────────
+        # PlotlyBase + PlotlyKaleido together trigger ADRIAvizPlotlyExt and
+        # ADRIAvizPlotlyKaleidoExt at compile time.
+        :ADRIAviz, :PlotlyBase, :PlotlyKaleido,
         # ── Analysis (MLJ / SIRUS deliberately absent) ───────────────────────
         :ADRIAanalysis,
         :Bootstrap, :Clustering, :DataEnvelopmentAnalysis, :HypothesisTests,
@@ -51,3 +53,8 @@ create_sysimage(
 let sz = round(stat(SYSIMAGE_OUT).size / 1024^2; digits=1)
     @info "adria_analysis.so ready" size_MB = sz path = SYSIMAGE_OUT
 end
+
+# Record the exact Julia build used to compile this sysimage, so consumers
+# (see Dockerfile adria-analysis-runtime) can verify the runtime `julia`
+# matches before loading it with `-J`, rather than failing at container start.
+write(SYSIMAGE_OUT * ".version", string(VERSION))

@@ -128,6 +128,23 @@ function identify_within_depth_bounds(
 end
 
 """
+    build_decay(plan_horizon::Int64, projection_confidence::Float64; α::Float64=0.99)::Vector{Float64}
+
+Per-timestep decay vector weighting environmental projections by lead time, for
+use with `weighted_projection`. `α` is the per-step base decay rate (unchanged
+default). `projection_confidence` (0.0-1.0) sets `exponent = 2.0 -
+projection_confidence`: 0.0 gives exponent 2.0 (steep decay, historical
+default), 1.0 gives exponent 1.0 (mild decay). `plan_horizon` controls the
+window length (vector length), not decay shape.
+"""
+function build_decay(
+    plan_horizon::Int64, projection_confidence::Float64; α::Float64=0.99
+)::Vector{Float64}
+    exponent = 2.0 - projection_confidence
+    return α .^ (1:(plan_horizon + 1)) .^ exponent
+end
+
+"""
     weighted_projection(
         env_data::AbstractMatrix{Float64}, tstep::Int64, planning_horizon::Int64,
         decay::AbstractVector{Float64}, timeframe::Int64

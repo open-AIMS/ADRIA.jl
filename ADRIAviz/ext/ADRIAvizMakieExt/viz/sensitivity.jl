@@ -1,26 +1,25 @@
 using Statistics
 using Printf
-function _get_cat_quantile(
-    foi_spec::DataFrame, factor_name::Symbol, steps::AbstractVector{Float64}
-)::Vector{Float64}
-    fact_idx::BitVector = foi_spec.fieldname .== factor_name
-    lb = foi_spec.lower_bound[fact_idx][1] - 1
-    ub = foi_spec.upper_bound[fact_idx][1]
-    return round.(quantile(lb:ub, steps))
-end
 using ADRIA: _is_discrete_factor
 
 """
     _get_guided_labels()::Vector{String}
 
-Returns labels for categories of the `guided` factor.
+Returns labels for categories of the `guided` factor (effort level: -1 no
+intervention/counterfactual, 0 unguided, 1 guided).
 """
 function _get_guided_labels()::Vector{String}
-    return [
-        "cf",
-        "unguided",
-        last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-    ]
+    return ["cf", "unguided", "guided"]
+end
+
+"""
+    _get_mcda_method_labels()::Vector{String}
+
+Returns labels for categories of the `mcda_method` factor (which MCDA method
+is used for location selection; only meaningful when `guided` == 1).
+"""
+function _get_mcda_method_labels()::Vector{String}
+    return last.(split.(string.(ADRIA.decision.mcda_methods()), "."))
 end
 
 """
@@ -190,432 +189,695 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.rsa(rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.rsa!(ax::Axis, si::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64})
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(g, X, y, foi; with_contour=true, with_density_contours=true, outcome_threshold=nothing, opts=..., axis_opts=...)
+    ADRIA.viz.rsa(X, y, foi; with_contour=true, with_density_contours=true, outcome_threshold=nothing, opts=..., fig_opts=..., axis_opts=...) -> Figure
 
-Plot regional sensitivities of up to 30 factors.
+2D scatter of two input factors colored by outcome metric.
 
 # Arguments
-- `rs` : ResultSet
-- `si` : Results from ADRIA regional sensitivity analysis
-- `opts` : Additional figure customization options
-- `fig_opts` : Additional options to pass to adjust Figure creation
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
-- `axis_opts` : Additional options to pass to adjust Axis attributes
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-
-# Returns
-Makie figure
+- `g`                    : GridLayout or GridPosition to draw into
+- `X`                    : Feature matrix (DataFrame, columns = factors)
+- `y`                    : Outcome values per scenario
+- `foi`                  : NTuple{2,Symbol} — (x-axis factor, y-axis factor)
+- `with_contour`         : Overlay a 2D binned-average heatmap (colour = mean outcome
+                           per grid cell). O(N) and artefact-free.
+- `with_density_contours`: Overlay white iso-contour lines showing the count of
+                           scenarios that met the outcome threshold in each grid cell.
+                           High-contour regions are where desired outcomes are
+                           concentrated in factor space.
+                           Only active when `with_contour=true`.
+- `outcome_threshold`    : Controls which scenarios are counted for the contour.
+                           - `nothing` (default): counts scenarios where `y > median(y)`.
+                           - `Real`: counts scenarios where `y > outcome_threshold`.
+                           - `AbstractVector{Bool}`: a pre-computed binary mask
+                             (one entry per scenario, `true` = scenario met criteria).
+                           - `AbstractVector{<:Integer}`: indices of scenarios that
+                             met the criteria; converted to a boolean mask internally.
 """
 function ADRIA.viz.rsa!(
     g::Union{GridLayout,GridPosition},
-    rs::ResultSet,
-    si::Dataset,
-    factors::Vector{Symbol};
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    n_factors::Int64 = length(factors)
-    set_typography_defaults!(axis_opts; n_panels=n_factors)
-    if n_factors > 30
-        ArgumentError("Too many factors to plot. Maximum number supported is 30.")
-    end
-
-    n_rows, n_cols = _calc_gridsize(n_factors)
-
-    xlabel = get(axis_opts, :xlabel, "Factor Value")
-    ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
-
-    if :title in keys(axis_opts)
-        title_val = pop!(axis_opts, :title)
-    end
-
-    # min_step = (1 / 0.05)
-    # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
-
-    # Color by component
-    ms = model_spec(rs)
-    foi = ms.fieldname .∈ [factors]
-    all_comps = ms[foi, :component]
-    f_names = ms[foi, :fieldname]
-    h_names = ms[foi, :name]
-    dist_params = ms[foi, :dist_params]
-
-    # Hacky special case handling for SSP/RCP
-    if :RCP in factors || :SSP in factors
-        loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
-        insert!(all_comps, loc, "EnvironmentalLayer")
-        insert!(f_names, loc, "RCP")
-        insert!(h_names, loc, "SSP/RCP")
-        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
-    end
-
-    curr::Int64 = 1
-    axs = Axis[]
-    for r = 1:n_rows
-        for c = 1:n_cols
-            f_name = Symbol(factors[curr])
-            ms_factor = ms[ms.fieldname .== f_name, :]
-            f_vals = rs.inputs[:, f_name]
-
-            ax::Axis = Axis(
-                g[r, c];
-                title=h_names[f_names .== f_name][1],
-                axis_opts...
-            )
-
-            # Plot for individual factors on ax
-            ADRIA.viz.rsa!(ax, si[f_name], ms_factor, f_vals)
-
-            push!(axs, ax)
-            curr += 1
-
-            if curr > n_factors
-                break
-            end
-        end
-    end
-
-    if n_factors > 1
-        linkyaxes!(axs...)
-        Label(g[end + 1, :]; text=xlabel, fontsize=axis_opts[:xlabelsize] + 2)
-        Label(
-            g[1:(end - 1), 0];
-            text=ylabel,
-            fontsize=get(axis_opts, :ylabelsize, axis_opts[:xlabelsize]) + 2,
-            rotation=π / 2.0
-        )
-    else
-        axs[1].xlabel = xlabel
-        axs[1].ylabel = ylabel
-    end
-
-    if :title in keys(axis_opts)
-        Label(g[0, :]; text=title_val, fontsize=axis_opts[:titlesize])
-    end
-
-    # Clear empty figures
-    trim!(g)
-
-    return g
-end
-function ADRIA.viz.rsa!(
-    ax::Axis,
-    si::YAXArray,
-    ms_factor::DataFrame,
-    f_vals::Vector{Float64}
-)
-    f_name = ms_factor.fieldname[1]
-    f_type::String = ms_factor.ptype[1]
-
-    si_param_scens = collect(si.axes[1]).data
-    if _is_discrete_factor(f_type)
-        fv_s = _get_cat_quantile(
-            ms_factor, f_name, si_param_scens
-        )
-    else
-        fv_s = round.(quantile(f_vals, si_param_scens); digits=2)
-    end
-
-    if !all(si[si = At("Si")] .== 0.0)
-        scatterlines!(ax, fv_s, collect(si[si = At("Si")]); markersize=15)
-
-        if f_name == :guided
-            fv_labels = _get_guided_labels()
-            ax.xticks = (fv_s, fv_labels)
-            ax.xticklabelrotation = pi / 4
-        end
-    end
-
-    return ax
-end
-function ADRIA.viz.rsa(
-    rs::ResultSet,
-    si::Dataset,
-    factors::Vector{Symbol};
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    n_rows, n_cols = _calc_gridsize(length(factors))
-    set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-    ADRIA.viz.rsa!(g, rs, si, factors; axis_opts)
-
-    return f
-end
-function ADRIA.viz.rsa(
-    rs::ResultSet,
-    si::Dataset,
-    factor::Symbol;
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    return ADRIA.viz.rsa(
-        rs, si, [factor]; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
-    )
-end
-function ADRIA.viz.rsa(
-    rs::ResultSet,
-    si::YAXArray,
-    factor::Symbol;
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    set_figure_defaults(fig_opts)
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-    ADRIA.viz.rsa!(g, rs, si, factor; opts=opts, axis_opts=axis_opts)
-
-    return f
-end
-function ADRIA.viz.rsa!(
-    g::Union{GridLayout,GridPosition},
-    rs::ResultSet,
-    si::YAXArray,
-    factor::Symbol;
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    foi::NTuple{2,Symbol};
+    binary_mode::Bool=false,
+    with_contour::Bool=true,
+    with_density_contours::Bool=true,
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    _add_colorbar::Bool=true,
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     set_typography_defaults!(axis_opts)
-    xlabel = get(axis_opts, :xlabel, "Factor Value")
-    ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
+    xlabel = get(axis_opts, :xlabel, string(foi[1]))
+    ylabel = get(axis_opts, :ylabel, string(foi[2]))
 
-    ms = model_spec(rs)
-    ms_factor = ms[ms.fieldname .== factor, :]
+    ax = Axis(g[1, 1]; xlabel=xlabel, ylabel=ylabel, axis_opts...)
 
-    if :title in keys(axis_opts)
-        title_val = pop!(axis_opts, :title)
-    else
-        title_val = ms_factor.name[1]
-    end
+    x_vals = Float64.(X[!, foi[1]])
+    y_vals = Float64.(X[!, foi[2]])
+    outcome_f = Float64.(y)
 
-    f_vals = rs.inputs[:, factor]
+    if binary_mode
+        # Classic RSA: binary behavioural / non-behavioural scatter.
+        # Non-behavioural scenarios are drawn first as a grey backdrop; behavioural
+        # scenarios (those exceeding the outcome threshold) are drawn on top in a
+        # single accent colour.  An optional density contour traces where behavioural
+        # points concentrate in factor space without adding a competing colour channel.
+        behav = _outcome_mask(outcome_threshold, outcome_f)
+        non_behav = .!behav
 
-    ax::Axis = Axis(
-        g[1, 1];
-        title=title_val,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        ylabelrotation=π / 2.0,
-        axis_opts...
-    )
-    ADRIA.viz.rsa!(ax, si, ms_factor, f_vals)
+        any(non_behav) && scatter!(
+            ax, x_vals[non_behav], y_vals[non_behav];
+            color=(:grey70, 0.3), strokewidth=0, markersize=8
+        )
+        any(behav) && scatter!(
+            ax, x_vals[behav], y_vals[behav];
+            color=(:dodgerblue, 0.7), strokewidth=0, markersize=8
+        )
 
-    return g
-end
-
-"""
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factor::Symbol; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE())
-    ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.outcome_map!(ax::Axis, outcomes::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-
-Plot results of `outcome_map` for up to 30 factors.
-
-For each `factor` in `factors`, plot `outcomes` with a ribbon for the `upper` and `lower` bounds and a line for the `mean`.
-
-# Arguments
-- `rs` : ResultSet
-- `outcomes` : ADRIA Outcome Mapping results for one or more factors
-- `factors` / `factor` : The factor(s) of interest to display
-- `opts` : Additional figure customization options
-- `fig_opts` : Additional options to pass to adjust Figure creation
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
-- `axis_opts` : Additional options to pass to adjust Axis attributes
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `g` : A `GridLayout` and `GridPosition`
-- `ax` : An Axis
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `ms_factor` : Model specification for one factor
-- `f_vals` : Factor values for one factor, as present in the result set
-
-# Returns
-Makie figure
-"""
-function ADRIA.viz.outcome_map!(
-    g::Union{GridLayout,GridPosition},
-    rs::ResultSet,
-    outcomes::Dataset,
-    factors::Vector{Symbol};
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
-    #       found in `rsa()`
-    n_factors::Int64 = length(factors)
-    set_typography_defaults!(axis_opts; n_panels=n_factors)
-    if n_factors > 30
-        ArgumentError("Too many factors to plot. Maximum number supported is 30.")
-    end
-
-    n_rows, n_cols = _calc_gridsize(n_factors)
-
-    xlabel = pop!(axis_opts, :xlabel, "Factor Value")
-    ylabel = pop!(axis_opts, :ylabel, "Outcome")
-
-    if :title in keys(axis_opts)
-        title_val = pop!(axis_opts, :title)
-    end
-
-    # min_step = (1 / 0.05)
-    # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
-
-    # Color by component
-    ms = model_spec(rs)
-    foi = ms.fieldname .∈ [factors]
-    all_comps = ms[foi, :component]
-    f_names = ms[foi, :fieldname]
-    h_names = ms[foi, :name]
-    dist_params = ms[foi, :dist_params]
-
-    # Hacky special case handling for SSP/RCP
-    if :RCP in factors || :SSP in factors
-        loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
-        insert!(all_comps, loc, "EnvironmentalLayer")
-        insert!(f_names, loc, "RCP")
-        insert!(h_names, loc, "SSP/RCP")
-        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
-    end
-
-    curr::Int64 = 1
-    axs = Axis[]
-    for r = 1:n_rows
-        for c = 1:n_cols
-            f_name = Symbol(factors[curr])
-            ms_factor = ms[ms.fieldname .== f_name, :]
-            f_vals = rs.inputs[:, f_name]
-
-            ax::Axis = Axis(
-                g[r, c]; title=ms_factor.name[1], axis_opts...
+        if with_density_contours && any(behav)
+            n_bins = 15
+            bx = x_vals[behav]
+            by = y_vals[behav]
+            xe = range(extrema(x_vals)...; length=n_bins + 1)
+            ye = range(extrema(y_vals)...; length=n_bins + 1)
+            xc = (xe[1:(end - 1)] .+ xe[2:end]) ./ 2
+            yc = (ye[1:(end - 1)] .+ ye[2:end]) ./ 2
+            n_bin = Float64[
+                count(
+                    (bx .>= xe[i]) .& (bx .< xe[i + 1]) .&
+                    (by .>= ye[j]) .& (by .< ye[j + 1])
+                )
+                for i = 1:n_bins, j = 1:n_bins
+            ]
+            maximum(n_bin) > 0 && contour!(
+                ax, xc, yc, n_bin;
+                levels=5, colormap=:plasma, linewidth=1.5, alpha=0.8
             )
+        end
 
-            # Plot for individual factors on ax
-            ADRIA.viz.outcome_map!(ax, outcomes[f_name], ms_factor, f_vals)
+        if _add_colorbar
+            Legend(
+                g[1, 2],
+                [
+                    MarkerElement(;
+                        color=(:dodgerblue, 0.7), marker=:circle, markersize=10
+                    ),
+                    MarkerElement(; color=(:grey70, 0.5), marker=:circle, markersize=10)
+                ],
+                ["Behavioural", "Non-behavioural"]
+            )
+        end
+    else
+        if with_contour
+            # 2D binned grid shared by both the mean-outcome heatmap and the density
+            # contours — computed in one pass to avoid redundant work.
+            n_bins = 15
+            x_edges = range(extrema(x_vals)...; length=n_bins + 1)
+            ye_edges = range(extrema(y_vals)...; length=n_bins + 1)
+            x_centers = (x_edges[1:(end - 1)] .+ x_edges[2:end]) ./ 2
+            ye_centers = (ye_edges[1:(end - 1)] .+ ye_edges[2:end]) ./ 2
 
-            push!(axs, ax)
-            curr += 1
+            masks = [
+                (x_vals .>= x_edges[i]) .& (x_vals .< x_edges[i + 1]) .&
+                (y_vals .>= ye_edges[j]) .& (y_vals .< ye_edges[j + 1])
+                for i = 1:n_bins, j = 1:n_bins
+            ]
 
-            if curr > n_factors
-                break
+            # Mean outcome per bin (colour channel)
+            z_bin = [
+                any(m) ? mean(outcome_f[m]) : NaN
+                for m in masks
+            ]
+
+            finite_z = filter(isfinite, vec(z_bin))
+            if !isempty(finite_z)
+                # heatmap! renders each bin as a solid rectangle — no triangulation
+                # artefacts (diagonal seams) and no NaN-induced white holes.
+                # nan_color=(:white,0) makes empty bins fully transparent so scatter
+                # points remain visible in all areas.
+                heatmap!(
+                    ax, x_centers, ye_centers, z_bin;
+                    colormap=:viridis, alpha=0.4,
+                    colorrange=extrema(finite_z),
+                    nan_color=(:white, 0)
+                )
+
+                if with_density_contours
+                    # Count of scenarios that met the outcome threshold per bin.
+                    # White iso-contour lines show where desired outcomes are concentrated
+                    # in factor space, independently of the mean-outcome colour channel.
+                    above_thresh = _outcome_mask(outcome_threshold, outcome_f)
+                    n_bin = Float64[count(m .& above_thresh) for m in masks]
+                    n_bin_max = maximum(n_bin)
+                    if n_bin_max > 0
+                        contour!(
+                            ax, x_centers, ye_centers, n_bin;
+                            levels=5, color=:white, linewidth=1, alpha=0.7
+                        )
+                    end
+                end
             end
         end
-    end
 
-    if n_factors > 1
-        linkyaxes!(axs...)
-        Label(g[n_rows + 1, :]; text=xlabel, fontsize=axis_opts[:xlabelsize] + 2)
-        Label(
-            g[:, 0];
-            text=ylabel,
-            fontsize=get(axis_opts, :ylabelsize, axis_opts[:xlabelsize]) + 2,
-            rotation=pi / 2
+        scatter!(
+            ax, x_vals, y_vals;
+            color=outcome_f, colormap=:viridis,
+            strokewidth=0, alpha=0.5, markersize=10
         )
 
-        if @isdefined(title_val)
-            Label(g[0, :]; text=title_val, fontsize=axis_opts[:titlesize])
-        end
-    else
-        axs[1].xlabel = xlabel
-        axs[1].ylabel = ylabel
-
-        if @isdefined(title_val)
-            axs[1].title = title_val
-        end
-    end
-
-    try
-        # Clear empty figures
-        trim!(g)
-    catch err
-        if !(err isa MethodError)
-            # GridPosition plots a single figure so does
-            # not need empty figures to be cleared
-            # If any other error is encountered, something else happened.
-            rethrow(err)
+        if _add_colorbar
+            Colorbar(g[1, 2]; colormap=:viridis, label="outcome")
         end
     end
 
     return g
 end
-function ADRIA.viz.outcome_map!(
-    ax::Axis,
-    outcomes::YAXArray,
-    ms_factor::DataFrame,
-    f_vals::Vector{Float64};
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    f_name = ms_factor.fieldname[1]
-    f_type::String = ms_factor.ptype[1]
-    outcomes_param_scens = collect(outcomes.axes[1]).data
-    if _is_discrete_factor(f_type)
-        # If categorical/discrete get categorical quantile
-        fv_s = _get_cat_quantile(
-            ms_factor, f_name,
-            outcomes_param_scens
-        )
-    else
-        # Otherwise use regular quantile
-        fv_s = round.(quantile(f_vals, outcomes_param_scens); digits=2)
-    end
-
-    if .!all(outcomes[CI = At("mean")] .== 0.0)
-        band!(
-            ax,
-            fv_s[.!ismissing.(outcomes[CI = At("lower")])],
-            collect(skipmissing(outcomes[CI = At("lower")])),
-            collect(skipmissing(outcomes[CI = At("upper")]))
-        )
-        scatterlines!(ax, fv_s, collect(outcomes[CI = At("mean")]); markersize=15)
-
-        if f_name == :guided
-            fv_labels = _get_guided_labels()
-            ax.xticks = (fv_s, fv_labels)
-            ax.xticklabelrotation = pi / 4
-        end
-    end
-
-    return ax
-end
-function ADRIA.viz.outcome_map(
-    rs::ResultSet,
-    outcomes::Dataset,
-    factors::Vector{Symbol};
+function ADRIA.viz.rsa(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    foi::NTuple{2,Symbol};
+    binary_mode::Bool=false,
+    with_contour::Bool=true,
+    with_density_contours::Bool=true,
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    get!(fig_opts, :size, (700, 500))
+    set_figure_defaults(fig_opts)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.rsa!(
+        g, X, y, foi;
+        binary_mode=binary_mode, with_contour=with_contour,
+        with_density_contours=with_density_contours,
+        outcome_threshold=outcome_threshold, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.rsa!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor_pairs::AbstractVector{<:NTuple{2,Symbol}};
+    binary_mode::Bool=false,
+    with_contour::Bool=true,
+    with_density_contours::Bool=true,
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
+    n_pairs = length(factor_pairs)
+    n_rows, n_cols = _calc_gridsize(n_pairs)
+    for (idx, pair) in enumerate(factor_pairs)
+        row = div(idx - 1, n_cols) + 1
+        col = mod(idx - 1, n_cols) + 1
+        ax_opts = copy(axis_opts)
+        set_typography_defaults!(ax_opts; n_panels=n_pairs)
+        ADRIA.viz.rsa!(
+            g[row, col], X, y, pair;
+            binary_mode=binary_mode, with_contour=with_contour,
+            with_density_contours=with_density_contours,
+            outcome_threshold=outcome_threshold, _add_colorbar=false, opts=opts,
+            axis_opts=ax_opts
+        )
+    end
+    if binary_mode
+        Legend(
+            g[1:n_rows, n_cols + 1],
+            [
+                MarkerElement(;
+                    color=(:dodgerblue, 0.7), marker=:circle, markersize=12
+                ),
+                MarkerElement(; color=(:grey70, 0.5), marker=:circle, markersize=12)
+            ],
+            ["Behavioural", "Non-behavioural"]
+        )
+    else
+        Colorbar(g[1:n_rows, n_cols + 1]; colormap=:viridis, label="outcome")
+    end
+    rg, cg = _adaptive_gap(n_pairs)
+    if g isa GridLayout
+        rowgap!(g, rg)
+        colgap!(g, cg)
+    end
+    return g
+end
+function ADRIA.viz.rsa(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor_pairs::AbstractVector{<:NTuple{2,Symbol}};
+    binary_mode::Bool=false,
+    with_contour::Bool=true,
+    with_density_contours::Bool=true,
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    n_pairs = length(factor_pairs)
+    n_rows, n_cols = _calc_gridsize(n_pairs)
+    set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.rsa!(
+        g, X, y, factor_pairs;
+        binary_mode=binary_mode, with_contour=with_contour,
+        with_density_contours=with_density_contours,
+        outcome_threshold=outcome_threshold, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.rsa!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    with_density::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    n_factors = length(factors)
+    n_rows, n_cols = _calc_gridsize(n_factors)
+    y_f = Float64.(y)
+    for (idx, factor) in enumerate(factors)
+        row = div(idx - 1, n_cols) + 1
+        col = mod(idx - 1, n_cols) + 1
+        ax_opts = copy(axis_opts)
+        set_typography_defaults!(ax_opts; n_panels=n_factors)
+        ax_opts[:xlabel] = string(factor)
+        ax_opts[:ylabel] = get(axis_opts, :ylabel, "outcome")
+        ax = Axis(g[row, col]; ax_opts...)
+        x_raw = X[!, factor]
+        x_f = Float64.(x_raw)
+        is_discrete = eltype(x_raw) <: Integer || length(unique(x_f)) <= 10
+        if with_density && !is_discrete
+            hexbin!(ax, x_f, y_f; bins=20, colormap=:Blues, threshold=1, strokewidth=0)
+        end
+        scatter!(
+            ax, x_f, y_f;
+            color=y_f, colormap=:viridis, strokewidth=0, alpha=0.5, markersize=8
+        )
+    end
+    Colorbar(g[1:n_rows, n_cols + 1]; colormap=:viridis, label="outcome")
+    rg, cg = _adaptive_gap(n_factors)
+    if g isa GridLayout
+        rowgap!(g, rg)
+        colgap!(g, cg)
+    end
+    return g
+end
+function ADRIA.viz.rsa(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    with_density::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
     n_rows, n_cols = _calc_gridsize(length(factors))
     set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.outcome_map!(g, rs, outcomes, factors; opts=opts, axis_opts=axis_opts)
-
+    ADRIA.viz.rsa!(
+        g, X, y, factors; with_density=with_density, opts=opts, axis_opts=axis_opts
+    )
     return f
 end
-function ADRIA.viz.outcome_map(
-    rs::ResultSet,
-    outcomes::Dataset,
+
+"""
+    ADRIA.viz.rsa_cdf!(g, X, y, factor; outcome_threshold=nothing, _add_legend=true, opts=..., axis_opts=...)
+    ADRIA.viz.rsa_cdf(X, y, factor; ...) -> Figure
+    ADRIA.viz.rsa_cdf!(g, X, y, factors; outcome_threshold=nothing, opts=..., axis_opts=...)
+    ADRIA.viz.rsa_cdf(X, y, factors; ...) -> Figure
+
+Classic Hornberger-Spear RSA: empirical CDFs of behavioural vs non-behavioural scenarios
+for each input factor.
+
+For each factor, two empirical CDFs are drawn:
+- **Behavioural** (solid blue): scenarios where the outcome exceeded the threshold.
+- **Non-behavioural** (dashed grey): all remaining scenarios.
+
+A large vertical separation between the two CDFs indicates that the factor strongly
+discriminates between good and poor outcomes (high sensitivity).
+
+# Arguments
+- `g`                : GridLayout or GridPosition to draw into
+- `X`                : Feature matrix (DataFrame, columns = factors)
+- `y`                : Scalar outcome per scenario
+- `factor(s)`        : `Symbol` or `AbstractVector{Symbol}` selecting columns of `X`
+- `outcome_threshold`: Threshold for the behavioural / non-behavioural split:
+                       `nothing` (default) → `y > median(y)`;
+                       `Real` → `y > threshold`;
+                       `AbstractVector{Bool}` → pre-computed mask;
+                       `AbstractVector{<:Integer}` → indices of behavioural scenarios.
+- `_add_legend`      : Add an inline axis legend (suppressed in multi-factor layouts
+                       where a shared legend is placed to the right of the grid).
+"""
+function ADRIA.viz.rsa_cdf!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
     factor::Symbol;
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    _add_legend::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    set_typography_defaults!(axis_opts)
+    xlabel = get(axis_opts, :xlabel, string(factor))
+    ylabel = get(axis_opts, :ylabel, "Cumulative Probability")
+
+    ax = Axis(g[1, 1]; xlabel=xlabel, ylabel=ylabel, axis_opts...)
+
+    outcome_f = Float64.(y)
+    behav = _outcome_mask(outcome_threshold, outcome_f)
+    non_behav = .!behav
+    x_col = Float64.(X[!, factor])
+
+    if any(non_behav)
+        sv_nb, cdf_nb = _empirical_cdf(x_col[non_behav])
+        lines!(
+            ax, sv_nb, cdf_nb;
+            color=(:grey50, 0.8), linewidth=2, linestyle=:dash,
+            label="Non-behavioural (n=$(count(non_behav)))"
+        )
+    end
+    if any(behav)
+        sv_b, cdf_b = _empirical_cdf(x_col[behav])
+        lines!(
+            ax, sv_b, cdf_b;
+            color=:dodgerblue, linewidth=2,
+            label="Behavioural (n=$(count(behav)))"
+        )
+    end
+
+    _add_legend && axislegend(ax; position=:lt, labelsize=11)
+
+    return g
+end
+function ADRIA.viz.rsa_cdf(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor::Symbol;
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    return ADRIA.viz.outcome_map(
-        rs,
-        outcomes,
-        [factor];
-        opts=opts,
-        fig_opts=fig_opts,
-        axis_opts=axis_opts
+)::Figure
+    get!(fig_opts, :size, (600, 400))
+    set_figure_defaults(fig_opts)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.rsa_cdf!(
+        g, X, y, factor;
+        outcome_threshold=outcome_threshold, opts=opts, axis_opts=axis_opts
     )
+    return f
+end
+function ADRIA.viz.rsa_cdf!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    n_factors = length(factors)
+    n_rows, n_cols = _calc_gridsize(n_factors)
+    for (idx, factor) in enumerate(factors)
+        row = div(idx - 1, n_cols) + 1
+        col = mod(idx - 1, n_cols) + 1
+        ax_opts = copy(axis_opts)
+        set_typography_defaults!(ax_opts; n_panels=n_factors)
+        ADRIA.viz.rsa_cdf!(
+            g[row, col], X, y, factor;
+            outcome_threshold=outcome_threshold, _add_legend=false,
+            opts=opts, axis_opts=ax_opts
+        )
+    end
+    # Shared legend placed to the right of the panel grid.
+    outcome_f = Float64.(y)
+    behav = _outcome_mask(outcome_threshold, outcome_f)
+    Legend(
+        g[1:n_rows, n_cols + 1],
+        [
+            LineElement(; color=:dodgerblue, linewidth=2, linestyle=:solid),
+            LineElement(; color=(:grey50, 0.8), linewidth=2, linestyle=:dash)
+        ],
+        ["Behavioural (n=$(count(behav)))", "Non-behavioural (n=$(count(.!behav)))"]
+    )
+    rg, cg = _adaptive_gap(n_factors)
+    if g isa GridLayout
+        rowgap!(g, rg)
+        colgap!(g, cg)
+    end
+    return g
+end
+function ADRIA.viz.rsa_cdf(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    outcome_threshold::Union{Real,AbstractVector{Bool},AbstractVector{<:Integer},Nothing}=nothing,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    n_factors = length(factors)
+    n_rows, n_cols = _calc_gridsize(n_factors)
+    set_figure_defaults(fig_opts; n_rows=n_rows, n_cols=n_cols)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.rsa_cdf!(
+        g, X, y, factors;
+        outcome_threshold=outcome_threshold, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+
+"""
+    ADRIA.viz.outcome_map!(g, X, y, factor; with_density=true, opts=..., axis_opts=...)
+    ADRIA.viz.outcome_map(X, y, factor; ...) -> Figure
+    ADRIA.viz.outcome_map!(g, X, y, factors; with_density=true, opts=..., axis_opts=...)
+    ADRIA.viz.outcome_map(X, y, factors; ...) -> Figure
+
+Per-scenario scatter of factor value vs outcome, colored by outcome value.
+
+Points are colored by their outcome so that outcome quality remains visible even in
+densely populated regions of the factor space (e.g. when no-intervention scenarios
+dominate). Alpha transparency of overlapping points provides density context.
+
+The multi-factor overloads produce one subplot per factor (one row per factor, single
+column). All kwargs are forwarded unchanged to each single-factor call.
+
+- `with_density` : Unused; kept for API compatibility.
+"""
+function ADRIA.viz.outcome_map!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor::Symbol;
+    with_density::Bool=true,
+    _add_colorbar::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    set_typography_defaults!(axis_opts)
+    xlabel = get(axis_opts, :xlabel, string(factor))
+    ylabel = get(axis_opts, :ylabel, "outcome")
+
+    x_raw = X[!, factor]
+    x_f = Float64.(x_raw)
+    y_f = Float64.(y)
+
+    is_discrete = eltype(x_raw) <: Integer || length(unique(x_f)) <= 10
+    if is_discrete && length(unique(x_f)) > 1
+        span = maximum(x_f) - minimum(x_f)
+        jitter_scale = span / max(1, length(unique(x_f))) * 0.3
+        x_plot = x_f .+ jitter_scale .* (rand(length(x_f)) .- 0.5)
+    else
+        x_plot = x_f
+    end
+
+    ax = Axis(g[1, 1]; xlabel=xlabel, ylabel=ylabel, axis_opts...)
+
+    scatter!(
+        ax,
+        x_plot,
+        y_f;
+        color=y_f,
+        colormap=:viridis,
+        alpha=0.5,
+        markersize=6,
+        strokewidth=0
+    )
+    if _add_colorbar
+        Colorbar(g[1, 2]; colormap=:viridis, colorrange=extrema(y_f), label="outcome")
+    end
+
+    if factor == :guided
+        fv_labels = _get_guided_labels()
+        unique_vals = sort(unique(x_f))
+        n_labels = min(length(fv_labels), length(unique_vals))
+        ax.xticks = (unique_vals[1:n_labels], fv_labels[1:n_labels])
+        ax.xticklabelrotation = pi / 4
+    elseif factor == :mcda_method
+        fv_labels = _get_mcda_method_labels()
+        unique_vals = sort(unique(x_f))
+        n_labels = min(length(fv_labels), length(unique_vals))
+        ax.xticks = (unique_vals[1:n_labels], fv_labels[1:n_labels])
+        ax.xticklabelrotation = pi / 4
+    end
+
+    return g
+end
+function ADRIA.viz.outcome_map(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factor::Symbol;
+    with_density::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    set_figure_defaults(fig_opts)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.outcome_map!(
+        g, X, y, factor; with_density=with_density, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.outcome_map!(
+    g::Union{GridLayout,GridPosition},
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    with_density::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    n_factors = length(factors)
+    n_rows, n_cols = _calc_gridsize(n_factors)
+    for (i, factor) in enumerate(factors)
+        row = div(i - 1, n_cols) + 1
+        col = mod(i - 1, n_cols) + 1
+        ADRIA.viz.outcome_map!(
+            g[row, col], X, y, factor;
+            with_density=with_density, _add_colorbar=false, opts=opts,
+            axis_opts=axis_opts
+        )
+    end
+    y_f = Float64.(y)
+    Colorbar(
+        g[1:n_rows, n_cols + 1]; colormap=:viridis, colorrange=extrema(y_f), label="outcome"
+    )
+    return g
+end
+function ADRIA.viz.outcome_map(
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    factors::AbstractVector{Symbol};
+    with_density::Bool=true,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    n_rows, n_cols = _calc_gridsize(length(factors))
+    panel_w, panel_h, gap = 400, 350, 20
+    auto_w = n_cols * panel_w + (n_cols - 1) * gap
+    auto_h = n_rows * panel_h + (n_rows - 1) * gap
+    get!(fig_opts, :size, (auto_w, auto_h))
+    set_figure_defaults(fig_opts)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.outcome_map!(
+        g, X, y, factors; with_density=with_density, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+
+"""
+    ADRIA.viz.stratified_rsa(result::DataFrame; opts=..., fig_opts=..., axis_opts=...) -> Figure
+    ADRIA.viz.stratified_rsa!(g, result::DataFrame; opts=..., axis_opts=...)
+
+Heatmap of DHW-stratified RSA results.
+
+Rows = factors sorted descending by `mean_importance` (mean abs(prob_superiority - 0.5)
+across strata). Columns = DHW strata (1 = lowest DHW, n = highest DHW).
+Cell colour = `prob_superiority` in [0, 1].
+
+# Arguments
+- `result`    : DataFrame returned by `ADRIAanalysis.sensitivity.stratified_rsa`.
+- `opts`      : Figure customization options
+    - `top_n` : Show only the top-N factors by `mean_importance` (default: all)
+- `fig_opts`  : Passed to `Figure()`
+- `axis_opts` : Passed to `Axis()`
+"""
+function ADRIA.viz.stratified_rsa!(
+    g::Union{GridLayout,GridPosition},
+    result::DataFrame;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    set_typography_defaults!(axis_opts)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 0.0)
+
+    top_n = get(opts, :top_n, nrow(result))
+
+    # Build factor order: sort by mean_importance descending, then apply top_n
+    cons_order = sort(
+        unique(result[:, [:feature, :mean_importance]]),
+        :mean_importance;
+        rev=true
+    )
+    n_show = min(top_n, nrow(cons_order))
+    factors_ordered = cons_order.feature[1:n_show]
+
+    strata = sort(unique(result.stratum))
+    n_strata = length(strata)
+    n_factors = length(factors_ordered)
+
+    # Build matrix: rows = factors (top->bottom), cols = strata (low->high DHW)
+    z = fill(NaN, n_factors, n_strata)
+    for (fi, feat) in enumerate(factors_ordered)
+        for (si, s) in enumerate(strata)
+            rows = filter(r -> r.feature == feat && r.stratum == s, result)
+            isempty(rows) || (z[fi, si] = rows.prob_superiority[1])
+        end
+    end
+
+    ax = Axis(
+        g[1, 1];
+        xticks=(1:n_strata, ["DHW Q$s" for s in strata]),
+        yticks=(1:n_factors, string.(factors_ordered)),
+        xticklabelrotation=xtick_rot,
+        xlabel=get(axis_opts, :xlabel, "DHW stratum"),
+        ylabel=get(axis_opts, :ylabel, "Factor"),
+        axis_opts...
+    )
+    ax.yreversed = true
+
+    heatmap!(ax, z'; colormap=:viridis, colorrange=(0.0, 1.0))
+    Colorbar(g[1, 2]; colormap=:viridis, colorrange=(0.0, 1.0), label="P(superiority)")
+
+    return g
+end
+function ADRIA.viz.stratified_rsa(
+    result::DataFrame;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    set_figure_defaults(fig_opts)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.stratified_rsa!(g, result; opts=opts, axis_opts=axis_opts)
+    return f
 end
 
 """

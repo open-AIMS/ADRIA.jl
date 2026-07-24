@@ -29,8 +29,7 @@ Requires Julia 1.11+ and ADRIA 0.17.
 | Analysis | `cluster_rules`, `print_rules` | Extract interpretable decision rules (requires SIRUS, MLJ) |
 | Sensitivity | `sensitivity.pawn` | PAWN sensitivity indices |
 | Sensitivity | `sensitivity.tsa` | Two-Step Algorithm |
-| Sensitivity | `sensitivity.rsa` | Regional Sensitivity Analysis |
-| Sensitivity | `sensitivity.outcome_map` | Map outcomes to factor regions |
+| Sensitivity | `sensitivity.rsa` | Rank-based RSA via Mann-Whitney U test |
 
 ## Quick Start
 
@@ -59,12 +58,17 @@ freqs = intervention_frequency(rs, robust, :seed)
 
 ```julia
 X = feature_set(rs)
+y = vec(mean(tac; dims=1))
 
 # PAWN sensitivity indices (10 bins)
-si = sensitivity.pawn(X, vec(mean(tac; dims=1)), 10)
+si = sensitivity.pawn(X, y, 10)
 
-# Regional Sensitivity Analysis
-sensitivity.rsa(X, vec(mean(tac; dims=1)), rs.model_spec)
+# Feature ranking via Mann-Whitney U test (top 10% by default)
+ranking = sensitivity.rsa(X, y)
+
+# Custom outcome filter: top 30%
+mask = y .>= quantile(y, 0.7)
+ranking = sensitivity.rsa(X, mask)
 ```
 
 ### Data Envelopment Analysis

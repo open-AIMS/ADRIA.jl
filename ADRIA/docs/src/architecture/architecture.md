@@ -90,8 +90,14 @@ upper bounds), and a human-readable name and description. An example from the `I
 sub-component is shown below.
 
 ```julia
-guided::N = Factor(0.0, ptype="ordered categorical", dist=(-1.0, 3.0), dist_params=DiscreteUniform,
-        name="Guided", description="Choice of MCDA approach.")
+guided::Param = Factor(
+    0;
+    ptype="ordered categorical",
+    dist=CategoricalDistribution,
+    dist_params=(-1.0, 0.0, 1.0),
+    name="Guided",
+    description="Intervention effort level: -1 no intervention (counterfactual), 0 unguided, 1 guided (MCDA-driven)."
+)
 ```
 
 Note that factor values are provided as floats - even where discrete values are expected -
@@ -103,6 +109,78 @@ Combinations of the realized factor values then represent a "scenario".
 !!! note "Parameter Collation and Scenario Generation"
     See [Cookbook examples](@ref) for an example how-to on collating model factors and
     generating samples.
+
+### Conditional sampling dependencies
+
+Many model factors only matter under a subset of scenario regimes — seeding deployment
+factors have no effect on a counterfactual scenario, and criteria weights have no effect
+unless a `guided` MCDA approach is active. Sampling every factor unconditionally would
+waste sample budget on combinations that can't affect model output, and would dilute
+sensitivity/PAWN analyses with dead dimensions. ADRIA instead resolves these dependencies
+automatically, as early as it safely can:
+
+```
+   model spec (all factors)
+            |
+            v
+  +----------------------+
+  |  fix known-inactive   |   pre-sampling: factors are fixed to a
+  |  factors to constants |   constant and never sampled at all
+  +----------------------+
+            |
+            v
+     QMC sampling (Sobol' / LHS / ...)
+            |
+            v
+  +----------------------+
+  |  zero/adjust factors  |   post-sampling: fixes applied per-row,
+  |  that depend on drawn |   using each scenario's own drawn values
+  |  values               |
+  +----------------------+
+            |
+            v
+      scenario DataFrame
+```
+
+The split exists because not every dependency can be resolved before sampling — some only
+depend on a setting fixed for the whole call (e.g. `guided` in `sample_cf`), which can be
+resolved up-front, while others depend on a value that's only known once a row has
+actually been sampled (e.g. whether a *drawn* `fogging` value happens to be `0`), which
+can only be resolved afterwards, row by row.
+
+!!! note "Where this lives"
+    - `src/io/sampling/sampling_dependencies.jl` — pre-sampling: fixes spec columns to
+      constants before sampling begins.
+    - `src/io/sampling/sampling_transforms.jl` — post-sampling: zeroes/adjusts sampled
+      values row-wise, in `_apply_transforms!` (ordering here is load-bearing — see its
+      docstring).
+
+Both stages share the same declarative rule format — a table of parent → child rules,
+each checking whether `child` is active given a known `parent` value:
+
+| Field    | Meaning                                                              |
+|----------|-----------------------------------------------------------------------|
+| `parent` | Factor whose value the rule checks                                    |
+| `child`  | Factor (or named group of factors) to fix if inactive                 |
+| `op`     | Comparison applied to `parent`'s value (e.g. `:eq`, `:gt`)            |
+| `value`  | Threshold/comparison value passed to `op`                             |
+| `negate` | Invert the result of `op`, for rules more naturally stated as "inactive when..." |
+| `fix_to` | Constant `child` is set to when inactive                              |
+
+A fixed-point loop applies these rules pre-sampling (a fixed child can itself gate further
+rules), and `_validate_dependencies` checks the table for unknown parents/ops/children,
+cycles, and rules that would fix the same column to conflicting values. To add a new
+dependency: if it depends on `guided` and is knowable before sampling, add it to
+`sampling_dependencies.jl`; otherwise add it to `sampling_transforms.jl` — see the header
+comment in `sampling_dependencies.jl` for a worked example.
+
+!!! warning "Effect on Sobol' sampling"
+    Both pre- and post-sampling adjustment break the low-discrepancy structure of the
+    Sobol' sequence used for scenario generation. Adjusted scenario sets must **not** be
+    treated as valid Sobol' samples for the purpose of estimating Sobol' sensitivity
+    indices. This is why PAWN (Pianosi and Wagener 2015, 2018), a distribution-based
+    method, is used for sensitivity analysis instead of Sobol' indices — see
+    [Generating scenarios](@ref).
 
 # References
 

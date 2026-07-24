@@ -12,12 +12,15 @@ import QuasiMonteCarlo: SobolSample, OwenScramble
 using ADRIA: model_spec, component_params
 using .decision: mcda_normalize
 
+include("sampling_dependencies.jl")
+include("sampling_transforms.jl")
 include("sampling_interface.jl")
 include("sampling_cf.jl")
 include("sampling_unguided.jl")
 include("sampling_guided.jl")
 include("sampling_interventions.jl")
 include("sampling_balanced.jl")
+include("sampling_stratified.jl")
 
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
@@ -135,8 +138,8 @@ function sample(
     samples[:, const_mask] .= Float64.(spec.val[const_mask])'
     samples[:, vary_mask] .= samples_tmp
 
-    # Ensure unguided scenarios do not have superfluous factor combinations
-    return adjust_samples(spec, DataFrame(samples, spec.fieldname))
+    # Apply post-sampling reparameterisation and conditional zeroing
+    return _apply_transforms!(spec, DataFrame(samples, spec.fieldname))
 end
 
 """
@@ -170,6 +173,9 @@ function sample_selection(
 
     # Only sample guided intervention scenarios
     _adjust_guided_lower_bound!(subset_spec, 1)
+
+    # Pre-sampling resolution for guided regime (top-split only)
+    _resolve_conditional_spec!(subset_spec, (guided=1.0,))
 
     # Create and fill scenario spec
     # Only Intervention, EnvironmentalLayer and CriteriaWeights factors are perturbed,

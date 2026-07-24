@@ -600,23 +600,29 @@ function settler_DHW_tolerance!(
 
     # Use Breeder's equation to calculate mean heat tolerance of offspring for each loc/grp
     fecund_size_mask = sum(fecundity_per_m²; dims=1)[1, :] .> 0.0
+    fecund_idx = findall(fecund_size_mask)
     c_mean_settlers = zeros(n_groups, n_locs)       # will be the next c_mean_t[:,1,:]
 
     # Cache for settlers c_mean for each functional group
     c_mean_per_group::Vector{Float64} = zeros(Float64, n_groups)
+    # Cache for cover-proportion weights (reused each iteration to avoid reallocating)
+    w_buf::Vector{Float64} = zeros(Float64, length(fecund_idx))
 
-    pos_settlers_loc_idx = findall(dropdims(sum(settlers; dims=1); dims=1) .> 0)
+    pos_settlers_loc_idx = findall(vec(sum(settlers; dims=1)) .> 0)
     for loc in pos_settlers_loc_idx
         for grp in groups
-            cover_sum = sum(C_cover_t[grp, fecund_size_mask, loc])
+            @views cover_col = C_cover_t[grp, fecund_idx, loc]
+            cover_sum = sum(cover_col)
             (cover_sum == 0) ? continue : 0
-            w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
-            c_mean_per_group .= breeders.(
-                c_mean_t_1[grp, fecund_size_mask, loc],
-                c_mean_t[grp, fecund_size_mask, loc],
+
+            w_buf .= cover_col ./ cover_sum
+            w = StatsBase.weights(w_buf)
+            @views c_mean_per_group .= breeders.(
+                c_mean_t_1[grp, fecund_idx, loc],
+                c_mean_t[grp, fecund_idx, loc],
                 h²
             )
-            @views c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_group, w)
+            c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_group, w)
         end
     end
 
@@ -872,7 +878,7 @@ function constrain_recruitment!(
     agg_cover_above_threshold_mask .= rec_above_threshold .&& .!cover_above_threshold_mask
 
     if any(agg_cover_above_threshold_mask)
-        is_test_env() ? nothing : @warn "Constraining recruits within error bounds."
+        is_test_env() ? nothing : @debug "Constraining recruits within error bounds."
 
         exceeded_agg_cover_locs = habitable_loc_areas[agg_cover_above_threshold_mask]
         threshold_cap = round_threshold .* exceeded_agg_cover_locs

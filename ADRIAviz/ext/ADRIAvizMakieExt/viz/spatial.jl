@@ -108,7 +108,13 @@ function _render_coastlines!(ax::GeoAxis, resolution::Int=50)
         "NaturalEarth.jl is required for $(resolution)m coastlines.\n" *
         "Install it with:  pkg> add NaturalEarth"
     )
-    coastline_data = GeoMakie.coastlines(resolution)
+    coastline_data = try
+        GeoMakie.coastlines(resolution)
+    catch
+        NaturalEarth = Base.require(ne_pkgid)
+        NaturalEarth.set_mirror!("github")
+        GeoMakie.coastlines(resolution)
+    end
 
     lines!(ax, coastline_data; color=(:gray40, 0.6), linewidth=0.5)
     return nothing
@@ -173,13 +179,13 @@ end
     _figure_size(n_rows::Int, n_cols::Int)::Tuple{Int,Int}
 
 Compute a landscape-oriented figure size in pixels for a grid of `n_rows` x `n_cols` panels.
-Single panel: 1000x800. Multi-panel: 600 wide x 500 tall per panel with 20 px gaps.
+Single panel: 700x800. Multi-panel: 400 wide x 400 tall per panel with 20 px gaps.
 """
 function _figure_size(n_rows::Int, n_cols::Int)::Tuple{Int,Int}
     if n_rows == 1 && n_cols == 1
-        return (1000, 800)
+        return (700, 800)
     end
-    panel_w, panel_h, gap = 600, 500, 20
+    panel_w, panel_h, gap = 400, 400, 20
     width = n_cols * panel_w + (n_cols - 1) * gap
     height = n_rows * panel_h + (n_rows - 1) * gap
     return (width, height)
@@ -457,6 +463,7 @@ function ADRIA.viz.map(
     g = f[1, 1] = GridLayout()
 
     ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
+    resize_to_layout!(f)
 
     return f
 end
@@ -478,6 +485,7 @@ function ADRIA.viz.map(
     g = f[1, 1] = GridLayout()
 
     ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
+    resize_to_layout!(f)
 
     return f
 end
@@ -505,6 +513,7 @@ function ADRIA.viz.map(
     end
 
     ADRIA.viz.map!(g, rs, rs.loc_data.k * 100.0; opts, axis_opts)
+    resize_to_layout!(f)
 
     return f
 end

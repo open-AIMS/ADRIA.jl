@@ -1,6 +1,6 @@
 module viz
 
-using DataFrames, DimensionalData, YAXArrays
+using DataFrames, DimensionalData, Statistics, YAXArrays
 using ADRIA
 using ADRIA: axes_names, ResultSet, model_spec
 
@@ -95,6 +95,37 @@ end
 include("../outcome_metadata.jl")
 include("spatial_utils.jl")
 
+"""
+    _outcome_mask(outcome_threshold, y) -> BitVector
+
+Convert the `outcome_threshold` keyword to a `BitVector` marking "behavioural" scenarios.
+Dispatch on type keeps call sites free of branching.
+
+- `nothing`                  : scenarios where `y > median(y)`
+- `Real`                     : scenarios where `y > threshold`
+- `AbstractVector{Bool}`     : passed through unchanged
+- `AbstractVector{<:Integer}`: indices converted to a boolean mask
+"""
+_outcome_mask(::Nothing, y::AbstractVector{Float64}) = y .> median(y)
+_outcome_mask(t::Real, y::AbstractVector{Float64}) = y .> Float64(t)
+_outcome_mask(m::AbstractVector{Bool}, ::AbstractVector{Float64}) = m
+function _outcome_mask(idx::AbstractVector{<:Integer}, y::AbstractVector{Float64})
+    mask = falses(length(y))
+    mask[idx] .= true
+    return mask
+end
+
+"""
+    _empirical_cdf(v) -> (sorted_values, cumulative_probs)
+
+Return the sorted values and their empirical cumulative probabilities for a vector `v`.
+"""
+function _empirical_cdf(v::AbstractVector{<:Real})
+    sv = sort(v)
+    n = length(sv)
+    return sv, collect((1:n) ./ n)
+end
+
 # Export shared spatial utilities for use in extensions (after they're defined)
 export set_typography_defaults!
 export _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length, validate_extent
@@ -104,5 +135,6 @@ export GBR_COASTAL_PLACES, CoastalPlace, MapDecorationData, compute_map_decorati
 export outcome_title, outcome_label, set_plot_opts!
 export OPT_TYPE, DEFAULT_OPT_TYPE
 export _time_labels, _calc_gridsize, timesteps
+export _outcome_mask, _empirical_cdf
 
 end  # module viz

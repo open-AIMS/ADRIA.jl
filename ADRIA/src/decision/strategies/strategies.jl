@@ -59,10 +59,33 @@ function is_periodic(strategy_idx::AbstractVector{T})::BitVector where {T<:Real}
     return is_periodic.(strategy_idx)
 end
 
+"""
+    revisit_cadence_mask(last_deployment, timestep, cadence)::BitVector
+
+Locations are eligible (`true`) when never deployed to, or when at least `cadence`
+timesteps have elapsed since their last deployment. `cadence <= 0` disables the
+restriction entirely (all locations eligible).
+"""
+function revisit_cadence_mask(last_deployment, timestep, cadence)::BitVector
+    cadence <= 0 && return trues(length(last_deployment))
+    return (timestep .- last_deployment .>= cadence) .| (last_deployment .== 0)
+end
+
+"""
+    build_state(domain, strategy, states)
+
+Build per-target-location state for `strategy`, aligned to `unique(strategy.target_locations)`'s
+own order (not `domain.loc_ids`'s order). This matters because `filter_candidate_locations`
+indexes the returned state's arrays against the deduplicated target-location list directly
+(see each strategy's `filter_candidate_locations`); indexing state computed in `domain.loc_ids`
+order against a target list in a different order would silently return the wrong locations
+whenever `strategy.target_locations` is not itself ordered consistently with `domain.loc_ids`
+(e.g. a multi-share config listing locations out of domain order).
+"""
 function build_state(domain, strategy, states)
-    targets = strategy.target_locations
-    mask = in.(domain.loc_ids, Ref(Set{String}(targets)))
-    return strategy_status(strategy, states, mask)
+    targets = unique(strategy.target_locations)
+    idx = indexin(targets, domain.loc_ids)
+    return strategy_status(strategy, states, idx)
 end
 
 function strategy_status(::DecisionStrategy, states, idx)
@@ -73,6 +96,14 @@ function strategy_status(::DecisionStrategy, states, idx)
 end
 
 function strategy_status(::ReactiveStrategy, states, idx)
+    return (
+        current_cover=@view(states.current_cover[idx]),
+        recent_cover_losses=@view(first(states.recent_cover_losses)[idx]),
+        last_deployment=@view(states.last_deployment[idx])
+    )
+end
+
+function strategy_status(::PeriodicStrategy, states, idx)
     return (
         current_cover=@view(states.current_cover[idx]),
         recent_cover_losses=@view(first(states.recent_cover_losses)[idx]),

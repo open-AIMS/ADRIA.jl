@@ -44,9 +44,59 @@ function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataF
 end
 
 """
+    dhw_spatial_features(rs::ResultSet)::DataFrame
+
+Compute per-scenario spatial-heterogeneity features from time-mean DHW exposure across
+locations: the coefficient of variation of per-site mean DHW, and the gap between the
+median site and the coolest available refugia (10th percentile site). These characterize
+how much spatial contrast in heat exposure a scenario's `dhw_scenario` draw offers --
+i.e. whether there is any "cooler refugia" for guided site selection to target.
+
+# Arguments
+- `rs` : ResultSet holding scenario outcomes
+
+# Returns
+DataFrame with `dhw_site_cv` and `dhw_refugia_gap` columns, one row per scenario in
+`rs.inputs`.
+"""
+function dhw_spatial_features(rs::ResultSet)::DataFrame
+    rcp_ids = collect(keys(rs.dhw_stats))
+    rcp_id = first(rcp_ids)
+
+    # dims: (scenarios, locations) -- time-mean DHW per site, per dhw_scenario draw
+    site_means = rs.dhw_stats[rcp_id][stat = At("mean")]
+
+    idx = Int64.(rs.inputs.dhw_scenario)
+    n = length(idx)
+    cv = Vector{Float64}(undef, n)
+    refugia_gap = Vector{Float64}(undef, n)
+    for (i, s_idx) in enumerate(idx)
+        sites = site_means[s_idx, :].data[:]
+        μ = mean(sites)
+        cv[i] = μ == 0 ? 0.0 : std(sites; mean=μ) / μ
+        refugia_gap[i] = median(sites) - quantile(sites, 0.1)
+    end
+
+    return DataFrame(; dhw_site_cv=cv, dhw_refugia_gap=refugia_gap)
+end
+
+"""
     feature_set(rs::ResultSet)::DataFrame
 
 Extract a feature set from results for analysis purposes.
+
+In addition to the raw realized-deployment columns (`n_loc_*_mean`,
+`*_volume_mean_*`, `*_volume_total_M_*`), a `*_effort` counterpart is added for
+each: a min-max normalization of that column computed over the *current
+scenario set only* (e.g. `n_loc_seed_mean_effort = (n_loc_seed_mean .-
+minimum(n_loc_seed_mean)) ./ (maximum(n_loc_seed_mean) - minimum(n_loc_seed_mean))`).
+This is analogous in spirit to `intervention_effort` (`performance.jl`), but
+normalizes *actual simulated deployment* rather than pre-simulation sampled
+targets. The resulting 0-1 scale is **relative to the most/least effort seen
+among the scenarios explored in this particular analysis** -- it is NOT a
+universal/absolute effort scale and is not comparable across different
+scenario sets or studies. Columns that are constant within the current
+scenario set are skipped (no `_effort` counterpart is emitted for them).
 """
 function feature_set(rs::ResultSet)::DataFrame
     scens = copy(rs.inputs)
@@ -70,6 +120,26 @@ function feature_set(rs::ResultSet)::DataFrame
         :dhw_stdev => dhw_stdevs[idx],
         :dhw_complexity => dhw_complexities[idx]
     )
+    colmetadata!(scens, :dhw_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :dhw_mean, "label", "Mean DHW"; style=:note)
+    colmetadata!(scens, :dhw_stdev, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :dhw_stdev, "label", "DHW standard deviation"; style=:note)
+    colmetadata!(scens, :dhw_complexity, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :dhw_complexity, "label", "DHW time series complexity"; style=:note)
+
+    # Add DHW spatial-heterogeneity features (is there any cooler refugia to target?)
+    dhw_spatial = dhw_spatial_features(rs)
+    DataFrames.hcat!(scens, dhw_spatial)
+    colmetadata!(scens, :dhw_site_cv, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :dhw_site_cv, "label",
+        "Spatial CV of mean site-level DHW"; style=:note
+    )
+    colmetadata!(scens, :dhw_refugia_gap, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :dhw_refugia_gap, "label",
+        "Median minus 10th-percentile site DHW"; style=:note
+    )
 
     # Add indicators of deployments
     seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
@@ -83,9 +153,17 @@ function feature_set(rs::ResultSet)::DataFrame
         :n_loc_fog_mean => fog_stats[stats = At(:mean)].data[:],
         :n_loc_mc_mean => mc_stats[stats = At(:mean)].data[:]
     )
+    colmetadata!(scens, :n_loc_seed_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :n_loc_seed_mean, "label", "Mean seeded locations"; style=:note)
+    colmetadata!(scens, :n_loc_fog_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :n_loc_fog_mean, "label", "Mean fogged locations"; style=:note)
+    colmetadata!(scens, :n_loc_mc_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :n_loc_mc_mean, "label", "Mean moving-coral locations"; style=:note)
 
     # Replace `depth_offset` with maximum depth
     scens.depth_max = scens.depth_min .+ scens.depth_offset
+    colmetadata!(scens, :depth_max, "ptype", "ordered categorical"; style=:note)
+    colmetadata!(scens, :depth_max, "label", "Maximum depth"; style=:note)
     scens = scens[:, Not(:depth_offset)]
 
     # Transform aggregate deployment totals into units of millions
@@ -95,8 +173,23 @@ function feature_set(rs::ResultSet)::DataFrame
         replace.(names(seed_volume_total), "volume_total_" => "volume_total_M_")
     )
     DataFrames.hcat!(scens, seed_volume_mean)
+    for col in names(seed_volume_mean)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(scens, col, "label", "Mean seed deployment volume ($col)"; style=:note)
+    end
     DataFrames.hcat!(scens, seed_volume_total_M)
+    for col in names(seed_volume_total_M)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, col, "label", "Total seed deployment volume ($col)"; style=:note
+        )
+    end
     scens.seed_total_deployed_coral_M = vec(sum(Matrix(seed_volume_total_M); dims=2))
+    colmetadata!(scens, :seed_total_deployed_coral_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :seed_total_deployed_coral_M, "label",
+        "Total seeded coral deployment (millions)"; style=:note
+    )
 
     mc_volume_mean, mc_volume_total = _iv_log_stats(rs.mc_log; prefix="mc_")
     mc_volume_total_M = DataFrame(
@@ -104,15 +197,58 @@ function feature_set(rs::ResultSet)::DataFrame
         replace.(names(mc_volume_total), "volume_total_" => "volume_total_M_")
     )
     DataFrames.hcat!(scens, mc_volume_mean)
+    for col in names(mc_volume_mean)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, col, "label", "Mean moving-coral deployment volume ($col)"; style=:note
+        )
+    end
     DataFrames.hcat!(scens, mc_volume_total_M)
+    for col in names(mc_volume_total_M)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, col, "label", "Total moving-coral deployment volume ($col)"; style=:note
+        )
+    end
     scens.mc_total_deployed_coral_M = vec(sum(Matrix(mc_volume_total_M); dims=2))
+    colmetadata!(scens, :mc_total_deployed_coral_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :mc_total_deployed_coral_M, "label",
+        "Total moving-coral deployment (millions)"; style=:note
+    )
+
+    # Add normalized "actual effort" columns: min-max normalization of realized
+    # deployment columns, computed over the current scenario set (relative, not
+    # absolute/universal -- see docstring). Columns constant within this scenario
+    # set are skipped (min == max would divide by zero).
+    effort_source_cols = filter(
+        c -> c in names(scens),
+        vcat(
+            ["n_loc_seed_mean", "n_loc_fog_mean", "n_loc_mc_mean"],
+            names(seed_volume_mean), names(seed_volume_total_M),
+            names(mc_volume_mean), names(mc_volume_total_M)
+        )
+    )
+    for col in effort_source_cols
+        vals = Float64.(scens[!, col])
+        lo, hi = extrema(vals)
+        hi == lo && continue
+        effort_col = Symbol(col, "_effort")
+        scens[!, effort_col] = (vals .- lo) ./ (hi - lo)
+        colmetadata!(scens, effort_col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, effort_col, "label",
+            "Normalized realized effort ($col); relative to this scenario set only, " *
+            "not a universal/absolute effort scale"; style=:note
+        )
+    end
 
     # Remove `dhw_scenario` as Scenario IDs are not very informative for analyses
     scens = scens[:, Not(:dhw_scenario)]
 
     # Remove correlated features
-    # Remove desired seed deployment targets
-    # N_seed factors indicate maximum deployment effort, not actual simulated deployment
+    # Remove seed deployment target values as `N_seed_*` factors indicate
+    # maximum (desired) deployment effort, not actual simulated deployment
     scens = scens[:, .!contains.(names(scens), "N_seed")]
 
     # Set missing values to 0

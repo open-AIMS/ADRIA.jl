@@ -7,9 +7,11 @@
 #   _activate_backend()            -> calls ADRIAviz.activate(...)
 #   _save_fig(fig, name)           -> saves figure, returns path string
 #   _viz_tsa(rs, si)               -> ADRIA.viz.tsa with backend signature
-#   _viz_rsa(rs, rsa_ds, foi)      -> ADRIA.viz.rsa with backend signature
-#   _viz_outcome_map(rs, om_ds, foi) -> ADRIA.viz.outcome_map with backend signature
-#   _viz_rules_scatter(rs, scens, tgt, rules) -> ADRIA.viz.rules_scatter with backend signature
+#   _viz_rsa(X, y, foi)            -> ADRIA.viz.rsa with backend signature
+#                                     foi may be AbstractVector{Symbol} (multi-panel) or
+#                                     NTuple{2,Symbol} (factor-vs-factor scatter)
+#   _viz_outcome_map(X, y, foi)     -> ADRIA.viz.outcome_map with backend signature
+#   _viz_rules_scatter(rs, X, tgt, rules) -> ADRIA.viz.rules_scatter with backend signature
 #   _viz_backend_extras()          -> optional extra checks (no-op default)
 #   RESULTS::Vector{NamedTuple} -> (name::String, ok::Bool, msg::String, elapsed::Float64)
 
@@ -18,6 +20,7 @@
 # ----------------------------------------------------------------------------
 
 using Statistics
+using StatsBase: corspearman
 using DataFrames
 using Dates
 using Printf
@@ -28,11 +31,13 @@ using MLJ, SIRUS
 @time using ADRIAanalysis
 @time using ADRIAviz
 
+const At = ADRIA.YAXArrays.DD.At
+
 using ADRIA.analysis: cluster_scenarios, cluster_series
 using ADRIAanalysis:
     find_scenarios, target_clusters, cluster_rules,
-    data_envelopment_analysis
-using ADRIAanalysis.sensitivity: pawn, tsa, rsa, outcome_map, convergence
+    data_envelopment_analysis, feature_set
+using ADRIAanalysis.sensitivity: pawn, tsa, convergence, rsa, stratified_rsa
 
 # Activate the backend (hook defined by the including file)
 _activate_backend()
@@ -56,6 +61,7 @@ function check(build_fn, name::String)
         msg = sprint(showerror, err)
         push!(RESULTS, (name=name, ok=false, msg=msg, elapsed=elapsed))
         println("    [FAIL] $msg ($(Printf.@sprintf("%.2f", elapsed))s)")
+        println(sprint(showerror, err, catch_backtrace()))
         return nothing
     end
 end
@@ -78,7 +84,7 @@ end
 @time example_dom = ADRIA.load_domain(dom_path, "45")
 
 ADRIA.setup()
-const OUTPUTS_DIR = get(ENV, "ADRIA_OUTPUT_DIR", "./Outputs")
+const OUTPUTS_DIR = get(ENV, "ADRIA_OUTPUT_DIR", joinpath(@__DIR__, "Outputs"))
 const RS_PREFIX = "$(example_dom.name)__RCPs_45__"
 
 existing_rs = if isdir(OUTPUTS_DIR)
@@ -96,10 +102,28 @@ rs = if !isempty(existing_rs)
     @info "Reusing existing result set (skipping run)" rs_path
     ADRIA.load_results(rs_path)
 else
-    @info "No existing result set found; sampling and running 128 scenarios."
-    run_scens = ADRIA.sample_set(example_dom, 128, "45")
+    n_scens = 2048
+    @info "No existing result set found; sampling and running $(n_scens) scenarios."
+    @info "Using $(Threads.nthreads()) threads."
+
+    ADRIA.set_factor_bounds!(
+        example_dom;
+        N_seed_TA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_CA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_CNA=(1000000.0, 15000000.0, 100000.0),
+        N_seed_SM=(1000000.0, 15000000.0, 100000.0),
+        N_seed_LM=(1000000.0, 15000000.0, 100000.0)
+    )
+
+    run_scens = ADRIA.sample_set(example_dom, n_scens, "45")
     ADRIA.run_scenarios(example_dom, run_scens, "45")
 end
+
+# Counterfactual scenarios are embedded in rs and marked by guided == -1.
+rs_cf = rs.inputs.guided .== -1
+ug_mask = rs.inputs.guided .== 0
+guided_mask = rs.inputs.guided .> 0   # MCDA-guided interventions only
+iv_all_mask = .!rs_cf                  # guided + unguided (all non-CF)
 
 scens = DataFrame(rs.inputs)
 
@@ -110,8 +134,57 @@ scens = DataFrame(rs.inputs)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = vec(mean(s_tac; dims=1))
 
-const CANDIDATE_FOI = [:N_seed_TA, :N_seed_CA, :fogging, :SRM, :a_adapt]
-foi = Symbol[f for f in CANDIDATE_FOI if string(f) in names(rs.inputs)]
+# Deployed seeding locations.
+# CF scenarios have rank 0, so the union below covers only guided+unguided sites.
+deployed_locs = ADRIA.metrics.deployed_locations(rs; intervention=:seed)
+
+# Guided-only deployed locations: exclude sites that only unguided scenarios ever
+# used, so the metric for guided analysis isn't diluted by random-selection sites.
+let _iv_ranks = Array(rs.ranks[intervention = At(:seed)])
+    # dims: (timesteps × locations × scenarios)
+    _guided_ever = vec(any(_iv_ranks[:, :, guided_mask] .> 0.0; dims=(1, 3)))
+    global deployed_locs_guided = findall(_guided_ever)
+end
+
+# Counterfactual delta: per-scenario intervention effect (IV minus CF baseline).
+# Outcome = years where relative cover at seeded locations exceeded 20%.
+# Run once for ALL intervention scenarios (guided + unguided) so we can split
+# afterwards; DHW stat columns are dropped from the returned feature matrix.
+delta_all = ADRIAanalysis.sensitivity.counterfactual_delta(
+    rs, rs_cf,
+    function (_rs)
+        src = ADRIA.metrics.scenario_relative_cover(_rs; locations=deployed_locs_guided)
+        collect(ADRIA.metrics.years_above_threshold(src; threshold=0.20))
+    end
+)
+
+# Post-filter to guided-only and unguided-only rows.
+# iv_all_mask defines which rows of rs map to delta_all entries (rows ordered as
+# they appear in rs, with CF rows removed).
+guided_in_iv = guided_mask[iv_all_mask]   # Bool, length = sum(iv_all_mask)
+ug_in_iv = ug_mask[iv_all_mask]
+
+fs_guided = delta_all.fs_intervention[guided_in_iv, :]
+y_guided = delta_all.y_delta[guided_in_iv]
+
+fs_ug = delta_all.fs_intervention[ug_in_iv, :]
+y_ug = delta_all.y_delta[ug_in_iv]
+
+# Guided vs unguided lift: residual benefit of MCDA selection above random selection.
+y_guided_vs_ug = y_guided .- mean(y_ug)
+
+# Primary RSA analysis: guided scenarios vs CF at guided deployment locations.
+fs = fs_guided
+y_dep = y_guided
+
+# Feature set retaining DHW stat columns for stratified_rsa (which stratifies on
+# dhw_mean and drops DHW cols internally before each within-stratum RSA call).
+# Must have the same row count as y_dep, so filter to guided_mask rows only.
+fs_strat = feature_set(rs)[guided_mask, :]
+
+# Rank features by the guided-vs-CF delta outcome; take top 6 as factors of interest.
+rsa_si = rsa(fs, y_dep)
+foi = rsa_si.feature[1:min(6, nrow(rsa_si))]
 
 # ----------------------------------------------------------------------------
 # 1. Scenario outcomes
@@ -119,6 +192,39 @@ foi = Symbol[f for f in CANDIDATE_FOI if string(f) in names(rs.inputs)]
 
 check("scenarios_tac") do
     ADRIA.viz.scenarios(rs, s_tac)
+end
+
+# Delta time series: guided scenarios minus the mean CF trajectory.
+check("iv_cf_delta_timeseries") do
+    cf_mean_ts = vec(mean(Array(s_tac[scenarios = rs_cf]); dims=2))
+    iv_arr = Array(s_tac[scenarios = guided_mask])   # (n_timesteps × n_guided)
+    delta_arr = iv_arr .- cf_mean_ts                 # broadcast: subtract mean CF per timestep
+    n_iv = sum(guided_mask)
+    ts_labels = collect(s_tac.timesteps)
+    delta_yax = ADRIA.DataCube(delta_arr; timesteps=ts_labels, scenarios=1:n_iv)
+    guided_scens = scens[guided_mask, :]
+    ADRIA.viz.scenarios(
+        guided_scens, delta_yax;
+        axis_opts=Dict{Symbol,Any}(:ylabel => "\u0394Total Cover (Guided \u2212 CF mean)")
+    )
+end
+
+# Delta time series restricted to guided deployment locations only.
+check("iv_cf_delta_timeseries_deployed") do
+    s_tac_dep = ADRIA.metrics.scenario_total_cover(rs; locations=deployed_locs_guided)
+    cf_mean_ts_dep = vec(mean(Array(s_tac_dep[scenarios = rs_cf]); dims=2))
+    iv_arr_dep = Array(s_tac_dep[scenarios = guided_mask])
+    delta_arr_dep = iv_arr_dep .- cf_mean_ts_dep
+    n_iv = sum(guided_mask)
+    ts_labels = collect(s_tac_dep.timesteps)
+    delta_yax_dep = ADRIA.DataCube(delta_arr_dep; timesteps=ts_labels, scenarios=1:n_iv)
+    guided_scens = scens[guided_mask, :]
+    ADRIA.viz.scenarios(
+        guided_scens, delta_yax_dep;
+        axis_opts=Dict{Symbol,Any}(
+            :ylabel => "\u0394Total Cover at Guided Deployment Locations (Guided \u2212 CF mean)"
+        )
+    )
 end
 
 # ----------------------------------------------------------------------------
@@ -129,10 +235,6 @@ clusters4 = cluster_scenarios(s_tac, 4)
 
 check("tsc") do
     ADRIA.viz.clustered_scenarios(s_tac, clusters4)
-end
-
-check("scenarios_by_cluster") do
-    ADRIA.viz.scenarios(s_tac, clusters4)
 end
 
 # ----------------------------------------------------------------------------
@@ -148,7 +250,7 @@ end
 # ----------------------------------------------------------------------------
 
 check("pawn_si") do
-    tac_Si = pawn(rs, mean_s_tac)
+    tac_Si = pawn(feature_set(rs), mean_s_tac)
     ADRIA.viz.pawn(tac_Si)
 end
 
@@ -166,10 +268,15 @@ end
 # ----------------------------------------------------------------------------
 
 check("convergence_factors_series") do
-    outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
-    conv_foi = Symbol[f for f in (:dhw_scenario, :guided) if string(f) in names(rs.inputs)]
+    # Filter outcome to intervention scenarios only (fs is already guided-only).
+    outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)[guided_mask]
+    # dhw_scenario is removed by feature_set; prefer dhw_mean as its replacement.
+    # guided survives into fs unchanged.
+    conv_foi = Symbol[
+        f for f in (:dhw_mean, :guided, :mcda_method) if string(f) in names(fs)
+    ]
     isempty(conv_foi) && (conv_foi = foi[1:min(2, length(foi))])
-    Si_conv = convergence(scens, outcome, conv_foi)
+    Si_conv = convergence(fs, outcome, conv_foi)
     ADRIA.viz.convergence(Si_conv, conv_foi)
 end
 
@@ -178,8 +285,51 @@ end
 # ----------------------------------------------------------------------------
 
 check("rsa") do
-    rsa_ds = rsa(rs, mean_s_tac, foi; S=10)
-    _viz_rsa(rs, rsa_ds, foi)
+    length(foi) < 2 && return nothing
+    _viz_rsa(fs, y_dep, (foi[1], foi[2]); binary_mode=true, outcome_threshold=0.8)
+end
+
+check("rsa_multi_panel") do
+    length(foi) < 2 && return nothing
+    # Greedily select n_factors decorrelated factors from the RSA-ranked feature list,
+    # then plot up to 9 pairwise combinations as factor-space panels
+    # (x = factor A, y = factor B, colour = outcome).
+    #
+    # n_factors = 5  →  C(5,2) = 10 pairs; capped at 9 panels
+    # cor_threshold  : skip a candidate if |ρ_Spearman| >= this with any selected factor
+    # n_candidates   : pool size drawn from rsa_si; wider than foi so the greedy pass
+    #                  has room to find 5 sufficiently decorrelated factors even when
+    #                  the top-ranked features are mutually correlated.
+    n_factors = 5
+    cor_threshold = 0.9
+    n_candidates = min(15, nrow(rsa_si))
+
+    candidates = rsa_si.feature[1:n_candidates]
+    cand_mat = Matrix{Float64}(fs[:, collect(candidates)])
+    ρ = corspearman(cand_mat)   # (n_candidates × n_candidates)
+
+    selected = Int[1]
+    for i = 2:n_candidates
+        if all(abs(ρ[i, j]) < cor_threshold for j in selected)
+            push!(selected, i)
+        end
+        length(selected) >= n_factors && break
+    end
+
+    top = candidates[selected]
+    panels = NTuple{2,Symbol}[
+        (top[i], top[j]) for i = 1:length(top) for j = (i + 1):length(top)
+    ]
+    panels = first(panels, 9)
+    isempty(panels) && return nothing
+    _viz_rsa(fs, y_dep, panels; binary_mode=true, outcome_threshold=0.8)
+end
+
+# Classic RSA: Hornberger-Spear empirical CDF plots (one panel per factor).
+# Uses the same top-ranked factors and delta outcome as the scatter RSA.
+check("rsa_cdf") do
+    isempty(foi) && return nothing
+    ADRIA.viz.rsa_cdf(fs, y_dep, foi; outcome_threshold=0.8)
 end
 
 # ----------------------------------------------------------------------------
@@ -187,8 +337,53 @@ end
 # ----------------------------------------------------------------------------
 
 check("outcome_map") do
-    om_ds = outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-    _viz_outcome_map(rs, om_ds, foi)
+    isempty(deployed_locs_guided) && return nothing
+    isempty(foi) && return nothing
+    _viz_outcome_map(fs, y_dep, foi)
+end
+
+# ----------------------------------------------------------------------------
+# Task A -- DHW-stratified RSA (guided vs CF)
+# ----------------------------------------------------------------------------
+
+# fs_strat retains dhw_mean (required by stratified_rsa for binning); it matches
+# y_dep row-for-row (both restricted to guided_mask scenarios).
+check("rsa_stratified") do
+    strat_result = stratified_rsa(fs_strat, y_dep)
+    isempty(strat_result) && return nothing
+    ADRIA.viz.stratified_rsa(strat_result)
+end
+
+# ----------------------------------------------------------------------------
+# Task B -- Guided vs unguided RSA
+# ----------------------------------------------------------------------------
+
+# y_guided_vs_ug = guided delta minus mean(unguided delta): residual MCDA benefit.
+# This comparison isolates MCDA selection quality from general intervention effects.
+
+# Rank features by guided-vs-unguided lift; drop guided column (it is constant
+# within this guided-only subset post-split, so dropping it is a no-op) —
+# mcda_method is intentionally RETAINED here as the signal being ranked
+# (which MCDA method drives the residual guided-vs-unguided benefit).
+rsa_si_ug = let _fs = DataFrames.select(fs, Not(:guided))
+    rsa(_fs, y_guided_vs_ug)
+end
+foi_ug = rsa_si_ug.feature[1:min(6, nrow(rsa_si_ug))]
+
+check("rsa_guided_vs_unguided") do
+    length(foi_ug) < 2 && return nothing
+    _viz_rsa(
+        DataFrames.select(fs, Not(:guided)), y_guided_vs_ug,
+        (foi_ug[1], foi_ug[2]); binary_mode=true, outcome_threshold=0.8
+    )
+end
+
+check("rsa_cdf_guided_vs_unguided") do
+    isempty(foi_ug) && return nothing
+    ADRIA.viz.rsa_cdf(
+        DataFrames.select(fs, Not(:guided)), y_guided_vs_ug,
+        foi_ug; outcome_threshold=0.8
+    )
 end
 
 # ----------------------------------------------------------------------------
@@ -229,17 +424,30 @@ end
 # ----------------------------------------------------------------------------
 
 check("rules_scatter") do
-    clusters6 = cluster_scenarios(s_tac, 6)
-    tgt = target_clusters(clusters6, s_tac)
+    # Delta TAC time series: guided minus CF (matched if equal counts, mean-CF otherwise).
+    s_tac_iv = Array(s_tac[scenarios = guided_mask])
+    s_tac_cf = Array(s_tac[scenarios = rs_cf])
+    s_tac_delta =
+        sum(guided_mask) == sum(rs_cf) ?
+        s_tac_iv .- s_tac_cf :
+        s_tac_iv .- mean(s_tac_cf; dims=2)
+
+    clusters6 = cluster_scenarios(s_tac_delta, 6)
+    tgt = target_clusters(clusters6, s_tac_delta)
 
     rule_foi = try
-        ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+        # component_params returns raw input parameter names; filter to those
+        # that survive feature_set post-processing (e.g. N_seed_* are removed).
+        fs_cols = Set(names(fs))
+        raw = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+        Symbol[f for f in raw if string(f) in fs_cols]
     catch
         foi
     end
+    isempty(rule_foi) && (rule_foi = foi)
 
-    rules_iv = cluster_rules(rs, tgt, scens, rule_foi, 10; remove_duplicates=true)
-    _viz_rules_scatter(rs, scens, tgt, rules_iv)
+    rules_iv = cluster_rules(rs, tgt, fs, rule_foi, 10; remove_duplicates=true)
+    _viz_rules_scatter(rs, fs, tgt, rules_iv)
 end
 
 # ----------------------------------------------------------------------------
@@ -310,7 +518,8 @@ check("criteria_spatial_plots") do
     sum_cover = vec(sum(example_dom.init_coral_cover; dims=1).data)
     dhw_scens = example_dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
     plan_horizon = Int64(scen["plan_horizon"])
-    decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
+    projection_confidence = scen["projection_confidence"]
+    decay = ADRIA.decision.build_decay(plan_horizon, projection_confidence)
     dhw_projection = ADRIA.decision.weighted_projection(
         dhw_scens, 1, plan_horizon, decay, 75
     )
@@ -359,18 +568,18 @@ check("cyclone_scenario") do
 end
 
 # ----------------------------------------------------------------------------
+# Backend-specific extras (no-op unless overridden)
+# ----------------------------------------------------------------------------
+
+_viz_backend_extras()
+
+# ----------------------------------------------------------------------------
 # 15. Connectivity graph
 # ----------------------------------------------------------------------------
 
 check("connectivity") do
     ADRIA.viz.connectivity(example_dom)
 end
-
-# ----------------------------------------------------------------------------
-# Backend-specific extras (no-op unless overridden)
-# ----------------------------------------------------------------------------
-
-_viz_backend_extras()
 
 # ----------------------------------------------------------------------------
 # Summary and report generation
@@ -393,7 +602,7 @@ end
 
 function _save_report_markdown(results, backend::String; filename="viz_check_report.md")
     report_name = replace(filename, r"\.md$" => "")
-    filename = "$(backend)_$(report_name).md"
+    filename = "$(report_name)_$(backend).md"
 
     n_ok = count(r -> r.ok, results)
     total_time = sum(r -> r.elapsed, results)

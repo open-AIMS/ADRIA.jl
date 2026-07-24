@@ -130,6 +130,8 @@ function load_results(
 
     mod_spec::DataFrame = _create_model_spec(inputs)
 
+    _tag_inputs_metadata!(inputs, mod_spec)
+
     return RMEResultSet(
         name,
         netcdf_rcp,

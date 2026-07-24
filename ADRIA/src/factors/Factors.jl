@@ -12,23 +12,35 @@ Convenience constructor for Param type with ADRIA-specific metadata.
     - "continuous" [default]
     - "ordered categorical"
     - "unordered categorical"
+    - "ordered discrete"
     - "discrete"
 - `name` : String, Human-readable factor name
 - `description` : String, Description of what the factor is
 - `dist` : Distribution, as defined by `Distributions.jl` or one of the custom
     constructors defined by ADRIA
-- `dist_params` : Tuple, of parameters for `dist`
+- `dist_params` : Tuple or Vector, parameters for `dist`. Stored internally as
+    `Vector{Float64}`.
 
 # Optional keyword arguments
-- `default_dist_params` : Tuple, parameters for `Distribution` type provided by `Distributions.jl`
+- `default_dist_params` : Tuple or Vector, parameters for the default `Distribution`
+    type. Defaults to `dist_params` if not provided. Stored internally as
+    `Vector{Float64}`.
 
 # Returns
-Parameter
+Param
 """
 function Factor(val; kwargs...)::Param
     nt = NamedTuple(kwargs)
     _check_has_required_info(nt)
     nt = _set_factor_defaults(nt)
+
+    # Normalize dist_params to Vector{Float64} so all Param instances
+    # share one concrete type regardless of tuple arity or element type.
+    nt = (;
+        nt...,
+        dist_params=collect(Float64, nt.dist_params),
+        default_dist_params=collect(Float64, nt.default_dist_params)
+    )
 
     return Param((; val=val, nt...))
 end
@@ -128,13 +140,6 @@ function distribution_upper_bound(
     ::T, dist_params
 )::Float64 where {T}
     return getindex(dist_params, 2)
-end
-
-function factor_lower_bounds(factor::DataFrameRow)::Float64
-    return distribution_lower_bound(factor.dist, factor.dist_params)
-end
-function factor_upper_bounds(factor::DataFrameRow)::Float64
-    return distribution_upper_bound(factor.dist, factor.dist_params)
 end
 
 function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
@@ -239,25 +244,37 @@ function DiscreteTriangularDist(
 end
 
 """
-    DiscreteOrderedUniformDist(lb::T, ub::T, step::Float64)
+    DiscreteOrderedUniformDist
 
-Creates an uniform ordered categorical distribution, allowing for real-valued options.
-Principally used for depth-related factors.
+Callable struct representing a uniform ordered categorical distribution factory.
+Stored as `dist=DiscreteOrderedUniformDist` in Factor definitions.
 
-# Arguments
-- `lb` : lower bound
-- `ub` : upper bound
-- `step` : step interval between `lb` and `ub`
+Using a struct (DataType) rather than a plain function ensures `typeof(DiscreteOrderedUniformDist)`
+is `DataType` — the same metatype as `DiscreteUniform` — so both share one concrete `Param`
+type in the NamedTuple type parameter, reducing Flatten.jl specialization count.
 
 # Example
 ```julia
-# Create a ordered categorical distribution
+# Create an ordered categorical distribution
 d = DiscreteOrderedUniformDist(0.0, 10.0, 0.5)
 
 # Sampling from the above distribution returns a vector with values ∈ [0, 10]
 # including discrete steps of 0.5, e.g.
 # [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, ... 9.0, 9.5, 10.0]
 ```
+"""
+struct DiscreteOrderedUniformDist end
+
+"""
+    DiscreteOrderedUniformDist(lb::T, ub::T, step::Float64)
+
+Creates a uniform ordered categorical distribution, allowing for real-valued options.
+Principally used for depth-related factors.
+
+# Arguments
+- `lb` : lower bound
+- `ub` : upper bound
+- `step` : step interval between `lb` and `ub`
 """
 function DiscreteOrderedUniformDist(
     lb::T,
@@ -275,10 +292,6 @@ end
 
 Construct a concretely-typed vector of distribution instances from the `dist`
 and `dist_params` columns of a model spec DataFrame.
-
-The `dist` column may contain either types (e.g. `Uniform`) or plain constructor
-functions (e.g. `DiscreteOrderedUniformDist`), so the Union is derived from
-`typeof` on constructed instances rather than from the column values directly.
 
 One instance per unique constructor is built to determine the Union type, then
 all rows are constructed into a `Vector{T}` where `T` is that Union. This allows

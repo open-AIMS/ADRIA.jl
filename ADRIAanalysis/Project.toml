@@ -1,7 +1,7 @@
 name = "ADRIAanalysis"
 uuid = "bc4d0ea8-6565-4397-854d-28474bf8c6b3"
 authors = ["Takuya Iwanaga"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"

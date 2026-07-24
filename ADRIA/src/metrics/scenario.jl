@@ -77,6 +77,44 @@ scenario_relative_cover = Metric(
     IS_RELATIVE
 )
 
+"""
+    years_above_threshold(data::YAXArray{<:Real,2}; threshold::Real=0.1, kwargs...)::AbstractArray{<:Real}
+    years_above_threshold(data::YAXArray{<:Real,3}; threshold::Real=0.1, kwargs...)::AbstractArray{<:Real}
+
+Count the number of years a metric exceeded a threshold.
+
+For 2D input (timesteps x scenarios): returns Vector[scenarios].
+For 3D input (timesteps x locations x scenarios): returns Matrix[locations x scenarios].
+
+# Arguments
+- `data` : Metric values over time.
+- `threshold` : Threshold value (default: 0.1).
+"""
+function _years_above_threshold(
+    data::YAXArray{<:Real,2}; threshold::Real=0.1, kwargs...
+)::AbstractArray{<:Real}
+    tf_dim = axis_index(data, :timesteps)
+    result = dropdims(sum(Array(data) .> threshold; dims=tf_dim); dims=tf_dim)
+    return DataCube(result; scenarios=1:length(result))
+end
+function _years_above_threshold(
+    data::YAXArray{<:Real,3}; threshold::Real=0.1, kwargs...
+)::AbstractArray{<:Real}
+    loc_labels = axis_labels(data, :locations)
+    n_scens = length(axis_labels(data, :scenarios))
+    tf_dim = axis_index(data, :timesteps)
+    result = dropdims(sum(Array(data) .> threshold; dims=tf_dim); dims=tf_dim)
+    return DataCube(result; locations=loc_labels, scenarios=1:n_scens)
+end
+years_above_threshold = Metric(
+    _years_above_threshold,
+    (:timesteps, :locations, :scenarios),
+    (:locations, :scenarios),
+    "Years Above Threshold",
+    IS_NOT_RELATIVE,
+    "years"
+)
+
 function _scenario_ltmp_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     scenario_rc = _scenario_relative_cover(rs; kwargs...)
     axes_info = _extract_axes_values(scenario_rc)

@@ -1,9 +1,27 @@
-using DataFrames
+using DataFrames, Serialization
 import ModelParameters: Model
 
 # Upper bound offset to use when re-creating critical DHW distributions
 const HEAT_UB = 24.0
 const HEAT_LB = 1.0     # minimum susceptibility threshold
+
+# In-memory cache for coral_spec(). Reset with invalidate_coral_spec_cache!().
+const _CORAL_SPEC_CACHE = Ref{Union{Nothing,NamedTuple}}(nothing)
+
+"""Path to the disk-persisted coral_spec cache file, versioned by Julia and ADRIA versions."""
+function _coral_spec_cache_path()::String
+    julia_ver = "julia$(VERSION.major).$(VERSION.minor)"
+    adria_ver = "adria$(pkgversion(@__MODULE__))"
+    fname = "coral_spec-$(julia_ver)-$(adria_ver).cache"
+    return joinpath(Base.DEPOT_PATH[1], "cache", "ADRIA", fname)
+end
+
+"""
+Hash of the `Corals.jl` source file, used to detect when the cached spec is stale.
+"""
+function _coral_spec_source_hash()::UInt64
+    return hash(read(joinpath(@__DIR__, "Corals.jl"), String))
+end
 
 """
     functional_group_names()::Vector{Symbol}
@@ -84,11 +102,10 @@ function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
 end
 
 """
-    coral_spec()
+    _coral_spec_impl()::NamedTuple
 
-Template for coral parameter values for ADRIA.
-Includes "vital" bio/ecological parameters, to be filled with
-sampled or user-specified values.
+Internal implementation of the coral parameter specification.
+Do not call directly — use `coral_spec()` which wraps this with caching.
 
 Any parameter added to the `params` DataFrame defined here will automatically be
 made available to the ADRIA model.
@@ -96,10 +113,6 @@ made available to the ADRIA model.
 Notes:
 Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
-
-# Returns
-- `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
-             names, and parameter values for each coral taxa, group and size class
 
 # References
 1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
@@ -126,7 +139,7 @@ between bleaching years come from [1].
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 """
-function coral_spec()::NamedTuple
+function _coral_spec_impl()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
     # to each coral species, but treat each coral size class as a 'species'.
     # Need a better word than 'species' to signal that we are using different
@@ -191,6 +204,79 @@ function coral_spec()::NamedTuple
     param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
 
     return (taxa_names=group_names, param_names=param_names, params=params)
+end
+
+"""
+    coral_spec()::NamedTuple
+
+Return the coral parameter specification for ADRIA.
+Includes "vital" bio/ecological parameters for each coral taxa, functional group,
+and size class.
+
+Results are cached: the value is computed once per session and persisted to disk at
+`~/.julia/cache/ADRIA/coral_spec-julia<X.Y>-adria<V>.cache`. The cache filename
+encodes the Julia minor version and ADRIA version, so stale files from other versions
+are never loaded. Within a file, the cache is also keyed to a hash of `Corals.jl`,
+so it is invalidated automatically whenever the source file changes.
+
+# Returns
+A `NamedTuple` with fields:
+- `taxa_names`  : names of functional groups
+- `param_names` : names of perturbable parameters
+- `params`      : `DataFrame` of parameter values for each taxa/size-class combination
+
+# Developer notes
+To force recomputation within a live session (e.g. after reloading with Revise):
+```julia
+ADRIA.invalidate_coral_spec_cache!()
+```
+If struct fields changed, also call `ADRIA.create_coral_struct()` afterwards.
+"""
+function coral_spec()::NamedTuple
+    # Fast path: already cached in memory for this session.
+    isnothing(_CORAL_SPEC_CACHE[]) || return _CORAL_SPEC_CACHE[]
+
+    current_hash = _coral_spec_source_hash()
+    cache_file = _coral_spec_cache_path()
+
+    # Try loading from disk.
+    if isfile(cache_file)
+        try
+            stored_hash, cached = deserialize(cache_file)
+            if stored_hash == current_hash
+                _CORAL_SPEC_CACHE[] = cached
+                return _CORAL_SPEC_CACHE[]
+            end
+        catch
+            # Cache file is corrupt or from an incompatible Julia version; recompute.
+        end
+    end
+
+    # Compute, persist to disk, then store in memory.
+    result = _coral_spec_impl()
+    try
+        mkpath(dirname(cache_file))
+        serialize(cache_file, (current_hash, result))
+    catch err
+        @warn "coral_spec: could not write disk cache" cache_file err
+    end
+    _CORAL_SPEC_CACHE[] = result
+    return _CORAL_SPEC_CACHE[]
+end
+
+"""
+    invalidate_coral_spec_cache!()
+
+Clear the cached `coral_spec()` result so that the next call recomputes it.
+Use this when developing: after modifying the coral specification source and
+reloading with Revise, call this function before creating a new Domain or
+Coral instance to pick up the changes without restarting Julia.
+"""
+function invalidate_coral_spec_cache!()::Nothing
+    _CORAL_SPEC_CACHE[] = nothing
+    cache_file = _coral_spec_cache_path()
+    isfile(cache_file) && rm(cache_file)
+    return nothing
 end
 
 function add_scale_factors!(
@@ -271,20 +357,20 @@ y.a
 """
 function _coral_struct(field_defs::OrderedDict)::Nothing
     s = IOBuffer()
-    write(s, "Base.@kwdef struct Coral{P,P2,P3} <: EcoModel\n")
+    write(s, "Base.@kwdef struct Coral <: EcoModel\n")
 
     for (f, v) in field_defs
-        if f == "heritability"
-            write(s, "$(f)::P2 = $(v)\n")
-            continue
-        end
+        # if f == "heritability"
+        #     write(s, "$(f)::Param = $(v)\n")
+        #     continue
+        # end
 
-        if occursin("scale", f)
-            write(s, "$(f)::P3 = $(v)\n")
-            continue
-        end
+        # if occursin("scale", f)
+        #     write(s, "$(f)::Param = $(v)\n")
+        #     continue
+        # end
 
-        write(s, "$(f)::P = $(v)\n")
+        write(s, "$(f)::Param = $(v)\n")
     end
 
     write(s, "end")
@@ -427,8 +513,13 @@ end
     _update_coral_factors(spec::DataFrame, coral_params::DataFrame)::DataFrame
 
 Update scenario specification with updated coral parameters/factors.
-Allows changes to `coral_spec()` to be represented without requiring a session restart.
 For debugging purposes only.
+
+!!! note "Revise workflow"
+    After modifying `_coral_spec_impl` and letting Revise reload the file, call
+    `ADRIA.invalidate_coral_spec_cache!()` to clear the cached result before
+    calling `coral_spec()` again. If the struct fields changed, also call
+    `ADRIA.create_coral_struct()` to redefine `Coral`. No session restart is needed.
 
 # Examples
 ```julia
@@ -437,9 +528,10 @@ using Revise
 dom = ADRIA.load_domain("path to a Domain", "45")
 default_scen = ADRIA.param_table(dom)
 
-# ... modify the coral specification at some point
-# this would normally require restarting the Julia session for changes to take effect.
-# Instead, we update the specification with the updated values instead.
+# After modifying coral spec source and Revise has reloaded:
+ADRIA.invalidate_coral_spec_cache!()
+ADRIA.create_coral_struct()  # only needed if struct fields changed
+
 default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.coral_spec().params)
 ```
 """

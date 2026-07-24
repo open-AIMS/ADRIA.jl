@@ -1,6 +1,7 @@
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"

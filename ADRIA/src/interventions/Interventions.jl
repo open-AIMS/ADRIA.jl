@@ -3,11 +3,19 @@ Base.@kwdef struct Intervention <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::Param = Factor(
         0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(-1.0, 0.0, 1.0),
+        name="Guided",
+        description="Intervention effort level: -1 no intervention (counterfactual), 0 unguided, 1 guided (MCDA-driven)."
+    )
+    mcda_method::Param = Factor(
+        1;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(Tuple(-1:Float64(length(decision.mcda_methods())))),
-        name="Guided",
-        description="Choice of MCDA approach."
+        dist_params=(Tuple(1:Float64(length(decision.mcda_methods())))),
+        name="MCDA Method",
+        description="Which multi-criteria decision analysis method to use for location selection (only active when `guided` > 0)."
     )
     N_seed_TA::Param = Factor(
         0;
@@ -69,7 +77,7 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
-        dist_params=(5.0, 20.0),
+        dist_params=(5.0, 100.0),
         name="Minimum intervention locations",
         description="Minimum number of locations to perform intervention"
     )
@@ -77,7 +85,7 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
-        dist_params=(5.0, 20.0),
+        dist_params=(1.0, 400.0),
         name="Moving corals minimum intervention locations",
         description="Minimum number of locations to perform moving corals intervention"
     )
@@ -93,7 +101,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0.0;
         ptype="continuous",
         dist=TriangularDist,
-        dist_params=(0.0, 7.0, 0.0),
+        dist_params=(0.0, 10.0, 0.0),
         name="SRM",
         description="Reduction in DHWs due to shading."
     )
@@ -106,12 +114,12 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Assisted adaptation in terms of DHW resistance."
     )
     a_adapt_ref::Param = Factor(
-        0.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
+        5.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 15.0, 1.0),
         name="Assisted adaptation reference",
-        description="Distance from current year used as referece for assisted adaptation."
+        description="Distance from current year used as reference for assisted adaptation."
     )
     seed_years::Param = Factor(
         10;
@@ -145,6 +153,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year)."
     )
+    projection_confidence::Param = Factor(
+        0.0;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        name="Projection Confidence",
+        description="Confidence in far-future environmental projections when weighting them for site selection (only active when `guided` > 0)."
+    )
     seed_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
@@ -153,6 +169,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Selection Frequency (Seed)",
         description="Frequency of seeding deployments (0 deploys once)."
     )
+    seed_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Seed)",
+        description="Minimum number of years before a location can be re-selected for seed deployment (0 = no restriction)."
+    )
     fog_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
@@ -160,6 +184,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 15.0),
         name="Selection Frequency (Fog)",
         description="Frequency of fogging deployments (0 deploys once)."
+    )
+    fog_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Fog)",
+        description="Minimum number of years before a location can be re-selected for fog deployment (0 = no restriction)."
     )
     shade_deployment_freq::Param = Factor(
         1;
@@ -176,6 +208,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 15.0),
         name="Deployment Frequency (Moving corals)",
         description="Frequency of moving corals deployments."
+    )
+    mc_revisit_cadence::Param = Factor(
+        0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Revisit Cadence (Moving corals)",
+        description="Minimum number of years before a location can be re-selected for mc deployment (0 = no restriction)."
     )
     seed_year_start::Param = Factor(
         2;
@@ -271,7 +311,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0.95;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.7, 0.95, 0.05),
+        dist_params=(0.2, 0.95, 0.05),
         name="Cover Absolute Threshold",
         description="Deploy when coral cover falls below this proportion (for reactive strategy)"
     )
@@ -299,14 +339,6 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Response Delay",
         description="Timesteps to wait after trigger before deployment (for reactive strategy)"
     )
-    reactive_cooldown_period::Param = Factor(
-        4.0;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 10.0),
-        name="Reactive Cooldown Period",
-        description="Timesteps before location becomes eligible again; 0=no cooldown (for reactive strategy)"
-    )
 end
 
 function interventions()
@@ -332,11 +364,18 @@ function setup_guided_intervention(
     valid_locs_mask =
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
+    pref = preference(domain, param_set)
+
+    # No locations meet the criteria (e.g. depth bounds exclude all candidates for this
+    # scenario/year) - skip deployment rather than build an empty decision matrix
+    if !any(valid_locs_mask)
+        return pref, nothing, nothing
+    end
+
     # Calculate cluster diversity and geographic separation scores
     diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
     separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
-    pref = preference(domain, param_set)
     decision_mat = decision_matrix(
         domain.loc_ids[valid_locs_mask],
         pref.names;

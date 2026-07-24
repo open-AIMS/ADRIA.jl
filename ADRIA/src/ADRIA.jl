@@ -55,6 +55,7 @@ include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
+include("ecosystem/corals/flatten_overrides.jl")
 include("ecosystem/cyclones.jl")
 include("ecosystem/connectivity.jl")
 
@@ -135,11 +136,37 @@ const COMPAT_DPKG = ["0.8.0"]
         (NamedTuple{(:comment,),Tuple{String}}, typeof(CSV.read), String, Type{DataFrame})
     )
 
+    precompile(_build_dist_types, (DataFrame,))
     precompile(ADRIA.sample, (ADRIADomain, Int))
     precompile(ADRIA.sample_cf, (ADRIADomain, Int))
     precompile(ADRIA.sample_guided, (ADRIADomain, Int))
     precompile(ADRIA.sample_unguided, (ADRIADomain, Int))
     precompile(ADRIA.model_spec, (ADRIADomain, DataFrame))
+
+    redirect_stdio(stdout=devnull, stderr=devnull) do
+        let
+            n_locs, n_crit = 10, 4
+            loc_names = Symbol.(:loc_, 1:n_locs)
+            crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
+
+            # Non-constant data (all-constant triggers filter_criteria, a separate path)
+            dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
+
+            # Mixed directions: MooraMethod requires at least one min and one max
+            weights = fill(0.25, n_crit)
+            directions = [maximum, maximum, minimum, maximum]
+
+            dp = decision.DecisionPreferences(crit_names, weights, directions)
+            dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
+
+            for method in decision.mcda_methods()
+                try
+                    decision.criteria_aggregated_scores(dp, dm, method)
+                catch
+                end
+            end
+        end
+    end
 
     # Sampling dispatch — synthetic spec covers QMC + Distributions path without file IO
     # let
@@ -177,6 +204,25 @@ const COMPAT_DPKG = ["0.8.0"]
                 end
             end
         end
+    end
+
+    # Full domain model assembly — covers the 8-component tuple form used by
+    # load_domain() via _assemble_domain_model(). Without this workload entry,
+    # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
+    # is compiled on first interactive call (~20 s JIT). With this entry the cost
+    # shifts to Pkg.precompile() time and interactive first-call is <1 s.
+    redirect_stdio(stdout=devnull, stderr=devnull) do
+        _arr = ones(Float32, 1, 1, 1)
+        _assemble_domain_model(
+            EnvironmentalLayer(_arr, _arr, _arr),
+            Intervention(),
+            SeedCriteriaWeights(),
+            FogCriteriaWeights(),
+            MCCriteriaWeights(),
+            DepthThresholds(),
+            Coral(),
+            GrowthAcceleration()
+        )
     end
 end
 

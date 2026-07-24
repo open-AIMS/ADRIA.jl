@@ -22,5 +22,9 @@ function sample_unguided(
     cols = [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]
     spec_df[guided_col, cols] .= [0 0 0 (0.0, 0.0) true]
 
+    # Pre-sampling resolution: fix criteria weights, plan_horizon,
+    # projection_confidence, and strategy columns
+    _resolve_conditional_spec!(spec_df, (guided=0.0,))
+
     return sample(spec_df, n, sample_method)
 end

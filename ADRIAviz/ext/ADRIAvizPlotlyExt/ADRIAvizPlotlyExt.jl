@@ -3,7 +3,8 @@ module ADRIAvizPlotlyExt
 using ADRIA
 using ADRIAviz
 using ADRIAviz: AnnotatedOutcomes, _get_scenario_groups, _scenario_clusters,
-    _scenario_types, _scenario_rcps, COLORS, labels, _calc_gridsize
+    _scenario_types, _scenario_rcps, COLORS, labels, _calc_gridsize,
+    _outcome_mask, _empirical_cdf
 using PlotlyBase
 
 include("theme.jl")

@@ -28,7 +28,7 @@ mutable struct ADRIADomain <: Domain
     const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
     wave_scens::YAXArray  # wave scenarios
-    cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
+    cyclone_mortality_scens::Union{Matrix{<:Float64},YAXArray}  # Cyclone mortality scenarios
 
     # Strategy target locations
     # Each element of these vector is a pair weight and list of location ids.
@@ -102,6 +102,32 @@ function _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
 end
 
 """
+    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel)
+
+Wrapper around `ModelParameters.Model` construction so it can be targeted by
+`@compile_workload`.
+
+`Coral` (331 `Param` fields) and `GrowthAcceleration` (36 fields) formerly caused
+`Flatten._flatten` / `_reconstruct` (`@generated` functions) to have O(N²)
+compile-time cost. This is now fixed by concrete method overrides in
+`Corals.jl` / `GrowthAcceleration.jl` that bypass the `@generated` path entirely.
+
+The `@noinline` annotation prevents the compiler from inlining through the barrier.
+"""
+@noinline function _assemble_domain_model(
+    @nospecialize(el),
+    @nospecialize(interv),
+    @nospecialize(swt),
+    @nospecialize(fwt),
+    @nospecialize(mwt),
+    @nospecialize(dth),
+    @nospecialize(coral),
+    @nospecialize(growth_accel)
+)::Model
+    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel))
+end
+
+"""
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(
@@ -122,7 +148,6 @@ function Domain(
     calib_params_fn::String=""
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
-
     if has_mcb_scenarios(DHW)
         albedos = collect(DHW.albedo)
         durations = collect(DHW.mcb_durations)
@@ -169,7 +194,7 @@ function Domain(
         growth_accel_instance = GrowthAcceleration()
     end
 
-    model::Model = Model((
+    model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(; intervention_params...),
         SeedCriteriaWeights(),
@@ -178,7 +203,7 @@ function Domain(
         DepthThresholds(),
         coral_instance,
         growth_accel_instance
-    ))
+    )
 
     return ADRIADomain(
         name,
