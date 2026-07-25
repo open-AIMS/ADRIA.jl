@@ -181,13 +181,7 @@ scens = ADRIA.sample(dom, 8)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # Get frequencies with which each site was selected for each rank
-rank_freq = ranks_to_frequencies(rs.ranks[intervention=1])  # with timesteps not aggregated
-
-# With timesteps aggregated
-rank_freq = ranks_to_frequencies(
-    rs.ranks[intervention=1];
-    agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
-)
+rank_freq = ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
 
 # Get selection frequencies for set of runs
 selection_freq = location_selection_frequencies(rs.ranks[intervention=1])
