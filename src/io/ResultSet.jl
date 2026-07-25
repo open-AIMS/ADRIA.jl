@@ -181,12 +181,19 @@ function ResultSet(
             haskey(log_set, "decision_matrix_log") ?
             let arr = log_set["decision_matrix_log"]
                 ax = Symbol.(Tuple(arr.attrs["structure"]))
+                sz = size(arr)
+                # `decision_matrix_log` stores only the strided pathway-diversity decision
+                # timesteps; label the timesteps axis with their real values so label-based
+                # selection (`At(tstep)`) resolves correctly downstream.
+                ts_labels = haskey(arr.attrs, "timestep_labels") ?
+                    Int64.(arr.attrs["timestep_labels"]) : collect(1:sz[1])
+                axis_vals = [a == :timesteps ? ts_labels : collect(1:s) for (a, s) in zip(ax, sz)]
                 map(
                     Float64,
                     DataCube(
                         arr;
                         properties=_log_attrs_to_props(arr.attrs),
-                        NamedTuple{ax}([1:s for s in size(arr)])...
+                        NamedTuple{ax}(axis_vals)...
                     )
                 )
             end : nothing
@@ -347,7 +354,13 @@ function combine_results(result_sets...)::ResultSet
                 size(rs1.seed_log, :locations),
                 size(rs1.seed_log, :coral_id),
                 size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id),
-                batch_size
+                batch_size;
+                # Preserve the reduced (pathway-diversity) decision timesteps from the sources.
+                pd_tsteps=(
+                    isnothing(rs1.decision_matrix_log) ?
+                    collect(1:size(rs1.seed_log, :timesteps)) :
+                    Int64.(collect(rs1.decision_matrix_log.timesteps))
+                )
             )
         )...
     )

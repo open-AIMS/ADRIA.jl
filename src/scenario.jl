@@ -432,6 +432,41 @@ function _collect_scenario_results(
 end
 
 """
+    _pd_read_timesteps(seed_year_start::Int64, seed_years::Int64, pd_frequency::Int64)::Vector{Int64}
+
+Strided decision timesteps that the pathway-diversity analysis reads from `decision_matrix_log`:
+`(seed_year_start + pd_frequency):pd_frequency:(seed_year_start + seed_years - pd_frequency)`.
+This is the only subset of `decision_matrix_log` timesteps ever consumed, so only these are stored
+(see `pathway_diversity` in src/analysis/pathway_diversity.jl).
+"""
+function _pd_read_timesteps(
+    seed_year_start::Int64, seed_years::Int64, pd_frequency::Int64
+)::Vector{Int64}
+    start_time = seed_year_start + pd_frequency
+    end_time = seed_year_start + seed_years - pd_frequency
+    return collect(start_time:pd_frequency:end_time)
+end
+
+"""
+    pd_decision_timesteps(param_set, factor_names, tf)::Vector{Int64}
+
+Timesteps to store in `decision_matrix_log`. Returns the pathway-diversity read window when
+`pd_frequency` is part of the scenario spec, otherwise falls back to every timestep `1:tf`.
+"""
+function pd_decision_timesteps(
+    param_set::Union{DataFrameRow,YAXArray}, factor_names, tf::Int64
+)::Vector{Int64}
+    if "pd_frequency" ∈ factor_names
+        return _pd_read_timesteps(
+            Int64(param_set[At("seed_year_start")]),
+            Int64(param_set[At("seed_years")]),
+            Int64(param_set[At("pd_frequency")])
+        )
+    end
+    return collect(1:tf)
+end
+
+"""
     _write_batch!(data_store, start_idx, results)
 
 Write a contiguous batch of collected scenario results to the Zarr data store.
@@ -488,10 +523,11 @@ function _write_batch!(
     data_store.mc_log[:, :, :, idx_range] .= mc_batch
     data_store.seed_log[:, :, :, idx_range] .= seed_batch
 
-    # decision_matrix_log: (tf, n_locs, n_criteria, n)
+    # decision_matrix_log: (n_pd_tsteps, n_locs, n_criteria, n)
+    # Only the strided decision timesteps read by the pathway-diversity analysis are stored.
     if parse(Bool, get(ENV, "ADRIA_LOG_DM", "false")) == true
-        _, n_l, n_c = size(results[1].decision_matrix_log)
-        dm_batch = Array{Float16}(undef, tf, n_l, n_c, n)
+        n_t, n_l, n_c = size(results[1].decision_matrix_log)
+        dm_batch = Array{Float16}(undef, n_t, n_l, n_c, n)
         for (i, r) in enumerate(results)
             dm_batch[:, :, :, i] .= r.decision_matrix_log
         end
@@ -1135,8 +1171,13 @@ function run_model(
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
     # Decision matrix log
+    # Only the strided decision timesteps read by the pathway-diversity analysis are stored
+    # (see `pathway_diversity` in src/analysis/pathway_diversity.jl); every other timestep is
+    # never read, so storing them wastes disk. The axis is labelled with the real timestep
+    # values so label-based selection (`At(tstep)`) keeps working downstream.
+    pd_tsteps = pd_decision_timesteps(param_set, factor_names, tf)
     if log_dm
-        decision_matrix_log = ZeroDataCube(; T=Float32, timesteps=1:tf,
+        decision_matrix_log = ZeroDataCube(; T=Float32, timesteps=pd_tsteps,
             location=domain.loc_ids[habitable_locs], criteria=SeedPreferences(domain, param_set).names)
     else
         decision_matrix_log = false
@@ -1724,8 +1765,8 @@ function run_model(
                             coral_diversity=diversity[share_candidate_loc_idx]
                         )
 
-                        if log_dm
-                            decision_matrix_log[timesteps=tstep, location=At(share_candidate_locs)] .= seed_decision_mat[location=At(
+                        if log_dm && tstep in pd_tsteps
+                            decision_matrix_log[timesteps=At(tstep), location=At(share_candidate_locs)] .= seed_decision_mat[location=At(
                                 share_candidate_locs
                             )]
                         end

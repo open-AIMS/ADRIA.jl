@@ -95,10 +95,12 @@ function pathway_diversity(
     )
     probs = ones(length(idx_option_scens))
 
-    # Pre-fetch all decision matrices for selected scenarios and timesteps to avoid repeated I/O
+    # Pre-fetch all decision matrices for selected scenarios and timesteps to avoid repeated I/O.
+    # `decision_matrix_log` stores only these strided decision timesteps (labelled with their real
+    # values), so select by value with `At` rather than positionally.
     tsteps = collect(start_time:pd_freq:end_time)
     cached_decision_matrices = readcubedata(
-        rs.decision_matrix_log[timesteps=tsteps, scenarios=idx_option_scens]
+        rs.decision_matrix_log[timesteps=At(tsteps), scenarios=At(idx_option_scens)]
     )
 
     # Cache outcome metrics and pre-compute per-tstep option performance (read-only in threads).

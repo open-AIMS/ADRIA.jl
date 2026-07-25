@@ -193,7 +193,8 @@ Setup logs for ranks, seed_log, shading_log, coral_dhw_log, coral_cover_log, and
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
 function setup_logs(
-    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
+    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1;
+    pd_tsteps=collect(1:tf)
 )
     # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
@@ -206,8 +207,12 @@ function setup_logs(
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
     n_mcda_criteria = length(fieldnames(ADRIA.SeedCriteriaWeights))
+    # Only the strided decision timesteps read by the pathway-diversity analysis are stored
+    # (see `pathway_diversity` in src/analysis/pathway_diversity.jl); the axis is labelled with
+    # the real timestep values via `:timestep_labels` so label-based selection works on load.
+    n_pd_tsteps = length(pd_tsteps)
     decision_matrix_dims::Tuple{Int64,Int64,Int64,Int64} = (
-        tf, n_locs, n_mcda_criteria, n_scens
+        n_pd_tsteps, n_locs, n_mcda_criteria, n_scens
     )
 
     attrs = Dict(
@@ -374,6 +379,7 @@ function setup_logs(
     dm_attrs = Dict(
         :structure => ("timesteps", "location", "criteria", "scenarios"),
         :unique_loc_ids => unique_loc_ids,
+        :timestep_labels => collect(pd_tsteps),
         :units => "MCDA criterion value",
         :description => "Per-criterion MCDA decision matrix per location; stored as Float16"
     )
@@ -625,7 +631,15 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
             n_locations,
             n_groups,
             domain.coral_growth.n_sizes,
-            batch_size
+            batch_size;
+            pd_tsteps=(
+                "pd_frequency" ∈ names(scen_spec) ?
+                _pd_read_timesteps(
+                    Int64(scen_spec[1, :seed_year_start]),
+                    Int64(scen_spec[1, :seed_years]),
+                    Int64(scen_spec[1, :pd_frequency])
+                ) : collect(1:tf)
+            )
         )...
     ]
 
