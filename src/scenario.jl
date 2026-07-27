@@ -157,8 +157,10 @@ function run_scenarios(
     parallel::Bool = !env_debug && (Threads.nthreads() > 1)
 
     # chunk_size sets the Zarr chunk size along the scenario axis and controls how many
-    # results the writer accumulates before flushing to disk. Compute scheduling is
-    # per-scenario via a channel, so chunk_size is purely an I/O tuning parameter.
+    # results the writer accumulates before flushing to disk. Scenarios are scheduled by
+    # `@threads`, which splits the range into nthreads contiguous blocks, so the writer
+    # holds up to roughly one partial chunk per block: chunk_size directly sets the
+    # writer's memory ceiling as well as the write granularity.
     # In serial mode: fall back to the env var (default 1).
     active_threads::Int = Threads.nthreads()
     env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
@@ -251,25 +253,30 @@ function run_scenarios(
             writer = Threads.@spawn begin
                 buf = Dict{Int,NamedTuple}()
                 chunk_ready = zeros(Int, n_chunks)
-                next_chunk = 0
 
                 for (idx, result) in ch
                     buf[idx] = result
                     c = (idx - first_idx) ÷ chunk_size
                     chunk_ready[c + 1] += 1
 
-                    while next_chunk < n_chunks &&
-                        chunk_ready[next_chunk + 1] >= chunk_len(next_chunk)
-                        s = chunk_start(next_chunk)
-                        n = chunk_len(next_chunk)
-                        results = [buf[s + i] for i in 0:(n - 1)]
-                        for i in 0:(n - 1)
-                            delete!(buf, s + i)
-                        end
-                        _write_batch!(data_store, s, results)
-                        isnothing(prog) || ProgressMeter.next!(prog)
-                        next_chunk += 1
+                    # Flush a chunk as soon as it is complete, in whatever order chunks
+                    # happen to fill up. `@threads` splits the scenario range into
+                    # nthreads contiguous blocks, so results arrive from that many index
+                    # regions at once: flushing strictly in ascending chunk order would
+                    # pin every result above the lowest incomplete chunk in `buf` until
+                    # the first block finished, growing the buffer for the whole run.
+                    # Writes for distinct chunks are independent, so out-of-order
+                    # flushing is safe and caps `buf` near one partial chunk per block.
+                    chunk_ready[c + 1] < chunk_len(c) && continue
+
+                    s = chunk_start(c)
+                    n = chunk_len(c)
+                    results = [buf[s + i] for i in 0:(n - 1)]
+                    for i in 0:(n - 1)
+                        delete!(buf, s + i)
                     end
+                    _write_batch!(data_store, s, results)
+                    isnothing(prog) || ProgressMeter.next!(prog)
                 end
             end
 
