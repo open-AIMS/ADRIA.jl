@@ -46,16 +46,19 @@ end
     load_domain(
         ::Type{ReefModDomain},
         fn_path::String,
-        RCP::String
+        RCP::String;
+        timeframe::Tuple=(2022, 2100),
+        calib_params_fn::String=""
     )::ReefModDomain
 
 Load ReefMod Matlab Dataset stored in netcdf file format.
-Uses a path ReefMod Engine data to fill missing required data
+Uses a path to ReefMod Engine data to fill missing required data.
 
 # Arguments
 - `ReefModDomain` : DataType
 - `fn_path` : path to netcdf ReefMod Matlab Dataset Directory
 - `RCP` : Representative Concentration Pathway scenario ID
+- `timeframe` : Timeframe for simulations to be run. Defaults to (2022, 2100)
 - `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
 default coral and growth acceleration parameters are used.
 
@@ -278,7 +281,7 @@ function load_initial_cover(
 end
 
 """
-    _find_file(dir::String)::String
+    _find_file(dir::String, ident::Union{Regex,String})::String
 """
 function _find_file(dir::String, ident::Union{Regex,String})::String
     pos_files = filter(isfile, readdir(dir; join=true))
