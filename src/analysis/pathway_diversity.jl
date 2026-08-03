@@ -215,7 +215,7 @@ function switching_probability(
         # counterfactual shares the candidate's past pathway prefix (see option_perf keys), so
         # the only difference is the current block's action.
         if row.option_name == past_option
-            row.probability += (weights[1] + weights[2]) * 0.5
+            row.probability += (weights[1] + weights[2]) * 0.7
         elseif haskey(option_perf, :nothing) && haskey(option_perf, row.option_name)
             counter = option_perf[:nothing]
             cand_perf = option_perf[row.option_name]
@@ -482,21 +482,20 @@ const _σ_rel_tac = 0.002   # cum_rel_tac_diff
 const _σ_fd = 0.001        # cum_fd_diff
 
 """
-    two_sided_cvar(delta; tail_fraction, σ, cvar_neutral)
+    two_sided_cvar(delta; tail_fraction, σ)
 
 Map the two-sided CVaR of `delta` to [0, 1] via tanh. Returns 0.5 when there is
-no net benefit, approaches 1 when the upper tail dominates
-(net beneficial), and approaches 0 when the lower tail dominates (net detrimental).
+no net benefit, approaches 1 when both tails are strongly positive, and approaches 0
+when both tails are strongly negative.
 
-`delta` is a per-location relative change vector (`candidate ./ past .- 1`).
+`delta` is a per-location relative change vector (`candidate ./ counterfactual .- 1`).
 `tail_fraction` is the fraction of locations in each tail (default 3%).
-`cvar_neutral` is the score returned for a neutral (no net benefit) switch (default 0.2).
+`σ` controls sensitivity: the raw CVaR signal is scaled by 1/σ before tanh.
 """
 function two_sided_cvar(
     delta::AbstractVector;
     tail_fraction::Float64=0.03,
     σ::Float64=0.001,
-    cvar_neutral::Float64=0.2,
 )::Float64
     all(iszero, delta) && return 0.5
     N = length(delta)
@@ -504,12 +503,7 @@ function two_sided_cvar(
     s = sort(delta)
     cvar_lower = mean(s[1:k])
     cvar_upper = mean(s[(end - k + 1):end])
-    raw = cvar_upper - abs(cvar_lower)
-    # Asymmetric mapping around `cvar_neutral`, equivalent to:
-    # n + (t + (1 - 2n) * abs(t)) / 2
-    t = tanh(raw / σ)
-    n = cvar_neutral
-    return t ≥ 0 ? n + (1 - n) * t : n * (1 + t)
+    return 0.5 * (1 + tanh((cvar_upper + cvar_lower) / σ))
 end
 
 """
