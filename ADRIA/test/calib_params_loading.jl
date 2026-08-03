@@ -10,6 +10,11 @@ end
 
 const MOCK_CALIB_PARAMS_PATH = joinpath(TEST_DATA_DIR, "mock_calibrated_params.nc")
 
+# Pre-schema-v3 calibration output, written before `dist_std` was calibrated
+const MOCK_CALIB_PARAMS_NO_DIST_STD_PATH = joinpath(
+    TEST_DATA_DIR, "mock_calibrated_params_no_dist_std.nc"
+)
+
 @testset "Calibrated parameter loading" begin
     mock_nc_ds = open_dataset(MOCK_CALIB_PARAMS_PATH)
 
@@ -26,9 +31,20 @@ const MOCK_CALIB_PARAMS_PATH = joinpath(TEST_DATA_DIR, "mock_calibrated_params.n
         le = Array(mock_nc_ds["linear_extension"])
         mb = Array(mock_nc_ds["mb_rate"])
         dm = Array(mock_nc_ds["dist_mean"])
+        ds = Array(mock_nc_ds["dist_std"])
         @test ms_dict["$(fg_names[1])_1_1_linear_extension"] ≈ le[1, 1]
         @test ms_dict["$(fg_names[3])_3_4_mb_rate"] ≈ mb[3, 4]
         @test ms_dict["$(fg_names[2])_2_5_dist_mean"] ≈ dm[2, 5]
+        @test ms_dict["$(fg_names[2])_2_5_dist_std"] ≈ ds[2, 5]
+        @test ms_dict["$(fg_names[5])_5_7_dist_std"] ≈ ds[5, 7]
+    end
+
+    # `dist_std` varies by size class within a functional group, so a loader that
+    # collapsed the size dimension would still pass the single-element checks above
+    @testset "dist_std is size-class resolved" begin
+        ds = Array(mock_nc_ds["dist_std"])
+        loaded = [ms_dict["$(fg_names[3])_3_$(sc)_dist_std"] for sc = 1:size(ds, 2)]
+        @test loaded ≈ ds[3, :]
     end
 
     @testset "Scale factors" begin
@@ -44,5 +60,57 @@ const MOCK_CALIB_PARAMS_PATH = joinpath(TEST_DATA_DIR, "mock_calibrated_params.n
         @test ms_dict["growth_acceleration_cb_group_$(bg_ids[1])_steepness"] ≈ ga[1, 1]
         @test ms_dict["growth_acceleration_cb_group_$(bg_ids[6])_height"] ≈ ga[6, 2]
         @test ms_dict["growth_acceleration_cb_group_$(bg_ids[12])_midpoint"] ≈ ga[12, 3]
+    end
+end
+
+@testset "Calibration file without dist_std" begin
+    dom = ADRIA.load_domain(
+        TEST_DOMAIN_PATH, "45"; calib_params_fn=MOCK_CALIB_PARAMS_NO_DIST_STD_PATH
+    )
+    ms = ADRIA.model_spec(dom)
+    ms_dict = Dict(string(r.fieldname) => r.val for r in eachrow(ms))
+
+    legacy_ds = open_dataset(MOCK_CALIB_PARAMS_NO_DIST_STD_PATH)
+    fg_names = string.(ADRIA.functional_group_names())
+
+    # Calibrated parameters that are present still load
+    @test ms_dict["$(fg_names[2])_2_5_dist_mean"] ≈ Array(legacy_ds["dist_mean"])[2, 5]
+
+    # `dist_std` falls back to the ADRIA default rather than erroring
+    default_dist_std = ADRIA.dist_std()
+    @test ms_dict["$(fg_names[1])_1_1_dist_std"] ≈ default_dist_std[1]
+end
+
+@testset "ReefMod domains accept calibrated parameters" begin
+    fg_names = string.(ADRIA.functional_group_names())
+    dm = Array(open_dataset(MOCK_CALIB_PARAMS_PATH)["dist_mean"])
+    ds = Array(open_dataset(MOCK_CALIB_PARAMS_PATH)["dist_std"])
+
+    @testset "ReefModDomain" begin
+        dom = ADRIA.load_domain(
+            ReefModDomain,
+            joinpath(TEST_DATA_DIR, "Reefmod_test_domain"),
+            "45";
+            calib_params_fn=MOCK_CALIB_PARAMS_PATH
+        )
+        ms_dict = Dict(
+            string(r.fieldname) => r.val for r in eachrow(ADRIA.model_spec(dom))
+        )
+        @test ms_dict["$(fg_names[2])_2_5_dist_mean"] ≈ dm[2, 5]
+        @test ms_dict["$(fg_names[2])_2_5_dist_std"] ≈ ds[2, 5]
+    end
+
+    @testset "RMEDomain" begin
+        dom = ADRIA.load_domain(
+            RMEDomain,
+            joinpath(TEST_DATA_DIR, "RME_test_domain"),
+            "45";
+            calib_params_fn=MOCK_CALIB_PARAMS_PATH
+        )
+        ms_dict = Dict(
+            string(r.fieldname) => r.val for r in eachrow(ADRIA.model_spec(dom))
+        )
+        @test ms_dict["$(fg_names[2])_2_5_dist_mean"] ≈ dm[2, 5]
+        @test ms_dict["$(fg_names[2])_2_5_dist_std"] ≈ ds[2, 5]
     end
 end
