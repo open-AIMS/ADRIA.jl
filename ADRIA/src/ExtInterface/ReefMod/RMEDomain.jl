@@ -119,6 +119,8 @@ Load a ReefMod Engine dataset.
 habitable areas.
 - `single_reef_total_area` : Reef total area in m² to be used when `force_single_reef` is `true`.
 - `single_reef_k` : Reef k ∈ [0.0, 1.0] ro be used when `force_single_reef` is `true`.
+- `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
+default coral and growth acceleration parameters are used.
 
 # Returns
 RMEDomain
@@ -131,7 +133,8 @@ function load_domain(
     force_single_reef::Bool=false,
     force_single_reef_id::String="",
     single_reef_total_area::Float64=1_000_000.0,
-    single_reef_k::Float64=0.5
+    single_reef_k::Float64=0.5,
+    calib_params_fn::String=""
 )::RMEDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
 
@@ -296,12 +299,14 @@ function load_domain(
         )
     end
 
+    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
         criteria_weights...,
-        Coral(),
-        GrowthAcceleration()
+        coral_instance,
+        growth_accel_instance
     ))
 
     return adjust_sampling_bounds(

@@ -56,6 +56,8 @@ Uses a path ReefMod Engine data to fill missing required data
 - `ReefModDomain` : DataType
 - `fn_path` : path to netcdf ReefMod Matlab Dataset Directory
 - `RCP` : Representative Concentration Pathway scenario ID
+- `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
+default coral and growth acceleration parameters are used.
 
 # Returns
 ReefModDomain
@@ -64,7 +66,8 @@ function load_domain(
     ::Type{ReefModDomain},
     fn_path::String,
     RCP::String;
-    timeframe::Tuple=(2022, 2100)
+    timeframe::Tuple=(2022, 2100),
+    calib_params_fn::String=""
 )::ReefModDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
     netcdf_file = _find_netcdf(fn_path, RCP)
@@ -164,12 +167,14 @@ function load_domain(
         timeframe
     )
 
+    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
         Intervention(),
         criteria_weights...,
-        Coral(),
-        GrowthAcceleration()
+        coral_instance,
+        growth_accel_instance
     ))
 
     return ReefModDomain(

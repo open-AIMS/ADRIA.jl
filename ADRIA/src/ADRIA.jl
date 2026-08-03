@@ -63,6 +63,7 @@ include("Domain.jl")
 include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 include("io/initial_coral_cover.jl")
+include("io/calib_params.jl")
 
 include("decision/Decision.jl")
 include("interventions/Interventions.jl")
