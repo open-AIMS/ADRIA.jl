@@ -49,8 +49,8 @@ end
 
 Read calibrated coral parameter values from a NetCDF dataset (produced by CoralBlox
 calibration) and return a Dict mapping Coral struct field names to their calibrated values.
-Covers `linear_extension`, `mb_rate`, `dist_mean`, `linear_extension_scale`, and
-`mb_rate_scale`. Any field not present in the dataset falls back to the ADRIA default.
+Covers `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`, `linear_extension_scale`,
+and `mb_rate_scale`. Any field not present in the dataset falls back to the ADRIA default.
 """
 function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
     overrides = Dict{String,Float64}()
@@ -59,8 +59,12 @@ function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
     for (param_name, varname) in (
         ("linear_extension", "linear_extension"),
         ("mb_rate", "mb_rate"),
-        ("dist_mean", "dist_mean")
+        ("dist_mean", "dist_mean"),
+        ("dist_std", "dist_std")
     )
+        # Older calibration outputs predate per-size-class `dist_std`
+        Symbol(varname) in keys(nc_ds.cubes) || continue
+
         data = Array(nc_ds[varname])  # (n_groups, n_sizes)
         for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
             overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
