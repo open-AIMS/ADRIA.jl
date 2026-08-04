@@ -1,0 +1,87 @@
+"""
+    _coral_calib_overrides(nc_ds)::Dict{String,Float64}
+
+Read calibrated coral parameter values from a NetCDF dataset (produced by CoralBlox
+calibration) and return a Dict mapping Coral struct field names to their calibrated values.
+Covers `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`, `linear_extension_scale`,
+and `mb_rate_scale`. Any field not present in the dataset falls back to the ADRIA default.
+"""
+function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    fg_names = string.(functional_group_names())
+
+    for (param_name, varname) in (
+        ("linear_extension", "linear_extension"),
+        ("mb_rate", "mb_rate"),
+        ("dist_mean", "dist_mean"),
+        ("dist_std", "dist_std")
+    )
+        # Older calibration outputs predate per-size-class `dist_std`
+        Symbol(varname) in keys(nc_ds.cubes) || continue
+
+        data = Array(nc_ds[varname])  # (n_groups, n_sizes)
+        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
+            overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
+        end
+    end
+
+    le_scale_da = nc_ds["linear_extension_scale"]
+    mb_scale_da = nc_ds["mb_rate_scale"]
+    bg_ids = collect(DimensionalData.lookup(le_scale_da, :cb_calib_group))
+    le_scale = Array(le_scale_da)
+    mb_scale = Array(mb_scale_da)
+
+    for (fg_idx, fg) in enumerate(fg_names), (bg_idx, bg) in enumerate(bg_ids)
+        overrides["linear_extension_scale_cb_group_$(bg)_$(fg)"] = le_scale[fg_idx, bg_idx]
+        overrides["mb_rate_scale_cb_group_$(bg)_$(fg)"] = mb_scale[fg_idx, bg_idx]
+    end
+
+    return overrides
+end
+
+"""
+    _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
+
+Read calibrated growth acceleration parameter values from a NetCDF dataset and return a
+Dict mapping GrowthAcceleration struct field names to their calibrated values.
+"""
+function _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    ga_da = nc_ds["growth_acceleration"]  # (cb_calib_group=12, accel_param=3)
+    bg_ids = collect(DimensionalData.lookup(ga_da, :cb_calib_group))
+    ap_vals = collect(DimensionalData.lookup(ga_da, :accel_param))
+    ga = Array(ga_da)
+
+    for (bg_idx, bg) in enumerate(bg_ids), (ap_idx, ap) in enumerate(ap_vals)
+        overrides["growth_acceleration_cb_group_$(bg)_$(ap)"] = ga[bg_idx, ap_idx]
+    end
+
+    return overrides
+end
+
+"""
+    load_calib_params(calib_params_fn::String)
+
+Build the `Coral` and `GrowthAcceleration` component instances for a domain.
+
+If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
+values are applied as overrides; otherwise the ADRIA defaults are used.
+
+# Returns
+Tuple of (Coral, GrowthAcceleration)
+"""
+function load_calib_params(calib_params_fn::String)
+    if isempty(calib_params_fn) || !isfile(calib_params_fn)
+        return Coral(), GrowthAcceleration()
+    end
+
+    @info "Loading calibrated coral parameters from $(calib_params_fn)"
+    nc_ds = open_dataset(calib_params_fn)
+
+    return (
+        create_coral_instance(; overrides=_coral_calib_overrides(nc_ds)),
+        create_growth_acceleration_instance(;
+            overrides=_growth_accel_calib_overrides(nc_ds)
+        )
+    )
+end

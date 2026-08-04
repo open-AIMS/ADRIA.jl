@@ -45,63 +45,6 @@ mutable struct ADRIADomain <: Domain
 end
 
 """
-    _coral_calib_overrides(nc_ds)::Dict{String,Float64}
-
-Read calibrated coral parameter values from a NetCDF dataset (produced by CoralBlox
-calibration) and return a Dict mapping Coral struct field names to their calibrated values.
-Covers `linear_extension`, `mb_rate`, `dist_mean`, `linear_extension_scale`, and
-`mb_rate_scale`. Any field not present in the dataset falls back to the ADRIA default.
-"""
-function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
-    overrides = Dict{String,Float64}()
-    fg_names = string.(functional_group_names())
-
-    for (param_name, varname) in (
-        ("linear_extension", "linear_extension"),
-        ("mb_rate", "mb_rate"),
-        ("dist_mean", "dist_mean")
-    )
-        data = Array(nc_ds[varname])  # (n_groups, n_sizes)
-        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
-            overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
-        end
-    end
-
-    le_scale_da = nc_ds["linear_extension_scale"]
-    mb_scale_da = nc_ds["mb_rate_scale"]
-    bg_ids = collect(DimensionalData.lookup(le_scale_da, :cb_calib_group))
-    le_scale = Array(le_scale_da)
-    mb_scale = Array(mb_scale_da)
-
-    for (fg_idx, fg) in enumerate(fg_names), (bg_idx, bg) in enumerate(bg_ids)
-        overrides["linear_extension_scale_cb_group_$(bg)_$(fg)"] = le_scale[fg_idx, bg_idx]
-        overrides["mb_rate_scale_cb_group_$(bg)_$(fg)"] = mb_scale[fg_idx, bg_idx]
-    end
-
-    return overrides
-end
-
-"""
-    _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
-
-Read calibrated growth acceleration parameter values from a NetCDF dataset and return a
-Dict mapping GrowthAcceleration struct field names to their calibrated values.
-"""
-function _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
-    overrides = Dict{String,Float64}()
-    ga_da = nc_ds["growth_acceleration"]  # (cb_calib_group=12, accel_param=3)
-    bg_ids = collect(DimensionalData.lookup(ga_da, :cb_calib_group))
-    ap_vals = collect(DimensionalData.lookup(ga_da, :accel_param))
-    ga = Array(ga_da)
-
-    for (bg_idx, bg) in enumerate(bg_ids), (ap_idx, ap) in enumerate(ap_vals)
-        overrides["growth_acceleration_cb_group_$(bg)_$(ap)"] = ga[bg_idx, ap_idx]
-    end
-
-    return overrides
-end
-
-"""
     _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel)
 
 Wrapper around `ModelParameters.Model` construction so it can be targeted by
@@ -128,7 +71,11 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
 end
 
 """
-Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
+Barrier function to create Domain struct without specifying Intervention, Criteria, Coral
+or SimConstant parameters, which are constructed internally.
+
+Coral and growth acceleration parameters are taken from `calib_params_fn` when given, and
+default to ADRIA values otherwise.
 """
 function Domain(
     name::String,
@@ -175,24 +122,7 @@ function Domain(
         )
     )
 
-    local coral_instance::Coral
-    local growth_accel_instance::GrowthAcceleration
-
-    if !isempty(calib_params_fn) && isfile(calib_params_fn)
-        @info "Loading calibrated coral parameters from $(calib_params_fn)"
-
-        nc_ds = open_dataset(calib_params_fn)
-        coral_overrides, growth_accel_overrides = _coral_calib_overrides(nc_ds),
-        _growth_accel_calib_overrides(nc_ds)
-
-        coral_instance = create_coral_instance(; overrides=coral_overrides)
-        growth_accel_instance = create_growth_acceleration_instance(;
-            overrides=growth_accel_overrides
-        )
-    else
-        coral_instance = Coral()
-        growth_accel_instance = GrowthAcceleration()
-    end
+    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
 
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
@@ -231,7 +161,7 @@ function Domain(
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
+    Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, cluster_id_col::String, k_area_col::String, area_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String; calib_params_fn::String="")::ADRIADomain
 
 Convenience constructor for Domain.
 
@@ -243,11 +173,15 @@ Convenience constructor for Domain.
 - `location_data_fn` : File name of spatial data used
 - `location_id_col` : Column holding name of reef the location is associated with (non-unique)
 - `cluster_id_col` : Column holding unique cluster names/ids
+- `k_area_col` : Column holding habitable area proportion
+- `area_col` : Column holding location area
 - `init_coral_fn` : Name of file holding initial coral cover values
 - `conn_path` : Path to directory holding connectivity data
 - `dhw_fn` : Filename of DHW data cube in use
 - `wave_fn` : Filename of wave data cube
 - `cyclone_mortality_fn` : Filename of cyclone mortality data cube
+- `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
+default coral and growth acceleration parameters are used.
 """
 function Domain(
     name::String,
@@ -412,7 +346,7 @@ end
 """
     _standardise_location_columns!(location_data::DataFrame; cluster_id_col::Union{Nothing, String}=nothing, k_area_col::Union{Nothing, String}=nothing, area_col::Union{Nothing, String}=nothing,)::Nothing
 
-Rename the columns of a given locationd dataframe to intenral ADRIA standards.
+Rename the columns of a given location dataframe to internal ADRIA standards.
 ADRIA Domains assume specific column names for specific features in the location data.
 
 |  Feature | Internal Standard |
@@ -464,13 +398,15 @@ function _get_spatial_column_names(dpkg_details::Dict{String,Any})::Dict{String,
 end
 
 """
-    load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
-    load_domain(path::String, rcp::String)
-    load_domain(path::String, rcp::Int64)
+    load_domain(ADRIADomain, path::String, rcp::String; calib_params_fn::String="")::ADRIADomain
+    load_domain(path::String, rcp::String; calib_params_fn::String="")::ADRIADomain
+    load_domain(path::String, rcp::Int64; calib_params_fn::String="")::ADRIADomain
 
 # Arguments
 - `path` : location of data package
-- `rcp` : RCP scenario to run. If none provided, no data path is set.
+- `rcp` : RCP scenario to run
+- `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
+default coral and growth acceleration parameters are used.
 """
 function load_domain(
     ::Type{ADRIADomain}, path::String, rcp::String; calib_params_fn::String=""
@@ -553,7 +489,7 @@ function get_wave_data(d::ADRIADomain, RCP::String)::String
 end
 
 """
-    switch_RCPs!(d::Domain, RCP::String)::Domain
+    switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
 
 Switch environmental datasets to represent the given RCP.
 
