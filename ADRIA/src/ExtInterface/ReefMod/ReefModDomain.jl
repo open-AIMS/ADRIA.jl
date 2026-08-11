@@ -170,14 +170,16 @@ function load_domain(
         timeframe
     )
 
-    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance =
+        load_calib_params(calib_params_fn)
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
         Intervention(),
         criteria_weights...,
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        depth_atten_instance
     ))
 
     return ReefModDomain(

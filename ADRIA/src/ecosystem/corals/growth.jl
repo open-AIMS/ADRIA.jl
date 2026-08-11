@@ -136,7 +136,7 @@ function depth_coefficient(d::Union{Int64,Float64})::Float64
 end
 
 """
-    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.07551, mixing_scale=12.0)
+    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.04, mixing_scale=12.0)
 
 Compute effective DHW at a given depth using Beer-Lambert attenuation with
 mixing-dependent attenuation decay.
@@ -149,9 +149,25 @@ erodes stratification, reducing the effective attenuation coefficient towards ze
 # Arguments
 - `dhw_surface` : Surface (or reference depth ~2m) DHW
 - `depth` : Site depth in meters
-- `κ_base` : Base attenuation coefficient (m⁻¹); yields ~73% of surface DHW at 10m
-    under low-stress conditions, consistent with Baird et al. (2018) observations
-- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient
+- `κ_base` : Base attenuation coefficient (m⁻¹) in the `dhw_surface -> 0` limit;
+    Free parameter, not empirically anchored — see note below
+- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient.
+    Free parameter; treat as a scenario axis rather than a fitted value. Zero is the
+    permanently well-mixed limit, in which depth provides no refuge at any DHW
+
+Both are exposed as model factors by [`DepthAttenuation`](@ref) and are read from the
+scenario `param_set` in `run_model`; the defaults here only apply to direct calls.
+
+# Notes
+Both parameters are unconstrained by Baird et al. [1], despite that reference being
+cited here for the qualitative depth-refuge effect. They report no attenuation
+coefficient; their only quantitative depth anchor is ~50% fewer bleached colonies at
+12m than at 2m, which `κ_base = 0.04` does not reproduce (matching it needs 0.056-0.137
+depending on assumed surface DHW). Their assemblage model is also logit-linear in
+log10(depth) — a power law — so no exponential coefficient exists to extract, and the
+implied κ varies with anchor depth (0.145 at 6m, 0.050 at 27m). They found no
+significant depth × DHW interaction over DHW 4-10, so `mixing_scale` is likewise
+unconstrained by that dataset.
 
 # References
 1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
@@ -165,7 +181,10 @@ function effective_dhw_at_depth(
     dhw_surface::Float64, depth::Float64;
     κ_base::Float64=0.04, mixing_scale::Float64=12.0
 )::Float64
-    κ_eff = κ_base / (1.0 + dhw_surface / mixing_scale)
+    # `mixing_scale = 0` is the permanently well-mixed limit: no attenuation at any DHW.
+    # Taken as a special case because the general expression is 0/0 when `dhw_surface` is
+    # also zero, which would otherwise put a NaN into `bleaching_mortality!`.
+    κ_eff = mixing_scale > 0.0 ? κ_base / (1.0 + dhw_surface / mixing_scale) : 0.0
     Δz = max(0.0, depth - 2.0)
     return dhw_surface * exp(-κ_eff * Δz)
 end

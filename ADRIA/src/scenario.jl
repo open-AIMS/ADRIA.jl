@@ -1122,6 +1122,11 @@ function run_model(
     # If a_adapt == 0, use always first year as reference for a_adapt
     a_adapt_ref::Int64 = param_set[At("a_adapt_ref")]
 
+    # Depth attenuation of surface DHW (see `effective_dhw_at_depth`). Read once here rather
+    # than inside the time loop - they are scenario-level constants.
+    eff_dhw_base::Float64 = param_set[At("eff_dhw_base")]
+    eff_dhw_mix::Float64 = param_set[At("eff_dhw_mix")]
+
     # c_mean tolerance of the "natural" population used as the reference for seeding corals
     # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
@@ -1835,7 +1840,10 @@ function run_model(
         # so what causes 100% mortality can differ between runs.
         # Wave activity is said to also promote nutrient cycling, and improve growth.
         # Removed as I could not find any justification behind the implementation.
-        eff_dhw_t .= effective_dhw_at_depth.(dhw_t, loc_data.depth_med)
+        eff_dhw_t .= effective_dhw_at_depth.(
+            dhw_t, loc_data.depth_med;
+            κ_base=eff_dhw_base, mixing_scale=eff_dhw_mix
+        )
         bleaching_mortality!(
             C_cover_t,
             eff_dhw_t,
