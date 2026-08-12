@@ -393,13 +393,13 @@ function bleaching_mortality!(
                 bleach_dhw[2, grp, sc, loc] = eff_dhw[loc]
                 if mort_pop > 0.0
                     # 1. Re-create distribution truncated at current bleaching DHW: survivors
-                    # must have had tolerance above dhw[loc], so this is the correct lower
+                    # must have had tolerance above eff_dhw[loc], so this is the correct lower
                     # bound.
                     #
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], HEAT_LB, μ_ceil
+                        μ, stdev[grp, sc], max(HEAT_LB, eff_dhw[loc]), μ_ceil
                     )
 
                     # Update population
