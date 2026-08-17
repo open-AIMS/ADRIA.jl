@@ -165,7 +165,7 @@ Compute switching probability for all defined pathway diversity options.
 - `mcda_method` : MCDA method used in selec_locations.
 - `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
 - `ports` : Dataframe with name and coordinate of ports.
-- `weights` : 4-tuple of weights for `(cum_rel_tac_diff, cum_fd_diff, distance_to_port, option_similarity)`. Defaults to `(0.6, 0.3, 0.05, 0.05)`.
+- `weights` : 4-tuple of weights for `(cum_rel_tac_diff, cum_fd_diff, distance_to_port, option_similarity)`. Defaults to `(0.4, 0.3, 0.15, 0.15)`.
 - `option_perf` : Pre-computed per-option performance metrics for the relevant timestep, keyed by option symbol. Built from `_prefix_option_perf` conditioned on the deciding scenario's past pathway prefix.
 
 # Returns
@@ -179,7 +179,7 @@ function switching_probability(
     min_locs::Int64,
     option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{4,Float64}=(0.6, 0.3, 0.05, 0.05),
+    weights::NTuple{4,Float64}=(0.4, 0.3, 0.15, 0.15),
 )::DataFrame
     loc_type = eltype(decision_matrix.location)
     options = copy(PD_OPTIONS())
@@ -249,7 +249,7 @@ function switching_probability(
     option::Symbol,
     option_perf::Dict{Symbol,YAXArray};
     ports::Union{DataFrame,Nothing}=nothing,
-    weights::NTuple{4,Float64}=(0.6, 0.3, 0.05, 0.05)
+    weights::NTuple{4,Float64}=(0.4, 0.3, 0.15, 0.15),
 )::Float64
     result = switching_probability(
         past_option, decision_matrix, loc_data, mcda_method, min_locs, option_perf;
