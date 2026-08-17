@@ -223,8 +223,8 @@ function switching_probability(
             δ_rel_tac = cand_perf[metric=At(:rel_tac)] ./ counter[metric=At(:rel_tac)] .- 1
             δ_fd = cand_perf[metric=At(:fd)] ./ counter[metric=At(:fd)] .- 1
 
-            row.probability += weights[1] * two_sided_cvar(δ_rel_tac; σ=_σ_rel_tac)
-            row.probability += weights[2] * two_sided_cvar(δ_fd; σ=_σ_fd)
+            row.probability += weights[1] * delta_tail_ratio(δ_rel_tac; σ=_σ_rel_tac)
+            row.probability += weights[2] * delta_tail_ratio(δ_fd; σ=_σ_fd)
         end
 
         # Spatial metrics: distance_to_port, option_similarity (weights[3..4])
@@ -477,32 +477,31 @@ function decode_option_ts(
     return ts
 end
 
-# Sigma sensitivity parameters for two_sided_cvar, tuned per metric's relative-change scale
+# Sigma sensitivity parameters for delta_tail_ratio, tuned per metric's relative-change scale
 const _σ_rel_tac = 0.002   # cum_rel_tac_diff
 const _σ_fd = 0.001        # cum_fd_diff
 
 """
-    two_sided_cvar(delta; tail_fraction, σ)
+    delta_tail_ratio(delta; tail_number, σ)
 
-Map the two-sided CVaR of `delta` to [0, 1] via tanh. Returns 0.5 when there is
+Select the bottom and top `tail_number` reefs by delta (opt − cf), then normalize each tail
+by its own counterfactual mean and return number in [0, 1] via tanh. Returns 0.5 when there is
 no net benefit, approaches 1 when both tails are strongly positive, and approaches 0
 when both tails are strongly negative.
 
 `delta` is a per-location relative change vector (`candidate ./ counterfactual .- 1`).
-`tail_fraction` is the fraction of locations in each tail (default 3%).
+`tail_number` is the number of locations in each tail (default 150 locations)
 `σ` controls sensitivity: the raw CVaR signal is scaled by 1/σ before tanh.
 """
-function two_sided_cvar(
+function delta_tail_ratio(
     delta::AbstractVector;
-    tail_fraction::Float64=0.03,
+    tail_number::Int64=150,
     σ::Float64=0.001,
 )::Float64
     all(iszero, delta) && return 0.5
-    N = length(delta)
-    k = max(1, min(floor(Int, tail_fraction * N), N ÷ 2))
     s = sort(delta)
-    cvar_lower = mean(s[1:k])
-    cvar_upper = mean(s[(end - k + 1):end])
+    cvar_lower = mean(s[1:tail_number])
+    cvar_upper = mean(s[(end - tail_number + 1):end])
     return 0.5 * (1 + tanh((cvar_upper + cvar_lower) / σ))
 end
 
