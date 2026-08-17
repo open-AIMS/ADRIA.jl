@@ -383,7 +383,7 @@ Returns 0.5 when both distances are zero.
 """
 function distance_port_score(
     option_locs::DataFrame, past_locs::DataFrame, ports::DataFrame;
-    amplify_ranges::Bool=true
+    amplify_ranges::Bool=false
 )::Float64
     d_option = _distance_port(option_locs, ports)
     d_past = _distance_port(past_locs, ports)
