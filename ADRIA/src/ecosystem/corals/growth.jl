@@ -273,15 +273,15 @@ end
     )::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-juvenile (> 5cm diameter) size classes.
+all size classes, as colony size is a weak predictor of bleaching susceptibility
+(Álvarez-Noriega et al., [3]).
 
 Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpublished)
-data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily
-represented by other factors (i.e., background mortality; see Álvarez-Noriega et al., [3]).
-The proportion of the population which bleached is estimated with the Cumulative Density
-Function. Bleaching mortality is then estimated by incorporating light absorption principles
-(with the Beer-Lambert Law) as a proxy for heat dissipation at depths. The approach loosely
-aligns with the depth-adjusted coefficient from Baird et al., [4].
+data referred to in Hughes et al., [2]. The proportion of the population which bleached is
+estimated with the Cumulative Density Function. Bleaching mortality is then estimated by
+incorporating light absorption principles (with the Beer-Lambert Law) as a proxy for heat
+dissipation at depths. The approach loosely aligns with the depth-adjusted coefficient from
+Baird et al., [4].
 
 # Arguments
 - `cover` : Coral cover for current timestep
@@ -307,13 +307,12 @@ aligns with the depth-adjusted coefficient from Baird et al., [4].
    Nature 556, 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 
-3. Álvarez-Noriega, M., Baird, A.H., Bridge, T.C.L., Dornelas, M., Fontoura, L.,
-     Pizarro, O., Precoda, K., Torres-Pulliza, D., Woods, R.M., Zawada, K.,
-     Madin, J.S., 2018.
-   Contrasting patterns of changes in abundance following a bleaching event between
-     juvenile and adult scleractinian corals.
-   Coral Reefs 37, 527-532.
-   https://doi.org/10.1007/s00338-018-1677-y
+3. Álvarez-Noriega, M., Aston, E.A., Becker, M., Fabricius, K.E., Figueira, W.F.,
+     Gordon, S.E., Krensel, R., Lechene, M.A., Remmers, T., Toor, M., Ferrari, R., 2025.
+   Challenging Paradigms Around the Role of Colony Size, Taxa, and Environment on
+     Bleaching Susceptibility.
+   Global Change Biology 31, e70090.
+   https://doi.org/10.1111/gcb.70090
 
 4. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
      Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
@@ -347,10 +346,9 @@ function bleaching_mortality!(
     # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
     active_locs = findall(eff_dhw .> HEAT_LB)
 
-    # Adjust distributions for each functional group over all locations, ignoring juveniles
-    # we assume the high background mortality of juveniles includes DHW mortality
+    # Adjust distributions for each functional group over all locations and size classes
     for loc in active_locs
-        # Determine bleaching mortality for each non-juvenile species/size class
+        # Determine bleaching mortality for each species/size class
         for grp = 1:n_groups
             # Skip location if there is no population
             if sum(@view(cover[grp, :, loc])) == 0.0
@@ -367,7 +365,7 @@ function bleaching_mortality!(
                 μ_ceil::Float64 = tol_ceil[grp, sc, loc]  # initial mean + HEAT_UB (fixed)
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous bleaching DHW as the distribution lower bound,
-                    # with 4.0 DHW-weeks as the minimum susceptibility threshold
+                    # with HEAT_LB (1.0 DHW-weeks) as the minimum susceptibility threshold
                     eff_dhw[loc], μ, stdev[grp, sc],
                     max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
