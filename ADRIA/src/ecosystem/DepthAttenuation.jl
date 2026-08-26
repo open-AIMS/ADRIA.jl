@@ -10,8 +10,8 @@ data cited in `effective_dhw_at_depth` (see that docstring for why). Exposing th
 factors lets them be calibrated or swept as a scenario axis instead of being pinned to the
 defaults below.
 
-Defaults match the former hardcoded keyword arguments of `effective_dhw_at_depth`, so a
-domain that never touches these factors reproduces the previous behaviour exactly.
+Defaults are the calibrated values from `calib_20260811` (`C:/AIMS/calib_results/calib_20260811/params/calibrated_params.nc`),
+with bounds set to +/- 20% of each nominal value.
 """
 
 Base.@kwdef struct DepthAttenuation <: EcoModel
@@ -20,13 +20,12 @@ Base.@kwdef struct DepthAttenuation <: EcoModel
 end
 
 const EFF_DHW_DEFAULTS = (
-    eff_dhw_base=0.04,
-    eff_dhw_mix=12.0
+    eff_dhw_base=0.6339028960956812,
+    eff_dhw_mix=0.7015827131973273
 )
 
-const EFF_DHW_BOUNDS = (
-    eff_dhw_base=(0.0, 1.0),
-    eff_dhw_mix=(0.0, 40.0)
+const EFF_DHW_BOUNDS = NamedTuple{keys(EFF_DHW_DEFAULTS)}(
+    Tuple((v * 0.8, v * 1.2) for v in EFF_DHW_DEFAULTS)
 )
 
 const EFF_DHW_NAMES = (
