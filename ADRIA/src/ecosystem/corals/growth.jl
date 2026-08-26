@@ -710,7 +710,8 @@ end
         fec_groups::AbstractMatrix{T},
         fecundity_per_m²::AbstractMatrix{T},
         C_cover_t::AbstractArray{T,3},
-        loc_area::AbstractMatrix{T}
+        loc_area::AbstractMatrix{T};
+        apply_allee_effect::Bool=true
     )::Nothing where {T<:Float64}
 
 The scope that different coral groups and size classes have for
@@ -727,16 +728,18 @@ fecundities across size classes.
 - `fecundity_per_m²` : Matrix[n_groups, n_sizes], coral fecundity parameters (in per m²) for each species/size class
 - `C_cover_t` : Matrix[n_groups, n_sizes, n_locs], of coral cover values for the previous time step
 - `loc_area` : Vector[n_locs], total location area in m²
+- `apply_allee_effect` : Whether to suppress fecundity at low density via `allee_effect()`
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
     fecundity_per_m²::AbstractMatrix{T},
     C_cover_t::AbstractArray{T,3},
-    loc_area::AbstractMatrix{T}
+    loc_area::AbstractMatrix{T};
+    apply_allee_effect::Bool=true
 )::Nothing where {T<:Float64}
     ae_coef = 0.0
     for loc in axes(C_cover_t, 3)
-        ae_coef = allee_effect(sum(C_cover_t[:, :, loc]))
+        ae_coef = apply_allee_effect ? allee_effect(sum(C_cover_t[:, :, loc])) : 1.0
         for grp in axes(C_cover_t, 1)
             for sz in axes(C_cover_t, 2)
                 @views fec_groups[grp, loc] +=

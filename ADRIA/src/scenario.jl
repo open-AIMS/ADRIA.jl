@@ -632,6 +632,12 @@ end
 Core scenario running function. When called with only `domain` and `param_set` arguments,
 `ADRIA.setup()` must be run beforehand.
 
+# Arguments
+- `apply_allee_effect` : Whether fecundity is suppressed at low density (see `allee_effect()`
+    in `ecosystem/corals/growth.jl`). Defaults to `true`; not currently substantiated for the
+    GBR-wide coral functional groups this model represents, so calibration and sensitivity
+    analysis workflows should pass `false`.
+
 # Returns
 NamedTuple of collated results
 - `raw` : Array, Coral cover relative to k area
@@ -644,7 +650,8 @@ NamedTuple of collated results
 """
 function run_model(
     domain::Domain,
-    param_set::Union{DataFrameRow,YAXArray}
+    param_set::Union{DataFrameRow,YAXArray};
+    apply_allee_effect::Bool=true
 )
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
@@ -668,23 +675,33 @@ function run_model(
         functional_groups[i] = fg
     end
 
-    return run_model(domain, param_set, functional_groups)
+    return run_model(
+        domain, param_set, functional_groups; apply_allee_effect=apply_allee_effect
+    )
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}};
-    sim_cache=nothing
+    sim_cache=nothing,
+    apply_allee_effect::Bool=true
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups; sim_cache)
+    return run_model(
+        domain,
+        ps,
+        functional_groups;
+        sim_cache=sim_cache,
+        apply_allee_effect=apply_allee_effect
+    )
 end
 function run_model(
     domain::Domain,
     param_set::YAXArray,
     functional_groups::Vector{Vector{FunctionalGroup}};
-    sim_cache=nothing
+    sim_cache=nothing,
+    apply_allee_effect::Bool=true
 )::NamedTuple
     corals = to_coral_spec(param_set)
     cache = isnothing(sim_cache) ? setup_cache(domain) : sim_cache
@@ -1312,7 +1329,10 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fecundity_per_m², C_cover_t, habitable_areas)
+        fecundity_scope!(
+            fec_scope, fecundity_per_m², C_cover_t, habitable_areas;
+            apply_allee_effect=apply_allee_effect
+        )
 
         for l = 1:n_locs
             s = sum(fec_scope[:, l])
