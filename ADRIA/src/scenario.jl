@@ -634,9 +634,7 @@ Core scenario running function. When called with only `domain` and `param_set` a
 
 # Arguments
 - `apply_allee_effect` : Whether fecundity is suppressed at low density (see `allee_effect()`
-    in `ecosystem/corals/growth.jl`). Defaults to `true`; not currently substantiated for the
-    GBR-wide coral functional groups this model represents, so calibration and sensitivity
-    analysis workflows should pass `false`.
+    in `ecosystem/corals/growth.jl`). Defaults to `true`.
 
 # Returns
 NamedTuple of collated results
