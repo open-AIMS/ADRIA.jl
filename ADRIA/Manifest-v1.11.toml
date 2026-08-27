@@ -400,10 +400,10 @@ uuid = "150eb455-5306-5404-9cee-2592286d6298"
 version = "0.6.4"
 
 [[deps.CoralBlox]]
-deps = ["DataStructures", "StaticArrays", "YAXArrays"]
-git-tree-sha1 = "c3ee6d3fcafcd66b0252c2428feb6d8e9a219736"
+deps = ["DataStructures", "StaticArrays"]
+git-tree-sha1 = "d93e32b449a491d0d2624723e550ca32c5adcc03"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.7"
+version = "1.1.10"
 
     [deps.CoralBlox.extensions]
     CoralBloxPlotExt = "Makie"
