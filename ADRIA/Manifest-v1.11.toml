@@ -2,7 +2,7 @@
 
 julia_version = "1.11.9"
 manifest_format = "2.0"
-project_hash = "bca6867619bcd207924edafbd746b552f48e67b7"
+project_hash = "35a0ad9b2a10995663fcdf0f139426a46acb107f"
 
 [[deps.ADRIAIndicators]]
 git-tree-sha1 = "aaa97fdc8125b525f4b11542cccedc64929826f7"
@@ -401,9 +401,9 @@ version = "0.6.4"
 
 [[deps.CoralBlox]]
 deps = ["DataStructures", "StaticArrays"]
-git-tree-sha1 = "d93e32b449a491d0d2624723e550ca32c5adcc03"
+git-tree-sha1 = "ed4fd5160579e2663663a5673a0e0f9e27880db1"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.10"
+version = "1.1.11"
 
     [deps.CoralBlox.extensions]
     CoralBloxPlotExt = "Makie"
