@@ -179,12 +179,12 @@ end
 
     @testset "mixing_scale = 0 is the well-mixed limit, not a NaN" begin
         # 0/0 in the general expression; must degrade to "no attenuation" instead
-        @test ADRIA.effective_dhw_at_depth(0.0, 20.0; mixing_scale=0.0) == 0.0
-        @test ADRIA.effective_dhw_at_depth(9.0, 20.0; mixing_scale=0.0) ≈ 9.0
-        @test !isnan(ADRIA.effective_dhw_at_depth(0.0, 20.0; mixing_scale=0.0))
+        @test ADRIA.effective_dhw_at_depth(0.0, 20.0, 0.04, 0.0) == 0.0
+        @test ADRIA.effective_dhw_at_depth(9.0, 20.0, 0.04, 0.0) ≈ 9.0
+        @test !isnan(ADRIA.effective_dhw_at_depth(0.0, 20.0, 0.04, 0.0))
 
         # κ_base = 0 likewise removes the depth refuge
-        @test ADRIA.effective_dhw_at_depth(9.0, 20.0; κ_base=0.0) ≈ 9.0
+        @test ADRIA.effective_dhw_at_depth(9.0, 20.0, 0.0, 12.0) ≈ 9.0
     end
 end
 

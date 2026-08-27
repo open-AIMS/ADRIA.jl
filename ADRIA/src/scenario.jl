@@ -1861,8 +1861,7 @@ function run_model(
         # Wave activity is said to also promote nutrient cycling, and improve growth.
         # Removed as I could not find any justification behind the implementation.
         eff_dhw_t .= effective_dhw_at_depth.(
-            dhw_t, loc_data.depth_med;
-            κ_base=eff_dhw_base, mixing_scale=eff_dhw_mix
+            dhw_t, loc_data.depth_med, eff_dhw_base, eff_dhw_mix
         )
         bleaching_mortality!(
             C_cover_t,

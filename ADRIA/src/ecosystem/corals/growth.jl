@@ -136,7 +136,7 @@ function depth_coefficient(d::Union{Int64,Float64})::Float64
 end
 
 """
-    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.04, mixing_scale=12.0)
+    effective_dhw_at_depth(dhw_surface, depth, κ_base, mixing_scale)
 
 Compute effective DHW at a given depth using Beer-Lambert attenuation with
 mixing-dependent attenuation decay.
@@ -156,7 +156,7 @@ erodes stratification, reducing the effective attenuation coefficient towards ze
     permanently well-mixed limit, in which depth provides no refuge at any DHW
 
 Both are exposed as model factors by [`DepthAttenuation`](@ref) and are read from the
-scenario `param_set` in `run_model`; the defaults here only apply to direct calls.
+scenario `param_set` in `run_model`.
 
 # Notes
 Both parameters are unconstrained by Baird et al. [1], despite that reference being
@@ -178,8 +178,7 @@ unconstrained by that dataset.
    https://doi.org/10.3354/meps12732
 """
 function effective_dhw_at_depth(
-    dhw_surface::Float64, depth::Float64;
-    κ_base::Float64=0.04, mixing_scale::Float64=12.0
+    dhw_surface::Float64, depth::Float64, κ_base::Float64, mixing_scale::Float64
 )::Float64
     # `mixing_scale = 0` is the permanently well-mixed limit: no attenuation at any DHW.
     # Taken as a special case because the general expression is 0/0 when `dhw_surface` is
