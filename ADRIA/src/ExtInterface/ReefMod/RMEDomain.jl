@@ -302,8 +302,9 @@ function load_domain(
         )
     end
 
-    coral_instance, growth_accel_instance, depth_atten_instance =
-        load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
