@@ -69,7 +69,7 @@ function _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
 end
 
 """
-    _depth_attenuation_calib_overrides(nc_ds)::Dict{String,Float64}
+    _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
 
 Read calibrated depth-attenuation values from a NetCDF dataset and return a Dict mapping
 `DepthAttenuation` struct field names to their calibrated values.
@@ -78,12 +78,16 @@ Calibration outputs written before `depth_attenuation` entered the search space 
 variable, in which case an empty Dict is returned and the ADRIA defaults stand. Values are
 looked up by their `depth_atten_param` label rather than by position, so the two factors
 cannot be silently transposed.
-"""
-function _depth_attenuation_calib_overrides(nc_ds)::Dict{String,Float64}
-    overrides = Dict{String,Float64}()
-    :depth_attenuation in keys(nc_ds.cubes) || return overrides
 
-    da = nc_ds["depth_attenuation"]
+# Arguments
+- `calib_dataset` : Calibration parameters NetCDF, opened with `open_dataset` (produced by
+    CoralBlox calibration; see `load_calib_params`)
+"""
+function _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :depth_attenuation in keys(calib_dataset.cubes) || return overrides
+
+    da = calib_dataset["depth_attenuation"]
     p_names = string.(collect(DimensionalData.lookup(da, :depth_atten_param)))
     vals = Array(da)
 
