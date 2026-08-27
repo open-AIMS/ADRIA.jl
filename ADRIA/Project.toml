@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-version = "0.17.1"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
+version = "0.17.2"
 
 [deps]
 ADRIAIndicators = "05ad51df-066f-4748-8c47-f6b67db83211"
@@ -72,7 +72,7 @@ Bootstrap = "2"
 CSV = "0.10"
 Clustering = "0.15"
 Combinatorics = "1"
-CoralBlox = "1"
+CoralBlox = "1.1.10"
 CpuId = "0.3"
 DataFrames = "1"
 DataStructures = "0.18, 0.2, 0.19"

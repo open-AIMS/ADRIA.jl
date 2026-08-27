@@ -632,6 +632,10 @@ end
 Core scenario running function. When called with only `domain` and `param_set` arguments,
 `ADRIA.setup()` must be run beforehand.
 
+# Arguments
+- `apply_allee_effect` : Whether fecundity is suppressed at low density (see `allee_effect()`
+    in `ecosystem/corals/growth.jl`). Defaults to `true`.
+
 # Returns
 NamedTuple of collated results
 - `raw` : Array, Coral cover relative to k area
@@ -644,7 +648,8 @@ NamedTuple of collated results
 """
 function run_model(
     domain::Domain,
-    param_set::Union{DataFrameRow,YAXArray}
+    param_set::Union{DataFrameRow,YAXArray};
+    apply_allee_effect::Bool=true
 )
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
@@ -668,23 +673,33 @@ function run_model(
         functional_groups[i] = fg
     end
 
-    return run_model(domain, param_set, functional_groups)
+    return run_model(
+        domain, param_set, functional_groups; apply_allee_effect=apply_allee_effect
+    )
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}};
-    sim_cache=nothing
+    sim_cache=nothing,
+    apply_allee_effect::Bool=true
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups; sim_cache)
+    return run_model(
+        domain,
+        ps,
+        functional_groups;
+        sim_cache=sim_cache,
+        apply_allee_effect=apply_allee_effect
+    )
 end
 function run_model(
     domain::Domain,
     param_set::YAXArray,
     functional_groups::Vector{Vector{FunctionalGroup}};
-    sim_cache=nothing
+    sim_cache=nothing,
+    apply_allee_effect::Bool=true
 )::NamedTuple
     corals = to_coral_spec(param_set)
     cache = isnothing(sim_cache) ? setup_cache(domain) : sim_cache
@@ -1122,6 +1137,11 @@ function run_model(
     # If a_adapt == 0, use always first year as reference for a_adapt
     a_adapt_ref::Int64 = param_set[At("a_adapt_ref")]
 
+    # Depth attenuation of surface DHW (see `effective_dhw_at_depth`). Read once here rather
+    # than inside the time loop - they are scenario-level constants.
+    eff_dhw_base::Float64 = param_set[At("eff_dhw_base")]
+    eff_dhw_mix::Float64 = param_set[At("eff_dhw_mix")]
+
     # c_mean tolerance of the "natural" population used as the reference for seeding corals
     # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
@@ -1307,7 +1327,10 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fecundity_per_m², C_cover_t, habitable_areas)
+        fecundity_scope!(
+            fec_scope, fecundity_per_m², C_cover_t, habitable_areas;
+            apply_allee_effect=apply_allee_effect
+        )
 
         for l = 1:n_locs
             s = sum(fec_scope[:, l])
@@ -1835,7 +1858,9 @@ function run_model(
         # so what causes 100% mortality can differ between runs.
         # Wave activity is said to also promote nutrient cycling, and improve growth.
         # Removed as I could not find any justification behind the implementation.
-        eff_dhw_t .= effective_dhw_at_depth.(dhw_t, loc_data.depth_med)
+        eff_dhw_t .= effective_dhw_at_depth.(
+            dhw_t, loc_data.depth_med, eff_dhw_base, eff_dhw_mix
+        )
         bleaching_mortality!(
             C_cover_t,
             eff_dhw_t,

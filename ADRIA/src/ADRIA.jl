@@ -53,6 +53,7 @@ include("ecosystem/corals/coral_factors.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
+include("ecosystem/DepthAttenuation.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/corals/flatten_overrides.jl")
@@ -92,7 +93,7 @@ include("viz/viz.jl")
 export
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, create_coral_instance,
-    create_growth_acceleration_instance, Intervention, SimConstants,
+    create_growth_acceleration_instance, Intervention, SimConstants, DepthAttenuation,
     SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
@@ -207,7 +208,7 @@ const COMPAT_DPKG = ["0.8.0"]
         end
     end
 
-    # Full domain model assembly — covers the 8-component tuple form used by
+    # Full domain model assembly — covers the 9-component tuple form used by
     # load_domain() via _assemble_domain_model(). Without this workload entry,
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost
@@ -222,7 +223,8 @@ const COMPAT_DPKG = ["0.8.0"]
             MCCriteriaWeights(),
             DepthThresholds(),
             Coral(),
-            GrowthAcceleration()
+            GrowthAcceleration(),
+            DepthAttenuation()
         )
     end
 end

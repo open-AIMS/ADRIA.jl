@@ -50,6 +50,10 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     growth_acc_params = ADRIA.component_params(d.model, ADRIA.GrowthAcceleration).fieldname
     ADRIA.fix_factor!(d, growth_acc_params)
 
+    # ... and for the depth attenuation of surface DHW
+    depth_atten_params = ADRIA.component_params(d.model, ADRIA.DepthAttenuation).fieldname
+    ADRIA.fix_factor!(d, depth_atten_params)
+
     # Fix coral seeding weights
     seed_criteria_params = ADRIA.component_params(
         d.model,

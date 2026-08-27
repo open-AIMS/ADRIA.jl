@@ -45,7 +45,7 @@ mutable struct ADRIADomain <: Domain
 end
 
 """
-    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel)
+    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten)
 
 Wrapper around `ModelParameters.Model` construction so it can be targeted by
 `@compile_workload`.
@@ -65,9 +65,10 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     @nospecialize(mwt),
     @nospecialize(dth),
     @nospecialize(coral),
-    @nospecialize(growth_accel)
+    @nospecialize(growth_accel),
+    @nospecialize(depth_atten)
 )::Model
-    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel))
+    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten))
 end
 
 """
@@ -122,7 +123,9 @@ function Domain(
         )
     )
 
-    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
 
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
@@ -132,7 +135,8 @@ function Domain(
         MCCriteriaWeights(),
         DepthThresholds(),
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        depth_atten_instance
     )
 
     return ADRIADomain(

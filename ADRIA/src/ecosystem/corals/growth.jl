@@ -136,7 +136,7 @@ function depth_coefficient(d::Union{Int64,Float64})::Float64
 end
 
 """
-    effective_dhw_at_depth(dhw_surface, depth; κ_base=0.07551, mixing_scale=12.0)
+    effective_dhw_at_depth(dhw_surface, depth, κ_base, mixing_scale)
 
 Compute effective DHW at a given depth using Beer-Lambert attenuation with
 mixing-dependent attenuation decay.
@@ -149,9 +149,25 @@ erodes stratification, reducing the effective attenuation coefficient towards ze
 # Arguments
 - `dhw_surface` : Surface (or reference depth ~2m) DHW
 - `depth` : Site depth in meters
-- `κ_base` : Base attenuation coefficient (m⁻¹); yields ~73% of surface DHW at 10m
-    under low-stress conditions, consistent with Baird et al. (2018) observations
-- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient
+- `κ_base` : Base attenuation coefficient (m⁻¹) in the `dhw_surface -> 0` limit;
+    Free parameter, not empirically anchored — see note below
+- `mixing_scale` : DHW at which mixing halves the effective attenuation coefficient.
+    Free parameter; treat as a scenario axis rather than a fitted value. Zero is the
+    permanently well-mixed limit, in which depth provides no refuge at any DHW
+
+Both are exposed as model factors by [`DepthAttenuation`](@ref) and are read from the
+scenario `param_set` in `run_model`.
+
+# Notes
+Both parameters are unconstrained by Baird et al. [1], despite that reference being
+cited here for the qualitative depth-refuge effect. They report no attenuation
+coefficient; their only quantitative depth anchor is ~50% fewer bleached colonies at
+12m than at 2m, which `κ_base = 0.04` does not reproduce (matching it needs 0.056-0.137
+depending on assumed surface DHW). Their assemblage model is also logit-linear in
+log10(depth) — a power law — so no exponential coefficient exists to extract, and the
+implied κ varies with anchor depth (0.145 at 6m, 0.050 at 27m). They found no
+significant depth × DHW interaction over DHW 4-10, so `mixing_scale` is likewise
+unconstrained by that dataset.
 
 # References
 1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
@@ -162,10 +178,12 @@ erodes stratification, reducing the effective attenuation coefficient towards ze
    https://doi.org/10.3354/meps12732
 """
 function effective_dhw_at_depth(
-    dhw_surface::Float64, depth::Float64;
-    κ_base::Float64=0.04, mixing_scale::Float64=12.0
+    dhw_surface::Float64, depth::Float64, κ_base::Float64, mixing_scale::Float64
 )::Float64
-    κ_eff = κ_base / (1.0 + dhw_surface / mixing_scale)
+    # `mixing_scale = 0` is the permanently well-mixed limit: no attenuation at any DHW.
+    # Taken as a special case because the general expression is 0/0 when `dhw_surface` is
+    # also zero, which would otherwise put a NaN into `bleaching_mortality!`.
+    κ_eff = mixing_scale > 0.0 ? κ_base / (1.0 + dhw_surface / mixing_scale) : 0.0
     Δz = max(0.0, depth - 2.0)
     return dhw_surface * exp(-κ_eff * Δz)
 end
@@ -254,15 +272,15 @@ end
     )::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-juvenile (> 5cm diameter) size classes.
+all size classes, as colony size is a weak predictor of bleaching susceptibility
+(Álvarez-Noriega et al., [3]).
 
 Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpublished)
-data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily
-represented by other factors (i.e., background mortality; see Álvarez-Noriega et al., [3]).
-The proportion of the population which bleached is estimated with the Cumulative Density
-Function. Bleaching mortality is then estimated by incorporating light absorption principles
-(with the Beer-Lambert Law) as a proxy for heat dissipation at depths. The approach loosely
-aligns with the depth-adjusted coefficient from Baird et al., [4].
+data referred to in Hughes et al., [2]. The proportion of the population which bleached is
+estimated with the Cumulative Density Function. Bleaching mortality is then estimated by
+incorporating light absorption principles (with the Beer-Lambert Law) as a proxy for heat
+dissipation at depths. The approach loosely aligns with the depth-adjusted coefficient from
+Baird et al., [4].
 
 # Arguments
 - `cover` : Coral cover for current timestep
@@ -288,13 +306,12 @@ aligns with the depth-adjusted coefficient from Baird et al., [4].
    Nature 556, 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 
-3. Álvarez-Noriega, M., Baird, A.H., Bridge, T.C.L., Dornelas, M., Fontoura, L.,
-     Pizarro, O., Precoda, K., Torres-Pulliza, D., Woods, R.M., Zawada, K.,
-     Madin, J.S., 2018.
-   Contrasting patterns of changes in abundance following a bleaching event between
-     juvenile and adult scleractinian corals.
-   Coral Reefs 37, 527-532.
-   https://doi.org/10.1007/s00338-018-1677-y
+3. Álvarez-Noriega, M., Aston, E.A., Becker, M., Fabricius, K.E., Figueira, W.F.,
+     Gordon, S.E., Krensel, R., Lechene, M.A., Remmers, T., Toor, M., Ferrari, R., 2025.
+   Challenging Paradigms Around the Role of Colony Size, Taxa, and Environment on
+     Bleaching Susceptibility.
+   Global Change Biology 31, e70090.
+   https://doi.org/10.1111/gcb.70090
 
 4. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
      Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
@@ -328,10 +345,9 @@ function bleaching_mortality!(
     # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
     active_locs = findall(eff_dhw .> HEAT_LB)
 
-    # Adjust distributions for each functional group over all locations, ignoring juveniles
-    # we assume the high background mortality of juveniles includes DHW mortality
+    # Adjust distributions for each functional group over all locations and size classes
     for loc in active_locs
-        # Determine bleaching mortality for each non-juvenile species/size class
+        # Determine bleaching mortality for each species/size class
         for grp = 1:n_groups
             # Skip location if there is no population
             if sum(@view(cover[grp, :, loc])) == 0.0
@@ -348,7 +364,7 @@ function bleaching_mortality!(
                 μ_ceil::Float64 = tol_ceil[grp, sc, loc]  # initial mean + HEAT_UB (fixed)
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous bleaching DHW as the distribution lower bound,
-                    # with 4.0 DHW-weeks as the minimum susceptibility threshold
+                    # with HEAT_LB (1.0 DHW-weeks) as the minimum susceptibility threshold
                     eff_dhw[loc], μ, stdev[grp, sc],
                     max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
@@ -374,13 +390,13 @@ function bleaching_mortality!(
                 bleach_dhw[2, grp, sc, loc] = eff_dhw[loc]
                 if mort_pop > 0.0
                     # 1. Re-create distribution truncated at current bleaching DHW: survivors
-                    # must have had tolerance above dhw[loc], so this is the correct lower
+                    # must have had tolerance above eff_dhw[loc], so this is the correct lower
                     # bound.
                     #
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], HEAT_LB, μ_ceil
+                        μ, stdev[grp, sc], max(HEAT_LB, eff_dhw[loc]), μ_ceil
                     )
 
                     # Update population
@@ -394,27 +410,34 @@ function bleaching_mortality!(
 end
 
 """
-    breeders(μ_tot_pop::T, μ_parent_pop::T, h²::T)::T where {T<:Float64}
+    breeders(μ_base::T, μ_target::T, h²::T)::T where {T<:Float64}
 
-Apply Breeder's equation and return resulting offspring mean.
+Shift a tolerance-distribution mean a fraction `h²` of the way from `μ_base` towards
+`μ_target`, per the (univariate) Breeder's equation.
 
 ```
-S = μ_tot_pop - μ_parent_pop
+S = μ_target - μ_base
 R = S * h²
-μ_offspring = μ_tot_pop + R
+μ_new = μ_base + R
 ```
 
 # Arguments
-- `μ_tot_pop` : Mean of total population
-- `μ_parent_pop` : Mean of parental population
+- `μ_base` : Baseline tolerance-distribution mean (the value being shifted)
+- `μ_target` : Tolerance-distribution mean being selected towards
 - `h²` : Narrow-sense heritability
 
 # Returns
-Mean of offspring generated by population with mean `μ_parent_pop` which is assumed to be a
-subset of a population with mean `μ_tot_pop`,
+`μ_base` shifted a fraction `h²` of the way towards `μ_target`.
+
+# Notes
+Used in `settler_DHW_tolerance!` to blend, for each source location/functional
+group/size class, that population's own mean tolerance from the previous timestep
+(`μ_base`) with its mean this timestep (`μ_target`). Each source population's heritable
+response to selection is applied locally, before its larvae disperse via connectivity —
+not after mixing tolerance means across the connectivity network.
 """
-function breeders(μ_tot_pop::T, μ_parent_pop::T, h²::T)::T where {T<:Float64}
-    return μ_tot_pop + ((μ_parent_pop - μ_tot_pop) * h²)
+function breeders(μ_base::T, μ_target::T, h²::T)::T where {T<:Float64}
+    return μ_base + ((μ_target - μ_base) * h²)
 end
 
 """
@@ -686,7 +709,8 @@ end
         fec_groups::AbstractMatrix{T},
         fecundity_per_m²::AbstractMatrix{T},
         C_cover_t::AbstractArray{T,3},
-        loc_area::AbstractMatrix{T}
+        loc_area::AbstractMatrix{T};
+        apply_allee_effect::Bool=true
     )::Nothing where {T<:Float64}
 
 The scope that different coral groups and size classes have for
@@ -703,16 +727,18 @@ fecundities across size classes.
 - `fecundity_per_m²` : Matrix[n_groups, n_sizes], coral fecundity parameters (in per m²) for each species/size class
 - `C_cover_t` : Matrix[n_groups, n_sizes, n_locs], of coral cover values for the previous time step
 - `loc_area` : Vector[n_locs], total location area in m²
+- `apply_allee_effect` : Whether to suppress fecundity at low density via `allee_effect()`
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
     fecundity_per_m²::AbstractMatrix{T},
     C_cover_t::AbstractArray{T,3},
-    loc_area::AbstractMatrix{T}
+    loc_area::AbstractMatrix{T};
+    apply_allee_effect::Bool=true
 )::Nothing where {T<:Float64}
     ae_coef = 0.0
     for loc in axes(C_cover_t, 3)
-        ae_coef = allee_effect(sum(C_cover_t[:, :, loc]))
+        ae_coef = apply_allee_effect ? allee_effect(sum(C_cover_t[:, :, loc])) : 1.0
         for grp in axes(C_cover_t, 1)
             for sz in axes(C_cover_t, 2)
                 @views fec_groups[grp, loc] +=
