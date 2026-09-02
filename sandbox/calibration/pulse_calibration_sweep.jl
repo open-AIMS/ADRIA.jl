@@ -4,6 +4,7 @@ Pkg.activate(joinpath(REPO_ROOT, "sandbox"))
 cd(REPO_ROOT)
 using ADRIA
 using CSV, DataFrames, Statistics
+include("cots_cycle_metrics.jl")
 
 function parse_int_grid(env_name::String, default::String)::Vector{Int}
     return parse.(Int, split(get(ENV, env_name, default), ","))
@@ -66,9 +67,24 @@ function reef_validation_rows(
         spearman=Float64[],
         rmse=Float64[],
         percent_bias=Float64[],
+        cycle_loss=Float64[],
+        cycle_rmse=Float64[],
+        cycle_abs_percent_bias=Float64[],
+        cycle_peak_count_penalty=Float64[],
+        cycle_peak_timing_penalty=Float64[],
+        cycle_period_penalty=Float64[],
+        cycle_amplitude_penalty=Float64[],
+        cycle_flatline_penalty=Float64[],
+        cycle_lag_correlation_penalty=Float64[],
+        cycle_best_lag_pearson=Float64[],
+        cycle_best_lag_spearman=Float64[],
+        cycle_best_lag_years=Int[],
+        cycle_n_sim_peaks=Int[],
+        cycle_n_obs_peaks=Int[],
+        cycle_sim_peak_years=String[],
+        cycle_obs_peak_years=String[],
         post_2010_peak_year=Int[]
     )
-
     for reef in reef_names
         reef_sim = sim_df[sim_df.reef_name .== reef, :]
         isempty(reef_sim) && continue
@@ -88,6 +104,12 @@ function reef_validation_rows(
         median_by_year = combine(groupby(reef_sim, :year), :sim_cots_norm => median => :median)
         post_2010 = median_by_year[median_by_year.year .>= 2010, :]
         peak_year = isempty(post_2010) ? missing : post_2010.year[argmax(post_2010.median)]
+        cycle = cots_cycle_score(
+            Vector{Int}(sim_by_year.year),
+            Vector{Float64}(sim_by_year.sim),
+            Vector{Int}(obs_by_year.year),
+            Vector{Float64}(obs_by_year.obs)
+        )
 
         push!(
             rows,
@@ -102,6 +124,22 @@ function reef_validation_rows(
                 m.spearman,
                 m.rmse,
                 m.percent_bias,
+                cycle.total_loss,
+                cycle.matched_rmse,
+                cycle.percent_bias_abs,
+                cycle.peak_count_penalty,
+                cycle.peak_timing_penalty,
+                cycle.period_penalty,
+                cycle.amplitude_penalty,
+                cycle.flatline_penalty,
+                cycle.lag_correlation_penalty,
+                cycle.best_lag_pearson,
+                cycle.best_lag_spearman,
+                cycle.best_lag_years,
+                cycle.n_sim_peaks,
+                cycle.n_obs_peaks,
+                join(cycle.sim_peak_years, ";"),
+                join(cycle.obs_peak_years, ";"),
                 peak_year
             )
         )
@@ -197,9 +235,20 @@ summary = combine(
     :rmse => mean => :mean_rmse,
     :pearson => mean => :mean_pearson,
     :spearman => mean => :mean_spearman,
-    :percent_bias => (x -> mean(abs.(x))) => :mean_abs_percent_bias
+    :percent_bias => (x -> mean(abs.(x))) => :mean_abs_percent_bias,
+    :cycle_loss => mean => :mean_cycle_loss,
+    :cycle_peak_count_penalty => mean => :mean_cycle_peak_count_penalty,
+    :cycle_peak_timing_penalty => mean => :mean_cycle_peak_timing_penalty,
+    :cycle_period_penalty => mean => :mean_cycle_period_penalty,
+    :cycle_amplitude_penalty => mean => :mean_cycle_amplitude_penalty,
+    :cycle_flatline_penalty => mean => :mean_cycle_flatline_penalty,
+    :cycle_lag_correlation_penalty => mean => :mean_cycle_lag_correlation_penalty,
+    :cycle_best_lag_pearson => mean => :mean_cycle_best_lag_pearson,
+    :cycle_best_lag_spearman => mean => :mean_cycle_best_lag_spearman,
+    :cycle_best_lag_years => mean => :mean_cycle_best_lag_years
 )
-summary.loss = summary.mean_rmse .+ 0.002 .* summary.mean_abs_percent_bias .- 0.05 .* coalesce.(summary.mean_pearson, 0.0)
+summary.legacy_loss = summary.mean_rmse .+ 0.002 .* summary.mean_abs_percent_bias .- 0.05 .* coalesce.(summary.mean_pearson, 0.0)
+summary.loss = summary.mean_cycle_loss .+ 0.25 .* summary.legacy_loss
 sort!(summary, :loss)
 
 CSV.write("sandbox/data/pulse_calibration_sweep_by_reef.csv", all_rows)

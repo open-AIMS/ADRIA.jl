@@ -268,3 +268,17 @@ COTSMod ADRIA integration checkpoint completed (2026-07-10):
 - Verification passed: `julia --project=..\COTSMod.jl ..\COTSMod.jl\test\runtests.jl` returned 49/49 passing assertions.
 - Verification passed: two-scenario stochastic smoke completed with `COTS_N_STOCHASTIC_SCENS=2`, `COTS_OUTPUT_TAG=cotsmod_integration_smoke`, and `COTS_EXTERNAL_PULSE=false`; outputs written under `sandbox/data/best_stochastic_cotsmod_integration_smoke_*`.
 - Note: sandbox/Manifest.toml changed substantially when adding COTSMod; review before commit if you want to keep the sandbox lockfile minimal.
+COTS cycle-aware calibration metrics added (2026-07-13):
+- Added `sandbox/calibration/cots_cycle_metrics.jl` with reusable COTS cycle scoring utilities.
+- The new `cots_cycle_score` returns a loss that combines matched-year RMSE, absolute percent bias, peak-count penalty, peak-timing penalty, inter-peak period penalty, amplitude penalty, and a flatline penalty. Lower is better.
+- Added `sandbox/calibration/test_cots_cycle_metrics.jl` with synthetic checks: correctly timed two-peak trajectories score better than shifted, one-peak, and flat trajectories.
+- Updated `sandbox/calibration/pulse_calibration_sweep.jl` so by-reef outputs include cycle diagnostics and summary outputs include `mean_cycle_loss`, component penalties, `legacy_loss`, and the new combined `loss`.
+- Verification passed: `julia --project=sandbox sandbox\calibration\test_cots_cycle_metrics.jl` returned 10/10 passing assertions.
+- Verification passed: minimal pulse sweep with `PULSE_SWEEP_STARTS=20`, `PULSE_SWEEP_DURATIONS=1`, `PULSE_SWEEP_REPEAT_INTERVALS=0`, and `PULSE_SWEEP_RELATIVE_MAGNITUDES=0.0,0.5` completed and wrote updated `sandbox/data/pulse_calibration_sweep_by_reef.csv` and `sandbox/data/pulse_calibration_sweep_summary.csv`.
+- Current minimal sweep result: both tested pulse magnitudes scored identically, reinforcing the earlier finding that this pulse setting is not materially changing simulated COTS cycles.
+Lag-aware COTS calibration objective documented (2026-07-13):
+- Integrated lagged correlation into `sandbox/calibration/cots_cycle_metrics.jl` via `lagged_correlation(...)` and new `CotsCycleScore` fields: `lag_correlation_penalty`, `best_lag_pearson`, `best_lag_spearman`, and `best_lag_years`.
+- Positive `best_lag_years` means the raw simulation is probably too early; negative means it is probably too late. Lagged correlation rewards cycle shape similarity, while peak-timing penalties still enforce correct phase.
+- Updated `sandbox/calibration/pulse_calibration_sweep.jl` so by-reef and summary CSVs include lag-aware cycle columns.
+- Added `sandbox/calibration/README.md` documenting the calibration repo boundary, objective components, lag interpretation, outputs, tests, and next BlackBoxOptim step.
+- Verification passed: metric tests returned 15/15 assertions; minimal pulse sweep wrote lag-aware summary columns.
