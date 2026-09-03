@@ -39,7 +39,8 @@ makedocs(;
             joinpath("usage", "scenario_runs.md"),
             joinpath("usage", "scenario_discovery.md"),
             joinpath("usage", "analysis.md"),
-            joinpath("usage", "cookbook.md")
+            joinpath("usage", "cookbook.md"),
+            joinpath("usage", "exporting_to_rme.md")
         ],
         "Architecture" => [
             joinpath("architecture", "architecture.md"),
