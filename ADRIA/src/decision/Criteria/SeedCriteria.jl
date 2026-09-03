@@ -26,7 +26,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         0.5;
         ptype="continuous",
         dist=Uniform,
-        dist_params=(0.5, 1.0),
+        dist_params=(0.2, 1.0),
         direction=maximum,
         name="Incoming Connectivity (Seed)",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
@@ -35,7 +35,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         0.80;
         ptype="continuous",
         dist=Uniform,
-        dist_params=(0.5, 1.0),
+        dist_params=(0.2, 1.0),
         direction=maximum,
         name="Outgoing Connectivity (Seed)",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."

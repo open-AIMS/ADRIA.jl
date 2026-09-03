@@ -122,9 +122,17 @@ function sample(
         isa(err, InexactError) ? error(err_msg) : rethrow(err)
     end
 
+    # QuasiMonteCarlo's OwenScramble crashes for d=1 (produces a 0×1 bits array).
+    # Fall back to unscrambled Sobol when only one parameter is free.
+    _sample_method = if n_vary_params == 1 && contains(string(sample_method), "SobolSample")
+        SobolSample()
+    else
+        sample_method
+    end
+
     # Create uniformly distributed samples for uncertain parameters
     samples_tmp = QMC.sample(
-        n_samples, zeros(n_vary_params), ones(n_vary_params), sample_method
+        n_samples, zeros(n_vary_params), ones(n_vary_params), _sample_method
     )
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
