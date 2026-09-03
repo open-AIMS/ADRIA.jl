@@ -80,7 +80,6 @@ include("io/result_io.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
-include("io/rme_export.jl")
 
 include("scenario.jl")
 include("analysis/analysis.jl")
