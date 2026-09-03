@@ -227,6 +227,13 @@ function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
     return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
+    # Without this, Julia specializes this method on the exact NamedTuple type of
+    # `factors` -- i.e. on the specific set of keyword names passed -- so every
+    # differently-named call (e.g. setup_domain's 22-kwarg fog-disable call vs its
+    # 2-kwarg guided-regime call) triggers a fresh, expensive compile. @nospecialize
+    # collapses them all onto one compiled method at the cost of dynamic dispatch on
+    # `factors`, which is fine here since this only runs a handful of times at setup.
+    Base.@nospecialize factors
     factor_names = keys(factors)
     factor_vals = collect(values(factors))
 
@@ -381,6 +388,10 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
+    # See the @nospecialize note in fix_factor!(d::Domain; factors...) above -- same
+    # per-keyword-name-combination recompilation cost applies here.
+    Base.@nospecialize factors
+
     # Convert to OrderedDict to ensure ordered alignment of passed in factors
     factors = OrderedDict(factors)
 

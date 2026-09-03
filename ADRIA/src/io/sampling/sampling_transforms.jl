@@ -157,7 +157,11 @@ const _TRANSFORM_DEPENDENCIES = [
         value=nothing,
         negate=false,
         fix_to=0.0
-    )
+    ),
+    # a_adapt_ref (adaptation reference period) only matters when assisted adaptation is
+    # actually applied -- zero it whenever a_adapt itself is 0, whether that's a direct
+    # sampled draw or an explicit override (e.g. a sensitivity analysis forcing a_adapt=0).
+    (parent=:a_adapt, child=:a_adapt_ref, op=:eq, value=0.0, negate=true, fix_to=0.0)
 ]
 
 # ---------------------------------------------------------------------------
@@ -166,7 +170,10 @@ const _TRANSFORM_DEPENDENCIES = [
 
 const _TRANSFORM_GATE_RULES = [
     (child=:seed_group, gate=:any_seeding, fix_to=0.0),
-    (child=:a_adapt, gate=:any_seeding, fix_to=0.0),
+    # :a_adapt_group (not just :a_adapt) so a_adapt_ref is also zeroed here -- the
+    # single-parent rule above runs BEFORE this gate loop, so it can't see a_adapt
+    # get zeroed by the no-seeding gate itself; this covers that ordering gap.
+    (child=:a_adapt_group, gate=:any_seeding, fix_to=0.0),
     # Must run BEFORE :reactive_group's :any_reactive rule below: that rule
     # reads :fog_strategy/:mc_strategy, and needs to see them already fixed
     # to periodic here for fogging/N_mc_settlers-inactive rows, otherwise an
@@ -208,7 +215,8 @@ const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         :reactive_loss_threshold,
         :reactive_min_cover_remaining,
         :reactive_response_delay
-    ]
+    ],
+    :a_adapt_group => [:a_adapt, :a_adapt_ref]
 )
 
 const _TRANSFORM_GROUP_EXCLUDED_MEMBERS = Dict{Symbol,Vector{Symbol}}(
