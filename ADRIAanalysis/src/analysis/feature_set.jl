@@ -57,7 +57,8 @@ i.e. whether there is any "cooler refugia" for guided site selection to target.
 
 # Returns
 DataFrame with `dhw_site_cv` and `dhw_refugia_gap` columns, one row per scenario in
-`rs.inputs`.
+`rs.inputs`. Rows whose `dhw_scenario` is a no-heat-stress counterfactual (`< 1`, e.g. a
+row sampled with `dhw_scenario = 0`) get `0.0` for both features.
 """
 function dhw_spatial_features(rs::ResultSet)::DataFrame
     rcp_ids = collect(keys(rs.dhw_stats))
@@ -71,6 +72,14 @@ function dhw_spatial_features(rs::ResultSet)::DataFrame
     cv = Vector{Float64}(undef, n)
     refugia_gap = Vector{Float64}(undef, n)
     for (i, s_idx) in enumerate(idx)
+        # `dhw_scenario < 1` marks a no-heat-stress counterfactual (e.g. a row sampled
+        # with `dhw_scenario = 0`): it has no entry in the per-trajectory DHW stats, and
+        # by definition there is no spatial heat-stress contrast, so both features are 0.
+        if s_idx < 1
+            cv[i] = 0.0
+            refugia_gap[i] = 0.0
+            continue
+        end
         sites = site_means[s_idx, :].data[:]
         μ = mean(sites)
         cv[i] = μ == 0 ? 0.0 : std(sites; mean=μ) / μ
@@ -97,6 +106,11 @@ among the scenarios explored in this particular analysis** -- it is NOT a
 universal/absolute effort scale and is not comparable across different
 scenario sets or studies. Columns that are constant within the current
 scenario set are skipped (no `_effort` counterpart is emitted for them).
+
+Scenarios whose `dhw_scenario` is a no-heat-stress counterfactual (`< 1`, e.g.
+a row sampled with `dhw_scenario = 0`) have no entry in the per-trajectory DHW
+statistics; their DHW-derived columns (`dhw_mean`, `dhw_stdev`,
+`dhw_complexity`, `dhw_site_cv`, `dhw_refugia_gap`) are set to `0.0`.
 """
 function feature_set(rs::ResultSet)::DataFrame
     scens = copy(rs.inputs)
@@ -113,12 +127,19 @@ function feature_set(rs::ResultSet)::DataFrame
     dhw_stdevs = dhw_stat[stat = At("std")].data[:]
     dhw_complexities = dhw_stat[stat = At("complexity")].data[:]
 
+    # `dhw_scenario < 1` marks a no-heat-stress counterfactual (e.g. a row sampled with
+    # `dhw_scenario = 0`): no entry exists for it in the per-trajectory DHW stats arrays,
+    # and its DHW-derived features are zero by definition. `safe_idx` keeps the lookup
+    # in bounds for those rows; `ifelse` then zeroes them.
     idx = Int64.(scens.dhw_scenario)
+    valid = idx .>= 1
+    safe_idx = ifelse.(valid, idx, 1)
     insertcols!(
         scens, 2,
-        :dhw_mean => dhw_means[idx],
-        :dhw_stdev => dhw_stdevs[idx],
-        :dhw_complexity => dhw_complexities[idx]
+        :dhw_mean => ifelse.(valid, dhw_means[safe_idx], zero(eltype(dhw_means))),
+        :dhw_stdev => ifelse.(valid, dhw_stdevs[safe_idx], zero(eltype(dhw_stdevs))),
+        :dhw_complexity =>
+            ifelse.(valid, dhw_complexities[safe_idx], zero(eltype(dhw_complexities)))
     )
     colmetadata!(scens, :dhw_mean, "ptype", "continuous"; style=:note)
     colmetadata!(scens, :dhw_mean, "label", "Mean DHW"; style=:note)
