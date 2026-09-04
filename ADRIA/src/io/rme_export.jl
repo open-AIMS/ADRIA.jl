@@ -252,22 +252,29 @@ function export_to_rme(
 
     # Group scenarios by intervention settings to assign IDs and repetitions
     env_cols = intersect(
-        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :cyclone_mortality_scenario, :RCP],
+        [
+            :dhw_scenario,
+            :wave_scenario,
+            :cyclone_scenario,
+            :cyclone_mortality_scenario,
+            :RCP
+        ],
         propertynames(inputs)
     )
 
     # Exclude coral/model parameters from intervention grouping
     # These are factors that define the biological/physical model rather than the intervention itself
     iv_cols = filter(
-        c -> !any(
-            p -> occursin(p, string(c)),
-            [
-                "tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora",
-                "small_massives", "large_massives", "scale_cb_group", "steepness",
-                "midpoint", "height", "heritability", "depth_min", "depth_offset",
-                "capacity_mult"
-            ]
-        ),
+        c ->
+            !any(
+                p -> occursin(p, string(c)),
+                [
+                    "tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora",
+                    "small_massives", "large_massives", "scale_cb_group", "steepness",
+                    "midpoint", "height", "heritability", "depth_min", "depth_offset",
+                    "capacity_mult"
+                ]
+            ),
         setdiff(propertynames(inputs), env_cols)
     )
     iv_groups = groupby(inputs, iv_cols)
@@ -326,11 +333,11 @@ function export_to_rme(
 
     # Process seed_log: (timesteps, coral_id, locations, scenarios)
     # Sum over coral_id (2nd dim) to find intervened locations
-    for scen in 1:n_scens
+    for scen = 1:n_scens
         if is_counterfactual[scen]
             continue
         end
-        for t in 1:n_timesteps
+        for t = 1:n_timesteps
             # Find indices of locations where seeding occurred in this (t, scen)
             # Sum over coral_id dimension
             loc_seeding = sum(rs.seed_log[t, :, :, scen]; dims=1)
@@ -370,7 +377,8 @@ function export_to_rme(
                     push!(
                         iv_df,
                         (
-                            iv_id_map[scen], gcm_name, "outplant", rs_name, year, rep_map[scen],
+                            iv_id_map[scen], gcm_name, "outplant", rs_name, year,
+                            rep_map[scen],
                             Float64(regional_total_corals),
                             Float64(density),
                             Float64(area_km2)
@@ -416,7 +424,8 @@ function export_to_rme(
                     push!(
                         iv_df,
                         (
-                            iv_id_map[scen], gcm_name, "lm", rs_name_mc, year, rep_map[scen],
+                            iv_id_map[scen], gcm_name, "lm", rs_name_mc, year,
+                            rep_map[scen],
                             Float64(regional_total_mc_corals),
                             Float64(mc_density),
                             Float64(mc_area_km2)
@@ -444,7 +453,7 @@ function export_to_rme(
         if !isempty(cf_indices)
             cf_profiles = inputs[cf_indices, env_cols]
             mapping = zeros(Int, n_scens)
-            for i in 1:n_scens
+            for i = 1:n_scens
                 current_profile = Vector(inputs[i, env_cols])
                 # Find matching CF index
                 match_row_idx = findfirst(
