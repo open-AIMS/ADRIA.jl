@@ -87,3 +87,49 @@
 # ```julia
 # rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to results dir>")
 # ```
+#
+# ## Loading C~scape Results
+#
+# Results from C~scape can be loaded with the `load_results` function.
+#
+# ```julia
+# ## Assumes NetCDFs are in a `results` subdirectory (see directory tree below)
+# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>")
+#
+# ## Retrieve NetCDFs from a separate directory
+# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", "<path to result directory>")
+#
+# ## Pass an explicit list of NetCDF files to load as results
+# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2"])
+# ```
+#
+# Expected data directory structure:
+#
+# ```bash
+# data_dir
+# |   ScenarioID.csv
+# |
+# +---connectivity
+# |       connectivity.csv
+# |
+# +---site_data
+# |       geospatial_data.gpkg
+# |
+# +---initial_cover
+# |       initial_cover.csv
+# |
+# +---results (optional)
+#         NetCDF_Scn_140001.nc
+#         NetCDF_Scn_140002.nc
+#         ...
+# ```
+#
+# ### Accessing C~scape outcomes
+#
+# Only relative cover is loaded automatically. All other outcomes are computed on demand
+# via the `ADRIA.metrics.*` functions and cached in `rs.outcomes`:
+#
+# ```julia
+# settlers = ADRIA.metrics.total_settlers(rs)
+# rs.outcomes[:total_settlers]  # now cached
+# ```
