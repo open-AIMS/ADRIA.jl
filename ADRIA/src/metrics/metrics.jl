@@ -263,40 +263,6 @@ ltmp_taxa_cover = Metric(
     IS_RELATIVE
 )
 
-function _ltmp_loc_taxa_cover(
-    X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
-)::YAXArray{<:Real,3}
-    return DataCube(
-        ADRIAIndicators.ltmp_loc_taxa_cover(X, k_area, reef_area),
-        (:timesteps, :groups, :locations)
-    )
-end
-function _ltmp_loc_taxa_cover(
-    rs::ResultSet
-)::YAXArray{<:Real,4}
-    # Dimensions for relative_loc_taxa_cover are (timesteps, groups, locations, scenarios)
-    rel_taxa_cover = relative_loc_taxa_cover(rs)
-    k_area = loc_k_area(rs)
-    reef_area = loc_area(rs)
-    location_dim = axis_index(rel_taxa_cover, :locations)
-
-    axes_vals = _extract_axes_values(rel_taxa_cover)
-
-    return DataCube(
-        ADRIAIndicators.relative_cover_to_ltmp_cover(
-            rel_taxa_cover.data, k_area, reef_area, location_dim
-        );
-        axes_vals...
-    )
-end
-ltmp_loc_taxa_cover = Metric(
-    _ltmp_loc_taxa_cover,
-    (:timesteps, :groups, :sizes, :locations, :scenarios),
-    (:timesteps, :groups, :locations, :scenarios),
-    "LTMP Cover",
-    IS_RELATIVE
-)
-
 """
     relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray{T,3} where {T<:Real}
 
@@ -321,9 +287,6 @@ function _relative_loc_taxa_cover(
     ADRIAIndicators.relative_loc_taxa_cover!(X, taxa_cover.data)
 
     return replace!(taxa_cover, NaN => 0.0)
-end
-function _relative_loc_taxa_cover(rs::ResultSet)
-    return rs.outcomes[:relative_loc_taxa_cover]
 end
 relative_loc_taxa_cover = Metric(
     _relative_loc_taxa_cover,
@@ -459,7 +422,7 @@ function _juvenile_indicator(
     mean_diams = permutedims(
         reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)
     )
-    max_juvenile_density = 15.0
+    max_juvenile_density = 51.8
 
     # If calculating over multiple scenario include scenarios
     dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
@@ -473,9 +436,9 @@ function _juvenile_indicator(
 
     return juv_ind
 end
-function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=15.0)
+function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=51.8)
     juv_ind = rs.outcomes[:juvenile_indicator]
-    old_max_density = 15.0
+    old_max_density = 51.8
     if max_juvenile_density == old_max_density
         return juv_ind
     end

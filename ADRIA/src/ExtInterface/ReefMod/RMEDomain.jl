@@ -700,14 +700,17 @@ end
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
-    d.RCP = RCP
+    @set! d.RCP = RCP
     data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
 
     timeframe::Tuple{Int64,Int64} = (
         d.env_layer_md.timeframe[1],
         d.env_layer_md.timeframe[end]
     )
-    d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
+    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
+
+    # Cyclones are not RCP-specific?
+    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
 
     return d
 end
