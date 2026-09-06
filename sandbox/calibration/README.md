@@ -75,17 +75,15 @@ Interpretation:
 
 Lagged correlation is used as a shape diagnostic and a modest objective component. It does not replace peak timing penalties. This is important because otherwise an optimiser could find a cycle with the right shape but wrong timing and still score too well.
 
-## Current Pulse Sweep Integration
+## Cycle Metric Integration
 
-`pulse_calibration_sweep.jl` now writes cycle-aware diagnostics to:
+The BlackBoxOptim driver (`calibrate_cots_blackbox.jl`) evaluates candidates using the cycle-aware objective function in `cots_cycle_metrics.jl`.
 
-```text
-sandbox/data/pulse_calibration_sweep_by_reef.csv
-sandbox/data/pulse_calibration_sweep_summary.csv
-```
+The candidate log files record full cycle metrics:
+- `bbo_evaluated_candidates.csv`
+- `bbo_best_summary.csv`
 
-The by-reef output includes:
-
+The by-reef evaluation includes:
 - `cycle_loss`
 - `cycle_rmse`
 - `cycle_abs_percent_bias`
@@ -100,13 +98,12 @@ The by-reef output includes:
 - `cycle_best_lag_years`
 - detected simulated and observed peak years
 
-The summary output averages these values across reefs and sorts by:
-
+The overall objective sorts candidates by:
 ```text
 loss = mean_cycle_loss + 0.25 * legacy_loss
 ```
+where `legacy_loss` maintains backward compatibility while making cycle quality the dominant objective.
 
-where `legacy_loss` is the earlier RMSE/bias/correlation objective. This keeps backward comparability while making cycle quality the dominant objective.
 
 ## Validation Tests
 
@@ -123,26 +120,72 @@ The synthetic tests check that:
 - one-peak trajectories are penalised for peak count;
 - flat trajectories are strongly penalised.
 
-## Next Optimisation Step
+## BlackBoxOptim Calibration Driver
 
-The next script should be a BlackBoxOptim driver, provisionally:
+The BlackBoxOptim driver is implemented in:
 
 ```text
 sandbox/calibration/calibrate_cots_blackbox.jl
 ```
 
-Recommended initial search parameters:
+### Search Modes & Parameter Sets
 
-```text
-a_F, a_S, IMM, seed_mult,
-a_ricker, b_ricker,
-m1, m2, m3,
-p_tilde, C_max,
-tau_condition, allee_threshold,
-imm_threshold, eta_imm,
-optional pulse start/duration/repeat/magnitude
+The driver supports three configurable search modes via the `BBO_MODE` environment variable:
+
+1. **`FOCUSED` (Default)**: 4 core parameters for fast tuning and smoke testing:
+   `a_F`, `a_S`, `IMM`, `seed_mult`.
+2. **`EXPANDED`**: 15 demographic, functional response, mortality, and dispersal parameters:
+   `a_F`, `a_S`, `IMM`, `seed_mult`, `a_ricker`, `b_ricker`, `m1`, `m2`, `m3`, `p_tilde`, `C_max`, `tau_condition`, `allee_threshold`, `imm_threshold`, `eta_imm`.
+3. **`EXPANDED_PULSE`**: Includes all expanded parameters plus pulse timing and magnitude:
+   `pulse_start`, `pulse_duration`, `pulse_relative_magnitude`.
+
+### Environment Controls
+
+```powershell
+$env:BBO_MODE = 'FOCUSED'     # Options: FOCUSED, EXPANDED, EXPANDED_PULSE
+$env:BBO_MAX_STEPS = '20'     # Maximum evaluation steps
+$env:BBO_MAX_TIME = '0.0'     # Time limit in seconds (0.0 = unlimited)
+julia --project=sandbox sandbox\calibration\calibrate_cots_blackbox.jl
 ```
 
-Start with a small budget and a reduced parameter set. Once the objective behaves sensibly, expand the search space.
+### Candidate Evaluation Logging
 
-The optimiser should save every evaluated candidate, not just the best one, with all objective components. This will make it possible to diagnose whether BlackBoxOptim is improving actual cycles or merely gaming one metric component.
+As specified, every evaluated candidate is saved into a detailed CSV file:
+
+```text
+sandbox/data/bbo_evaluated_candidates.csv
+sandbox/data/bbo_best_summary.csv
+```
+
+Each logged evaluation contains the exact parameter candidate vector along with the overall loss and full metric breakdown (`cycle_loss`, `legacy_loss`, `mean_rmse`, `mean_abs_percent_bias`, `mean_peak_count_penalty`, `mean_peak_timing_penalty`, `mean_period_penalty`, `mean_amplitude_penalty`, `mean_flatline_penalty`, `mean_lag_correlation_penalty`, `mean_best_lag_years`). This allows full diagnosis of whether BlackBoxOptim is improving true cycle mechanics rather than gaming individual metric components.
+
+## Unified Calibration & Visualization Pipeline
+
+The calibration workflow consists of three clean, non-duplicated steps:
+
+```text
+1. Optimization Sweep:   calibrate_cots_blackbox.jl
+                           │ Outputs: bbo_best_summary.csv
+                           ▼
+2. Unified Simulation:  simulate_best_calibration.jl
+                           │ Outputs: best_calibrated_trajectories.csv
+                           ▼
+3. Figure Rendering:     render_calibration_figures.py
+                           │ Outputs: plots/*.png
+```
+
+### Execution Example
+
+```powershell
+# Step 1: Run BlackBoxOptim driver (Focused or Expanded mode)
+$env:BBO_MODE = 'FOCUSED'
+$env:BBO_MAX_STEPS = '50'
+julia --project=sandbox sandbox\calibration\calibrate_cots_blackbox.jl
+
+# Step 2: Run simulation on top candidate (Single-run or Stochastic Ensemble)
+$env:COTS_N_STOCHASTIC_SCENS = '1'
+julia --project=sandbox sandbox\calibration\simulate_best_calibration.jl
+
+# Step 3: Render publication-quality plots
+python sandbox\calibration\render_calibration_figures.py
+```
