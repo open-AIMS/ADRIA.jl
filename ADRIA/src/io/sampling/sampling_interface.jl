@@ -408,14 +408,14 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)
         return _update_decision_method!(dom, new_dist_params)
     end
 
-    # Set new base value
-    old_val = get_attr(dom, factor, :val)
+    # Set new base value; round it for discrete factors (`val`'s type no longer
+    # signals discreteness -- `update!` stores every `val` as `Float64`).
     new_val = mean(new_dist_params[1:2])
-    (old_val isa Int) && (new_val = round(new_val))
+    _is_discrete_factor(dom, factor) && (new_val = round(new_val))
 
     ms = model_spec(dom)
     ms[ms.fieldname .== factor, :dist_params] .= [new_dist_params]
-    ms[ms.fieldname .== factor, :val] .= oftype(old_val, new_val)
+    ms[ms.fieldname .== factor, :val] .= new_val
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
     update!(dom, ms)
@@ -460,14 +460,10 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
         lb = new_params[i][1]
         ub = new_params[i][2]
 
-        # Calculate new nominal values ensuring original types (Int or Float) are preserved
-        old_val = ms[idx, :val]
+        # Round the nominal for discrete factors -- `val`'s type no longer signals
+        # discreteness (`update!` stores every `val` as `Float64`).
         new_val = mean([lb, ub])
-        ms[idx, :val] = if old_val isa Int
-            round(new_val)  # Ensure float represents an integer
-        else
-            new_val
-        end
+        ms[idx, :val] = _is_discrete_factor(ms[idx, :ptype]) ? round(new_val) : new_val
 
         # Update lower/upper bounds and mark as constant or not
         ms[idx, [:lower_bound, :upper_bound, :is_constant]] = [lb, ub, lb == ub]

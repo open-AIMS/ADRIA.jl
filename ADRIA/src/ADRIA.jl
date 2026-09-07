@@ -145,6 +145,11 @@ const COMPAT_DPKG = ["0.8.0"]
     precompile(ADRIA.sample_guided, (ADRIADomain, Int))
     precompile(ADRIA.sample_unguided, (ADRIADomain, Int))
     precompile(ADRIA.model_spec, (ADRIADomain, DataFrame))
+    # `fix_factor!` writes the mutated spec back through `update!`; the workload block
+    # below exercises the underlying reconstruct path against the assembled model.
+    precompile(ADRIA.update!, (ADRIADomain, DataFrame))
+    precompile(ADRIA.fix_factor!, (ADRIADomain, Symbol))
+    precompile(ADRIA.fix_factor!, (ADRIADomain, Vector{Symbol}))
 
     redirect_stdio(stdout=devnull, stderr=devnull) do
         let
@@ -216,7 +221,7 @@ const COMPAT_DPKG = ["0.8.0"]
     # shifts to Pkg.precompile() time and interactive first-call is <1 s.
     redirect_stdio(stdout=devnull, stderr=devnull) do
         _arr = ones(Float32, 1, 1, 1)
-        _assemble_domain_model(
+        _model = _assemble_domain_model(
             EnvironmentalLayer(_arr, _arr, _arr),
             Intervention(),
             SeedCriteriaWeights(),
@@ -227,6 +232,26 @@ const COMPAT_DPKG = ["0.8.0"]
             GrowthAcceleration(),
             DepthAttenuation()
         )
+
+        # Factor-fixing write-back path (see `update!` in Domain.jl for why the exact
+        # `Float64` / `Vector{Float64}` column forms matter). Run twice: a freshly
+        # assembled model has a `Float64`/`Int` `val` mix (`guided` etc. default to an
+        # `Int` literal); the first write flips those to `Float64`, changing the `Param`
+        # types handed to `Flatten.reconstruct`, and every `fix_factor!` after the first
+        # sees that all-`Float64` shape. Values are written back unchanged -- compile
+        # coverage only. Guarded so a failure degrades coverage rather than breaking
+        # `using ADRIA`.
+        try
+            for _ in 1:2
+                _ms = model_spec(_model)
+                _model[:val] = Float64.(_ms.val)
+                _model[:dist_params] = Vector{Float64}[
+                    collect(Float64, _dp) for _dp in _ms.dist_params
+                ]
+            end
+        catch err
+            @debug "compile-workload factor write-back failed" err
+        end
     end
 end
 
