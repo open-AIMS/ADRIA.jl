@@ -759,10 +759,27 @@ function _combine_intervention_sites(
 end
 
 """
-    _calculate_first_scenario(nc_var::NcVar, scenario_func)::Array
+    _read_scenario_slice(nc_handle::NcFile, var_name::String, use_combined_cover::Bool; draw::Union{Int64,Nothing}=nothing)
 
-Calculate the first scenario checking first the existence of a scenario dimension in the
-NetCDF.
+Read one scenario's data for `var_name` from `nc_handle`. `draw` selects a single index of a
+leading `draws` dimension; `nothing` reads the whole variable. When `use_combined_cover` is
+set, the area-weighted intervention/counterfactual `cover` combination is returned instead.
+"""
+function _read_scenario_slice(
+    nc_handle::NcFile, var_name::String, use_combined_cover::Bool;
+    draw::Union{Int64,Nothing}=nothing
+)
+    use_combined_cover && return _combine_intervention_sites(nc_handle, draw)
+    raw = NetCDF.readvar(nc_handle[var_name])
+    isnothing(draw) && return raw
+    return raw[draw, ntuple(_ -> Colon(), ndims(raw) - 1)...]
+end
+
+"""
+    _calculate_first_scenario(nc_handle::NcFile, var_name::String, scenario_func, use_combined_cover::Bool)::Array
+
+Apply `scenario_func` to the first scenario of `var_name`, selecting the first draw when the
+variable carries a `draws` dimension. Used to determine the shape of the aggregated output.
 """
 function _calculate_first_scenario(
     nc_handle::NcFile,
@@ -770,21 +787,9 @@ function _calculate_first_scenario(
     scenario_func,
     use_combined_cover::Bool
 )::Array
-    n_scens::Int64 = _n_scenarios(nc_handle)
-    # Check if the first variable contains the draw dimension
-    if n_scens > 1
-        dim_sel = Tuple(Colon() for _ in 2:length(size(nc_var)))
-        out_var = scenario_func(
-            use_combined_cover ? _combine_intervention_sites(
-                nc_handle, 1
-            ) : NetCDF.readvar(nc_handle[var_name])[dim_sel...]
-        )
-        return out_var
-    end
+    draw = _n_scenarios(nc_handle) > 1 ? 1 : nothing
     return scenario_func(
-        use_combined_cover ? _combine_intervention_sites(
-            nc_handle
-        ) : NetCDF.readvar(nc_handle[var_name])
+        _read_scenario_slice(nc_handle, var_name, use_combined_cover; draw=draw)
     )
 end
 
@@ -830,9 +835,6 @@ function _load_variable!(
         Dict{Symbol,Any}()
     )
 
-    # The scenario function does not operate on the scenario dimension
-    dim_sel = Tuple(Colon() for _ in 1:(length(size(non_scenario_dims))))
-
     cur_indx = 1
     @showprogress desc = "Calculating $(out_name)" enabled = show_progress for (
         n_sc, nc_handle
@@ -841,16 +843,14 @@ function _load_variable!(
     )
         if n_sc == 1
             output_variable[draws=cur_indx] .= scenario_func(
-                use_combined_cover ? _combine_intervention_sites(
-                    nc_handle
-                ) : NetCDF.readvar(nc_handle[var_name_str])
+                _read_scenario_slice(nc_handle, var_name_str, use_combined_cover)
             )
         else
             for j in 0:(n_sc - 1)
                 output_variable[draws=cur_indx + j] .= scenario_func(
-                    use_combined_cover ? _combine_intervention_sites(
-                        nc_handle, j
-                    ) : NetCDF.readvar(nc_handle[var_name_str])[j, dim_sel...]
+                    _read_scenario_slice(
+                        nc_handle, var_name_str, use_combined_cover; draw=j
+                    )
                 )
             end
         end
