@@ -135,12 +135,12 @@ function _load_variable!(
         n_scens, rs.raw_data
     )
         if n_sc == 1
-            output_variable[draws=cur_indx] .= scenario_func(
+            output_variable[draws = cur_indx] .= scenario_func(
                 _read_scenario_slice(nc_handle, var_name_str, use_combined_cover)
             )
         else
             for j in 0:(n_sc - 1)
-                output_variable[draws=cur_indx + j] .= scenario_func(
+                output_variable[draws = cur_indx + j] .= scenario_func(
                     _read_scenario_slice(
                         nc_handle, var_name_str, use_combined_cover; draw=j
                     )

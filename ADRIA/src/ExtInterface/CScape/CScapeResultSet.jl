@@ -312,8 +312,9 @@ function _recreate_inputs_dataframe(
     scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx, :] for idx in scenario_idxs]
 
     # Convert climate scenarios to factors
-    rcps::Vector{Float64} =
-        parse.(Float64, [nc_handle.gatts["ssp"][(end - 1):end] for nc_handle in nc_handles])
+    rcps::Vector{Float64} = parse.(
+        Float64, [nc_handle.gatts["ssp"][(end - 1):end] for nc_handle in nc_handles]
+    )
 
     # Convert climate models to factors
     input_scenarios::Vector{Tuple{String,Int}} = [
@@ -326,10 +327,9 @@ function _recreate_inputs_dataframe(
         findfirst(x -> x == scen, unique(input_scenarios)) for scen in input_scenarios
     ]
 
-    fragmented_spec::Vector{DataFrame} =
-        _create_inputs_dataframe.(
-            nc_handles, scenario_rows, rcps, input_inds
-        )
+    fragmented_spec::Vector{DataFrame} = _create_inputs_dataframe.(
+        nc_handles, scenario_rows, rcps, input_inds
+    )
     scenarios::DataFrame = reduce(vcat, fragmented_spec)
     return scenarios
 end
@@ -353,14 +353,12 @@ function _create_inputs_dataframe(
     scenario_id::Vector{Float64} = Int64.(fill(scenario_spec.ID, n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
-    lb_t, int_t1, int_t2, ub_t =
-        parse.(
-            Float64, split(scenario_spec.HeatToleranceGroups, "_")
-        )
-    init_heat_tol_mean, init_heat_tol_std =
-        parse.(
-            Float64, split(scenario_spec.HeatToleranceInit, "_")
-        )
+    lb_t, int_t1, int_t2, ub_t = parse.(
+        Float64, split(scenario_spec.HeatToleranceGroups, "_")
+    )
+    init_heat_tol_mean, init_heat_tol_std = parse.(
+        Float64, split(scenario_spec.HeatToleranceInit, "_")
+    )
     heritability1, heritability2 = parse.(
         Float64, split(scenario_spec.Heritability, "_")
     )
@@ -391,22 +389,21 @@ function _create_inputs_dataframe(
         for (ft, n_corals) in zip(functional_types, n_seeded)
     )
 
-    enhancement_mean, enhancement_std =
-        parse.(
-            Float64, split(_default_missing(scenario_spec.Enhancement, "0_0"), '_')
-        )
+    enhancement_mean, enhancement_std = parse.(
+        Float64, split(_default_missing(scenario_spec.Enhancement, "0_0"), '_')
+    )
 
-    intervention_start =
-        Float64.(
-            _default_missing(
-                scenario_spec.InterventionYears_start, nc_handle["year"][1]
-            ) - nc_handle["year"][1]
-        )
+    intervention_start = Float64.(
+        _default_missing(
+            scenario_spec.InterventionYears_start, nc_handle["year"][1]
+        ) - nc_handle["year"][1]
+    )
 
     duration = Float64.(_default_missing(scenario_spec.duration, 0.0))
     frequency = Float64.(_default_missing(scenario_spec.frequency, 0.0))
-    n_dep_locations =
-        Float64.(count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, "")))
+    n_dep_locations = Float64.(
+        count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, ""))
+    )
 
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 

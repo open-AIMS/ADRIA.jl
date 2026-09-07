@@ -39,7 +39,8 @@ function _cscape_loc_sum(
 end
 
 _cscape_total_metric(f, feature) = Metric(
-    f, (:timesteps, :scenarios), (:timesteps, :scenarios), feature, IS_NOT_RELATIVE, "count"
+    f, (:timesteps, :scenarios), (:timesteps, :scenarios), feature, IS_NOT_RELATIVE,
+    "count"
 )
 _cscape_loc_metric(f, feature) = Metric(
     f,
@@ -88,9 +89,13 @@ _loc_settlers(rs::CScapeResultSet; show_progress=true) = _cscape_loc_sum(
     rs, :settlers, :loc_settlers; show_progress=show_progress
 )
 
-total_internal_larvae = _cscape_total_metric(_total_internal_larvae, "Total Internal Larvae")
+total_internal_larvae = _cscape_total_metric(
+    _total_internal_larvae, "Total Internal Larvae"
+)
 loc_internal_larvae = _cscape_loc_metric(_loc_internal_larvae, "Location Internal Larvae")
-total_external_larvae = _cscape_total_metric(_total_external_larvae, "Total External Larvae")
+total_external_larvae = _cscape_total_metric(
+    _total_external_larvae, "Total External Larvae"
+)
 loc_external_larvae = _cscape_loc_metric(_loc_external_larvae, "Location External Larvae")
 total_eggs_produced = _cscape_total_metric(_total_eggs_produced, "Total Eggs Produced")
 loc_eggs_produced = _cscape_loc_metric(_loc_eggs_produced, "Location Eggs Produced")
