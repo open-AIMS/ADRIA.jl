@@ -382,27 +382,29 @@ function _create_inputs_dataframe(
 
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 
+    # `scenario_id`, `dhws` and `cyclones` are length-`n_draws` vectors; every other
+    # column is a per-scenario scalar that `DataFrame` recycles to match.
     return DataFrame(;
         scenario_id=scenario_id,
         dhw_scenario=dhws,
         cyc_scenario=cyclones,
-        RCP=fill(rcp, n_draws),
-        thermal_tol_lb=fill(lb_t, n_draws),
-        thermal_tol_int1=fill(int_t1, n_draws),
-        thermal_tol_int2=fill(int_t2, n_draws),
-        thermal_tol_ub=fill(ub_t, n_draws),
-        init_heat_tol_mean=fill(init_heat_tol_mean, n_draws),
-        init_heat_tol_std=fill(init_heat_tol_std, n_draws),
-        heritability1=fill(heritability1, n_draws),
-        heritability2=fill(heritability2, n_draws),
-        plasticity=fill(plasticity, n_draws),
-        intervention_start=fill(intervention_start, n_draws),
-        intervention_duration=fill(duration, n_draws),
-        intervention_frequency=fill(frequency, n_draws),
-        deployment_area=fill(deployment_area, n_draws),
-        n_deployment_locations=fill(n_dep_locations, n_draws),
-        enhancement_mean=fill(enhancement_mean, n_draws),
-        enhancement_std=fill(enhancement_std, n_draws),
+        RCP=rcp,
+        thermal_tol_lb=lb_t,
+        thermal_tol_int1=int_t1,
+        thermal_tol_int2=int_t2,
+        thermal_tol_ub=ub_t,
+        init_heat_tol_mean=init_heat_tol_mean,
+        init_heat_tol_std=init_heat_tol_std,
+        heritability1=heritability1,
+        heritability2=heritability2,
+        plasticity=plasticity,
+        intervention_start=intervention_start,
+        intervention_duration=duration,
+        intervention_frequency=frequency,
+        deployment_area=deployment_area,
+        n_deployment_locations=n_dep_locations,
+        enhancement_mean=enhancement_mean,
+        enhancement_std=enhancement_std,
         coral_dict...
     )
 end
