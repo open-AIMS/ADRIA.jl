@@ -736,23 +736,22 @@ function _n_scenarios(nc_var::NcVar)::Int64
     return 1
 end
 
-function _combine_intervention_sites(nc_handle::NcFile, scenario_idx::Int64)::Array{<:Real}
+"""
+    _combine_intervention_sites(nc_handle::NcFile, scenario_idx::Union{Int64,Nothing}=nothing)::Array{<:Real}
+
+Area-weighted combination of the intervened and non-intervened `cover` slices. Pass
+`scenario_idx` to select a single draw when the variable carries a leading `draws` dimension.
+"""
+function _combine_intervention_sites(
+    nc_handle::NcFile, scenario_idx::Union{Int64,Nothing}=nothing
+)::Array{<:Real}
     cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
     area::Array{Float64,2} = NetCDF.readvar(nc_handle["area"])
-    area_shape = (1, 1, :, 1, 1, 1)
-    non_int_idx = (scenario_idx, :, :, 1, :, :)
-    int_idx = (scenario_idx, :, :, 2, :, :)
-    return (
-        @view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+
-        @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)
-    ) ./ reshape(sum(area; dims=1), area_shape)
-end
-function _combine_intervention_sites(nc_handle::NcFile)::Array{<:Real}
-    cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
-    area::Array{Float64,2} = NetCDF.readvar(nc_handle["area"])
-    area_shape = (1, :, 1, 1, 1)
-    non_int_idx = (:, :, 1, :, :)
-    int_idx = (:, :, 2, :, :)
+
+    lead = isnothing(scenario_idx) ? () : (scenario_idx,)
+    area_shape = isnothing(scenario_idx) ? (1, :, 1, 1, 1) : (1, 1, :, 1, 1, 1)
+    non_int_idx = (lead..., :, :, 1, :, :)
+    int_idx = (lead..., :, :, 2, :, :)
     return (
         @view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+
         @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)
