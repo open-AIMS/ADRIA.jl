@@ -1,252 +1,105 @@
 using ADRIA: CScapeResultSet, _load_variable!
 
+# =============================================================================
+# Larvae / reproduction / recruitment totals
+#
+# Each raw NetCDF variable below is reduced to either a domain total (`total_*`,
+# summed over every dimension except year) or a per-location series (`loc_*`,
+# summed over every dimension except year and location). Only the source variable
+# and cached outcome name differ between metrics, so the aggregation lives in the
+# two helpers here.
+# =============================================================================
+
+"""
+    _cscape_domain_sum(rs::CScapeResultSet, var::Symbol, out_name::Symbol; show_progress=true)::YAXArray{<:Real}
+
+Domain-wide sum of NetCDF variable `var` over every dimension except year.
+"""
+function _cscape_domain_sum(
+    rs::CScapeResultSet, var::Symbol, out_name::Symbol; show_progress=true
+)::YAXArray{<:Real}
+    haskey(rs.outcomes, out_name) && return rs.outcomes[out_name]
+    agg_f = x -> dropdims(sum(x; dims=(2, 3, 4, 5)); dims=(2, 3, 4, 5))
+    return _load_variable!(rs, var, (:year,), agg_f, out_name; show_progress=show_progress)
+end
+
+"""
+    _cscape_loc_sum(rs::CScapeResultSet, var::Symbol, out_name::Symbol; show_progress=true)::YAXArray{<:Real}
+
+Per-location sum of NetCDF variable `var` over every dimension except year and location.
+"""
+function _cscape_loc_sum(
+    rs::CScapeResultSet, var::Symbol, out_name::Symbol; show_progress=true
+)::YAXArray{<:Real}
+    haskey(rs.outcomes, out_name) && return rs.outcomes[out_name]
+    agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
+    return _load_variable!(
+        rs, var, (:year, :reef_sites), agg_f, out_name; show_progress=show_progress
+    )
+end
+
+_cscape_total_metric(f, feature) = Metric(
+    f, (:timesteps, :scenarios), (:timesteps, :scenarios), feature, IS_NOT_RELATIVE, "count"
+)
+_cscape_loc_metric(f, feature) = Metric(
+    f,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    feature,
+    IS_NOT_RELATIVE,
+    "count"
+)
+
 """
     _total_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of internal received larvae across the entire domain. Calculated from the
-NetCDF variable "internal_received_larvae".
-"""
-function _total_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :total_internal_larvae
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year,)
-    agg_f = x -> dropdims(sum(x; dims=(2, 3, 4, 5)); dims=(2, 3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :internal_received_larvae
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-total_internal_larvae = Metric(
-    _total_internal_larvae,
-    (:timesteps, :scenarios),
-    (:timesteps, :scenarios),
-    "Total Internal Larvae",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _loc_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of internal received larvae for each location. Calculated from the NetCDF 
-variable "internal_received_larvae".
-"""
-function _loc_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :loc_internal_larvae
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year, :reef_sites)
-    agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :internal_received_larvae
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-loc_internal_larvae = Metric(
-    _loc_internal_larvae,
-    (:timesteps, :locations, :scenarios),
-    (:timesteps, :locations, :scenarios),
-    "Location Internal Larvae",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _total_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of external larvae used by cscape across the entire domain. Calculated from
-the NetCDF "external_larvae".
-"""
-function _total_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :total_external_larvae
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year,)
-    agg_f = x -> dropdims(sum(x; dims=(2, 3, 4, 5)); dims=(2, 3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :external_larvae
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-total_external_larvae = Metric(
-    _total_external_larvae,
-    (:timesteps, :scenarios),
-    (:timesteps, :scenarios),
-    "Total External Larvae",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _loc_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of external larvae used in the cscape model for each location. Calculated
-from the NetCDF variable "external_larvae".
-"""
-function _loc_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :loc_external_larvae
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year, :reef_sites)
-    agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :external_larvae
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-loc_external_larvae = Metric(
-    _loc_external_larvae,
-    (:timesteps, :locations, :scenarios),
-    (:timesteps, :locations, :scenarios),
-    "Location External Larvae",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _total_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of eggs produced across the entire domain. Calculated from the NetCDF variable
-"eggs".
-"""
-function _total_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :total_eggs_produced
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year,)
-    agg_f = x -> dropdims(sum(x; dims=(2, 3, 4, 5)); dims=(2, 3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :eggs
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-total_eggs_produced = Metric(
-    _total_eggs_produced,
-    (:timesteps, :scenarios),
-    (:timesteps, :scenarios),
-    "Total Eggs Produced",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _loc_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of eggs produced at each location of the domain. Calculated from the NetCDF 
-variable "eggs".
-"""
-function _loc_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :loc_eggs_produced
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year, :reef_sites)
-    agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :eggs
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-loc_eggs_produced = Metric(
-    _loc_eggs_produced,
-    (:timesteps, :locations, :scenarios),
-    (:timesteps, :locations, :scenarios),
-    "Location Eggs Produced",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _total_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-
-Get the number of coral settlers across the entire domain. Calculated from 
-NetCDF variable "settlers".
-"""
-function _total_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :total_settlers
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year,)
-    agg_f = x -> dropdims(sum(x; dims=(2, 3, 4, 5)); dims=(2, 3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :settlers
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-total_settlers = Metric(
-    _total_settlers,
-    (:timesteps, :scenarios),
-    (:timesteps, :scenarios),
-    "Total Settlers",
-    IS_NOT_RELATIVE,
-    "count"
-)
-
-"""
     _loc_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
 
-Get the number of coral settlers at each location. Calculated from NetCDF variable 
-"settlers".
+Domain-total and per-location sums of the C~scape larval (`internal_received_larvae`,
+`external_larvae`), reproductive (`eggs`) and recruitment (`settlers`) NetCDF variables.
 """
-function _loc_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
-    outcome_name::Symbol = :loc_settlers
-    if outcome_name ∈ keys(rs.outcomes)
-        return rs.outcomes[outcome_name]
-    end
-
-    # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year, :reef_sites)
-    agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
-
-    # name of variable to be used for calculation
-    input_var_name::Symbol = :settlers
-    return _load_variable!(
-        rs, input_var_name, out_dims, agg_f, outcome_name; show_progress=show_progress
-    )
-end
-loc_settlers = Metric(
-    _loc_settlers,
-    (:timesteps, :locations, :scenarios),
-    (:timesteps, :locations, :scenarios),
-    "Location Settlers",
-    IS_NOT_RELATIVE,
-    "count"
+_total_internal_larvae(rs::CScapeResultSet; show_progress=true) = _cscape_domain_sum(
+    rs, :internal_received_larvae, :total_internal_larvae; show_progress=show_progress
 )
+_loc_internal_larvae(rs::CScapeResultSet; show_progress=true) = _cscape_loc_sum(
+    rs, :internal_received_larvae, :loc_internal_larvae; show_progress=show_progress
+)
+_total_external_larvae(rs::CScapeResultSet; show_progress=true) = _cscape_domain_sum(
+    rs, :external_larvae, :total_external_larvae; show_progress=show_progress
+)
+_loc_external_larvae(rs::CScapeResultSet; show_progress=true) = _cscape_loc_sum(
+    rs, :external_larvae, :loc_external_larvae; show_progress=show_progress
+)
+_total_eggs_produced(rs::CScapeResultSet; show_progress=true) = _cscape_domain_sum(
+    rs, :eggs, :total_eggs_produced; show_progress=show_progress
+)
+_loc_eggs_produced(rs::CScapeResultSet; show_progress=true) = _cscape_loc_sum(
+    rs, :eggs, :loc_eggs_produced; show_progress=show_progress
+)
+_total_settlers(rs::CScapeResultSet; show_progress=true) = _cscape_domain_sum(
+    rs, :settlers, :total_settlers; show_progress=show_progress
+)
+_loc_settlers(rs::CScapeResultSet; show_progress=true) = _cscape_loc_sum(
+    rs, :settlers, :loc_settlers; show_progress=show_progress
+)
+
+total_internal_larvae = _cscape_total_metric(_total_internal_larvae, "Total Internal Larvae")
+loc_internal_larvae = _cscape_loc_metric(_loc_internal_larvae, "Location Internal Larvae")
+total_external_larvae = _cscape_total_metric(_total_external_larvae, "Total External Larvae")
+loc_external_larvae = _cscape_loc_metric(_loc_external_larvae, "Location External Larvae")
+total_eggs_produced = _cscape_total_metric(_total_eggs_produced, "Total Eggs Produced")
+loc_eggs_produced = _cscape_loc_metric(_loc_eggs_produced, "Location Eggs Produced")
+total_settlers = _cscape_total_metric(_total_settlers, "Total Settlers")
+loc_settlers = _cscape_loc_metric(_loc_settlers, "Location Settlers")
+
+# =============================================================================
+# Coral cover
+# =============================================================================
 
 function _relative_loc_taxa_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :relative_loc_taxa_cover
