@@ -28,13 +28,22 @@ struct CScapeResultSet <: ResultSet
 end
 
 """
-    load_results(::Type{CScapeResultSet}, data_dir::String)::CScapeResultSet
-    load_results(::Type{CscapeResultSet}, data_dir::String, result_dir::String)::CScapeResultSet
-    load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String})::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true)::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String, result_dir::String; show_progress::Bool=true)::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String}; show_progress::Bool=true)::CScapeResultSet
 
 Interface for loading C~scape model outputs.
 
 See the [Loading C~scape Results](@ref) section for details on expected directory structure.
+
+# Arguments
+- `data_dir`: Path to the C~scape data package (`ScenarioID.csv`, `connectivity/`, `site_data/`, `initial_cover/`)
+- `result_dir`: Path to a directory of result NetCDFs. Defaults to the `results` subdirectory of `data_dir`
+- `result_files`: Explicit list of result NetCDF paths to load, instead of scanning a directory
+- `show_progress`: Show a progress bar while computing outcomes. Defaults to `true`
+
+# Returns
+CScapeResultSet struct compatible with most ADRIA analysis functionality.
 
 # Examples
 ```julia
