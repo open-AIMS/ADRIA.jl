@@ -4,6 +4,39 @@ using CSV
 using DataFrames
 using YAXArrays
 
+"""
+    CScapeResultSet <: ResultSet
+
+Result set for C~scape model outputs, loaded via [`load_results`](@ref).
+
+C~scape writes one NetCDF per scenario. Result variables are stored with dimensions
+`(year, reef_sites, intervened, ft, thermal_tolerance)`, plus a leading `draws` dimension
+when a scenario carries multiple draws. `intervened` has length 2 (counterfactual,
+intervened) and `ft` is the functional-type axis. On load these are renamed and reordered
+to ADRIA's `(timesteps, groups, locations, scenarios)` convention by [`reformat_cube`](@ref);
+[`_load_variable!`](@ref) covers how individual outcomes are aggregated.
+
+Only `relative_cover` is populated eagerly. Other outcomes are computed on first request by
+the C~scape `ADRIA.metrics.*` methods and cached in `outcomes`.
+
+# Fields
+- `name`: Dataset title, from the first NetCDF's `title` global attribute
+- `RCP`: RCP string (last two digits of the `ssp` attribute)
+- `loc_ids`: Location identifiers, ordered to match `initial_cover.csv`
+- `loc_area`: Location areas (m²)
+- `loc_max_coral_cover`: Carrying capacity `k` per location, as a proportion
+- `loc_centroids`: Location centroid points
+- `env_layer_md`: Environmental-layer / data-package paths and timeframe
+- `connectivity_data`: Connectivity matrix (`DataFrame`), rows/cols ordered to `loc_ids`
+- `loc_data`: Location spatial attributes from the GeoPackage
+- `raw_data`: Open handles to the source NetCDF files
+- `inputs`: Reconstructed scenario input table (one row per scenario/draw)
+- `sim_constants`: `SimConstants`
+- `model_spec`: Partial model specification derived from `inputs`
+- `outcomes`: Cache of computed outcome `YAXArray`s, keyed by metric name
+- `coral_size_diameter`: Coral size-class diameters (`ft` × size class); C~scape uses its
+  own size classes
+"""
 struct CScapeResultSet <: ResultSet
     name::String
     RCP::String
@@ -21,9 +54,7 @@ struct CScapeResultSet <: ResultSet
     sim_constants::SimConstants
     model_spec::DataFrame
 
-    # raw::AbstractArray
     outcomes::Dict{Symbol,YAXArray}
-    # Cscape uses different size classes
     coral_size_diameter::YAXArray
 end
 
@@ -225,13 +256,14 @@ function _construct_coral_sizes(nc_handle::NcFile)::YAXArray
 end
 
 """
-    _get_scenario_id(datasets::Dataset)::Int
+    _get_scenario_id(nc_handle::NcFile)::Int
 
-Get the scenario id contained in the meta data of the netcdf. Transform to form expected in
-scenario id expected in scenario spec.
+Return the scenario id from the NetCDF's `scenario_ID` global attribute, mapped into the
+range used by `ScenarioID.csv`. Ids already at or above 100000 are returned unchanged;
+smaller ids (older outputs that numbered scenarios from 1) are offset by 100000.
 
-1   -> 100001
-701 -> 100701
+    1   -> 100001
+    701 -> 100701
 """
 function _get_scenario_id(nc_handle::NcFile)::Int
     scenario_id = parse(Int, nc_handle.gatts["scenario_ID"])
@@ -629,9 +661,10 @@ function _get_gpkg_path(data_dir::String)
     return possible_files[1]
 end
 """
-    _get_result_name()::String
+    _get_result_name(ds::NcFile)::String
 
-Get the name of the data set from the properties of the dataset.
+Get the dataset name from the NetCDF's `title` global attribute, or `"CScape Results"` if
+that attribute is missing.
 """
 function _get_result_name(ds::NcFile)::String
     name = "CScape Results"
@@ -661,9 +694,10 @@ function _get_rcp(ds::NcFile)::String
 end
 
 """
-    _get_reefids(ds::YAXArray)::String
+    _get_reefids(reef_cube::YAXArray)::Vector{String}
 
-Reef IDs are stored in a space seperated list in the properties of reef_siteid cube.
+Reef IDs are stored as a space-separated list in the `flag_meanings` property of the
+`reef_siteid` cube.
 """
 function _get_reefids(reef_cube::YAXArray)::Vector{String}
     # Site IDs are necessary to extract the correct data from the geopackage
@@ -681,10 +715,18 @@ end
 """
     reformat_cube(cscape_cube::YAXArray)::YAXArray
 
-Rename reorder the names of the dimensions to align with ADRIA's expected dimension names.
+Rename and reorder a C~scape outcome cube's dimensions to ADRIA's convention.
+
+C~scape names its axes `year`, `ft` (functional type), `reef_sites` and `draws`; ADRIA
+expects `timesteps`, `groups`, `locations`, `scenarios` in that order. The `ft` axis maps
+to ADRIA's `groups`: core metric metadata (`axes_units`, `human_readable_name`) only
+recognises `groups`/`sizes`. Axes outside this mapping are kept and appended after the
+renamed ones. A `units` property of `"percent"` has its values rescaled to a `[0, 1]`
+proportion.
 """
 function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
+    # C~scape axis name => ADRIA axis name (see docstring for the `ft` -> `groups` mapping)
     cscape_names = [:year, :ft, :reef_sites, :draws]
     adria_names = [:timesteps, :groups, :locations, :scenarios]
     final_ordering::Vector{Int} = Vector{Int}(undef, length(dim_names))
@@ -798,11 +840,20 @@ end
 """
     _load_variable!(rs::ResultSet, variable_name::Symbol, out_dims::Tuple, scenario_func, out_name::Symbol; use_combined_cover=false, show_progress=true)::YAXArray
 
-Load given variable into a single YAXArray from all datasets in the result store.
-If thermal tolerance is present remove the dimension using the aggregation function. Convert
-dimensions and dimension ordering to standard ADRIA ordering.
+Aggregate NetCDF variable `variable_name` across every dataset in `rs` into one outcome
+cube, store it in `rs.outcomes[out_name]` and return it.
 
-Return the variable and write the variable to the outcomes dictionary.
+`scenario_func` is applied to one scenario's variable — dimensions
+`(year, reef_sites, intervened, ft, thermal_tolerance)`, or
+`(year, reef_sites, ft, thermal_tolerance)` when `use_combined_cover` collapses the
+`intervened` axis — and must reduce it to exactly the axes named in `out_dims`, with `year`
+first. For example `out_dims = (:year,)` with
+`scenario_func = x -> dropdims(sum(x; dims=(2,3,4,5)); dims=(2,3,4,5))` for a domain total,
+or `out_dims = (:year, :reef_sites)` to keep the location axis. The output axes are then
+renamed and reordered to ADRIA's convention by [`reformat_cube`](@ref).
+
+`use_combined_cover` reads the area-weighted intervention/counterfactual `cover` combination
+instead of `variable_name`.
 """
 function _load_variable!(
     rs::ResultSet,
