@@ -289,11 +289,11 @@ function _relative_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Re
         return rs.outcomes[outcome_name]
     end
 
-    # Clarify to the user why relative species cover is being calculated to prevent
+    # Clarify to the user why relative taxa cover is being calculated to prevent
     # confusion.
-    @info "Calculating relative species cover for relative cover."
+    @info "Calculating relative taxa cover for relative cover."
     rel_taxa_loc_cover = relative_loc_taxa_cover(rs; show_progress=show_progress)
-    rel_cover = dropdims(sum(rel_taxa_loc_cover; dims=:species); dims=:species)
+    rel_cover = dropdims(sum(rel_taxa_loc_cover; dims=:groups); dims=:groups)
     rs.outcomes[outcome_name] = rel_cover
 
     return rs.outcomes[outcome_name]
