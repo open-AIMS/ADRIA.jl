@@ -675,7 +675,7 @@ Rename reorder the names of the dimensions to align with ADRIA's expected dimens
 function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
     cscape_names = [:year, :ft, :reef_sites, :draws]
-    adria_names = [:timesteps, :species, :locations, :scenarios]
+    adria_names = [:timesteps, :groups, :locations, :scenarios]
     final_ordering::Vector{Int} = Vector{Int}(undef, length(dim_names))
     current_index = 1
     # rename expected dimensions and update the permutation vector
