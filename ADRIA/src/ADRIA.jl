@@ -83,6 +83,10 @@ include("ExtInterface/ReefMod/RMEDomain.jl")
 include("ExtInterface/ReefMod/ReefModDomain.jl")
 include("ExtInterface/ReefMod/RMEResultSet.jl")
 include("ExtInterface/CScape/CScapeResultSet.jl")
+# CScape outcome loading (`_load_variable!` and helpers): kept in the ADRIA module,
+# not the `metrics` submodule, so it can use NetCDF/ProgressMeter directly. Consumed
+# by metrics/cscape.jl.
+include("ExtInterface/CScape/CScapeOutcomes.jl")
 
 include("io/result_post_processing.jl")
 include("io/result_io.jl")
