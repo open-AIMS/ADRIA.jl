@@ -13,16 +13,16 @@ struct CScapeResultSet <: ResultSet
     loc_max_coral_cover::Vector{Float64}
     loc_centroids
     env_layer_md::EnvLayer
-    connectivity_data
-    loc_data
+    connectivity_data::DataFrame
+    loc_data::DataFrame
     raw_data::Vector{NcFile}
 
-    inputs
-    sim_constants
+    inputs::DataFrame
+    sim_constants::SimConstants
     model_spec::DataFrame
 
     # raw::AbstractArray
-    outcomes
+    outcomes::Dict{Symbol,YAXArray}
     # Cscape uses different size classes
     coral_size_diameter::YAXArray
 end
