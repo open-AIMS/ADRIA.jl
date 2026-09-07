@@ -196,14 +196,14 @@ function _construct_scenario_groups(
 
     counterfactual_scens::BitVector = BitVector([
         p_a == 0.0 && e_a == 0 for (p_a, e_a)
-         in
+        in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
     # Intervened if not counterfactual
     intervened_scens::BitVector = BitVector([
         p_a != 0 || e_a != 0 for (p_a, e_a)
-         in
+        in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 

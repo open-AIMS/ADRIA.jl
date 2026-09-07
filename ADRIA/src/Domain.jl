@@ -233,9 +233,9 @@ end
 Update given domain with new parameter values.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = model_spec(d, names(params))[
-        :, [:fieldname, :val, :ptype, :dist_params]
-    ]
+    # Only `:val` is written here; carrying `:dist_params` through would push the
+    # `model_spec` tuple form back into every `Param` (see `update!` above).
+    p_df::DataFrame = model_spec(d, names(params))[:, [:fieldname, :val]]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
@@ -252,7 +252,7 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
     ms_all = model_spec(d)
     p_df_complementar::DataFrame = ms_all[
         (ms_all.fieldname .∉ Ref(Symbol.(names(params)))),
-        [:fieldname, :val, :ptype, :dist_params]
+        [:fieldname, :val]
     ]
 
     # Update with new parameters
@@ -396,13 +396,24 @@ end
 Update a Domain model with new values specified in spec.
 Assumes all `val` and `bounds` are to be updated.
 
-# Arguments
-- `dom` : Domain
-- `spec` : updated model specification
+`val` is coerced to `Float64` and each `dist_params` entry to `Vector{Float64}` -- the
+representation `Factor` builds -- so a write never changes any `Param`'s field types.
+Callers must not infer factor discreteness from the stored `val` type; use `ptype`.
 """
 function update!(dom::Domain, spec::DataFrame)::Nothing
-    dom.model[:val] = spec.val
-    dom.model[:dist_params] = spec.dist_params
+    # `dom.model[:col] = v` rebuilds every `Param` and `Flatten.reconstruct`s the
+    # ~430-`Param` component tree, specialising on the `Param` field types. `fix_factor!`
+    # / `set_factor_bounds!` / `model_spec` all hand back `dist_params` as tuples, which
+    # would set each `Param.dist_params` to a domain-arity-specific `NTuple{k,Float64}`
+    # and force a fresh, never-precompilable `@generated` reconstruct of the whole tree
+    # on every write (hundreds of seconds on Julia 1.12). Coercing back to the loaded
+    # representation keeps the `Param` types stable. Lossless: every value is numeric,
+    # and factor discreteness lives in `ptype`.
+    vals = Float64.(spec.val)
+    dist_params = Vector{Float64}[collect(Float64, dp) for dp in spec.dist_params]
+
+    dom.model[:val] = vals
+    dom.model[:dist_params] = dist_params
 
     return nothing
 end
