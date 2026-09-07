@@ -183,10 +183,6 @@ function load_results(
 
     outcomes = Dict{Symbol,YAXArray}()
 
-    intervention_params::Vector{Symbol} = model_spec.fieldname[
-    model_spec.component .== "Intervention"
-]
-
     return CScapeResultSet(
         res_name,
         res_rcp,
@@ -691,25 +687,6 @@ function _get_rcp(ds::NcFile)::String
         rcp = ds.gatts["ssp"][(end - 1):end]
     end
     return rcp
-end
-
-"""
-    _get_reefids(reef_cube::YAXArray)::Vector{String}
-
-Reef IDs are stored as a space-separated list in the `flag_meanings` property of the
-`reef_siteid` cube.
-"""
-function _get_reefids(reef_cube::YAXArray)::Vector{String}
-    # Site IDs are necessary to extract the correct data from the geopackage
-    if !haskey(reef_cube.properties, "flag_meanings")
-        error("Unable to find key `flag_meanings` in Cube properties.")
-    end
-
-    reef_ids = split(reef_cube.properties["flag_meanings"], " ")
-    if (reef_ids[1] == reef_ids[2])
-        return reef_ids[2:end] # Possible first element duplication
-    end
-    return reef_ids
 end
 
 """
