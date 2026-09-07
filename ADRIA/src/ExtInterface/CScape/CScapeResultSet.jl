@@ -13,8 +13,8 @@ C~scape writes one NetCDF per scenario. Result variables are stored with dimensi
 `(year, reef_sites, intervened, ft, thermal_tolerance)`, plus a leading `draws` dimension
 when a scenario carries multiple draws. `intervened` has length 2 (counterfactual,
 intervened) and `ft` is the functional-type axis. On load these are renamed and reordered
-to ADRIA's `(timesteps, groups, locations, scenarios)` convention by [`reformat_cube`](@ref);
-[`_load_variable!`](@ref) covers how individual outcomes are aggregated.
+to ADRIA's `(timesteps, groups, locations, scenarios)` convention by `_reformat_cube`;
+`_load_variable!` covers how individual outcomes are aggregated.
 
 Only `relative_cover` is populated eagerly. Other outcomes are computed on first request by
 the C~scape `ADRIA.metrics.*` methods and cached in `outcomes`.
@@ -690,7 +690,7 @@ function _get_rcp(ds::NcFile)::String
 end
 
 """
-    reformat_cube(cscape_cube::YAXArray)::YAXArray
+    _reformat_cube(::Type{CScapeResultSet}, cscape_cube::YAXArray)::YAXArray
 
 Rename and reorder a C~scape outcome cube's dimensions to ADRIA's convention.
 
@@ -701,7 +701,7 @@ recognises `groups`/`sizes`. Axes outside this mapping are kept and appended aft
 renamed ones. A `units` property of `"percent"` has its values rescaled to a `[0, 1]`
 proportion.
 """
-function reformat_cube(cscape_cube::YAXArray)::YAXArray
+function _reformat_cube(::Type{CScapeResultSet}, cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
     # C~scape axis name => ADRIA axis name (see docstring for the `ft` -> `groups` mapping)
     cscape_names = [:year, :ft, :reef_sites, :draws]
@@ -827,7 +827,7 @@ cube, store it in `rs.outcomes[out_name]` and return it.
 first. For example `out_dims = (:year,)` with
 `scenario_func = x -> dropdims(sum(x; dims=(2,3,4,5)); dims=(2,3,4,5))` for a domain total,
 or `out_dims = (:year, :reef_sites)` to keep the location axis. The output axes are then
-renamed and reordered to ADRIA's convention by [`reformat_cube`](@ref).
+renamed and reordered to ADRIA's convention by `_reformat_cube`.
 
 `use_combined_cover` reads the area-weighted intervention/counterfactual `cover` combination
 instead of `variable_name`.
@@ -887,7 +887,7 @@ function _load_variable!(
         cur_indx += n_sc
     end
     # Reformat cube to use ADRIA expected dimension name
-    output_variable = reformat_cube(output_variable)
+    output_variable = _reformat_cube(CScapeResultSet, output_variable)
 
     # Save calculated variable in outcomes result set
     rs.outcomes[out_name] = output_variable
