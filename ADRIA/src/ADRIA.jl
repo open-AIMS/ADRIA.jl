@@ -74,27 +74,20 @@ include("interventions/moving_corals.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
-
-# External model interfaces: domains and result sets.
-# Must precede metrics/metrics.jl, which includes model-specific metric
-# implementations (e.g. metrics/cscape.jl) that dispatch on these types.
-include("ExtInterface/ADRIA/Domain.jl")
-include("ExtInterface/ReefMod/RMEDomain.jl")
-include("ExtInterface/ReefMod/ReefModDomain.jl")
-include("ExtInterface/ReefMod/RMEResultSet.jl")
-include("ExtInterface/CScape/CScapeResultSet.jl")
-
+include("io/rme_result_io.jl")
 include("io/result_post_processing.jl")
 include("io/result_io.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
+include("io/rme_export.jl")
 
 include("scenario.jl")
 include("analysis/analysis.jl")
 
-# Depends on metrics, so it is loaded after metrics/metrics.jl.
-include("ExtInterface/ReefMod/RMEExport.jl")
+include("ExtInterface/ADRIA/Domain.jl")
+include("ExtInterface/ReefMod/RMEDomain.jl")
+include("ExtInterface/ReefMod/ReefModDomain.jl")
 
 include("viz/viz.jl")
 
@@ -115,7 +108,6 @@ export RMEDomain
 export ReefModDomain
 
 export RMEResultSet
-export CScapeResultSet
 # metric helper methods
 # export dims, ndims
 

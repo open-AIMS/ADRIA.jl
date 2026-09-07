@@ -862,7 +862,6 @@ relative_shelter_volume = Metric(
     IS_RELATIVE
 )
 
-include("cscape.jl")
 include("metadata.jl")
 include("pareto.jl")
 include("ranks.jl")
