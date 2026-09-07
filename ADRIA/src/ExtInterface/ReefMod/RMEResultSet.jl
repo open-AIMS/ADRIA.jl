@@ -291,20 +291,10 @@ function _create_model_spec(scenario_spec::DataFrame)::DataFrame
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
-    rcps = rs.RCP
-    scens = length(rs.outcomes[:total_cover].scenarios)
-    locations = length(rs.outcomes[:total_cover].sites)
-    tf = rs.env_layer_md.timeframe
-
-    println("""
-           Name: $(rs.name)
-
-           Results stored at: $(rs.env_layer_md.dpkg_path)
-
-           RCP(s) represented: $(rcps)
-           Scenarios run: $(scens)
-           Number of locations: $(locations)
-           Timesteps: $(tf)
-           """)
-    return nothing
+    return _show_external_resultset(
+        io, rs;
+        count_label="Scenarios run",
+        count=length(rs.outcomes[:total_cover].scenarios),
+        n_locs=length(rs.outcomes[:total_cover].sites)
+    )
 end

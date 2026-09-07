@@ -866,19 +866,10 @@ function _load_variable!(
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
-    rcps = rs.RCP
-    n_netcdfs = length(rs.raw_data)
-    n_locations = length(rs.loc_ids)
-    tf = rs.env_layer_md.timeframe
-
-    return println("""
-        Name: $(rs.name)
-
-        Results stored at: $(rs.env_layer_md.dpkg_path)
-
-        RCP(s) represented: $(rcps)
-        NetCDFs loaded: $(n_netcdfs)
-        Number of locations: $(n_locations)
-        Timesteps: $(tf)
-    """)
+    return _show_external_resultset(
+        io, rs;
+        count_label="NetCDFs loaded",
+        count=length(rs.raw_data),
+        n_locs=length(rs.loc_ids)
+    )
 end

@@ -680,3 +680,28 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
         println("$(fn) : $(getfield(rs.env_layer_md, fn))")
     end
 end
+
+"""
+    _show_external_resultset(io::IO, rs::ResultSet; count_label::String, count::Int, n_locs::Int)::Nothing
+
+Shared `Base.show` body for the external-model result-set interfaces (`RMEResultSet`,
+`CScapeResultSet`). `count_label`/`count` describe the interface-specific scenario count.
+"""
+function _show_external_resultset(
+    io::IO, rs::ResultSet; count_label::String, count::Int, n_locs::Int
+)::Nothing
+    print(
+        io,
+        """
+        Name: $(rs.name)
+
+        Results stored at: $(rs.env_layer_md.dpkg_path)
+
+        RCP(s) represented: $(rs.RCP)
+        $(count_label): $(count)
+        Number of locations: $(n_locs)
+        Timesteps: $(rs.env_layer_md.timeframe)
+        """
+    )
+    return nothing
+end
