@@ -68,7 +68,9 @@ function load_results(
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
 
     scenario_spec_path::String = joinpath(data_dir, "ScenarioID.csv")
-    scenario_spec::DataFrame = DataFrame(CSV.File(scenario_spec_path))
+    scenario_spec::DataFrame = DataFrame(
+        CSV.File(scenario_spec_path; missingstring="NA")
+    )
 
     # 100x faster then YAXArrays
     datasets::Vector{NcFile} = NetCDF.open.(result_files)
@@ -136,7 +138,8 @@ function load_results(
     )
 
     location_max_coral_cover = geodata.k ./ 100
-    location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
+    geom_col = _get_geom_col(geodata)
+    location_centroids = [centroid(multipoly) for multipoly ∈ geodata[!, geom_col]]
 
     outcomes = Dict{Symbol,YAXArray}()
 
