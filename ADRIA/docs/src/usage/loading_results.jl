@@ -124,6 +124,27 @@
 #         ...
 # ```
 #
+# ### C~scape data package
+#
+# Most of these files can be sourced from the RRAP data store (published dataset names in
+# italics below). They are usually distributed as R `.Rdata` objects or `write.table` text
+# and need light reformatting into the CSV / GeoPackage layout shown above.
+#
+# | File | Contents | Data store source |
+# |------|----------|-------------------|
+# | `ScenarioID.csv` | One row per scenario: input parameters, intervention settings and the datasets each run used. The `ID` column matches the `NetCDF_Scn_<ID>` result files. | not yet published |
+# | `connectivity/connectivity.csv` | Larval connectivity matrix between locations, with `reef_siteid` row and column labels. | *Spatial inputs - Moore cluster 2022 v2* (`MEAN_all_Connectivity_MooreReef_cluster_221019.Rdata`) |
+# | `site_data/*.gpkg` | Location polygons and their spatial attributes (`reef_siteid`, `k`, `area`, depth, ...). The first `.gpkg` found in the folder is used. | *Spatial inputs - Moore cluster 2022 v2* (`MooreReefCluster_Polygon_Geometry.Rdata`) |
+# | `initial_cover/initial_cover.csv` | Initial coral cover per location and functional group. | *Coral Cover Initialisation data inputs - C~scape - Counterfactuals Mar 2024* |
+#
+# ### C~scape model outputs
+#
+# The results directory holds one NetCDF per scenario. Files must contain the
+# `NetCDF_Scn_<ID>` prefix to be discovered automatically.
+#
+# The full model output set is large (~100 GB). RRAP M&DS publishes instructions for
+# downloading it via the AWS CLI on the *Model Outputs* data store page (download tab).
+#
 # ### Accessing C~scape outcomes
 #
 # Only relative cover is loaded automatically. All other outcomes are computed on demand
