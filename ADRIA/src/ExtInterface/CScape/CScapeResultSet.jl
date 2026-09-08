@@ -84,7 +84,7 @@ rs = ADRIA.load_results(CScapeResultSet, "a C~scape data package")
 ## Override either default via keyword; passing `result_files` makes `result_dir` moot
 rs = ADRIA.load_results(
     CScapeResultSet, "a C~scape data package";
-    result_dir="path/to/netcdfs", result_files=["NetCDF_Scn_140001.nc"]
+    result_dir="path/to/netcdfs", result_files=["NetCDF_Scn_140001.nc"], show_progress=true
 )
 ```
 """
