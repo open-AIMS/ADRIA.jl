@@ -104,12 +104,14 @@
 # )
 # ```
 #
-# Both keyword arguments are optional:
+# All keyword arguments are optional:
 #
 # - Omit `result_dir` and the NetCDFs are read from the data package's own `results/`
 #   subdirectory. Set it to point at NetCDFs kept outside the data package.
 # - Omit `result_files` and every `NetCDF_Scn_*` file in `result_dir` is loaded. Set it to a
 #   list of NetCDF paths to load only those; `result_dir` is then ignored.
+# - `show_progress` (default `true`) toggles the progress bar shown while outcomes are
+#   computed.
 #
 # Expected C~scape data package structure (the directory passed as the first argument):
 #
