@@ -297,9 +297,15 @@ function _recreate_inputs_dataframe(
     nc_handles::Vector{NcFile}, scenario_spec::DataFrame
 )::DataFrame
     # Get rows from scenario spec dataframe corresponding to the scenarios
-    scenario_idxs::Vector{Int} = [
-        findfirst(x -> x == idx, scenario_spec.ID) for idx in _get_scenario_id.(nc_handles)
-    ]
+    result_scenario_ids = _get_scenario_id.(nc_handles)
+    scenario_idxs::Vector{Int} = map(result_scenario_ids) do idx
+        row = findfirst(x -> x == idx, scenario_spec.ID)
+        isnothing(row) && error(
+            "Scenario ID $(idx) from a result NetCDF is missing from ScenarioID.csv " *
+            "(has IDs $(minimum(scenario_spec.ID))–$(maximum(scenario_spec.ID)))."
+        )
+        return row
+    end
     scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx, :] for idx in scenario_idxs]
 
     # Convert climate scenarios to factors
@@ -716,7 +722,7 @@ function _reformat_cube(::Type{CScapeResultSet}, cscape_cube::YAXArray)::YAXArra
     if haskey(cscape_cube.properties, "units")
         if cscape_cube.properties["units"] == "percent"
             cscape_cube = cscape_cube ./ 100
-            cscape_cube.properties["units"] == "proportion [0, 1]"
+            cscape_cube.properties["units"] = "proportion [0, 1]"
         end
     end
     cscape_cube = permutedims(cscape_cube, final_ordering)
