@@ -7,7 +7,7 @@ using YAXArrays
 """
     CScapeResultSet <: ResultSet
 
-Result set for C~scape model outputs, loaded via [`load_results`](@ref).
+Result set for C~scape model outputs, loaded via `load_results`.
 
 C~scape writes one NetCDF per scenario. Result variables are stored with dimensions
 `(year, reef_sites, intervened, ft, thermal_tolerance)`, plus a leading `draws` dimension
