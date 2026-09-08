@@ -92,6 +92,84 @@ directory can be supplied separately to avoid keeping copies for each result set
 rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to results dir>")
 ```
 
+## Loading C~scape Results
+
+Results from C~scape can be loaded with the `load_results` function.
+
+The first argument is always the **C~scape data package directory** — the folder holding
+`ScenarioID.csv` plus the `connectivity/`, `site_data/` and `initial_cover/`
+subdirectories (see the tree below).
+
+```julia
+rs = ADRIA.load_results(
+    CScapeResultSet, "<path to C~scape data package>";
+    result_dir="<path to result NetCDF directory>",
+    result_files=["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"],
+    show_progress=true
+)
+```
+
+All keyword arguments are optional:
+
+- Omit `result_dir` and the NetCDFs are read from the data package's own `results/`
+  subdirectory. Set it to point at NetCDFs kept outside the data package.
+- Omit `result_files` and every `NetCDF_Scn_*` file in `result_dir` is loaded. Set it to a
+  list of NetCDF paths to load only those; `result_dir` is then ignored.
+- `show_progress` (default `true`) toggles the progress bar shown while outcomes are
+  computed.
+
+Expected C~scape data package structure (the directory passed as the first argument):
+
+```bash
+cscape_data_package
+|   ScenarioID.csv
+|
++---connectivity
+|       connectivity.csv
+|
++---site_data
+|       geospatial_data.gpkg
+|
++---initial_cover
+|       initial_cover.csv
+|
++---results (optional)
+        NetCDF_Scn_140001.nc
+        NetCDF_Scn_140002.nc
+        ...
+```
+
+### C~scape data package
+
+Most of these files can be sourced from the RRAP data store (published dataset names in
+italics below). They are usually distributed as R `.Rdata` objects or `write.table` text
+and need light reformatting into the CSV / GeoPackage layout shown above.
+
+| File | Contents | Data store source |
+|------|----------|-------------------|
+| `ScenarioID.csv` | One row per scenario: input parameters, intervention settings and the datasets each run used. The `ID` column matches the `NetCDF_Scn_<ID>` result files. | not yet published |
+| `connectivity/connectivity.csv` | Larval connectivity matrix between locations, with `reef_siteid` row and column labels. | *Spatial inputs - Moore cluster 2022 v2* (`MEAN_all_Connectivity_MooreReef_cluster_221019.Rdata`) |
+| `site_data/*.gpkg` | Location polygons and their spatial attributes (`reef_siteid`, `k`, `area`, depth, ...). The first `.gpkg` found in the folder is used. | *Spatial inputs - Moore cluster 2022 v2* (`MooreReefCluster_Polygon_Geometry.Rdata`) |
+| `initial_cover/initial_cover.csv` | Initial coral cover per location and functional group. | *Coral Cover Initialisation data inputs - C~scape - Counterfactuals Mar 2024* |
+
+### C~scape model outputs
+
+The results directory holds one NetCDF per scenario. Files must contain the
+`NetCDF_Scn_<ID>` prefix to be discovered automatically.
+
+The full model output set is large (~100 GB). RRAP M&DS publishes instructions for
+downloading it via the AWS CLI on the *Model Outputs* data store page (download tab).
+
+### Accessing C~scape outcomes
+
+Only relative cover is loaded automatically. All other outcomes are computed on demand
+via the `ADRIA.metrics.*` functions and cached in `rs.outcomes`:
+
+```julia
+settlers = ADRIA.metrics.total_settlers(rs)
+rs.outcomes[:total_settlers]  # now cached
+```
+
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
