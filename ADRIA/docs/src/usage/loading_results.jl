@@ -92,21 +92,31 @@
 #
 # Results from C~scape can be loaded with the `load_results` function.
 #
+# The first argument is always the **C~scape data package directory** — the folder holding
+# `ScenarioID.csv` plus the `connectivity/`, `site_data/` and `initial_cover/`
+# subdirectories (see the tree below).
+#
 # ```julia
-# ## Assumes NetCDFs are in a `results` subdirectory (see directory tree below)
-# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>")
+# ## Result NetCDFs are read from the data package's own `results/` subdirectory
+# rs = ADRIA.load_results(CScapeResultSet, "<path to C~scape data package>")
 #
-# ## Retrieve NetCDFs from a separate directory
-# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", "<path to result directory>")
+# ## Result NetCDFs live in a separate directory (data package still supplies everything else)
+# rs = ADRIA.load_results(
+#     CScapeResultSet, "<path to C~scape data package>", "<path to result NetCDF directory>"
+# )
 #
-# ## Pass an explicit list of NetCDF files to load as results
-# rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2"])
+# ## Pass an explicit list of result NetCDF files
+# rs = ADRIA.load_results(
+#     CScapeResultSet,
+#     "<path to C~scape data package>",
+#     ["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"]
+# )
 # ```
 #
-# Expected data directory structure:
+# Expected C~scape data package structure (the directory passed as the first argument):
 #
 # ```bash
-# data_dir
+# cscape_data_package
 # |   ScenarioID.csv
 # |
 # +---connectivity
