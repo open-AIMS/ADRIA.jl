@@ -78,15 +78,13 @@ CScapeResultSet struct compatible with most ADRIA analysis functionality.
 
 # Examples
 ```julia
-## Result NetCDFs read from the data package's own `results/` subdirectory
+## Simplest case: result NetCDFs read from the data package's own `results/` subdirectory
 rs = ADRIA.load_results(CScapeResultSet, "a C~scape data package")
 
-## Result NetCDFs held in a separate directory
-rs = ADRIA.load_results(CScapeResultSet, "a C~scape data package"; result_dir="path/to/netcdfs")
-
-## Explicit list of result NetCDFs
+## Override either default via keyword; passing `result_files` makes `result_dir` moot
 rs = ADRIA.load_results(
-    CScapeResultSet, "a C~scape data package"; result_files=["NetCDF_Scn_140001.nc"]
+    CScapeResultSet, "a C~scape data package";
+    result_dir="path/to/netcdfs", result_files=["NetCDF_Scn_140001.nc"]
 )
 ```
 """

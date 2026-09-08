@@ -97,21 +97,19 @@
 # subdirectories (see the tree below).
 #
 # ```julia
-# ## Result NetCDFs are read from the data package's own `results/` subdirectory
-# rs = ADRIA.load_results(CScapeResultSet, "<path to C~scape data package>")
-#
-# ## Result NetCDFs live in a separate directory (data package still supplies everything else)
 # rs = ADRIA.load_results(
 #     CScapeResultSet, "<path to C~scape data package>";
-#     result_dir="<path to result NetCDF directory>"
-# )
-#
-# ## Pass an explicit list of result NetCDF files
-# rs = ADRIA.load_results(
-#     CScapeResultSet, "<path to C~scape data package>";
+#     result_dir="<path to result NetCDF directory>",
 #     result_files=["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"]
 # )
 # ```
+#
+# Both keyword arguments are optional:
+#
+# - Omit `result_dir` and the NetCDFs are read from the data package's own `results/`
+#   subdirectory. Set it to point at NetCDFs kept outside the data package.
+# - Omit `result_files` and every `NetCDF_Scn_*` file in `result_dir` is loaded. Set it to a
+#   list of NetCDF paths to load only those; `result_dir` is then ignored.
 #
 # Expected C~scape data package structure (the directory passed as the first argument):
 #
