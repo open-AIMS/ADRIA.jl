@@ -102,14 +102,14 @@
 #
 # ## Result NetCDFs live in a separate directory (data package still supplies everything else)
 # rs = ADRIA.load_results(
-#     CScapeResultSet, "<path to C~scape data package>", "<path to result NetCDF directory>"
+#     CScapeResultSet, "<path to C~scape data package>";
+#     result_dir="<path to result NetCDF directory>"
 # )
 #
 # ## Pass an explicit list of result NetCDF files
 # rs = ADRIA.load_results(
-#     CScapeResultSet,
-#     "<path to C~scape data package>",
-#     ["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"]
+#     CScapeResultSet, "<path to C~scape data package>";
+#     result_files=["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"]
 # )
 # ```
 #

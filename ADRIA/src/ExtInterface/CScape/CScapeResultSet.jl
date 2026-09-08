@@ -59,9 +59,7 @@ struct CScapeResultSet <: ResultSet
 end
 
 """
-    load_results(::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true)::CScapeResultSet
-    load_results(::Type{CScapeResultSet}, data_dir::String, result_dir::String; show_progress::Bool=true)::CScapeResultSet
-    load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String}; show_progress::Bool=true)::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String; result_dir::String=joinpath(data_dir, "results"), result_files::Vector{String}=String[], show_progress::Bool=true)::CScapeResultSet
 
 Interface for loading C~scape model outputs.
 
@@ -69,8 +67,10 @@ See the [Loading C~scape Results](@ref) section for details on expected director
 
 # Arguments
 - `data_dir`: Path to the C~scape data package (`ScenarioID.csv`, `connectivity/`, `site_data/`, `initial_cover/`)
-- `result_dir`: Path to a directory of result NetCDFs. Defaults to the `results` subdirectory of `data_dir`
-- `result_files`: Explicit list of result NetCDF paths to load, instead of scanning a directory
+
+# Keyword Arguments
+- `result_dir`: Directory of result NetCDFs. Defaults to the `results` subdirectory of `data_dir`. Ignored when `result_files` is given
+- `result_files`: Explicit list of result NetCDF paths to load, instead of scanning `result_dir`
 - `show_progress`: Show a progress bar while computing outcomes. Defaults to `true`
 
 # Returns
@@ -78,34 +78,27 @@ CScapeResultSet struct compatible with most ADRIA analysis functionality.
 
 # Examples
 ```julia
-rs = ADRIA.load_results(CScapeResultSet, "a C~scape dataset of interest")
+## Result NetCDFs read from the data package's own `results/` subdirectory
+rs = ADRIA.load_results(CScapeResultSet, "a C~scape data package")
+
+## Result NetCDFs held in a separate directory
+rs = ADRIA.load_results(CScapeResultSet, "a C~scape data package"; result_dir="path/to/netcdfs")
+
+## Explicit list of result NetCDFs
+rs = ADRIA.load_results(
+    CScapeResultSet, "a C~scape data package"; result_files=["NetCDF_Scn_140001.nc"]
+)
 ```
 """
 function load_results(
-    ::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true
-)::CScapeResultSet
-    return load_results(
-        CScapeResultSet,
-        data_dir,
-        joinpath(data_dir, "results");
-        show_progress=show_progress
-    )
-end
-function load_results(
-    ::Type{CScapeResultSet}, data_dir::String, result_dir::String; show_progress::Bool=true
-)::CScapeResultSet
-    return load_results(
-        CScapeResultSet,
-        data_dir,
-        _get_result_paths(result_dir);
-        show_progress=show_progress
-    )
-end
-function load_results(
-    ::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String};
+    ::Type{CScapeResultSet}, data_dir::String;
+    result_dir::String=joinpath(data_dir, "results"),
+    result_files::Vector{String}=String[],
     show_progress::Bool=true
 )::CScapeResultSet
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
+
+    isempty(result_files) && (result_files = _get_result_paths(result_dir))
 
     scenario_spec_path::String = joinpath(data_dir, "ScenarioID.csv")
     scenario_spec::DataFrame = DataFrame(
