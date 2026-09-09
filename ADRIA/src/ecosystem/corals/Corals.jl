@@ -17,10 +17,13 @@ function _coral_spec_cache_path()::String
 end
 
 """
-Hash of the `Corals.jl` source file, used to detect when the cached spec is stale.
+Hash of the source files feeding `coral_spec()`, used to detect when the cached spec
+is stale. `coral_factors.jl` is included because it supplies almost all parameter
+values via `_coral_spec_impl()`.
 """
 function _coral_spec_source_hash()::UInt64
-    return hash(read(joinpath(@__DIR__, "Corals.jl"), String))
+    files = sort(["Corals.jl", "coral_factors.jl"])
+    return hash([read(joinpath(@__DIR__, f), String) for f in files])
 end
 
 """
@@ -216,8 +219,8 @@ and size class.
 Results are cached: the value is computed once per session and persisted to disk at
 `~/.julia/cache/ADRIA/coral_spec-julia<X.Y>-adria<V>.cache`. The cache filename
 encodes the Julia minor version and ADRIA version, so stale files from other versions
-are never loaded. Within a file, the cache is also keyed to a hash of `Corals.jl`,
-so it is invalidated automatically whenever the source file changes.
+are never loaded. Within a file, the cache is also keyed to a hash of `Corals.jl` and
+`coral_factors.jl`, so it is invalidated automatically whenever those sources change.
 
 # Returns
 A `NamedTuple` with fields:
