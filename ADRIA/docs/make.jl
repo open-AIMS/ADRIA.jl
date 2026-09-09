@@ -84,7 +84,7 @@ if Sys.iswindows()
     end
 end
 
-deploydocs(;
+DocumenterVitepress.deploydocs(;
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",
