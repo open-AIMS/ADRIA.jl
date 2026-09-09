@@ -6,11 +6,14 @@ using Literate
 usage_dir = joinpath(@__DIR__, "src", "usage")
 usage_pages = [
     "getting_started",
+    "loading_a_domain",
     "loading_results",
+    "generating_scenarios",
     "scenario_runs",
     "scenario_discovery",
     "analysis",
-    "cookbook"
+    "cookbook",
+    "exporting_to_rme"
 ]
 
 for name in usage_pages
