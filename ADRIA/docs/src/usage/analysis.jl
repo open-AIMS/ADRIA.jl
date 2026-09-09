@@ -28,37 +28,32 @@
 # ```
 #
 # Load and activate the Plotly backend before calling any visualization function:
-#
-# ```julia
-# using ADRIA, ADRIAviz, ADRIAanalysis, PlotlyBase
-# ADRIAviz.activate("plotly")
-#
-# using Statistics
-# ```
-#
+
+using ADRIA, ADRIAviz, ADRIAanalysis, PlotlyBase
+ADRIAviz.activate("plotly")
+
+using Statistics
+
 # ### ResultSet
 #
 # All metrics and visualization tools presented here can be used with data generated from
 # ADRIA. The examples below assume an `ADRIAResultSet` `rs`:
-#
-# ```julia
-# dom = ADRIA.load_domain("path to domain data", "<RCP>")
-#
-# num_samples = 4096
-# scens = ADRIA.sample(dom, num_samples)
-#
-# rcp_45 = "45"
-# rs = ADRIA.run_scenarios(dom, scens, rcp_45)
-#
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# ADRIA.viz.scenarios(rs, s_tac)
-#
-# If using the Plotly backend, a separate call to display the figure is needed
-# fig = ADRIA.viz.scenarios(rs, s_tac)
-# ADRIA.viz.show_in_browser(fig)
-#
-# ```
-#
+
+dom = ADRIA.load_domain("path to domain data", "<RCP>")
+
+num_samples = 4096
+scens = ADRIA.sample(dom, num_samples)
+
+rcp_45 = "45"
+rs = ADRIA.run_scenarios(dom, scens, rcp_45)
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+ADRIA.viz.scenarios(rs, s_tac)
+
+## If using the Plotly backend, a separate call to display the figure is needed
+fig = ADRIA.viz.scenarios(rs, s_tac)
+ADRIA.viz.show_in_browser(fig)
+
 # See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref) and
 # [Running scenarios](@ref) for more information.
 #
@@ -69,137 +64,123 @@
 #
 # The following extracts results for specific metrics for each timestep and site across all
 # scenarios. Each result is a 3-dimensional Array of timesteps, sites and scenarios:
-#
-# ```julia
-# tac = ADRIA.metrics.total_absolute_cover(rs)
-# rsv = ADRIA.metrics.relative_shelter_volume(rs)
-# juves = ADRIA.metrics.relative_juveniles(rs)
-# ```
-#
+
+tac = ADRIA.metrics.total_absolute_cover(rs)
+rsv = ADRIA.metrics.relative_shelter_volume(rs)
+juves = ADRIA.metrics.relative_juveniles(rs)
+
 # Scenario-level metrics aggregate the above across the `site` dimension and indicate the
 # _outcomes_ under a given intervention (or non-intervention) option and environmental
 # condition. The result is a 2-dimensional array of timesteps and scenarios:
-#
-# ```julia
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# s_rsv = ADRIA.metrics.scenario_rsv(rs)
-# s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
-# ```
-#
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+s_rsv = ADRIA.metrics.scenario_rsv(rs)
+s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
+
 # ## Visualization
 #
 # The examples below illustrate usage. For further information on each method of
 # analysis, see the documentation for the given function.
 #
 # Some shared options used by the plots below:
-#
-# ```julia
-# fig_opts = Dict(:size => (1600, 800))
-#
-# opts = Dict(
-#     :factors => [
-#         :RCP,
-#         :dhw_scenario,
-#         :wave_scenario,
-#         :guided,
-#         :mcda_method,
-#         :N_seed_TA,
-#         :N_seed_CA,
-#         :fogging,
-#         :SRM,
-#         :a_adapt
-#     ]
-# )
-# ```
-#
+
+fig_opts = Dict(:size => (1600, 800))
+
+opts = Dict(
+    :factors => [
+        :RCP,
+        :dhw_scenario,
+        :wave_scenario,
+        :guided,
+        :mcda_method,
+        :N_seed_TA,
+        :N_seed_CA,
+        :fogging,
+        :SRM,
+        :a_adapt
+    ]
+)
+
 # ### Scenario outcomes
 #
 # Plot a quick scenario overview:
-#
-# ```julia
-# fig_s_tac = ADRIA.viz.scenarios(
-#     rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
-# )
-# ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
-# ```
-#
+
+fig_s_tac = ADRIA.viz.scenarios(
+    rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
+)
+ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
+
 # ![Quick scenario plots](../assets/imgs/analysis/scenarios_tac.png)
 #
 # ### Intervention location selection - visualisation
 #
 # Plot spatial colormaps of site selection frequencies and other available site selection
 # metrics.
-#
-# ```julia
-# # Calculate frequencies with which each site was selected at each rank
-# rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
-#
-# # Plot 1st rank frequencies as a colormap
-# rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
-# ADRIA.viz.savefig(rank_fig, "single_rank_plot.html")
-# ```
-#
+
+## Calculate frequencies with which each site was selected at each rank
+rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+
+## Plot 1st rank frequencies as a colormap
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
+ADRIA.viz.savefig(rank_fig, "single_rank_plot.html")
+
 # ![Rank frequency plots for single rank](../assets/imgs/analysis/single_rank_plot.png)
-#
-# ```julia
-# # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-# rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800)))
-# ADRIA.viz.savefig(rank_fig, "ranks_plot.html")
-# ```
-#
+
+## Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800)))
+ADRIA.viz.savefig(rank_fig, "ranks_plot.html")
+
 # ![Rank frequency plots for multiple ranks](../assets/imgs/analysis/ranks_plot.png)
 #
 # ## Intervention location selection - plot criteria maps
-#
-# ```julia
-# mcda_funcs = ADRIA.decision.mcda_methods()
-#
-# dom = ADRIA.load_domain("path to domain", "45")
-#
-# scens = ADRIA.sample_guided(dom, 2^2)
-# scen = scens[1, :]
-#
-# # Get seeding preferences
-# seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
-#
-# # Calculate criteria vectors
-# sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
-# dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
-# plan_horizon = Int64(scen["plan_horizon"])
-# projection_confidence = scen["projection_confidence"]
-# decay = ADRIA.decision.build_decay(plan_horizon, projection_confidence)
-# dhw_projection = ADRIA.decision.weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
-# area_weighted_conn = dom.conn.data .* ADRIA.loc_k_area(dom)
-# conn_cache = similar(area_weighted_conn)
-# in_conn, out_conn, network = ADRIA.connectivity_strength(
-#     area_weighted_conn, sum_cover, conn_cache
-# )
-#
-# # Create decision matrix
-# seed_decision_mat = ADRIA.decision.decision_matrix(
-#     dom.loc_ids,
-#     seed_pref.names;
-#     seed_in_connectivity=in_conn,
-#     seed_out_connectivity=out_conn,
-#     seed_heat_stress=dhw_projection,
-#     seed_coral_cover=sum_cover
-# )
-#
-# # Get results from applying MCDA algorithm
-# crit_agg = ADRIA.decision.criteria_aggregated_scores(
-#     seed_pref, seed_decision_mat, mcda_funcs[1]
-# )
-#
-# # Don't plot constant criteria
-# is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
-#
-# # Plot normalized scores and criteria as map
-# fig = ADRIA.viz.selection_criteria_map(
-#     dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
-# )
-# ADRIA.viz.savefig(fig, "criteria_plots.html")
-# ```
-#
+
+mcda_funcs = ADRIA.decision.mcda_methods()
+
+dom = ADRIA.load_domain("path to domain", "45")
+
+scens = ADRIA.sample_guided(dom, 2^2)
+scen = scens[1, :]
+
+## Get seeding preferences
+seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
+
+## Calculate criteria vectors
+sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
+dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
+plan_horizon = Int64(scen["plan_horizon"])
+projection_confidence = scen["projection_confidence"]
+decay = ADRIA.decision.build_decay(plan_horizon, projection_confidence)
+dhw_projection = ADRIA.decision.weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
+area_weighted_conn = dom.conn.data .* ADRIA.loc_k_area(dom)
+conn_cache = similar(area_weighted_conn)
+in_conn, out_conn, network = ADRIA.connectivity_strength(
+    area_weighted_conn, sum_cover, conn_cache
+)
+
+## Create decision matrix
+seed_decision_mat = ADRIA.decision.decision_matrix(
+    dom.loc_ids,
+    seed_pref.names;
+    seed_in_connectivity=in_conn,
+    seed_out_connectivity=out_conn,
+    seed_heat_stress=dhw_projection,
+    seed_coral_cover=sum_cover
+)
+
+## Get results from applying MCDA algorithm
+crit_agg = ADRIA.decision.criteria_aggregated_scores(
+    seed_pref, seed_decision_mat, mcda_funcs[1]
+)
+
+## Don't plot constant criteria
+is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+
+## Plot normalized scores and criteria as map
+fig = ADRIA.viz.selection_criteria_map(
+    dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
+)
+ADRIA.viz.savefig(fig, "criteria_plots.html")
+
 # ![Spatial maps of location selection criteria](../assets/imgs/analysis/criteria_spatial_plots.png)
 #
 # ### PAWN sensitivity (heatmap overview)
@@ -208,15 +189,13 @@
 # Analysis. It is described as producing robust results at relatively low sample sizes, and
 # is used to screen factors (i.e., identification of important factors) and rank factors as
 # well (ordering factors by their relative contribution towards a given quantity of interest).
-#
-# ```julia
-# # Sensitivity of mean scenario outcomes to factors
-# mean_s_tac = vec(mean(s_tac, dims=1))
-# tac_Si = pawn(rs, mean_s_tac)
-# pawn_fig = ADRIA.viz.pawn(tac_Si; opts, fig_opts)
-# ADRIA.viz.savefig(pawn_fig, "pawn_si.html")
-# ```
-#
+
+## Sensitivity of mean scenario outcomes to factors
+mean_s_tac = vec(mean(s_tac, dims=1))
+tac_Si = pawn(rs, mean_s_tac)
+pawn_fig = ADRIA.viz.pawn(tac_Si; opts, fig_opts)
+ADRIA.viz.savefig(pawn_fig, "pawn_si.html")
+
 # ![PAWN sensitivity plots](../assets/imgs/analysis/pawn_si.png)
 #
 # ### Temporal Sensitivity Analysis
@@ -224,13 +203,11 @@
 # Temporal (or Time-varying) Sensitivity Analysis applies sensitivity analysis to model
 # outputs over time. The relative importance of factors and their influence on outputs over
 # time can then be examined through this analysis.
-#
-# ```julia
-# tsa_s = tsa(rs, s_tac)
-# tsa_fig = ADRIA.viz.tsa(rs, tsa_s; opts, fig_opts)
-# ADRIA.viz.savefig(tsa_fig, "tsa.html")
-# ```
-#
+
+tsa_s = tsa(rs, s_tac)
+tsa_fig = ADRIA.viz.tsa(rs, tsa_s; opts, fig_opts)
+ADRIA.viz.savefig(tsa_fig, "tsa.html")
+
 # ![Plots of Temporal Sensitivities](../assets/imgs/analysis/tsa.png)
 #
 # ### Convergence Analysis
@@ -247,25 +224,23 @@
 # The function `sensitivity.convergence` can be used to calculate a sensitivity measure for an
 # increasing number of samples. The result can then be plotted as band plots or a heat map
 # using `viz.convergence`.
-#
-# ```julia
-# outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
-#
-# # Display convergence for specific factors of interest ("foi") within a single figure.
-# # Bands represent the 95% confidence interval derived from the number of conditioning
-# # points (default is 10 samples).
-# foi = [:dhw_scenario, :wave_scenario, :guided, :mcda_method]
-# Si_conv = convergence(scens, outcome, foi)
-# conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
-# ADRIA.viz.savefig(conv_series_fig, "convergence_factors_series.html")
-#
-# # Convergence analysis of factors grouped by model component as a heat map
-# components = [:EnvironmentalLayer, :Intervention, :Coral]
-# Si_conv = convergence(scens, outcome, components)
-# conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
-# ADRIA.viz.savefig(conv_hm_fig, "convergence_components_heatmap.html")
-# ```
-#
+
+outcome = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
+
+## Display convergence for specific factors of interest ("foi") within a single figure.
+## Bands represent the 95% confidence interval derived from the number of conditioning
+## points (default is 10 samples).
+foi = [:dhw_scenario, :wave_scenario, :guided, :mcda_method]
+Si_conv = convergence(scens, outcome, foi)
+conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
+ADRIA.viz.savefig(conv_series_fig, "convergence_factors_series.html")
+
+## Convergence analysis of factors grouped by model component as a heat map
+components = [:EnvironmentalLayer, :Intervention, :Coral]
+Si_conv = convergence(scens, outcome, components)
+conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
+ADRIA.viz.savefig(conv_hm_fig, "convergence_components_heatmap.html")
+
 # ![Convergence analysis of factors overlayed](../assets/imgs/analysis/convergence_factors_series.png)
 # ![Grouped convergence analysis](../assets/imgs/analysis/convergence_components_heatmap.png)
 #
@@ -277,26 +252,24 @@
 # between their complexities. When plotting `clustered_scenarios`, the kwarg `opts` can be
 # used with the key `:summarize` to plot the confidence intervals of each cluster instead of
 # each series individually (default is `true`).
-#
-# ```julia
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-#
-# n_clusters = 4
-# clusters = cluster_scenarios(s_tac, n_clusters)
-#
-# axis_opts = Dict(
-#     :title => "Time Series Clustering with $n_clusters clusters",
-#     :ylabel => "TAC [m2]",
-#     :xlabel => "Timesteps [years]",
-# )
-# opts = Dict{Symbol, Any}(:summarize => true)
-#
-# tsc_fig = ADRIA.viz.clustered_scenarios(
-#     s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
-# )
-# ADRIA.viz.savefig(tsc_fig, "tsc.html")
-# ```
-#
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+n_clusters = 4
+clusters = cluster_scenarios(s_tac, n_clusters)
+
+axis_opts = Dict(
+    :title => "Time Series Clustering with $n_clusters clusters",
+    :ylabel => "TAC [m2]",
+    :xlabel => "Timesteps [years]",
+)
+opts = Dict{Symbol, Any}(:summarize => true)
+
+tsc_fig = ADRIA.viz.clustered_scenarios(
+    s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
+)
+ADRIA.viz.savefig(tsc_fig, "tsc.html")
+
 # ![Plots of Time Series Cluster](../assets/imgs/analysis/tsc.png)
 #
 # ### Target clusters
@@ -305,30 +278,28 @@
 # median value for some outcome).
 #
 # Here we use clustering to identify groups of time series for sites with low temporal variability in shelter volume across scenarios.
-#
-# ```julia
-# # Time series for each site summarizing median shelter volume across all scenarios
-# asv = ADRIA.metrics.absolute_shelter_volume(rs)
-# asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
-#
-# # Cluster sites with similar shelter volume time series
-# n_clusters = 6
-# asv_clusters = cluster_series(asv_site_series, n_clusters)
-#
-# # find_scenarios computes median timeseries for each cluster
-# #   and by default calculates temporal variability of that median timeseries
-# # Target sites that belong to the two clusters with lowest temporal variability
-# lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
-# asv_target = find_scenarios(asv_site_series, asv_clusters, lowest)
-#
-# axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
-#
-# tsc_asc_fig = ADRIA.viz.clustered_scenarios(
-#     asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
-# )
-# ADRIA.viz.savefig(tsc_asc_fig, "tsc_asv.html")
-# ```
-#
+
+## Time series for each site summarizing median shelter volume across all scenarios
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
+
+## Cluster sites with similar shelter volume time series
+n_clusters = 6
+asv_clusters = cluster_series(asv_site_series, n_clusters)
+
+## find_scenarios computes median timeseries for each cluster
+##   and by default calculates temporal variability of that median timeseries
+## Target sites that belong to the two clusters with lowest temporal variability
+lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
+asv_target = find_scenarios(asv_site_series, asv_clusters, lowest)
+
+axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
+
+tsc_asc_fig = ADRIA.viz.clustered_scenarios(
+    asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+)
+ADRIA.viz.savefig(tsc_asc_fig, "tsc_asv.html")
+
 # ![Plots of targeted lowest clusters](../assets/imgs/analysis/tsc_asv.png)
 #
 # As expected, we see the sites in the target group have lower temporal variability. The non-target group has larger temporal variability.
@@ -353,46 +324,42 @@
 # It is possible to perform time series clustering for different metric outcomes and find
 # scenarios that behave the same across all of them. Currently there is no visualization
 # function for this.
-#
-# ```julia
-# metrics::Vector{ADRIA.metrics.Metric} = [
-#     ADRIA.metrics.scenario_total_cover,
-#     ADRIA.metrics.scenario_asv,
-#     ADRIA.metrics.scenario_absolute_juveniles,
-# ]
-#
-# outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
-# n_clusters = 6
-#
-# # Clusters matrix
-# outcomes_clusters::AbstractMatrix{Int64} = cluster_scenarios(outcomes, n_clusters)
-#
-# # Filter scenarios that belong to one of the 4 high value clusters for all outcomes
-# highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
-# robust_scens = find_scenarios(outcomes, outcomes_clusters, highest_clusters)
-# ```
-#
+
+metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+n_clusters = 6
+
+## Clusters matrix
+outcomes_clusters::AbstractMatrix{Int64} = cluster_scenarios(outcomes, n_clusters)
+
+## Filter scenarios that belong to one of the 4 high value clusters for all outcomes
+highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
+robust_scens = find_scenarios(outcomes, outcomes_clusters, highest_clusters)
+
 # ### Time Series Clustering Map
 #
 # When using Time Series Clustering to cluster among multiple locations using some metric, it
 # is possible to visualize the result as a map.
-#
-# ```julia
-# tac = ADRIA.metrics.total_absolute_cover(rs)
-#
-# # Get a timeseries summarizing the scenarios for each site
-# tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
-#
-# n_clusters = 6
-# clusters = ADRIA.analysis.cluster_scenarios(tac_site_series, n_clusters)
-#
-# # Get a vector summarizing the scenarios and timesteps for each site
-# tac_sites = ADRIA.metrics.per_loc(median, tac)
-#
-# tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
-# ADRIA.viz.savefig(tsc_map_fig, "tsc_map.html")
-# ```
-#
+
+tac = ADRIA.metrics.total_absolute_cover(rs)
+
+## Get a timeseries summarizing the scenarios for each site
+tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
+
+n_clusters = 6
+clusters = ADRIA.analysis.cluster_scenarios(tac_site_series, n_clusters)
+
+## Get a vector summarizing the scenarios and timesteps for each site
+tac_sites = ADRIA.metrics.per_loc(median, tac)
+
+tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
+ADRIA.viz.savefig(tsc_map_fig, "tsc_map.html")
+
 # ![Plots of Spatial Time Series Clusters](../assets/imgs/analysis/tsc_map.png)
 #
 # ### Rule Induction (using Series Clusters)
@@ -401,37 +368,33 @@
 # i.e. thresholds below/above which a factor will lead to a specified outcome.
 #
 # For this example, we cluster scenarios with similar total cover, and then focus on those with high temporal variability in total cover. We explore what intervention characteristics lead to high temporal variability.
-#
-# ```julia
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# n_clusters = 6
-# clusters = cluster_scenarios(s_tac, n_clusters)
-#
-# # Identify cluster(s) with highest median temporal variability covering at least 1% of scenarios
-# tgt = target_clusters(clusters, s_tac)
-# ```
-#
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+n_clusters = 6
+clusters = cluster_scenarios(s_tac, n_clusters)
+
+## Identify cluster(s) with highest median temporal variability covering at least 1% of scenarios
+tgt = target_clusters(clusters, s_tac)
+
 # When the SIRUS Rule Induction algorithm produces rules involving two factors, they can be visualised as scatterplots.
-#
-# ```julia
-# rule_foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
-#
-# max_rules = 10
-# rules_iv = cluster_rules(
-#     rs, tgt, scens, rule_foi, max_rules; remove_duplicates=true
-# )
-#
-# rules_scatter_fig = ADRIA.viz.rules_scatter(
-#     rs,
-#     scens,
-#     tgt,
-#     rules_iv;
-#     fig_opts=fig_opts,
-#     opts=opts
-# )
-# ADRIA.viz.savefig(rules_scatter_fig, "rules_scatter.html")
-# ```
-#
+
+rule_foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+
+max_rules = 10
+rules_iv = cluster_rules(
+    rs, tgt, scens, rule_foi, max_rules; remove_duplicates=true
+)
+
+rules_scatter_fig = ADRIA.viz.rules_scatter(
+    rs,
+    scens,
+    tgt,
+    rules_iv;
+    fig_opts=fig_opts,
+    opts=opts
+)
+ADRIA.viz.savefig(rules_scatter_fig, "rules_scatter.html")
+
 # ![Plots of Rule Induction](../assets/imgs/analysis/rules_scatter.png)
 #
 # When defining binary rules, it is expected that there will be a tradeoff between coverage and density ([Bryant & Lempert 2010](https://dx.doi.org/10.1016/j.techfore.2009.08.002)).
@@ -458,21 +421,19 @@
 #
 # Regional Sensitivity Analysis visualises how two factors jointly relate to an outcome.
 # Scenarios are plotted as a 2D scatter of two factors of interest, coloured by outcome value.
-#
-# ```julia
-# using ADRIAanalysis
-#
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# mean_s_tac = vec(mean(s_tac; dims=1))
-#
-# # Build feature DataFrame (scenario inputs + environmental summary statistics)
-# X = ADRIA.feature_set(rs)
-#
-# # Plot DHW scenario vs wave scenario, coloured by mean total cover
-# rsa_fig = ADRIA.viz.rsa(X, mean_s_tac, (:dhw_scenario, :wave_scenario))
-# ADRIA.viz.savefig(rsa_fig, "rsa.html")
-# ```
-#
+
+using ADRIAanalysis
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+mean_s_tac = vec(mean(s_tac; dims=1))
+
+## Build feature DataFrame (scenario inputs + environmental summary statistics)
+X = ADRIA.feature_set(rs)
+
+## Plot DHW scenario vs wave scenario, coloured by mean total cover
+rsa_fig = ADRIA.viz.rsa(X, mean_s_tac, (:dhw_scenario, :wave_scenario))
+ADRIA.viz.savefig(rsa_fig, "rsa.html")
+
 # ![Plots of Regional Sensitivities](../assets/imgs/analysis/rsa.png)
 #
 # **How to read this figure:**
@@ -495,19 +456,17 @@
 # Outcome mapping plots the value of each factor against a scalar outcome, allowing visual
 # identification of which regions of factor space are associated with high or low outcomes.
 # Pass a `Vector{Symbol}` to plot multiple factors as subplots.
-#
-# ```julia
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# mean_s_tac = vec(mean(s_tac; dims=1))
-#
-# X = ADRIA.feature_set(rs)
-#
-# foi = [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM]
-#
-# om_fig = ADRIA.viz.outcome_map(X, mean_s_tac, foi)
-# ADRIA.viz.savefig(om_fig, "outcome_map.html")
-# ```
-#
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+mean_s_tac = vec(mean(s_tac; dims=1))
+
+X = ADRIA.feature_set(rs)
+
+foi = [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM]
+
+om_fig = ADRIA.viz.outcome_map(X, mean_s_tac, foi)
+ADRIA.viz.savefig(om_fig, "outcome_map.html")
+
 # ![Outcome mapping](../assets/imgs/analysis/outcome_map.png)
 #
 # **How to read this figure:**
@@ -531,29 +490,25 @@
 # discriminates between scenarios with high outcomes and all other scenarios.
 # A higher `prob_superiority` indicates the factor more reliably separates high-outcome
 # scenarios from the rest. `effect_size` is the rank-biserial correlation.
-#
-# ```julia
-# using ADRIAanalysis
-#
-# s_tac = ADRIA.metrics.scenario_total_cover(rs)
-# mean_s_tac = vec(mean(s_tac; dims=1))
-#
-# X = ADRIA.feature_set(rs)
-#
-# # Rank-based RSA: score each factor by how well it distinguishes the top 10% of outcomes
-# ranking = ADRIAanalysis.sensitivity.rsa(X, mean_s_tac)
-# ```
-#
+
+using ADRIAanalysis
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+mean_s_tac = vec(mean(s_tac; dims=1))
+
+X = ADRIA.feature_set(rs)
+
+## Rank-based RSA: score each factor by how well it distinguishes the top 10% of outcomes
+ranking = ADRIAanalysis.sensitivity.rsa(X, mean_s_tac)
+
 # The returned `DataFrame` has columns `feature`, `statistic`, `prob_superiority`, and
 # `effect_size`, sorted descending by `prob_superiority`.
 #
 # A `selection_mask` overload is available for custom outcome filters:
-#
-# ```julia
-# mask = mean_s_tac .>= quantile(mean_s_tac, 0.7)
-# ranking = ADRIAanalysis.sensitivity.rsa(X, mask)
-# ```
-#
+
+mask = mean_s_tac .>= quantile(mean_s_tac, 0.7)
+ranking = ADRIAanalysis.sensitivity.rsa(X, mask)
+
 # ### Data Envelopment Analysis
 #
 # Performs output-oriented (default, input-oriented can also be applied) Data Envelopment Analysis (DEA)
@@ -579,57 +534,53 @@
 # a positive output makes the efficiency frontier unbounded, and the DEA solver will report an
 # infeasible/no-solution status. If "do-nothing" (counterfactual) scenarios are included, give
 # them a meaningful non-zero baseline cost rather than zero.
-#
-# ```julia
-# dom = ADRIA.load_domain("path to domain", "45")
-#
-# scens = ADRIA.sample(dom, 128)
-# rs = ADRIA.run_scenarios(dom, scens, "45")
-#
-# # Compute cost from seeded coral counts; ensure every scenario has a positive baseline
-# seed_cols = String[c for c in ("N_seed_TA", "N_seed_CA") if c in names(scens)]
-# cost = if isempty(seed_cols)
-#     ones(Float64, nrow(scens))
-# else
-#     Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
-# end
-#
-# # Get mean coral cover and shelter volume for each scenario
-# s_tac_mean = dropdims(
-#     mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
-# )
-# asv = ADRIA.metrics.absolute_shelter_volume(rs)
-# s_sv = dropdims(
-#     mean(mean(asv; dims=:timesteps); dims=:locations);
-#     dims=(:timesteps, :locations)
-# )
-#
-# # Normalise inputs and outputs to [0, 1] before passing to DEA
-# function _norm01(v::AbstractVector{Float64})
-#     lo, hi = extrema(v)
-#     return hi - lo < eps() ? ones(length(v)) : (v .- lo) ./ (hi - lo)
-# end
-#
-# X = _norm01(cost)
-# Y = hcat(_norm01(Array{Float64}(s_tac_mean)), _norm01(Array{Float64}(s_sv)))
-#
-# # Output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
-# # deployment cost
-# DEA_out = data_envelopment_analysis(X, Y)
-# dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_out)
-# ADRIA.viz.savefig(dea_fig, "dea.html")
-# ```
-#
+
+dom = ADRIA.load_domain("path to domain", "45")
+
+scens = ADRIA.sample(dom, 128)
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+## Compute cost from seeded coral counts; ensure every scenario has a positive baseline
+seed_cols = String[c for c in ("N_seed_TA", "N_seed_CA") if c in names(scens)]
+cost = if isempty(seed_cols)
+    ones(Float64, nrow(scens))
+else
+    Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
+end
+
+## Get mean coral cover and shelter volume for each scenario
+s_tac_mean = dropdims(
+    mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
+)
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+s_sv = dropdims(
+    mean(mean(asv; dims=:timesteps); dims=:locations);
+    dims=(:timesteps, :locations)
+)
+
+## Normalise inputs and outputs to [0, 1] before passing to DEA
+function _norm01(v::AbstractVector{Float64})
+    lo, hi = extrema(v)
+    return hi - lo < eps() ? ones(length(v)) : (v .- lo) ./ (hi - lo)
+end
+
+X = _norm01(cost)
+Y = hcat(_norm01(Array{Float64}(s_tac_mean)), _norm01(Array{Float64}(s_sv)))
+
+## Output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
+## deployment cost
+DEA_out = data_envelopment_analysis(X, Y)
+dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_out)
+ADRIA.viz.savefig(dea_fig, "dea.html")
+
 # ![DEA](../assets/imgs/analysis/example_dea_fig.png)
 #
 # ### GUI for high-level exploration (prototype only!)
-#
-# ```julia
-# # To explore results interactively
-# ADRIA.viz.explore("path to Result Set")
-#
-# # or, if the result set is already loaded:
-# # ADRIA.viz.explore(rs)
-# ```
-#
+
+## To explore results interactively
+ADRIA.viz.explore("path to Result Set")
+
+## or, if the result set is already loaded:
+## ADRIA.viz.explore(rs)
+
 # ![Standalone app for data exploration](../assets/imgs/analysis/aviz_app.png)

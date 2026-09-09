@@ -4,11 +4,9 @@
 #
 # Results produced by `ADRIA.run_scenarios` are stored on disk and can be reloaded at any
 # time using their path:
-#
-# ```julia
-# rs = ADRIA.load_results("path/to/result_set")
-# ```
-#
+
+rs = ADRIA.load_results("path/to/result_set")
+
 # The returned `rs` is an `ADRIAResultSet` that gives access to everything needed for
 # analysis and visualization.
 #
@@ -39,27 +37,23 @@
 #
 # Individual outcome arrays can be extracted directly from `rs.outcomes` or via the
 # `ADRIA.metrics.*` functions (preferred):
-#
-# ```julia
-# # Via the metrics API (recommended)
-# tac = ADRIA.metrics.total_absolute_cover(rs)
-# rsv = ADRIA.metrics.relative_shelter_volume(rs)
-#
-# # Directly from the outcomes dict
-# rs.outcomes[:relative_cover]
-# ```
-#
+
+## Via the metrics API (recommended)
+tac = ADRIA.metrics.total_absolute_cover(rs)
+rsv = ADRIA.metrics.relative_shelter_volume(rs)
+
+## Directly from the outcomes dict
+rs.outcomes[:relative_cover]
+
 # See [Running scenarios](@ref) and the [Metrics](@ref) page for more detail on
 # available metrics and result set properties.
 #
 # ## Loading ReefModEngine Results
 #
 # Results from ReefModEngine.jl can be loaded with the `load_results` function.
-#
-# ```julia
-# rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
-# ```
-#
+
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
+
 # Expected data directory structure:
 #
 # ```bash
@@ -83,11 +77,9 @@
 #
 # To reduce duplication of geospatial and connectivity data, the data directory and results
 # directory can be supplied separately to avoid keeping copies for each result set analysed.
-#
-# ```julia
-# rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to results dir>")
-# ```
-#
+
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to results dir>")
+
 # ## Loading C~scape Results
 #
 # Results from C~scape can be loaded with the `load_results` function.
@@ -95,16 +87,14 @@
 # The first argument is always the **C~scape data package directory** — the folder holding
 # `ScenarioID.csv` plus the `connectivity/`, `site_data/` and `initial_cover/`
 # subdirectories (see the tree below).
-#
-# ```julia
-# rs = ADRIA.load_results(
-#     CScapeResultSet, "<path to C~scape data package>";
-#     result_dir="<path to result NetCDF directory>",
-#     result_files=["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"],
-#     show_progress=true
-# )
-# ```
-#
+
+rs = ADRIA.load_results(
+    CScapeResultSet, "<path to C~scape data package>";
+    result_dir="<path to result NetCDF directory>",
+    result_files=["NetCDF_Scn_140001.nc", "NetCDF_Scn_142162.nc"],
+    show_progress=true
+)
+
 # All keyword arguments are optional:
 #
 # - Omit `result_dir` and the NetCDFs are read from the data package's own `results/`
@@ -160,8 +150,6 @@
 #
 # Only relative cover is loaded automatically. All other outcomes are computed on demand
 # via the `ADRIA.metrics.*` functions and cached in `rs.outcomes`:
-#
-# ```julia
-# settlers = ADRIA.metrics.total_settlers(rs)
-# rs.outcomes[:total_settlers]  # now cached
-# ```
+
+settlers = ADRIA.metrics.total_settlers(rs)
+rs.outcomes[:total_settlers]  # now cached
