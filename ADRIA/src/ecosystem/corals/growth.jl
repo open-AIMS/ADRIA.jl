@@ -6,27 +6,6 @@ using SpecialFunctions
 using SparseArrays
 
 """
-    growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64})::Matrix{Float64}
-
-Determine the rate of growth representing the proportion of each size class that moves
-up a size class each (yearly) time step. Values > 1 indicate transitions to higher size
-classes occurs more than once per time step.
-
-# Arguments
-- `linear_extension` : Linear extension in cm/year
-- `diam_bin_widths` : diameter of each size class (bin) in cm
-
-# Returns
-Matrix, of size \$[n_{species} ⋅ n_{classes}]\$ indicating proportional growth rates
-for each.
-"""
-function growth_rate(
-    linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64}
-)::Matrix{Float64}
-    return ((2.0 .* linear_extension) ./ diam_bin_widths)'
-end
-
-"""
     proportional_adjustment!(coral_cover::Matrix{T}, loc_cover_cache::Vector{T})::Nothing where {T<:Float64}
 
 Helper method to proportionally adjust coral cover, such that:
