@@ -86,7 +86,8 @@ function load_results(
     connectivity = load_connectivity(RMEDomain, data_dir, loc_ids)
 
     location_max_coral_cover = 1 .- geodata.k ./ 100
-    location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
+    geom_col = _get_geom_col(geodata)
+    location_centroids = [centroid(multipoly) for multipoly ∈ geodata[!, geom_col]]
 
     timeframe = 2008:2101
     if !haskey(raw_set.axes, :timesteps)
