@@ -25,13 +25,13 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 # every outcome column.
 
 tac = ADRIA.metrics.scenario_total_cover(rs)
-mean_tac = vec(mean(tac, dims=1))
+mean_tac = vec(mean(tac; dims=1))
 
 rsv = ADRIA.metrics.scenario_rsv(rs)
-mean_sv = vec(mean(rsv, dims=1))
+mean_sv = vec(mean(rsv; dims=1))
 
 r_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
-mean_juves = vec(mean(r_juves, dims=1))
+mean_juves = vec(mean(r_juves; dims=1))
 
 ## Stack outcomes column-wise (one column per metric)
 y = hcat(mean_tac, mean_sv, mean_juves)

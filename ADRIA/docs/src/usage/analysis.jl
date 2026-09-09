@@ -121,13 +121,17 @@ ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
 rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
 
 ## Plot 1st rank frequencies as a colormap
-rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(
+    rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800))
+)
 ADRIA.viz.savefig(rank_fig, "single_rank_plot.html")
 
 # ![Rank frequency plots for single rank](../assets/imgs/analysis/single_rank_plot.png)
 
 ## Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(
+    rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800))
+)
 ADRIA.viz.savefig(rank_fig, "ranks_plot.html")
 
 # ![Rank frequency plots for multiple ranks](../assets/imgs/analysis/ranks_plot.png)
@@ -177,7 +181,7 @@ is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))
 
 ## Plot normalized scores and criteria as map
 fig = ADRIA.viz.selection_criteria_map(
-    dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
+    dom, seed_decision_mat[criteria = .!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
 )
 ADRIA.viz.savefig(fig, "criteria_plots.html")
 
@@ -191,7 +195,7 @@ ADRIA.viz.savefig(fig, "criteria_plots.html")
 # well (ordering factors by their relative contribution towards a given quantity of interest).
 
 ## Sensitivity of mean scenario outcomes to factors
-mean_s_tac = vec(mean(s_tac, dims=1))
+mean_s_tac = vec(mean(s_tac; dims=1))
 tac_Si = pawn(rs, mean_s_tac)
 pawn_fig = ADRIA.viz.pawn(tac_Si; opts, fig_opts)
 ADRIA.viz.savefig(pawn_fig, "pawn_si.html")
@@ -261,9 +265,9 @@ clusters = cluster_scenarios(s_tac, n_clusters)
 axis_opts = Dict(
     :title => "Time Series Clustering with $n_clusters clusters",
     :ylabel => "TAC [m2]",
-    :xlabel => "Timesteps [years]",
+    :xlabel => "Timesteps [years]"
 )
-opts = Dict{Symbol, Any}(:summarize => true)
+opts = Dict{Symbol,Any}(:summarize => true)
 
 tsc_fig = ADRIA.viz.clustered_scenarios(
     s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
@@ -328,7 +332,7 @@ ADRIA.viz.savefig(tsc_asc_fig, "tsc_asv.html")
 metrics::Vector{ADRIA.metrics.Metric} = [
     ADRIA.metrics.scenario_total_cover,
     ADRIA.metrics.scenario_asv,
-    ADRIA.metrics.scenario_absolute_juveniles,
+    ADRIA.metrics.scenario_absolute_juveniles
 ]
 
 outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)

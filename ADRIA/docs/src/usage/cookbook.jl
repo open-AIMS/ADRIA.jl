@@ -144,13 +144,13 @@ sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
 
 ## Get frequencies with which each site is selected for each rank
-rank_freq = ranks_to_frequencies(ranks[intervention=1])
+rank_freq = ranks_to_frequencies(ranks[intervention = 1])
 
 ## Calculate rank aggregations
-location_selection_frequency = location_selection_frequencies(ranks[intervention=1])
+location_selection_frequency = location_selection_frequencies(ranks[intervention = 1])
 
 ## Get summed inverse rank for set of standalone location selections
-sel_score = selection_score(ranks[intervention=1])
+sel_score = selection_score(ranks[intervention = 1])
 
 ## Use aggregation function within rank_locations to get direct output
 rank_frequencies_seed = rank_locations(
@@ -171,18 +171,18 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 rank_freq = ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
 
 ## Get selection frequencies for set of runs
-selection_freq = location_selection_frequencies(rs.ranks[intervention=1])
+selection_freq = location_selection_frequencies(rs.ranks[intervention = 1])
 
 ## Get selection frequencies over time for unguided runs only
 unguided_freq = location_selection_frequencies(
-    rs.seed_log[scenarios=findall(scens.guided .>= 1)]
+    rs.seed_log[scenarios = findall(scens.guided .>= 1)]
 )
 
 ## Get selection score for set of runs
-sel_score = selection_score(rs.ranks[intervention=1])
+sel_score = selection_score(rs.ranks[intervention = 1])
 
 ## Get selection score for locations over time
-sel_score = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
+sel_score = selection_score(rs.ranks[intervention = 1]; dims=[:scenarios])
 
 # ## Taxonomy plot
 #
