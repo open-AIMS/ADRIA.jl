@@ -15,12 +15,7 @@ JuliaSysimage.dll
 ADRIA/docs/build/
 
 # Literate-generated markdown (source files are the .jl counterparts)
-ADRIA/docs/src/usage/getting_started.md
-ADRIA/docs/src/usage/loading_results.md
-ADRIA/docs/src/usage/scenario_runs.md
-ADRIA/docs/src/usage/scenario_discovery.md
-ADRIA/docs/src/usage/analysis.md
-ADRIA/docs/src/usage/cookbook.md
+ADRIA/docs/src/usage/*.md
 input/
 output/
 .aider*
