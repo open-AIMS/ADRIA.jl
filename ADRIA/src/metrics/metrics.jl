@@ -348,8 +348,8 @@ function _relative_juveniles(
     X::YAXArray{T,4}
 )::YAXArray{T,2} where {T<:Real}
     dims = (:timesteps, :locations)
-    is_juvenile::BitVector = falses(size(X, 3))
-    is_juvenile[1:2] .= true
+    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
+    is_juvenile[:, 1:2] .= true
     return DataCube(
         ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
     )
@@ -362,8 +362,8 @@ function _relative_juveniles(
         :locations,
         :scenarios
     )
-    is_juvenile::BitVector = falses(size(X, 3))
-    is_juvenile[1:2] .= true
+    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
+    is_juvenile[:, 1:2] .= true
     return DataCube(
         ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
     )
@@ -395,8 +395,8 @@ function _absolute_juveniles(
     X::YAXArray{T}, k_area::AbstractVector{T}
 )::YAXArray where {T<:Real}
     dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
-    is_juvenile::BitVector = falses(size(X, 3))
-    is_juvenile[1:2] .= true
+    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
+    is_juvenile[:, 1:2] .= true
     return DataCube(
         ADRIAIndicators.absolute_juveniles(X.data, is_juvenile, k_area), dims
     )
@@ -453,8 +453,8 @@ function _juvenile_indicator(
     X::AbstractArray{T}, coral_spec::DataFrame, k_area::Vector{Float64}
 )::AbstractArray{T} where {T<:Real}
     n_groups, n_sizes = size(X)[2:3]
-    is_juvenile::BitVector = falses(size(X, 3))
-    is_juvenile[1:2] .= true
+    is_juvenile::BitMatrix = falses(n_groups, n_sizes)
+    is_juvenile[:, 1:2] .= true
 
     mean_diams = permutedims(
         reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)
