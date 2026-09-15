@@ -1107,13 +1107,27 @@ function run_model(
         n_groups
     )
 
+    # fecundity scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
+    _fecundity_scale_factors = reshape(
+        param_set[occursin.("fecundity_scale", factor_names)].data,
+        n_cb_calib_groups,
+        n_groups
+    )
+
     biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
     biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
+    # Unlike biogrp_lin_ext/biogrp_survival (per size class, selected per-location later via
+    # cb_idx inside the timestep loop), fecundity_per_m² has no location axis at all -- it's
+    # [groups, sizes], applied identically to every location by fecundity_scope!. Build a
+    # per-cb_calib_group scaled copy here; the location -> calib_group split happens at the
+    # fecundity_scope! call site instead (one call per group, over that group's locations).
+    biogrp_fecundity::Array{Float64,3} = repeat(fecundity_per_m², 1, 1, n_cb_calib_groups)
     for i = 1:n_cb_calib_groups
         biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
         biogrp_survival[:, :, i] .= apply_survival_scaling(
             biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
         )
+        biogrp_fecundity[:, :, i] .*= _fecundity_scale_factors[i, :]
     end
 
     # Pre-compute Δd matrices once for the entire simulation — _bin_edges is constant,
@@ -1326,11 +1340,19 @@ function run_model(
         c_mean_pre_seed .= c_mean_t[:, 1, :]
 
         # Reproduction
-        # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(
-            fec_scope, fecundity_per_m², C_cover_t, habitable_areas;
-            apply_allee_effect=apply_allee_effect
-        )
+        # Calculates scope for coral fedundity for each size class and at each location.
+        # One call per cb_calib_group so each location's fecundity uses that group's scaled
+        # biogrp_fecundity (see where it's built, above) -- groups partition locations
+        # disjointly, so fec_scope's `+=` accumulation across calls is safe (each location
+        # is only written by exactly one call).
+        for i = 1:n_cb_calib_groups
+            loc_mask = @view(cb_calib_group_masks[:, i])
+            fecundity_scope!(
+                @view(fec_scope[:, loc_mask]), @view(biogrp_fecundity[:, :, i]),
+                @view(C_cover_t[:, :, loc_mask]), @view(habitable_areas[:, loc_mask]);
+                apply_allee_effect=apply_allee_effect
+            )
+        end
 
         for l = 1:n_locs
             s = sum(fec_scope[:, l])

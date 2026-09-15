@@ -193,9 +193,12 @@ function _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int
     mb_rate_mask = occursin.(r"mb_rate_scale", factor_names) .&& group_mask
     linear_extension_mask =
         occursin.(r"linear_extension_scale", factor_names) .&& group_mask
+    fecundity_mask = occursin.(r"fecundity_scale", factor_names) .&& group_mask
 
     # Factors to keep
-    keep_mask = .!growth_acc_mask .&& .!mb_rate_mask .&& .!linear_extension_mask
+    keep_mask =
+        .!growth_acc_mask .&& .!mb_rate_mask .&& .!linear_extension_mask .&&
+        .!fecundity_mask
 
     return keepat!(model_spec, keep_mask)
 end

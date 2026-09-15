@@ -289,6 +289,7 @@ function add_scale_factors!(
 )
     _linear_extension_scale_factors = linear_extension_group_scale_factors()
     _mb_rate_scale_factors = mb_rate_group_scale_factors()
+    _fecundity_scale_factors = fecundity_group_scale_factors()
 
     _, n_cb_calib_groups = size(_linear_extension_scale_factors)
     for (fgroup_idx, functional_group) in enumerate(functional_group_names())
@@ -298,6 +299,9 @@ function add_scale_factors!(
                 "$(cb_calib_group)_$(functional_group)"
             mb_rate_factor_name::String =
                 "mb_rate_scale_cb_group_" *
+                "$(cb_calib_group)_$(functional_group)"
+            fecundity_factor_name::String =
+                "fecundity_scale_cb_group_" *
                 "$(cb_calib_group)_$(functional_group)"
 
             linear_extension_factor_val = get(
@@ -309,6 +313,11 @@ function add_scale_factors!(
                 overrides,
                 mb_rate_factor_name,
                 _mb_rate_scale_factors[fgroup_idx, cb_calib_group]
+            )
+            fecundity_factor_val = get(
+                overrides,
+                fecundity_factor_name,
+                _fecundity_scale_factors[fgroup_idx, cb_calib_group]
             )
 
             struct_fields[linear_extension_factor_name] = Factor(
@@ -329,6 +338,17 @@ function add_scale_factors!(
                 dist_params=new_bounds(mb_rate_factor_val, bounds),
                 name=human_readable_name(mb_rate_factor_name; title_case=true),
                 description="Scale factor to be applied to mortality base rates of " *
+                            "cb_calib_group $cb_calib_group and " *
+                            "functional group $functional_group"
+            )
+
+            struct_fields[fecundity_factor_name] = Factor(
+                fecundity_factor_val;
+                ptype="continuous",
+                dist=Uniform,
+                dist_params=new_bounds(fecundity_factor_val, bounds),
+                name=human_readable_name(fecundity_factor_name; title_case=true),
+                description="Scale factor to be applied to fecundity of " *
                             "cb_calib_group $cb_calib_group and " *
                             "functional group $functional_group"
             )

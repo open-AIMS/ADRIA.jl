@@ -211,3 +211,20 @@ function mb_rate_group_scale_factors()::Matrix{Float64}
         -0.965108  -0.0261854   0.474846    0.688      0.239802  -0.402938  -0.521073   0.0838699   0.367821   0.180813   -0.465029   0.935718
     ]
 end
+
+"""
+    fecundity_group_scale_factors()::Matrix{Float64}
+
+Matrix with dimensions (functional_groups ⋅ cb_calib_groups) where each element represents
+the scale factor to be applied to the `fecundity` of all size classes of that
+`functional_group` and `cb_calib_group`.
+
+Unlike `linear_extension_group_scale_factors`/`mb_rate_group_scale_factors`, no calibration
+exercise has been performed for fecundity — this returns a neutral default (1.0, i.e. no
+adjustment to the Hall & Hughes (1996)-derived baseline in `_coral_spec_impl`) for every
+group, shaped to match `linear_extension_group_scale_factors()` so it samples/applies the
+same way.
+"""
+function fecundity_group_scale_factors()::Matrix{Float64}
+    return ones(size(linear_extension_group_scale_factors()))
+end
