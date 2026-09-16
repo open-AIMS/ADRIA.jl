@@ -1983,3 +1983,98 @@ function run_model(
         coral_cover_log=collated_cover_log
     )
 end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase C (experimental, `CscapeIntegration` branch): multi-engine entry point.
+#
+# Purely additive -- does not touch the `run_scenarios`/`run_model` methods above. The
+# `engine` positional argument (no default) makes this a genuinely new method rather than an
+# edit to the existing 3-positional-argument `run_scenarios`, so the CoralBlox path stays
+# byte-identical to today's behaviour.
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::Union{String,Vector{String}}, engine::Symbol; show_progress=true, cscape_fpath=nothing, cscape_base_scenario_id=nothing)::ResultSet
+
+Experimental multi-engine entry point (Phase C of the CoralBlox/C~scape sensitivity
+integration -- see `CscapeInterface.jl/sandbox/ADRIAIntegration/00_PLAN.md`). Picks which
+coral engine actually executes `scens`; it does not make one `scens` table interchangeable
+between engines -- `scens` must already have been sampled from that engine's own spec
+(`coralblox_spec`/`cscape_spec` in `CscapeInterface.jl`).
+
+# Arguments
+- `dom` : Domain. Used by the `:coralblox` path exactly as today; accepted-but-unused by the
+  `:cscape` path (kept positional for a uniform call signature across engines -- C~scape's
+  scenario space is identified by `cscape_fpath`/`cscape_base_scenario_id`, not by an ADRIA
+  `Domain`).
+- `scens` : DataFrame of scenarios. For `:coralblox`, from `ADRIA.sample(coralblox_spec(dom), n)`.
+  For `:cscape`, from `ADRIA.sample(cscape_spec(cscape_fpath, cscape_base_scenario_id), n)`
+  (the *sampled factor table*, not yet translated into scenario rows -- that translation
+  happens inside this dispatch).
+- `RCP` : passed through unchanged for `:coralblox`; accepted-but-unused for `:cscape` (its
+  climate trajectory is fixed via `Disturbance_file`, already baked into `cscape_spec` -- see
+  the correspondence table in `00_PLAN.md`).
+- `engine` : `:coralblox` (dispatches, unchanged, to today's `run_scenarios`) or `:cscape`
+  (requires `cscape_fpath`/`cscape_base_scenario_id`, and requires `CscapeInterface` to be
+  loaded -- see `ext/ADRIACscapeExt.jl`).
+
+# Keyword Arguments
+- `cscape_fpath` : `:cscape` only -- path to the `CScape.jl` project directory `scens` was
+  sampled against.
+- `cscape_base_scenario_id` : `:cscape` only -- the `ScenarioID.xlsx` row `cscape_spec`/
+  `cscape_sample_to_scenarios` sampled around.
+- other keywords are forwarded: `show_progress` to the `:coralblox` path;
+  `n_workers`/`export_adria`/`calc_indicators` to `CscapeInterface.run_cscape_native_parallel`
+  for the `:cscape` path.
+
+# Returns
+`ResultSet` -- ADRIA's own Zarr-backed result set for `:coralblox`, or
+`CscapeInterface.CScapeResultSet` for `:cscape`.
+
+# Examples
+```julia
+# CoralBlox -- identical to calling `run_scenarios(dom, scens, RCP)` directly
+rs = ADRIA.run_scenarios(dom, scens_cb, "45", :coralblox)
+
+# C~scape -- requires `using CscapeInterface` for the extension to be active
+using CscapeInterface
+scens_cs = ADRIA.sample(cscape_spec(fpath, 1010001), 128)
+rs = ADRIA.run_scenarios(dom, scens_cs, "45", :cscape; cscape_fpath=fpath, cscape_base_scenario_id=1010001)
+```
+"""
+function run_scenarios(
+    dom::Domain,
+    scens::DataFrame,
+    RCP::Union{String,Vector{String}},
+    engine::Symbol;
+    cscape_fpath::Union{String,Nothing}=nothing,
+    cscape_base_scenario_id::Union{Int,Nothing}=nothing,
+    kwargs...
+)::ResultSet
+    if engine === :coralblox
+        return run_scenarios(dom, scens, RCP; kwargs...)
+    elseif engine === :cscape
+        cscape_fpath === nothing && throw(ArgumentError(
+            "engine=:cscape requires `cscape_fpath` (the CScape.jl project directory `scens` was sampled against)."
+        ))
+        cscape_base_scenario_id === nothing && throw(ArgumentError(
+            "engine=:cscape requires `cscape_base_scenario_id` (the ScenarioID.xlsx row `scens` was sampled around)."
+        ))
+        return _run_scenarios_cscape(scens, cscape_fpath, cscape_base_scenario_id; kwargs...)
+    else
+        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape."))
+    end
+end
+
+"""
+    _run_scenarios_cscape(scens::DataFrame, fpath::String, base_scenario_id::Int; kwargs...)
+
+Dispatch target for `run_scenarios(dom, scens, RCP, :cscape; ...)`. Declared here with zero
+methods -- the weak-dependency extension `ext/ADRIACscapeExt.jl` adds the one real method,
+active only once `CscapeInterface` is loaded (`using CscapeInterface`), so CoralBlox-only
+users never pull in `CscapeInterface`'s (much heavier) dependency tree. Calling this without
+`CscapeInterface` loaded raises Julia's usual "no method matching" error, naming this
+function -- a clear enough signal without a bespoke error message duplicating what the
+extension mechanism already provides.
+"""
+function _run_scenarios_cscape end
