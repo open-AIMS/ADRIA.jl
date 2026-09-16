@@ -2020,9 +2020,18 @@ between engines -- `scens` must already have been sampled from that engine's own
 
 # Keyword Arguments
 - `cscape_fpath` : `:cscape` only -- path to the `CScape.jl` project directory `scens` was
-  sampled against.
+  sampled against. Its `Growth_Surv_file`/demography data is still required even when
+  `use_domain_translation=true` (ADRIA has no equivalent fitted growth/survival model); only
+  spatial/connectivity/disturbance/cyclone data is replaced by `dom`'s own.
 - `cscape_base_scenario_id` : `:cscape` only -- the `ScenarioID.xlsx` row `cscape_spec`/
   `cscape_sample_to_scenarios` sampled around.
+- `use_domain_translation` : `:cscape` only, default `false` -- when `true`, run C~scape
+  against `dom`'s own translated spatial/connectivity/disturbance/cyclone-mortality data
+  (via `CscapeInterface.domain_to_cscape_inputs`) instead of `cscape_fpath`'s own `data/`
+  files for those. `dhw_idx`/`wave_idx`/`cyclone_idx` (default `0`, "none selected") pick
+  which scenario member of `dom`'s DHW/wave/cyclone data to translate -- see
+  `domain_to_cscape_inputs`'s docstring. `false` (the default) reproduces the plain
+  `cscape_fpath`-only behaviour this dispatcher has always had.
 - other keywords are forwarded: `show_progress` to the `:coralblox` path;
   `n_workers`/`export_adria`/`calc_indicators` to `CscapeInterface.run_cscape_native_parallel`
   for the `:cscape` path.
@@ -2036,10 +2045,17 @@ between engines -- `scens` must already have been sampled from that engine's own
 # CoralBlox -- identical to calling `run_scenarios(dom, scens, RCP)` directly
 rs = ADRIA.run_scenarios(dom, scens_cb, "45", :coralblox)
 
-# C~scape -- requires `using CscapeInterface` for the extension to be active
+# C~scape, from a hand-built project directory -- requires `using CscapeInterface`
 using CscapeInterface
 scens_cs = ADRIA.sample(cscape_spec(fpath, 1010001), 128)
 rs = ADRIA.run_scenarios(dom, scens_cs, "45", :cscape; cscape_fpath=fpath, cscape_base_scenario_id=1010001)
+
+# C~scape, running against dom's own spatial/connectivity/disturbance data instead
+rs = ADRIA.run_scenarios(
+    dom, scens_cs, "45", :cscape;
+    cscape_fpath=fpath, cscape_base_scenario_id=1010001,
+    use_domain_translation=true, dhw_idx=1, cyclone_idx=1
+)
 ```
 """
 function run_scenarios(
@@ -2049,6 +2065,10 @@ function run_scenarios(
     engine::Symbol;
     cscape_fpath::Union{String,Nothing}=nothing,
     cscape_base_scenario_id::Union{Int,Nothing}=nothing,
+    use_domain_translation::Bool=false,
+    dhw_idx::Int=0,
+    wave_idx::Int=0,
+    cyclone_idx::Int=0,
     kwargs...
 )::ResultSet
     if engine === :coralblox
@@ -2060,14 +2080,19 @@ function run_scenarios(
         cscape_base_scenario_id === nothing && throw(ArgumentError(
             "engine=:cscape requires `cscape_base_scenario_id` (the ScenarioID.xlsx row `scens` was sampled around)."
         ))
-        return _run_scenarios_cscape(scens, cscape_fpath, cscape_base_scenario_id; kwargs...)
+        return _run_scenarios_cscape(
+            dom, scens, cscape_fpath, cscape_base_scenario_id;
+            use_domain_translation, dhw_idx, wave_idx, cyclone_idx, kwargs...
+        )
     else
         throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape."))
     end
 end
 
 """
-    _run_scenarios_cscape(scens::DataFrame, fpath::String, base_scenario_id::Int; kwargs...)
+    _run_scenarios_cscape(dom::Domain, scens::DataFrame, fpath::String, base_scenario_id::Int;
+                           use_domain_translation=false, dhw_idx=0, wave_idx=0, cyclone_idx=0,
+                           kwargs...)
 
 Dispatch target for `run_scenarios(dom, scens, RCP, :cscape; ...)`. Declared here with zero
 methods -- the weak-dependency extension `ext/ADRIACscapeExt.jl` adds the one real method,
