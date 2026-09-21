@@ -62,9 +62,11 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [weakdeps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
+CoralPopInterface = "8b521de6-7b98-4e38-9776-d64b026254f7"
 CscapeInterface = "a1b2c3d4-1234-5678-9abc-def012345678"
 
 [extensions]
+ADRIACoralPopExt = "CoralPopInterface"
 ADRIACscapeExt = "CscapeInterface"
 
 [compat]
@@ -77,6 +79,7 @@ CSV = "0.10"
 Clustering = "0.15"
 Combinatorics = "1"
 CoralBlox = "1.1.10"
+CoralPopInterface = "0.1"
 CpuId = "0.3"
 CscapeInterface = "0.2"
 DataFrames = "1"

@@ -1994,13 +1994,13 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 
 """
-    run_scenarios(dom::Domain, scens::DataFrame, RCP::Union{String,Vector{String}}, engine::Symbol; show_progress=true, cscape_fpath=nothing, cscape_base_scenario_id=nothing)::ResultSet
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::Union{String,Vector{String}}, engine::Symbol; show_progress=true, cscape_fpath=nothing, cscape_base_scenario_id=nothing, coralpop_fpath=nothing)::ResultSet
 
 Experimental multi-engine entry point (Phase C of the CoralBlox/C~scape sensitivity
 integration -- see `CscapeInterface.jl/sandbox/ADRIAIntegration/00_PLAN.md`). Picks which
 coral engine actually executes `scens`; it does not make one `scens` table interchangeable
 between engines -- `scens` must already have been sampled from that engine's own spec
-(`coralblox_spec`/`cscape_spec` in `CscapeInterface.jl`).
+(`coralblox_spec`/`cscape_spec` in `CscapeInterface.jl`, `coralpop_spec` in `CoralPopInterface.jl`).
 
 # Arguments
 - `dom` : Domain. Used by the `:coralblox` path exactly as today; accepted-but-unused by the
@@ -2014,9 +2014,13 @@ between engines -- `scens` must already have been sampled from that engine's own
 - `RCP` : passed through unchanged for `:coralblox`; accepted-but-unused for `:cscape` (its
   climate trajectory is fixed via `Disturbance_file`, already baked into `cscape_spec` -- see
   the correspondence table in `00_PLAN.md`).
-- `engine` : `:coralblox` (dispatches, unchanged, to today's `run_scenarios`) or `:cscape`
+- `engine` : `:coralblox` (dispatches, unchanged, to today's `run_scenarios`), `:cscape`
   (requires `cscape_fpath`/`cscape_base_scenario_id`, and requires `CscapeInterface` to be
-  loaded -- see `ext/ADRIACscapeExt.jl`).
+  loaded -- see `ext/ADRIACscapeExt.jl`) or `:coralpop` (requires `coralpop_fpath`, and requires
+  `CoralPopInterface` to be loaded -- see `ext/ADRIACoralPopExt.jl`).
+  For `:coralpop`, `scens` is from `ADRIA.sample(coralpop_spec(), n)`; `dom` is translated
+  (always -- CoralPop has no project directory of its own) into per-site CoralPop inputs, and
+  `RCP` is accepted-but-unused (the climate member is chosen by `dhw_idx`/`cyclone_idx`).
 
 # Keyword Arguments
 - `cscape_fpath` : `:cscape` only -- path to the `CScape.jl` project directory `scens` was
@@ -2032,13 +2036,23 @@ between engines -- `scens` must already have been sampled from that engine's own
   which scenario member of `dom`'s DHW/wave/cyclone data to translate -- see
   `domain_to_cscape_inputs`'s docstring. `false` (the default) reproduces the plain
   `cscape_fpath`-only behaviour this dispatcher has always had.
+- `coralpop_fpath` : `:coralpop` only -- directory the run writes to (`model_outputs/` and
+  `adria_exports/` are created inside it). Only this call's scenarios are loaded back, so files
+  from earlier runs with other scenario IDs are ignored -- but a same-ID file is overwritten, so
+  prefer a fresh directory per run.
+- `dhw_idx`/`wave_idx`/`cyclone_idx` apply to `:cscape` (with `use_domain_translation=true`) and to
+  `:coralpop`, which is always domain-translated; pass the same values to every engine being
+  compared. `wave_idx` is unused by CoralPop.
 - other keywords are forwarded: `show_progress` to the `:coralblox` path;
   `n_workers`/`export_adria`/`calc_indicators` to `CscapeInterface.run_cscape_native_parallel`
-  for the `:cscape` path.
+  for the `:cscape` path; `n_workers`/`exeflags`/`coupled`/`keep_raw`/`draw_params`/
+  `base_scenario_id`/`spec` to `CoralPopInterface.run_coralpop_scenarios` and
+  `load_coralpop_results` for the `:coralpop` path (see `ext/ADRIACoralPopExt.jl`).
 
 # Returns
-`ResultSet` -- ADRIA's own Zarr-backed result set for `:coralblox`, or
-`CscapeInterface.CScapeResultSet` for `:cscape`.
+`ResultSet` -- ADRIA's own Zarr-backed result set for `:coralblox`,
+`CscapeInterface.CScapeResultSet` for `:cscape`, or `CoralPopInterface.CoralPopResultSet` for
+`:coralpop`.
 
 # Examples
 ```julia
@@ -2056,6 +2070,14 @@ rs = ADRIA.run_scenarios(
     cscape_fpath=fpath, cscape_base_scenario_id=1010001,
     use_domain_translation=true, dhw_idx=1, cyclone_idx=1
 )
+
+# CoralPop, on dom's own data -- requires `using CoralPopInterface`
+using CoralPopInterface
+scens_cp = ADRIA.sample(coralpop_spec(), 128)
+rs = ADRIA.run_scenarios(
+    dom, scens_cp, "45", :coralpop;
+    coralpop_fpath=fpath, dhw_idx=1, cyclone_idx=1, n_workers=4
+)
 ```
 """
 function run_scenarios(
@@ -2065,6 +2087,7 @@ function run_scenarios(
     engine::Symbol;
     cscape_fpath::Union{String,Nothing}=nothing,
     cscape_base_scenario_id::Union{Int,Nothing}=nothing,
+    coralpop_fpath::Union{String,Nothing}=nothing,
     use_domain_translation::Bool=false,
     dhw_idx::Int=0,
     wave_idx::Int=0,
@@ -2084,8 +2107,15 @@ function run_scenarios(
             dom, scens, cscape_fpath, cscape_base_scenario_id;
             use_domain_translation, dhw_idx, wave_idx, cyclone_idx, kwargs...
         )
+    elseif engine === :coralpop
+        coralpop_fpath === nothing && throw(ArgumentError(
+            "engine=:coralpop requires `coralpop_fpath` (the directory the run's outputs are written to)."
+        ))
+        return _run_scenarios_coralpop(
+            dom, scens, coralpop_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
+        )
     else
-        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape."))
+        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop."))
     end
 end
 
@@ -2103,3 +2133,16 @@ function -- a clear enough signal without a bespoke error message duplicating wh
 extension mechanism already provides.
 """
 function _run_scenarios_cscape end
+
+"""
+    _run_scenarios_coralpop(dom::Domain, scens::DataFrame, fpath::String;
+                            dhw_idx=0, wave_idx=0, cyclone_idx=0, kwargs...)
+
+Dispatch target for `run_scenarios(dom, scens, RCP, :coralpop; ...)`. Declared here with zero
+methods for the same reason as `_run_scenarios_cscape`: the weak-dependency extension
+`ext/ADRIACoralPopExt.jl` adds the one real method, active only once `CoralPopInterface` is
+loaded (`using CoralPopInterface`), so CoralBlox-only users never pull in its dependencies
+(PythonCall, a Python interpreter with numpy/pandas, ...). Calling this without
+`CoralPopInterface` loaded raises Julia's usual "no method matching" error naming this function.
+"""
+function _run_scenarios_coralpop end
