@@ -1,6 +1,17 @@
 abstract type Domain end
 
 """
+    cots_connectivity(domain::Domain)
+
+Return the connectivity matrix used for COTS larval dispersal. Domains that provide a
+dedicated `cots_conn` field use it; all other domains retain the historical coral
+connectivity fallback.
+"""
+function cots_connectivity(domain::Domain)
+    return hasproperty(domain, :cots_conn) ? domain.cots_conn : domain.conn
+end
+
+"""
     EnvLayer{S, TF}
 
 Store environmental data layers used for scenario

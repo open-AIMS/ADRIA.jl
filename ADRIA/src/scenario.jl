@@ -1194,9 +1194,9 @@ function run_model(
         rng=rng
     )
 
-    # Get connectivity for COTS larval dispersal
-    # TODO: Replace coral connectivity with COTS-specific connectivity when available
-    cots_conn = sparse(domain.conn.data)
+    # Use COTS-specific larval connectivity when the domain provides it, while retaining
+    # coral connectivity as the backwards-compatible fallback for existing domains.
+    cots_conn = sparse(cots_connectivity(domain).data)
     cots_max_larval_supply = zeros(Float64, n_locs)
 
     # COTS population log: [timesteps, 3 age classes, locations]

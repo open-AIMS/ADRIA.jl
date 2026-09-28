@@ -8,7 +8,11 @@ import matplotlib.ticker as ticker
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, "..", ".."))
 DATA_DIR = os.path.join(REPO_ROOT, "sandbox", "data")
-PLOTS_DIR = os.path.join(SCRIPT_DIR, "plots")
+requested_run_dir = os.environ.get("BBO_RUN_DIR", "")
+if not requested_run_dir and os.environ.get("BBO_RUN_ID"):
+    requested_run_dir = os.path.join(SCRIPT_DIR, "runs", os.environ["BBO_RUN_ID"])
+ARTIFACT_DIR = os.path.normpath(requested_run_dir) if requested_run_dir else DATA_DIR
+PLOTS_DIR = os.path.join(ARTIFACT_DIR, "plots") if requested_run_dir else os.path.join(SCRIPT_DIR, "plots")
 os.makedirs(PLOTS_DIR, exist_ok=True)
 
 # Set style
@@ -17,13 +21,15 @@ plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Helvetica']
 
 # Load Data
-sim_path = os.path.join(DATA_DIR, "best_calibrated_trajectories.csv")
+sim_path = os.path.join(ARTIFACT_DIR, "best_calibrated_trajectories.csv")
 if not os.path.exists(sim_path):
     sim_path = os.path.join(DATA_DIR, "best_bbo_simulated_trajectories.csv")
 
 obs_path = os.path.join(DATA_DIR, "reef_cots.csv")
-cand_path = os.path.join(DATA_DIR, "bbo_evaluated_candidates.csv")
-best_path = os.path.join(DATA_DIR, "bbo_best_summary.csv")
+cand_name = "evaluated_candidates.csv" if requested_run_dir else "bbo_evaluated_candidates.csv"
+best_name = "best_summary.csv" if requested_run_dir else "bbo_best_summary.csv"
+cand_path = os.path.join(ARTIFACT_DIR, cand_name)
+best_path = os.path.join(ARTIFACT_DIR, best_name)
 
 if not os.path.exists(sim_path):
     raise FileNotFoundError(f"Simulated trajectories missing: {sim_path}. Run simulate_best_calibration.jl first.")
@@ -33,6 +39,10 @@ sim_df = pd.read_csv(sim_path)
 obs_df = pd.read_csv(obs_path)
 cand_df = pd.read_csv(cand_path) if os.path.exists(cand_path) else None
 best_df = pd.read_csv(best_path) if os.path.exists(best_path) else None
+if cand_df is not None and 'status' in cand_df.columns:
+    cand_df = cand_df[cand_df['status'] == 'success'].copy()
+if best_df is not None and 'status' in best_df.columns:
+    best_df = best_df[best_df['status'] == 'success'].copy()
 
 target_reefs = [
     ("Lizard Island Reef", "Lizard Isles"),
@@ -42,48 +52,52 @@ target_reefs = [
 ]
 
 # -------------------------------------------------------------
-# Figure 1: Normalized COTS Calibration Trajectories vs Observations
+# Figure 1: Observation-scaled COTS trajectories vs observations
 # -------------------------------------------------------------
 fig, axes = plt.subplots(2, 2, figsize=(14, 10), sharex=True, sharey=True)
 axes = axes.flatten()
 
 color_sim = "#1f77b4" # Deep blue
 color_obs = "#d62728" # Red
+use_cpue = "sim_cots_cpue" in sim_df.columns and sim_df["sim_cots_cpue"].notna().any()
+value_col = "sim_cots_cpue" if use_cpue else "sim_cots_norm"
 
 for i, (sim_name, obs_name) in enumerate(target_reefs):
     ax = axes[i]
     
-    # Filter sim
     sub_sim = sim_df[sim_df['reef_name'] == sim_name].sort_values('year')
-    # Filter obs
     sub_obs = obs_df[obs_df['reef_name'] == obs_name].sort_values('year')
     
     if not sub_obs.empty and sub_obs['cotsptow'].max() > 0:
-        obs_max = sub_obs['cotsptow'].max()
-        # Group by year for obs mean
         obs_yearly = sub_obs.groupby('year')['cotsptow'].mean().reset_index()
-        obs_yearly['obs_norm'] = obs_yearly['cotsptow'] / obs_max
-        ax.scatter(obs_yearly['year'], obs_yearly['obs_norm'], color=color_obs, s=45, zorder=4, label='Historical Obs (Normalized PTOW)')
-        ax.plot(obs_yearly['year'], obs_yearly['obs_norm'], color=color_obs, linestyle='--', alpha=0.6, zorder=3)
+        if not use_cpue:
+            obs_yearly['cotsptow'] = obs_yearly['cotsptow'] / obs_yearly['cotsptow'].max()
+        ax.scatter(obs_yearly['year'], obs_yearly['cotsptow'], color=color_obs, s=45, zorder=4, label='Historical observations')
+        ax.plot(obs_yearly['year'], obs_yearly['cotsptow'], color=color_obs, linestyle='--', alpha=0.6, zorder=3)
 
     if not sub_sim.empty:
-        ax.plot(sub_sim['year'], sub_sim['sim_cots_norm'], color=color_sim, linewidth=2.5, zorder=5, label='Calibrated ADRIA Simulation')
-        ax.fill_between(sub_sim['year'], 0, sub_sim['sim_cots_norm'], color=color_sim, alpha=0.15, zorder=2)
+        summary = sub_sim.groupby('year')[value_col].agg(
+            median='median',
+            p10=lambda values: values.quantile(0.10),
+            p90=lambda values: values.quantile(0.90),
+        ).reset_index()
+        ax.plot(summary['year'], summary['median'], color=color_sim, linewidth=2.5, zorder=5, label='ADRIA median')
+        ax.fill_between(summary['year'], summary['p10'], summary['p90'], color=color_sim, alpha=0.2, zorder=2, label='ADRIA p10-p90')
 
     ax.set_title(f"{sim_name}", fontsize=13, fontweight='bold', pad=8)
-    ax.set_ylim(-0.05, 1.1)
     ax.set_xlim(1984, 2025)
     ax.grid(True, linestyle=':', alpha=0.6)
     
     if i >= 2:
         ax.set_xlabel("Year", fontsize=11, fontweight='bold')
     if i % 2 == 0:
-        ax.set_ylabel("Normalized Adult COTS Density", fontsize=11, fontweight='bold')
+        ylabel = "Observation-scaled COTS per tow" if use_cpue else "Normalized adult COTS density"
+        ax.set_ylabel(ylabel, fontsize=11, fontweight='bold')
     
     if i == 0:
         ax.legend(loc='upper right', frameon=True, framealpha=0.9, fontsize=10)
 
-fig.suptitle("BlackBoxOptim Calibrated COTS Outbreak Trajectories vs Lizard Island Observations", fontsize=15, fontweight='bold', y=0.98)
+fig.suptitle("COTS peak timing and amplitude versus Lizard Island observations", fontsize=15, fontweight='bold', y=0.98)
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 fig1_path = os.path.join(PLOTS_DIR, "cots_calibration_trajectories.png")
 plt.savefig(fig1_path, dpi=300)
@@ -105,14 +119,23 @@ for i, (sim_name, _) in enumerate(target_reefs):
     sub_sim = sim_df[sim_df['reef_name'] == sim_name].sort_values('year')
     
     if not sub_sim.empty:
-        # COTS Adult Raw Density
-        line1 = ax1.plot(sub_sim['year'], sub_sim['sim_cots_adult'], color=color_cots, linewidth=2.2, label='Simulated Adult COTS (ind/ha)')
-        ax1.set_ylabel("Adult COTS Density (ind/ha)", color=color_cots, fontsize=11, fontweight='bold')
+        dynamics = sub_sim.groupby('year').agg(
+            cots_median=('sim_cots_adult', 'median'),
+            cots_p10=('sim_cots_adult', lambda values: values.quantile(0.10)),
+            cots_p90=('sim_cots_adult', lambda values: values.quantile(0.90)),
+            coral_median=('sim_coral_cover', 'median'),
+            coral_p10=('sim_coral_cover', lambda values: values.quantile(0.10)),
+            coral_p90=('sim_coral_cover', lambda values: values.quantile(0.90)),
+        ).reset_index()
+        ax1.plot(dynamics['year'], dynamics['cots_median'], color=color_cots, linewidth=2.2, label='Adult COTS median')
+        ax1.fill_between(dynamics['year'], dynamics['cots_p10'], dynamics['cots_p90'], color=color_cots, alpha=0.15)
+        ax1.set_ylabel("Adult COTS model density", color=color_cots, fontsize=11, fontweight='bold')
         ax1.tick_params(axis='y', labelcolor=color_cots)
         
         # Total Coral Cover
         ax2 = ax1.twinx()
-        line2 = ax2.plot(sub_sim['year'], sub_sim['sim_coral_cover'] * 100, color=color_coral, linewidth=2.2, linestyle='--', label='Total Coral Cover (%)')
+        ax2.plot(dynamics['year'], dynamics['coral_median'] * 100, color=color_coral, linewidth=2.2, linestyle='--', label='Coral cover median')
+        ax2.fill_between(dynamics['year'], dynamics['coral_p10'] * 100, dynamics['coral_p90'] * 100, color=color_coral, alpha=0.12)
         ax2.set_ylabel("Coral Cover (%)", color=color_coral, fontsize=11, fontweight='bold')
         ax2.tick_params(axis='y', labelcolor=color_coral)
         ax2.grid(False) # Turn off grid for second axis to avoid overlap

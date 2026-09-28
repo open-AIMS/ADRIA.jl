@@ -1,5 +1,11 @@
 # ADRIA COTS Submodel & Lizard Island Calibration: Agent Handoff Document
 
+> [!WARNING]
+> Historical handoff record. It contains superseded parameter values, pulse
+> controls, and script paths from the July 2026 workflow. The authoritative
+> current calibration status and commands are in
+> `sandbox/calibration/README.md`.
+
 > [!IMPORTANT]
 > **To Future AI Agents (Codex, Antigravity, etc.) and Developers:**
 > This document (`AGENT_HANDOFF.md`) is the authoritative **Point of Truth** for the Crown-of-Thorns Starfish (COTS) submodel calibration and integration within `ADRIA.jl`. Please read this entire document carefully before making code edits or running optimization sweeps.

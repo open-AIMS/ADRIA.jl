@@ -14,6 +14,7 @@ mutable struct LizardDomain <: Domain
     env_layer_md::EnvLayer
     scenario_invoke_time::String
     const conn::YAXArray
+    const cots_conn::YAXArray
     loc_data::DataFrame
     const loc_id_col::String
     const cluster_id_col::String
@@ -94,6 +95,27 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
     )
 
     connectivity = location_connectivity(joinpath(path, "connectivity"), loc_ids)
+    cots_conn_path = joinpath(path, "cots_connectivity")
+    cots_connectivity_mode = lowercase(get(ENV, "ADRIA_COTS_CONNECTIVITY_MODE", "auto"))
+    cots_connectivity_mode in ["auto", "cots", "coral"] || error(
+        "ADRIA_COTS_CONNECTIVITY_MODE must be auto, cots, or coral; got '$cots_connectivity_mode'"
+    )
+    has_cots_connectivity = isdir(cots_conn_path) &&
+        any(endswith(".csv"), readdir(cots_conn_path))
+    cots_connectivity = if cots_connectivity_mode != "coral" && has_cots_connectivity
+        loaded = location_connectivity(cots_conn_path, loc_ids)
+        isempty(loaded.truncated) || error(
+            "COTS connectivity does not contain the complete Lizard site set: $(loaded.truncated)"
+        )
+        loaded
+    elseif cots_connectivity_mode == "cots"
+        error("COTS connectivity was required but no CSV was found in $cots_conn_path")
+    else
+        if cots_connectivity_mode == "auto"
+            @warn "No COTS-specific connectivity found; using coral connectivity for COTS dispersal" path
+        end
+        connectivity
+    end
     
     # Drop truncated locations from loc_data to ensure matrix size alignment
     if length(connectivity.truncated) > 0
@@ -164,6 +186,7 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
         env_layer_md,
         "",
         connectivity.conn,
+        cots_connectivity.conn,
         loc_data,
         location_id_col,
         cluster_id_col,

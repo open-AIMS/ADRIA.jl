@@ -1,5 +1,10 @@
 # Lizard Island COTS Calibration Sandbox
 
+> [!WARNING]
+> The calibration sections in this document describe the archived LHS-era
+> workflow. Use `sandbox/calibration/README.md` for the active BlackBoxOptim
+> workflow, current status, and development gates.
+
 ## Overview
 
 This sandbox contains the scripts, data, and outputs for calibrating the ADRIA

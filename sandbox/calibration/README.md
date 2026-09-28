@@ -2,6 +2,40 @@
 
 This folder is the working seed for the standalone COTSMod calibration study repository. The goal is to calibrate COTS outbreak dynamics against Lizard Island reef observations while keeping the ecological model in `COTSMod.jl` and the ecosystem orchestration in `ADRIA.jl`.
 
+> [!IMPORTANT]
+> This file is the authoritative status and execution guide for the active COTS
+> calibration workflow. Parameter values and commands in `AGENT_HANDOFF.md`,
+> `sandbox/README.md`, and archived scripts describe earlier experiments unless
+> they are explicitly restated here.
+
+## Current Status
+
+- COTSMod is integrated into ADRIA through the compatibility adapter in
+  `ADRIA/src/ecosystem/cots.jl`.
+- Package, adapter, and synthetic metric tests pass.
+- The focused, expanded, pulse-enabled, and COTS-connectivity bounded pilots
+  all failed the biological promotion criteria. None is a calibrated result.
+- Every expanded candidate produced at most one detected peak per reef. The
+  post-2005 temporal holdout matched zero of the four observed later peaks.
+- A dedicated Lizard COTS matrix is now built reproducibly from six ReefMod
+  spawning seasons and selected by the scenario runner, with the coral matrix
+  retained as an explicit control/fallback.
+- Peak timing/count and peak amplitude are the primary calibration targets.
+  Pointwise error and correlation are supporting diagnostics.
+- The calibration study must not be described as complete until it passes the
+  pilot, held-out validation, and regional validation gates below.
+
+### Amplitude convention
+
+ADRIA adult COTS density is not currently known to be numerically equivalent to
+AIMS COTS-per-tow observations. The hardened objective therefore fits one
+non-negative observation-scale factor per reef on training years, then compares
+peak heights and peak prominences in observed COTS-per-tow units. This preserves
+relative outbreak amplitudes without silently treating incompatible units as
+identical. The fitted scale is a nuisance observation-model parameter and must
+be logged. A fixed empirical density-to-CPUE conversion should replace it when
+one is available.
+
 ## Repository Boundary
 
 The intended split is:
@@ -30,7 +64,12 @@ cots_cycle_score(sim_years, sim_values, obs_years, obs_values)
 
 It returns a `CotsCycleScore` where `total_loss` is lower for better fits.
 
-## Components
+## Legacy Objective Components
+
+The objective below describes the July-September 2026 implementation. It is
+retained for traceability while the calendar-aware peak and amplitude objective
+is being hardened. Do not use these weights for a large production sweep until
+the metric validation gate is complete.
 
 The cycle-aware loss combines:
 
@@ -59,6 +98,24 @@ total_loss =
 
 These weights are deliberately explicit so they can be reviewed and changed as calibration behaviour becomes clearer.
 
+## Hardened Peak and Amplitude Objective
+
+The active metric implementation now:
+
+- collapses duplicate survey years and smooths by elapsed calendar years;
+- restricts simulation and observations to their common time window;
+- requires observations on both sides before declaring a peak;
+- matches simulated and observed peaks one-to-one within a timing tolerance;
+- scores peak height and prominence after fitting the documented per-reef
+  observation scale;
+- compares simulated and observed matched-peak periods rather than imposing a
+  period when the observations contain fewer than two detected peaks; and
+- gives peak timing and amplitude substantially more weight than generic RMSE,
+  bias, or lagged correlation.
+
+The legacy loss is retained in candidate logs as a diagnostic but is no longer
+added to the optimisation target.
+
 ## Lagged Correlation
 
 Supervisor feedback suggested using lags in correlation optimisation. The implementation now evaluates Pearson and Spearman correlation over a bounded lag window.
@@ -79,11 +136,12 @@ Lagged correlation is used as a shape diagnostic and a modest objective componen
 
 The BlackBoxOptim driver (`calibrate_cots_blackbox.jl`) evaluates candidates using the cycle-aware objective function in `cots_cycle_metrics.jl`.
 
-The candidate log files record full cycle metrics:
-- `bbo_evaluated_candidates.csv`
-- `bbo_best_summary.csv`
+Each run directory records full cycle metrics in:
+- `evaluated_candidates.csv`
+- `best_summary.csv`
+- `evaluated_by_reef.csv`
 
-The by-reef evaluation includes:
+The reusable score object includes the following by-reef fields:
 - `cycle_loss`
 - `cycle_rmse`
 - `cycle_abs_percent_bias`
@@ -98,11 +156,17 @@ The by-reef evaluation includes:
 - `cycle_best_lag_years`
 - detected simulated and observed peak years
 
+The candidate CSV records reef-mean summaries, while `evaluated_by_reef.csv`
+records each reef's scale, component penalties, matched-peak count, and detected
+simulated and observed peak years. Successful and failed evaluations are both
+logged.
+
 The overall objective sorts candidates by:
 ```text
-loss = mean_cycle_loss + 0.25 * legacy_loss
+loss = mean_cycle_loss
 ```
-where `legacy_loss` maintains backward compatibility while making cycle quality the dominant objective.
+The old pointwise `legacy_loss` is logged for diagnosis only and does not enter
+the active optimization target.
 
 
 ## Validation Tests
@@ -110,7 +174,7 @@ where `legacy_loss` maintains backward compatibility while making cycle quality 
 Run the metric tests with:
 
 ```powershell
-julia --project=sandbox sandbox\calibration\test_cots_cycle_metrics.jl
+julia --project=sandbox sandbox\calibration\runtests.jl
 ```
 
 The synthetic tests check that:
@@ -144,20 +208,39 @@ The driver supports three configurable search modes via the `BBO_MODE` environme
 ```powershell
 $env:BBO_MODE = 'FOCUSED'     # Options: FOCUSED, EXPANDED, EXPANDED_PULSE
 $env:BBO_MAX_STEPS = '20'     # Maximum evaluation steps
+$env:BBO_MAX_EVALS = '0'      # Function-evaluation request (0 = package default)
 $env:BBO_MAX_TIME = '0.0'     # Time limit in seconds (0.0 = unlimited)
+$env:BBO_METHOD = 'adaptive_de_rand_1_bin_radiuslimited'
+$env:BBO_SEED = '20260928'    # Optimizer and scenario-template seed
+$env:BBO_RUN_ID = 'pilot_001' # Reusable run identifier
+$env:BBO_RESUME = 'false'     # Reuse logged candidate evaluations when true
+$env:ADRIA_COTS_CONNECTIVITY_MODE = 'cots' # auto|cots|coral
+$env:BBO_EXCLUDE_REEFS = ''    # Semicolon-delimited Lizard holdouts
 julia --project=sandbox sandbox\calibration\calibrate_cots_blackbox.jl
 ```
 
+Each run writes to `sandbox/calibration/runs/<run-id>/`. The directory contains
+run metadata, successful and failed candidate rows, by-reef peak diagnostics,
+the sorted summary, simulations, and figures. Run metadata records git
+revisions, input hashes, search bounds, seeds, environment controls, and Julia
+version. `BBO_RESUME=true` restarts the optimiser but reuses exact candidates
+already present in the evaluation cache; BlackBoxOptim state itself is not
+checkpointed.
+
 ### Candidate Evaluation Logging
 
-As specified, every evaluated candidate is saved into a detailed CSV file:
+Evaluations are saved under the run directory:
 
 ```text
-sandbox/data/bbo_evaluated_candidates.csv
-sandbox/data/bbo_best_summary.csv
+sandbox/calibration/runs/<run-id>/evaluated_candidates.csv
+sandbox/calibration/runs/<run-id>/evaluated_by_reef.csv
+sandbox/calibration/runs/<run-id>/best_summary.csv
 ```
 
-Each logged evaluation contains the exact parameter candidate vector along with the overall loss and full metric breakdown (`cycle_loss`, `legacy_loss`, `mean_rmse`, `mean_abs_percent_bias`, `mean_peak_count_penalty`, `mean_peak_timing_penalty`, `mean_period_penalty`, `mean_amplitude_penalty`, `mean_flatline_penalty`, `mean_lag_correlation_penalty`, `mean_best_lag_years`). This allows full diagnosis of whether BlackBoxOptim is improving true cycle mechanics rather than gaming individual metric components.
+Each successful row contains the candidate vector and reef-mean metric
+breakdown. Failed rows include status and error text. Exact previously evaluated
+candidate vectors are cached when `BBO_RESUME=true`; optimizer population state
+is not checkpointed.
 
 ## Unified Calibration & Visualization Pipeline
 
@@ -183,9 +266,94 @@ $env:BBO_MAX_STEPS = '50'
 julia --project=sandbox sandbox\calibration\calibrate_cots_blackbox.jl
 
 # Step 2: Run simulation on top candidate (Single-run or Stochastic Ensemble)
+$env:BBO_RUN_ID = 'pilot_001'
 $env:COTS_N_STOCHASTIC_SCENS = '1'
+$env:COTS_STOCHASTIC_MODE = 'demographic' # environmental|demographic|combined
 julia --project=sandbox sandbox\calibration\simulate_best_calibration.jl
 
 # Step 3: Render publication-quality plots
 python sandbox\calibration\render_calibration_figures.py
 ```
+
+## Hardening and Development Gates
+
+The active development sequence is:
+
+1. **Authoritative status:** keep this README current and mark older calibration
+   instructions as historical.
+2. **Metric validation:** use calendar-aware observations, a common scoring
+   window, explicit peak matching, and observation-scaled peak height and
+   prominence errors. Synthetic tests must cover irregular surveys, boundary
+   years, missing peaks, incorrect second-peak amplitude, and flat trajectories.
+3. **Reproducible runs:** record configuration, seeds, git revisions, package
+   versions, data fingerprints, environment controls, failures, and by-reef
+   scores in a unique run directory. Runs must be resumable.
+4. **Pipeline modes:** smoke-test focused, expanded, pulse, deterministic, and
+   stochastic modes. Ensemble figures must show median and uncertainty bands.
+5. **Pilot calibration:** run a bounded search with replicated candidates and
+   convergence checks. Freeze the objective before a production-scale sweep.
+6. **Sensitivity and mechanisms:** apply Sobol/PAWN analysis around the validated
+   region and compare coral-proxy versus COTS-specific connectivity and
+   pulse/no-pulse mechanisms.
+7. **Validation and extraction:** hold out reefs or years, then validate on
+   Moore/Cairns domains. Extract the study repository and publish/version
+   COTSMod only after these gates pass.
+
+Gates 1-5 now have working implementations and bounded results. Gate 6 has a
+validated COTS-connectivity build and paired six-candidate comparison, but a
+formal Sobol/PAWN analysis is intentionally deferred because no plausible
+two-peak region exists. Gate 7's temporal holdout was executed and failed on all
+four reefs. Regional validation remains pending because the local Moore package
+covers 2025-2099 rather than the 1985-2024 observation period.
+
+The next model-development gate is therefore mechanistic: identify why the
+current internal dynamics decay after the first outbreak and cannot regenerate
+a second peak. The exploratory screen prioritizes `a_ricker`, followed by
+`seed_mult` and `IMM`, for targeted recurrence experiments, but its six-point
+rank correlations are not a formal sensitivity result. Do not launch a
+production or multi-seed convergence sweep until at least one candidate produces
+the observed second peak.
+
+### Recurrence diagnosis
+
+The best COTS-connectivity trajectory now exports recruits, juveniles, adults,
+body condition, and coral cover. By 2024 the four calibration reefs have
+recovered body condition of 0.91-0.96 and coral cover of 0.41-0.46, but adult
+density remains only 0.094-0.114 and recruits only 0.044-0.047. The candidate's
+Allee threshold is 3.20, so the final adult-to-threshold ratio is 0.029-0.036
+and the fecundity multiplier
+`N_adult^2 / (allee_threshold^2 + N_adult^2)` is only 0.00085-0.00127.
+
+This identifies a low-density/Allee trap rather than persistent food limitation.
+The next bounded mechanism experiment should:
+
+1. cross a much finer low Allee-threshold range with `a_ricker` and `IMM`;
+2. log local fecundity, background immigration, and dispersed recruits
+   separately rather than only total age-1 animals;
+3. test an externally specified absolute larval-supply pulse distributed over
+   biologically justified source reefs, rather than scaling a pulse only to the
+   model's previous internal supply; and
+4. reject the mechanism unless it produces a second peak before any optimizer
+   expansion.
+
+### Connectivity and validation utilities
+
+```powershell
+# Build and verify the site-level COTS matrix (large data outputs are ignored)
+julia --project=sandbox sandbox\domain_building\build_lizard_cots_connectivity.jl
+julia --project=sandbox sandbox\domain_building\validate_lizard_cots_connectivity.jl
+
+# Compare same-seed coral and COTS-connectivity pilots
+julia --project=sandbox sandbox\calibration\analyze_connectivity_factorial.jl
+
+# Freeze the pre-2006 observation scale and score 2006 onward
+$env:BBO_RUN_ID = 'expanded_cotsconn_pilot_seed20260930'
+julia --project=sandbox sandbox\calibration\validate_temporal_holdout.jl
+
+# Diagnose the post-outbreak age structure and Allee multiplier
+julia --project=sandbox sandbox\calibration\diagnose_recurrence.jl
+```
+
+Promotion criteria, the locked observed-peak contract, expanded-search order,
+sensitivity outputs, connectivity experiment, and validation design are defined
+in `CALIBRATION_PROTOCOL.md`.

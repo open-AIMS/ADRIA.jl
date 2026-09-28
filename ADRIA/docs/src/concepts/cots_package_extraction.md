@@ -1,5 +1,15 @@
 # COTS Package Extraction Plan
 
+> [!NOTE]
+> Steps 1-3 are complete: COTSMod exists as a sibling package and ADRIA calls it
+> through `ADRIA/src/ecosystem/cots.jl`. Step 4 is partly complete because that
+> file is now a compatibility adapter rather than a duplicated implementation.
+> Step 5, extraction of the reproducible calibration-study repository, remains
+> pending. See `sandbox/calibration/README.md` for the active calibration gates.
+> The September 2026 hardening pass also established that focused, expanded,
+> pulse, and COTS-connectivity pilots all miss the later outbreak peak; package
+> extraction must not be presented as calibration completion.
+
 This document defines the migration path from the current ADRIA-owned COTS submodel to a separate `COTSMod.jl` package, plus a separate reproducible calibration-study repository.
 
 ## Goals

@@ -1,5 +1,24 @@
+using Test
 using ADRIA, ADRIA.DataFrames, ADRIA.CSV
 import ADRIA.GDF as GDF
+
+struct ConnectivityFallbackDomain <: ADRIA.Domain
+    conn
+end
+
+struct DedicatedCotsConnectivityDomain <: ADRIA.Domain
+    conn
+    cots_conn
+end
+
+@testset "COTS connectivity selection" begin
+    coral_conn = [0.1 0.2; 0.3 0.4]
+    cots_conn = [0.4 0.3; 0.2 0.1]
+    @test ADRIA.cots_connectivity(ConnectivityFallbackDomain(coral_conn)) === coral_conn
+    @test ADRIA.cots_connectivity(
+        DedicatedCotsConnectivityDomain(coral_conn, cots_conn)
+    ) === cots_conn
+end
 
 if !@isdefined(TEST_DOMAIN_PATH)
     const ADRIA_DIR = pkgdir(ADRIA)
