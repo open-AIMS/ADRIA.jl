@@ -3,7 +3,7 @@
 """
     _no_seed_grp(scenarios::DataFrame)::BitVector
 
-Identify scenarios where no corals were seeded (all `N_CAq_*` columns are zero).
+Identify scenarios where no corals were deployed via coral aquaculture (all `N_CAq_*` columns are zero).
 """
 function _no_seed_grp(scenarios::DataFrame)::BitVector
     return dropdims(
@@ -14,7 +14,7 @@ end
 """
     _counterfactual_grp(scenarios::DataFrame)::BitVector
 
-Identify counterfactual scenarios: no seeding, no fogging, no SRM, no macro-colonization,
+Identify counterfactual scenarios: no coral aquaculture, no fogging, no SRM, no macro-colonization,
 and no marine cloud brightening.
 """
 function _counterfactual_grp(scenarios::DataFrame)::BitVector

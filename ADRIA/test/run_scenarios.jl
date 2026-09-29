@@ -70,8 +70,8 @@ end
     @test size(TEST_RS.inputs, 1) == TEST_N_SAMPLES
     @test TEST_N_SAMPLES == 32
     # Ensure all expected log arrays are present
-    @test !isnothing(TEST_RS.seed_log)
-    @test !isnothing(TEST_RS.mc_log)
+    @test !isnothing(TEST_RS.CAq_log)
+    @test !isnothing(TEST_RS.LvM_log)
     @test !isnothing(TEST_RS.shading_log)
     @test !isnothing(TEST_RS.coral_dhw_tol_log)
     @test !isnothing(TEST_RS.ranks)

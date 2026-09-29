@@ -2,12 +2,12 @@
     intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::YAXArray
 
 Count number of times a location of selected for intervention
-Count frequency of seeded sites for scenarios satisfying a condition.
+Count frequency of coral aquaculture sites for scenarios satisfying a condition.
 
 # Arguments
 - 'rs' : ResultSet
 - `scen_indices` : rcp_id => scenario id that satisfy a condition of interest.
-- 'log_type` : the intervention log to use in calculating frequencies (one of :seed, :shade or :fog).
+- 'log_type` : the intervention log to use in calculating frequencies (one of :CAq, :shade or :fog).
 
 # Returns
 YAXArray(:locations, :rcps)
@@ -30,13 +30,13 @@ y = hcat(mean_tac, mean_sv)
 rule_func = x -> all(x .>= 0.9)
 robust_scens = find_robust(rs, y, rule_func, [45, 60])
 
-# Retrieve seeding intervention frequency for robust scenarios
-robust_selection_frequencies = intervention_frequency(rs, robust_scens, :seed)
+# Retrieve coral aquaculture intervention frequency for robust scenarios
+robust_selection_frequencies = intervention_frequency(rs, robust_scens, :CAq)
 """
 function intervention_frequency(
     rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol
 )::YAXArray
-    log_type ∈ [:seed, :shade, :fog] || ArgumentError("Unsupported log")
+    log_type ∈ [:CAq, :shade, :fog] || ArgumentError("Unsupported log")
 
     # Get requested log
     interv_log = getfield(rs, Symbol("$(log_type)_log"))

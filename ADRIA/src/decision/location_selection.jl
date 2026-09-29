@@ -23,7 +23,7 @@ using ADRIA.Graphs
         scenarios::DataFrame;
         rcp=nothing,
         min_iv_locs=nothing,
-        target_seed_locs=nothing,
+        target_CAq_locs=nothing,
         target_fog_locs=nothing
     )::YAXArray
 
@@ -31,7 +31,7 @@ Determine location ranks for a given domain and intervention scenarios.
 Locations are ranked by order of their determined deployment suitability according to
 criteria weights. Values of 1 indicate highest rank.
 
-Interventions are assessed separately such that seeding locations are not influenced by
+Interventions are assessed separately such that coral aquaculture locations are not influenced by
 fogging locations.
 
 # Arguments
@@ -40,11 +40,11 @@ fogging locations.
 - `scenarios` : Scenario specification
 - `rcp` : RCP conditions to assess
 - `min_iv_locs` : Minimum number of locations to intervene
-- `target_seed_locs` : Specify locations by their IDs to consider for seeding.
+- `target_CAq_locs` : Specify locations by their IDs to consider for coral aquaculture.
 - `target_fog_locs` : Specify locations by their IDs to consider for fogging.
 
 # Returns
-YAXArray[n_locations ⋅ [:seed, :fog] ⋅ n_scenarios], ranks from 1 to number of locations + 1
+YAXArray[n_locations ⋅ [:caq, :fog] ⋅ n_scenarios], ranks from 1 to number of locations + 1
 Values equal to number of locations + 1 indicate locations that unranked.
 """
 function rank_locations(
@@ -53,7 +53,7 @@ function rank_locations(
     scenarios::DataFrame;
     rcp=nothing,
     min_iv_locs=nothing,
-    target_seed_locs=nothing,
+    target_CAq_locs=nothing,
     target_fog_locs=nothing
 )::YAXArray
     n_locs = n_locations(dom)
@@ -73,17 +73,17 @@ function rank_locations(
     ranks_store = DataCube(
         fill(0.0, n_locs, 2, nrow(scenarios));
         locations=dom.loc_ids,
-        intervention=[:seed, :fog],
+        intervention=[:caq, :fog],
         scenarios=1:nrow(scenarios)
     )
 
     # Consider all locations
-    target_seed_loc_ids = dom.loc_ids
+    target_CAq_loc_ids = dom.loc_ids
     target_fog_loc_ids = dom.loc_ids
 
     # Overwrite if specific locations are specified
-    if !isnothing(target_seed_locs)
-        target_seed_loc_ids = target_seed_locs
+    if !isnothing(target_CAq_locs)
+        target_CAq_loc_ids = target_CAq_locs
     end
 
     if !isnothing(target_fog_locs)
@@ -109,7 +109,7 @@ function rank_locations(
         factors=names(scenarios)
     )
 
-    seed_pref = CAqPreferences(dom, scens[1, :])
+    CAq_pref = CAqPreferences(dom, scens[1, :])
     fog_pref = FogPreferences(dom, scens[1, :])
     mc_pref = LvMPreferences(dom, scens[1, :])
 
@@ -129,12 +129,12 @@ function rank_locations(
         depth_criteria = identify_within_depth_bounds(
             loc_data.depth_med, min_depth, depth_offset
         )
-        valid_seed_locs =
+        valid_CAq_locs =
             coral_habitable_locs .& depth_criteria .&
-            (dom.loc_ids .∈ Ref(target_seed_loc_ids))
-        considered_seed_locs = findall(valid_seed_locs)
-        if count(valid_seed_locs) == 0
-            @warn "No valid seeding locations found for scenario $(scen_idx)"
+            (dom.loc_ids .∈ Ref(target_CAq_loc_ids))
+        considered_CAq_locs = findall(valid_CAq_locs)
+        if count(valid_CAq_locs) == 0
+            @warn "No valid coral aquaculture locations found for scenario $(scen_idx)"
         end
 
         valid_fog_locs =
@@ -146,7 +146,7 @@ function rank_locations(
 
         MCDA_approach = mcda_methods()[Int64(scen[factors = At("mcda_method")][1])]
 
-        seed_pref = CAqPreferences(dom, scen)
+        CAq_pref = CAqPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
         mc_pref = LvMPreferences(dom, scen)
 
@@ -173,43 +173,43 @@ function rank_locations(
         # Create shared decision matrix
         # Ignore locations that cannot support corals or are out of depth bounds
         # from consideration
-        if count(valid_seed_locs) > 0
-            seed_decision_mat = decision_matrix(
-                dom.loc_ids[valid_seed_locs],
-                seed_pref.names;
-                depth=loc_data.depth_med[valid_seed_locs],
-                in_connectivity=in_conn[valid_seed_locs],
-                out_connectivity=out_conn[valid_seed_locs],
-                heat_stress=dhw_projection[valid_seed_locs],
-                wave_stress=wave_projection[valid_seed_locs],
-                coral_cover=sum_cover[valid_seed_locs]
+        if count(valid_CAq_locs) > 0
+            CAq_decision_mat = decision_matrix(
+                dom.loc_ids[valid_CAq_locs],
+                CAq_pref.names;
+                depth=loc_data.depth_med[valid_CAq_locs],
+                in_connectivity=in_conn[valid_CAq_locs],
+                out_connectivity=out_conn[valid_CAq_locs],
+                heat_stress=dhw_projection[valid_CAq_locs],
+                wave_stress=wave_projection[valid_CAq_locs],
+                coral_cover=sum_cover[valid_CAq_locs]
             )
 
             # Ensure what to do with this because it is usually empty
-            # seed_zone = strong_pred[valid_locs]
+            # CAq_zone = strong_pred[valid_locs]
 
             min_locs = min_iv_locs[scen_idx]
-            selected_seed_ranks = select_locations(
-                seed_pref,
-                seed_decision_mat,
+            selected_CAq_ranks = select_locations(
+                CAq_pref,
+                CAq_decision_mat,
                 MCDA_approach,
-                considered_seed_locs,
+                considered_CAq_locs,
                 min_locs
             )
 
-            if !isempty(selected_seed_ranks)
+            if !isempty(selected_CAq_ranks)
                 ranks_store[
-                    locations = At(selected_seed_ranks),
-                    intervention = At(:seed),
+                    locations = At(selected_CAq_ranks),
+                    intervention = At(:caq),
                     scenarios = scen_idx
-                ] .= 1:length(selected_seed_ranks)
+                ] .= 1:length(selected_CAq_ranks)
             end
         end
 
         if count(valid_fog_locs) > 0
             fog_decision_mat = decision_matrix(
                 dom.loc_ids[valid_fog_locs],
-                seed_pref.names;
+                CAq_pref.names;
                 depth=loc_data.depth_med[valid_fog_locs],
                 in_connectivity=in_conn[valid_fog_locs],
                 out_connectivity=out_conn[valid_fog_locs],
@@ -247,14 +247,14 @@ Scores of 1 indicates the location was always selected.
 ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
 # ranks will be a 3-dimensional array of [locations ⋅ interventions ⋅ scenarios]
 
-# Identify locations that were most desirable for seeding over all scenarios
-seed_scores = ADRIA.decision.selection_score(ranks, :seed)
+# Identify locations that were most desirable for coral aquaculture over all scenarios
+CAq_scores = ADRIA.decision.selection_score(ranks, :caq)
 
 # Identify locations that were most desirable for fogging over all scenarios
 fog_scores = ADRIA.decision.selection_score(ranks, :fog)
 
 # Selection scores can be assessed for a subset of scenarios, including a specific scenario
-ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
+ADRIA.decision.selection_score(ranks[scenarios=1:4], :caq)
 
 # Analysis includes the time dimension by default where scenario runs are being assessed
 # such that the score for each location is returned
@@ -319,7 +319,7 @@ Note: If `timesteps` are to be squashed the scores are normalized against the ma
 # Arguments
 - `ranks` : The recorded/logged rankings
 - `lowest_rank` : The identified lowest rank
-- `iv_type` : The intervention type to assess (`:seed` or `:fog`)
+- `iv_type` : The intervention type to assess (`:caq` or `:fog`)
 - `dims` : Dimensions to squash
 
 # Returns
@@ -414,16 +414,16 @@ selected across all time and under all conditions modelled.
 ```julia
 ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
 
-# Identify locations that were selected for seeding over all scenarios
-seed_freq = ADRIA.decision.selection_frequency(ranks, :seed)
+# Identify locations that were selected for coral aquaculture over all scenarios
+CAq_freq = ADRIA.decision.selection_frequency(ranks, :caq)
 
 # Selection scores can be assessed for a subset of scenarios, including a specific scenario
-ADRIA.decision.selection_frequency(ranks[scenarios=1:4], :seed)
+ADRIA.decision.selection_frequency(ranks[scenarios=1:4], :caq)
 
 # Assess selection frequency for scenario runs
 # Note: indices have to be used for now
 rs = ADRIA.run_scenarios(dom, 16, "45")
-scen_seed_freq = ADRIA.decision.selection_frequency(rs.ranks, 1)
+scen_CAq_freq = ADRIA.decision.selection_frequency(rs.ranks, 1)
 ```
 
 # Arguments
@@ -460,8 +460,8 @@ all non-location dimensions (e.g. timesteps and scenarios).
 
 # Arguments
 - `ranks` : YAXArray with a `locations` dimension. Values are integer ranks
-            (0 = not selected). Typically the output of `ADRIA.metrics.seed_ranks`
-            or `rs.ranks[intervention=At(:seed)]`.
+            (0 = not selected). Typically the output of `ADRIA.metrics.CAq_ranks`
+            or `rs.ranks[intervention=At(:caq)]`.
 
 # Returns
 `YAXArray[ranks=1:max_rank, locations=...]` where each value is the fraction of
@@ -470,7 +470,7 @@ assigned that rank.
 
 # Example
 ```julia
-rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.CAq_ranks(rs))
 rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1)
 ```
 """
@@ -508,7 +508,7 @@ default).
 ```julia
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :seed; desc=true)
+freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :caq; desc=true)
 
 # Get details of locations ordered by their selection frequency.
 rs.loc_data[freq_rank, :]
@@ -516,7 +516,7 @@ rs.loc_data[freq_rank, :]
 
 # Arguments
 - `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
-- `iv_type` : Intervention type (`:seed` or `:fog`)
+- `iv_type` : Intervention type (`:caq` or `:fog`)
 - `desc` : Return ranks from most deployed to least (defaults to `true`)
 
 # Returns
@@ -556,12 +556,12 @@ where `[lower/upper]_50` refer to the lower and upper 50th percentile.
 ```julia
 rs = ADRIA.run_scenarios(dom, 128, "45")
 
-deployment_summary = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
+deployment_summary = ADRIA.decision.deployment_summary_stats(rs.ranks, :caq)
 ```
 
 # Arguments
 - `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
-- `iv_type` : `:seed` or `:fog`
+- `iv_type` : `:caq` or `:fog`
 
 # Returns
 Summary stats of the number of deployment locations for each scenario

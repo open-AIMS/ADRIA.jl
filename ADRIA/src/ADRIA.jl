@@ -68,9 +68,9 @@ include("io/calib_params.jl")
 
 include("decision/Decision.jl")
 include("interventions/Interventions.jl")
-include("interventions/seeding.jl")
+include("interventions/CAq.jl")
 include("interventions/fogging.jl")
-include("interventions/moving_corals.jl")
+include("interventions/LvM.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
@@ -90,6 +90,7 @@ include("ExtInterface/CScape/CScapeOutcomes.jl")
 
 include("io/result_post_processing.jl")
 include("io/result_io.jl")
+include("io/migrate_resultset.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
@@ -109,7 +110,8 @@ export
     CAqCriteriaWeights, FogCriteriaWeights, LvMCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
-    metrics, select, timesteps, env_stats, viz
+    metrics, select, timesteps, env_stats, viz,
+    migrate_resultset_columns!
 
 using .analysis: AnnotatedOutcomes, attach_scenario_metadata
 export AnnotatedOutcomes, attach_scenario_metadata

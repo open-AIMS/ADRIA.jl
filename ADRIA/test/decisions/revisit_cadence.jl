@@ -301,7 +301,7 @@ end
     # rs.ranks structure: (timesteps, locations, interventions, scenarios); rank > 0
     # (stored as UInt16) indicates the location was selected for deployment at that
     # timestep for that intervention type.
-    seed_ranks_a = rs_a.ranks[intervention = At(:seed)]
+    CAq_ranks_a = rs_a.ranks[intervention = At(:caq)]
 
     @testset "cadence is respected (no re-selection within the window)" begin
         # Config A is deliberately sized so PeriodicStrategy's min_locations backfill
@@ -312,7 +312,7 @@ end
         for s = 1:num_samples
             for loc_idx = 1:n_locs
                 deployed_ts = findall(
-                    >(0), collect(seed_ranks_a[locations = loc_idx, scenarios = At(s)])
+                    >(0), collect(CAq_ranks_a[locations = loc_idx, scenarios = At(s)])
                 )
                 deployed_ts = deployed_ts[
                     iv_CAq_year_start .<= deployed_ts .<= (iv_CAq_year_start + iv_CAq_years - 1)
@@ -328,32 +328,32 @@ end
     end
 
     @testset "correct location IDs selected despite non-canonical share ordering" begin
-        # Every location that was ever selected for seeding must belong to one of the
+        # Every location that was ever selected for coral aquaculture must belong to one of the
         # two target-location sets (cross-checked by actual ID, not just index/count).
         all_target_locs = Set(vcat(share_1_locs, share_2_locs))
         for s = 1:num_samples
             for loc_idx = 1:n_locs
                 any_deployment = any(
-                    >(0), collect(seed_ranks_a[locations = loc_idx, scenarios = At(s)])
+                    >(0), collect(CAq_ranks_a[locations = loc_idx, scenarios = At(s)])
                 )
                 if any_deployment
                     @test loc_ids[loc_idx] in all_target_locs ||
-                        "Location $(loc_ids[loc_idx]) was seeded but is not part of any " *
+                        "Location $(loc_ids[loc_idx]) was deployed via coral aquaculture but is not part of any " *
                           "configured target-location share"
                 end
             end
         end
 
         # Reversed share_1 specifically: confirm at least one of its members (which sit
-        # at non-canonical positions in the aggregate target list) was actually seeded,
+        # at non-canonical positions in the aggregate target list) was actually deployed via coral aquaculture,
         # proving the reversed ordering did not silently drop/misalign them.
         share_1_idx = findall(in(share_1_locs), loc_ids)
         share_1_deployed = any(
-            any(>(0), collect(seed_ranks_a[locations = li, scenarios = At(s)]))
+            any(>(0), collect(CAq_ranks_a[locations = li, scenarios = At(s)]))
             for li in share_1_idx, s = 1:num_samples
         )
         @test share_1_deployed ||
-            "No location in the reversed-order share (share_1_locs) was ever seeded — " *
+            "No location in the reversed-order share (share_1_locs) ever received coral aquaculture deployment — " *
               "possible ordering/alignment regression"
     end
 
@@ -364,14 +364,14 @@ end
     dom_b = _configure!(deepcopy(dom), min_iv_locations_b)
     scens_b = ADRIA.sample_guided(dom_b, num_samples)
     rs_b = ADRIA.run_scenarios(dom_b, scens_b, "45")
-    seed_ranks_b = rs_b.ranks[intervention = At(:seed)]
+    CAq_ranks_b = rs_b.ranks[intervention = At(:caq)]
 
     @testset "Periodic backfill fills the aggregate pool when needed" begin
         found_backfill_evidence = false
         for s = 1:num_samples
             for tstep = (iv_CAq_year_start + 1):(iv_CAq_year_start + iv_CAq_years - 1)
                 deployed_this_year = findall(
-                    >(0), collect(seed_ranks_b[timesteps = tstep, scenarios = At(s)])
+                    >(0), collect(CAq_ranks_b[timesteps = tstep, scenarios = At(s)])
                 )
                 if length(deployed_this_year) >= min_iv_locations_b
                     found_backfill_evidence = true

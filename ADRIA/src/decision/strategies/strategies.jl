@@ -39,7 +39,7 @@ function strategy_type(strategy_idx::Int64)
     elseif is_periodic(strategy_idx)
         return PeriodicStrategy
     end
-    throw(ArgumentError("Unknown mc strategy type: $strategy_type"))
+    throw(ArgumentError("Unknown strategy type: $strategy_type"))
 end
 function strategy_type(param_set::YAXArray{Float64,1}, iv_type::String)
     return strategy_type(Int64(param_set[factors = At(["$(iv_type)_strategy"])][1]))

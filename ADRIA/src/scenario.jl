@@ -187,7 +187,7 @@ function run_scenarios(
             _n_groups_cz +                  # relative_taxa_cover
             _n_locs_cz * 2 +               # shading_log (fog + shade channels)
             _n_locs_cz * _n_ivs_cz +       # site_ranks
-            _n_groups_cz * _n_locs_cz * 2  # mc_log + seed_log
+            _n_groups_cz * _n_locs_cz * 2  # LvM_log + CAq_log
         )
     # Stay below the hard 2 GB limit with a conservative 1.8 GB working budget
     _max_chunk_by_size::Int = max(1, floor(Int, 1_800_000_000 / _bytes_per_scen))
@@ -436,11 +436,11 @@ function _collect_scenario_results(
         err isa MethodError ? nothing : rethrow(err)
     end
 
-    mc_vals = result_set.mc_log
-    mc_vals[mc_vals .< threshold] .= Float32(0.0)
+    LvM_vals = result_set.LvM_log
+    LvM_vals[LvM_vals .< threshold] .= Float32(0.0)
 
-    seed_vals = result_set.seed_log
-    seed_vals[seed_vals .< threshold] .= Float32(0.0)
+    CAq_vals = result_set.CAq_log
+    CAq_vals[CAq_vals .< threshold] .= Float32(0.0)
 
     # coral_dhw_log / coral_cover_log are false when their env var is disabled
     dhw_vals = result_set.coral_dhw_log
@@ -451,8 +451,8 @@ function _collect_scenario_results(
         taxa_cover=taxa_vals,
         shading=shading_buf,
         site_ranks=site_ranks_vals,
-        mc_log=mc_vals,
-        seed_log=seed_vals,
+        LvM_log=LvM_vals,
+        CAq_log=CAq_vals,
         coral_dhw_log=dhw_vals,
         coral_cover_log=cover_vals
     )
@@ -504,16 +504,16 @@ function _write_batch!(
         data_store.site_ranks[:, :, :, idx_range] .= ranks_batch
     end
 
-    # mc_log and seed_log: (tf, n_groups, n_locs, n)
-    _, n_g, n_l = size(results[1].mc_log)
-    mc_batch = Array{Float32}(undef, tf, n_g, n_l, n)
-    seed_batch = Array{Float32}(undef, tf, n_g, n_l, n)
+    # LvM_log and CAq_log: (tf, n_groups, n_locs, n)
+    _, n_g, n_l = size(results[1].LvM_log)
+    LvM_batch = Array{Float32}(undef, tf, n_g, n_l, n)
+    CAq_batch = Array{Float32}(undef, tf, n_g, n_l, n)
     for (i, r) in enumerate(results)
-        mc_batch[:, :, :, i] .= r.mc_log
-        seed_batch[:, :, :, i] .= r.seed_log
+        LvM_batch[:, :, :, i] .= r.LvM_log
+        CAq_batch[:, :, :, i] .= r.CAq_log
     end
-    data_store.mc_log[:, :, :, idx_range] .= mc_batch
-    data_store.seed_log[:, :, :, idx_range] .= seed_batch
+    data_store.LvM_log[:, :, :, idx_range] .= LvM_batch
+    data_store.CAq_log[:, :, :, idx_range] .= CAq_batch
 
     # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
     if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
@@ -639,7 +639,7 @@ Core scenario running function. When called with only `domain` and `param_set` a
 # Returns
 NamedTuple of collated results
 - `raw` : Array, Coral cover relative to k area
-- `seed_log` : Array, Log of seeded locations
+- `CAq_log` : Array, Log of coral aquaculture locations
 - `fog_log` : Array, Log of fogged locations
 - `shade_log` : Array, Log of shaded locations
 - `site_ranks` : Array, Log of location rankings
@@ -829,13 +829,13 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
-    mc_min_iv_locs::Int64 = param_set[At("iv_LvM_min_iv_locations")]
+    LvM_min_iv_locs::Int64 = param_set[At("iv_LvM_min_iv_locations")]
 
     fogging::Float64 = param_set[At("iv_Fog")]
     srm::Float64 = param_set[At("iv_Shd")]  # DHW equivalents reduced by some shading mechanism
     shade_years::Int64 = param_set[At("iv_Shd_years")]  # number of years to shade
 
-    # Years to start seeding/shading/fogging
+    # Years to start coral aquaculture/shading/fogging
     shade_start_year::Int64 = param_set[At("iv_Shd_year_start")]
 
     colony_areas = _to_group_size(
@@ -863,7 +863,7 @@ function run_model(
     eff_dhw_t::Vector{Float64} = cache.eff_dhw_step
     depth_coeff::Vector{Float64} = cache.depth_coeff
 
-    # Used to distribute moving corals settlers
+    # Used to distribute larval methods settlers
     prop_fecundity::Matrix{Float64} = copy(cache.fec_scope)
 
     loc_data = domain.loc_data
@@ -886,7 +886,7 @@ function run_model(
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
     # Values of n_locs+1 indicate locations that were not considered in rankings.
-    log_location_ranks = ZeroDataCube(;     # log seeding/fogging ranks
+    log_location_ranks = ZeroDataCube(;     # log coral aquaculture/fogging ranks
         T=Float64,
         timesteps=1:tf,
         locations=domain.loc_ids,
@@ -895,8 +895,8 @@ function run_model(
 
     Yshade = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
-    Yseed = zeros(tf, n_groups, n_locs)  # 3 = the number of seeded coral types
-    Ymc = zeros(tf, n_groups, n_locs)
+    YCAq = zeros(tf, n_groups, n_locs)  # 3 = the number of coral aquaculture coral types
+    YLvM = zeros(tf, n_groups, n_locs)
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
@@ -915,8 +915,8 @@ function run_model(
     decay = build_decay(plan_horizon, projection_confidence)
 
     # Years at which intervention locations are re-evaluated and deployed
-    # seed_decision_years = decision_frequency(
-    #     seed_start_year, tf, seed_years, param_set[At("iv_CAq_deployment_freq")]
+    # CAq_decision_years = decision_frequency(
+    #     CAq_start_year, tf, CAq_years, param_set[At("iv_CAq_deployment_freq")]
     # )
     # fog_decision_years = decision_frequency(
     #     fog_start_year, tf, fog_years, param_set[At("iv_Fog_deployment_freq")]
@@ -928,32 +928,32 @@ function run_model(
         shade_start_year, tf, shade_years, param_set[At("iv_Shd_deployment_freq")]
     )
 
-    # Define taxa and size class to seed, and identify their factor names
-    # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
+    # Define taxa and size class for coral aquaculture, and identify their factor names
+    # TODO: Coral-aquaculture-deploy 1-year old corals!!! If this is the 1st size class, that's fine but needs
     # to be confirmed with ecoRRAP
-    _seed_size_groups::BitMatrix = seed_size_groups(n_groups, n_sizes)
+    _CAq_size_groups::BitMatrix = CAq_size_groups(n_groups, n_sizes)
 
     # Set up assisted adaptation values
     a_adapt::Vector{Float64} = fill(param_set[At("iv_CAq_a_adapt")], n_groups)
 
-    seed_idx = findall(n -> contains(n, "N_CAq"), factor_names)
-    seed_volume = view(param_set.data, seed_idx)
-    seeding_devices_per_m2::Float64 = param_set[At("iv_CAq_devices_per_m2")]
+    CAq_idx = findall(n -> contains(n, "N_CAq"), factor_names)
+    CAq_volume = view(param_set.data, CAq_idx)
+    CAq_devices_per_m2::Float64 = param_set[At("iv_CAq_devices_per_m2")]
 
     is_unguided = param_set[At("guided")] == 0.0
-    is_seeding = any(>(0), seed_volume)
+    is_CAq = any(>(0), CAq_volume)
 
-    # Flag indicating whether to seed or not to seed when unguided
-    unguided_seeding = is_unguided && is_seeding
+    # Flag indicating whether to deploy coral aquaculture when unguided
+    unguided_CAq = is_unguided && is_CAq
 
     # Flag indicating whether to fog or not fog
     is_fogging = fogging > 0.0
     unguided_fogging = is_unguided && is_fogging
 
-    # Moving corals flag
-    n_mc_settlers = param_set[At("iv_LvM_N_settlers")]
-    is_mc = n_mc_settlers > 0.0
-    unguided_mc = is_unguided && is_mc
+    # Larval methods flag
+    n_LvM_settlers = param_set[At("iv_LvM_N_settlers")]
+    is_LvM = n_LvM_settlers > 0.0
+    unguided_LvM = is_unguided && is_LvM
 
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
@@ -962,32 +962,32 @@ function run_model(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
-    seed_t_locs = vcat(getproperty.(domain.CAq_target_locations, :target_locs)...)
+    CAq_t_locs = vcat(getproperty.(domain.CAq_target_locations, :target_locs)...)
     mc_t_locs = vcat(getproperty.(domain.LvM_target_locations, :target_locs)...)
     shade_locs_mask::BitVector = domain.loc_ids .∈ [domain.Shd_target_locations]
 
     if is_guided
-        seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, CAqPreferences, seed_t_locs, is_seeding,
+        CAq_pref, CAq_decision_mat, CAq_strategy = setup_guided_intervention(
+            domain, param_set, depth_criteria, CAqPreferences, CAq_t_locs, is_CAq,
             build_CAq_strategy
         )
         fog_pref, fog_decision_mat, fog_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, FogPreferences, domain.Fog_target_locations,
             is_fogging, build_Fog_strategy
         )
-        mc_pref, mc_decision_mat, mc_strategy = setup_guided_intervention(
+        LvM_pref, LvM_decision_mat, LvM_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, LvMPreferences, mc_t_locs,
-            is_mc, build_LvM_strategy
+            is_LvM, build_LvM_strategy
         )
     else
-        seed_strategy =
-            unguided_seeding ? build_CAq_strategy(param_set, domain, seed_t_locs) : nothing
+        CAq_strategy =
+            unguided_CAq ? build_CAq_strategy(param_set, domain, CAq_t_locs) : nothing
         fog_strategy =
             unguided_fogging ?
             build_Fog_strategy(param_set, domain, domain.Fog_target_locations) :
             nothing
-        mc_strategy =
-            unguided_mc ? build_LvM_strategy(param_set, domain, mc_t_locs) : nothing
+        LvM_strategy =
+            unguided_LvM ? build_LvM_strategy(param_set, domain, mc_t_locs) : nothing
     end
 
     dhw_projection::Vector{Float64} = zeros(Float64, n_locs)
@@ -1010,9 +1010,9 @@ function run_model(
     # Hard ceiling: tolerance cannot increase more than HEAT_UB DHW-weeks above initial values
     c_mean_tol_ceil = c_mean_t .+ HEAT_UB
 
-    # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE seeding.
+    # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE coral aquaculture.
     # Used as the reference base for a_adapt enhancement (c_mean_reference).
-    # Storing the post-seeding state would cause a_adapt to compound year-over-year,
+    # Storing the post-coral-aquaculture state would cause a_adapt to compound year-over-year,
     # driving unrealistic tolerance values (>100 DHW-weeks over long runs).
     c_mean_pre_seed = zeros(n_groups, n_locs)
 
@@ -1040,9 +1040,9 @@ function run_model(
     )
 
     # Dummy vars to fill/replace with ranks of selected locations
-    selected_seed_ranks = []
+    selected_CAq_ranks = []
     selected_fog_ranks = []
-    selected_mc_ranks = []
+    selected_LvM_ranks = []
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
@@ -1142,7 +1142,7 @@ function run_model(
     eff_dhw_base::Float64 = param_set[At("eff_dhw_base")]
     eff_dhw_mix::Float64 = param_set[At("eff_dhw_mix")]
 
-    # c_mean tolerance of the "natural" population used as the reference for seeding corals
+    # c_mean tolerance of the "natural" population used as the reference for coral aquaculture corals
     # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
         # If a_adapt_ref == 0, 3rd dim holds c_mean at t-1 (idx 1), updated yearly, and
@@ -1320,8 +1320,8 @@ function run_model(
             end
         end
 
-        # Snapshot juvenile tolerance after natural adaptation, before seeding modifies it.
-        # This is the correct baseline for a_adapt enhancement: using the post-seeding state
+        # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
+        # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
         # here would cause the enhancement to compound each deployment year.
         c_mean_pre_seed .= c_mean_t[:, 1, :]
 
@@ -1379,16 +1379,16 @@ function run_model(
         # - Corals spawn and are recruited
         # - SRM is applied
         # - Fogging is applied next
-        # - Seeding interventions occur
+        # - Coral aquaculture interventions occur
         # - bleaching then occurs
         # - then cyclones hit
         #
-        # Seeding occurs before bleaching as current tech only allows deployments shortly
+        # Coral aquaculture occurs before bleaching as current tech only allows deployments shortly
         # after spawning. If bio-banking or similar tech comes up to speed then we could
         # potentially deploy at alternate times.
 
         # Shading
-        # Apply regional cooling effect before selecting locations to seed
+        # Apply regional cooling effect before selecting locations for coral aquaculture
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if apply_shading && shade_decision_years[tstep]
             Yshade[tstep, :] .= srm
@@ -1516,11 +1516,11 @@ function run_model(
             selected_fog_ranks = []
         end
 
-        # Moving corals intervention
-        if !isnothing(mc_strategy)
+        # Larval methods intervention
+        if !isnothing(LvM_strategy)
             state = if is_guided
                 build_state(
-                    domain, mc_strategy,
+                    domain, LvM_strategy,
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
@@ -1531,22 +1531,22 @@ function run_model(
                 nothing
             end
 
-            if is_decision_year(mc_strategy, tstep)
+            if is_decision_year(LvM_strategy, tstep)
                 # Get candidate locations from strategy
-                candidate_locs = filter_candidate_locations(mc_strategy, tstep, state)
+                candidate_locs = filter_candidate_locations(LvM_strategy, tstep, state)
 
-                # mc_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for mc_share in domain.LvM_target_locations
+                # LvM_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
+                for LvM_share in domain.LvM_target_locations
                     share_candidate_locs = intersect(
-                        candidate_locs, mc_share.target_locs
+                        candidate_locs, LvM_share.target_locs
                     )
                     if isempty(share_candidate_locs)
                         if ADRIA.decision.strategy_type(param_set, "iv_LvM") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
-                                $(length(mc_share.target_locs)) reefs with weight
-                                $(mc_share.weight) skipped because no candidate reefs
+                                $(length(LvM_share.target_locs)) reefs with weight
+                                $(LvM_share.weight) skipped because no candidate reefs
                                 were found.
                             """
                         end
@@ -1560,7 +1560,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            mc_decision_mat[location = At(share_candidate_locs)];
+                            LvM_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1568,73 +1568,73 @@ function run_model(
                             out_connectivity=out_conn[share_candidate_loc_idx]
                         )
 
-                        selected_mc_ranks = select_locations(
-                            mc_pref,
-                            mc_decision_mat[location = At(share_candidate_locs)],
+                        selected_LvM_ranks = select_locations(
+                            LvM_pref,
+                            LvM_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
-                            mc_min_iv_locs
+                            LvM_min_iv_locs
                         )
                     else
                         # Unguided deployment, anywhere with available space > 0
-                        selected_mc_ranks = unguided_selection(
+                        selected_LvM_ranks = unguided_selection(
                             share_candidate_locs,
-                            mc_min_iv_locs,
+                            LvM_min_iv_locs,
                             vec(leftover_space_m²[share_candidate_loc_idx]),
                             depth_criteria[share_candidate_loc_idx]
                         )
                     end
-                    if !isempty(selected_mc_ranks)
-                        log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .=
+                    if !isempty(selected_LvM_ranks)
+                        log_val = is_guided ? (1:length(selected_LvM_ranks)) : 1.0
+                        log_location_ranks[tstep, At(selected_LvM_ranks), At(:lvm)] .=
                             log_val
                         selected_mc_loc_idx = findall(
-                            in.(domain.loc_ids, Ref(selected_mc_ranks))
+                            in.(domain.loc_ids, Ref(selected_LvM_ranks))
                         )
                         last_mc_deployment[selected_mc_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected
-                    has_mc_locs::Bool = !isempty(selected_mc_ranks)
+                    has_mc_locs::Bool = !isempty(selected_LvM_ranks)
 
-                    # Apply Moving Corals (assumed to occur after spawning)
+                    # Apply Larval Methods (assumed to occur after spawning)
                     if has_mc_locs
-                        mc_loc_idx = findall(domain.loc_ids .∈ [selected_mc_ranks])
+                        LvM_loc_idx = findall(domain.loc_ids .∈ [selected_LvM_ranks])
 
-                        @views available_space = leftover_space_m²[mc_loc_idx]
+                        @views available_space = leftover_space_m²[LvM_loc_idx]
 
                         locs_with_space = findall(available_space .> 0.0)
 
                         # If there are locations with space to select from, deploy what we can
                         if length(locs_with_space) > 0
-                            mc_loc_idx = mc_loc_idx[locs_with_space]
+                            LvM_loc_idx = LvM_loc_idx[locs_with_space]
                             available_space = available_space[locs_with_space]
 
-                            @views mc_proportional_increase, n_mc_corals = distribute_moving_corals(
-                                vec_abs_k[mc_loc_idx],
+                            @views LvM_proportional_increase, n_LvM_corals = distribute_LvM_corals(
+                                vec_abs_k[LvM_loc_idx],
                                 available_space,
-                                n_mc_settlers * mc_share.weight,
-                                colony_areas[_seed_size_groups],
-                                prop_fecundity[:, mc_loc_idx]
+                                n_LvM_settlers * LvM_share.weight,
+                                colony_areas[_CAq_size_groups],
+                                prop_fecundity[:, LvM_loc_idx]
                             )
 
-                            @views recruitment[:, mc_loc_idx] .+=
-                                mc_proportional_increase
-                            leftover_space_m²[mc_loc_idx] .-=
-                                vec(sum(Array(mc_proportional_increase); dims=1)) .*
-                                vec_abs_k[mc_loc_idx]
+                            @views recruitment[:, LvM_loc_idx] .+=
+                                LvM_proportional_increase
+                            leftover_space_m²[LvM_loc_idx] .-=
+                                vec(sum(Array(LvM_proportional_increase); dims=1)) .*
+                                vec_abs_k[LvM_loc_idx]
 
                             # Log estimated number of corals moved
-                            Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
+                            YLvM[tstep, :, LvM_loc_idx] .= n_LvM_corals
                         end
 
-                        # Empty selected_mc_ranks before the next iteration
-                        selected_mc_ranks = []
+                        # Empty selected_LvM_ranks before the next iteration
+                        selected_LvM_ranks = []
                     end
                 end
             end
         end
 
-        # Set next settlers DHW tolerance after reproducton and moving corals intervention
+        # Set next settlers DHW tolerance after reproducton and larval methods intervention
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
@@ -1647,11 +1647,11 @@ function run_model(
             c_mean_tol_ceil
         )
 
-        # Seeding
+        # Coral aquaculture
         # IDs of valid locations considering locations that have space for corals
         # locs_with_space = vec(leftover_space_m²) .> 0.0
 
-        # if is_guided && seed_decision_years[tstep] && (length(considered_locs) > 0)
+        # if is_guided && CAq_decision_years[tstep] && (length(considered_locs) > 0)
         #     considered_locs = findall(_valid_locs .& locs_with_space)
 
         #     # Use modified projected DHW (may have been affected by fogging or shading)
@@ -1676,8 +1676,8 @@ function run_model(
         #         out_connectivity=out_conn[_valid_locs]
         #     )
 
-        #     selected_seed_ranks = select_locations(
-        #         seed_pref,
+        #     selected_CAq_ranks = select_locations(
+        #         CAq_pref,
         #         decision_mat[location=locs_with_space[_valid_locs]],
         #         MCDA_approach,
         #         considered_locs,
@@ -1685,30 +1685,30 @@ function run_model(
         #     )
 
         #     # Log rankings as appropriate
-        #     if !isempty(selected_seed_ranks)
-        #         log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
-        #             1:length(selected_seed_ranks)
+        #     if !isempty(selected_CAq_ranks)
+        #         log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .=
+        #             1:length(selected_CAq_ranks)
         #     end
-        # elseif apply_seeding && seed_decision_years[tstep]
-        #     # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
-        #     selected_seed_ranks = unguided_selection(
+        # elseif apply_CAq && CAq_decision_years[tstep]
+        #     # Unguided deployment, coral-aquaculture/fog corals anywhere, so long as available space > 0
+        #     selected_CAq_ranks = unguided_selection(
         #         domain.loc_ids,
         #         min_iv_locs,
         #         vec(leftover_space_m²),
         #         depth_criteria
         #     )
 
-        #     log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+        #     log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .= 1.0
 
         #     # Estimate proportional change in cover to apply to cubes
         # end
 
-        # Seeding location selection
-        if !isnothing(seed_strategy)
+        # Coral aquaculture location selection
+        if !isnothing(CAq_strategy)
             state = if is_guided
                 build_state(
                     domain,
-                    seed_strategy,
+                    CAq_strategy,
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
@@ -1719,22 +1719,22 @@ function run_model(
                 nothing
             end
 
-            if is_decision_year(seed_strategy, tstep)
+            if is_decision_year(CAq_strategy, tstep)
                 # Get candidate locations from strategy
-                candidate_locs = filter_candidate_locations(seed_strategy, tstep, state)
+                candidate_locs = filter_candidate_locations(CAq_strategy, tstep, state)
 
-                # seed_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for seed_share in domain.CAq_target_locations
+                # CAq_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
+                for CAq_share in domain.CAq_target_locations
                     share_candidate_locs = intersect(
-                        candidate_locs, seed_share.target_locs
+                        candidate_locs, CAq_share.target_locs
                     )
                     if isempty(share_candidate_locs)
                         if ADRIA.decision.strategy_type(param_set, "iv_CAq") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
-                                $(length(seed_share.target_locs)) reefs with weight
-                                $(seed_share.weight) skipped because no candidate reefs
+                                $(length(CAq_share.target_locs)) reefs with weight
+                                $(CAq_share.weight) skipped because no candidate reefs
                                 were found.
                             """
                         end
@@ -1748,7 +1748,7 @@ function run_model(
                     if is_guided
                         # Update decision matrix with current conditions
                         update_criteria_values!(
-                            seed_decision_mat[location = At(share_candidate_locs)];
+                            CAq_decision_mat[location = At(share_candidate_locs)];
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
@@ -1757,66 +1757,66 @@ function run_model(
                         )
 
                         # Build state for target locations only
-                        selected_seed_ranks = select_locations(
-                            seed_pref,
-                            seed_decision_mat[location = At(share_candidate_locs)],
+                        selected_CAq_ranks = select_locations(
+                            CAq_pref,
+                            CAq_decision_mat[location = At(share_candidate_locs)],
                             MCDA_approach,
                             min_iv_locs
                         )
                     else
-                        # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
-                        selected_seed_ranks = unguided_selection(
+                        # Unguided deployment, coral-aquaculture/fog corals anywhere, so long as available space > 0
+                        selected_CAq_ranks = unguided_selection(
                             share_candidate_locs,
                             min_iv_locs,
                             vec(leftover_space_m²[share_candidate_loc_idx]),
                             depth_criteria[share_candidate_loc_idx]
                         )
                     end
-                    if !isempty(selected_seed_ranks)
-                        log_val = is_guided ? (1:length(selected_seed_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+                    if !isempty(selected_CAq_ranks)
+                        log_val = is_guided ? (1:length(selected_CAq_ranks)) : 1.0
+                        log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .=
                             log_val
                         selected_seed_loc_idx = findall(
-                            in.(domain.loc_ids, Ref(selected_seed_ranks))
+                            in.(domain.loc_ids, Ref(selected_CAq_ranks))
                         )
                         last_seed_deployment[selected_seed_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected (can reuse previous selection)
-                    has_seed_locs::Bool = !isempty(selected_seed_ranks)
+                    has_CAq_locs::Bool = !isempty(selected_CAq_ranks)
 
-                    # Apply seeding (assumed to occur after spawning)
-                    if has_seed_locs  # seed_decision_years[tstep] &&
-                        # Seed selected locations
+                    # Apply coral aquaculture (assumed to occur after spawning)
+                    if has_CAq_locs  # CAq_decision_years[tstep] &&
+                        # Deploy coral aquaculture at selected locations
                         # Selected locations can fill up over time so avoid locations with no space´
-                        seed_loc_idx = findall(domain.loc_ids .∈ [selected_seed_ranks])
+                        CAq_loc_idx = findall(domain.loc_ids .∈ [selected_CAq_ranks])
 
-                        available_space = leftover_space_m²[seed_loc_idx]
+                        available_space = leftover_space_m²[CAq_loc_idx]
                         locs_with_space = findall(available_space .> 0.0)
 
                         # If there are locations with space to select from, then deploy what we can
                         # Otherwise, do nothing.
                         if length(locs_with_space) > 0
-                            # Calculate proportion to seed based on current available space
-                            seed_loc_idx = seed_loc_idx[locs_with_space]
+                            # Calculate proportion for coral aquaculture based on current available space
+                            CAq_loc_idx = CAq_loc_idx[locs_with_space]
                             available_space = available_space[locs_with_space]
 
-                            proportional_increase, n_corals_seeded = distribute_seeded_corals(
-                                vec_abs_k[seed_loc_idx],
+                            proportional_increase, n_corals_CAq = distribute_CAq_corals(
+                                vec_abs_k[CAq_loc_idx],
                                 available_space,
-                                seed_volume .* seed_share.weight,
-                                colony_areas[_seed_size_groups],
-                                seeding_devices_per_m2
+                                CAq_volume .* CAq_share.weight,
+                                colony_areas[_CAq_size_groups],
+                                CAq_devices_per_m2
                             )
 
-                            # Log estimated number of corals seeded
-                            Yseed[tstep, :, seed_loc_idx] .= n_corals_seeded'
+                            # Log estimated number of corals deployed via coral aquaculture
+                            YCAq[tstep, :, CAq_loc_idx] .= n_corals_CAq'
 
-                            # Add coral seeding to recruitment
-                            recruitment[:, seed_loc_idx] .+= proportional_increase
-                            leftover_space_m²[seed_loc_idx] .-=
+                            # Add coral aquaculture to recruitment
+                            recruitment[:, CAq_loc_idx] .+= proportional_increase
+                            leftover_space_m²[CAq_loc_idx] .-=
                                 vec(sum(Array(proportional_increase); dims=1)) .*
-                                vec_abs_k[seed_loc_idx]
+                                vec_abs_k[CAq_loc_idx]
 
                             update_tolerance_distribution!(
                                 proportional_increase,
@@ -1824,15 +1824,15 @@ function run_model(
                                 c_mean_t,
                                 c_mean_reference[:, :, end],
                                 c_std,
-                                seed_loc_idx,
-                                _seed_size_groups,
+                                CAq_loc_idx,
+                                _CAq_size_groups,
                                 a_adapt,
                                 c_mean_tol_ceil
                             )
                         end
 
-                        # Empty selected_seed_ranks before the next iteration
-                        selected_seed_ranks = []
+                        # Empty selected_CAq_ranks before the next iteration
+                        selected_CAq_ranks = []
                     end
                 end
             end
@@ -1871,7 +1871,7 @@ function run_model(
         )
 
         # Store current means to be used in future timesteps.
-        # Use pre-seeding snapshot so that a_adapt enhancement is not compounded
+        # Use pre-coral-aquaculture snapshot so that a_adapt enhancement is not compounded
         # into the reference year-over-year.
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
@@ -1951,8 +1951,8 @@ function run_model(
 
     return (
         raw=C_cover,
-        seed_log=Yseed,
-        mc_log=Ymc,
+        CAq_log=YCAq,
+        LvM_log=YLvM,
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,

@@ -3,7 +3,7 @@
         params::YAXArray, domain::Domain, locations::Vector{String}
     )::DecisionStrategy
 
-Construct appropriate coral aquaculture (seeding) strategy from scenario parameters.
+Construct appropriate coral aquaculture strategy from scenario parameters.
 
 # Arguments
 - `params`: Scenario parameters (either DataFrameRow or YAXArray)
@@ -49,7 +49,7 @@ end
         params::YAXArray, domain::Domain, locations::Vector{String}
     )::DecisionStrategy
 
-Construct appropriate larval methods (moving corals) strategy from scenario parameters.
+Construct appropriate larval methods strategy from scenario parameters.
 
 # Arguments
 - `params`: Scenario parameters (either DataFrameRow or YAXArray)

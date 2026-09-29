@@ -185,7 +185,7 @@ end
 """
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
+Setup logs for ranks, CAq_log, shading_log, coral_dhw_log, and coral_cover_log.
 
 # Arguments
 - `z_store` : ZArray
@@ -198,20 +198,21 @@ Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
 - `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
   that each batch write lands in exactly one chunk file per array.
 
-Note: This setup relies on hardcoded values for number of species represented and seeded.
+Note: This setup relies on hardcoded values for number of species represented and deployed
+via coral aquaculture.
 """
 function setup_logs(
     z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
 )
-    # Set up logs for location ranks, seed/fog log
+    # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked location
     n_interventions = length(interventions())
     rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, n_interventions, n_scens)  # locations, location id and rank, no. scenarios
-    # tf, no. species to seed, location id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
+    # tf, no. species for coral aquaculture, location id and rank, no. scenarios
+    CAq_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
     # UInt16: integer ranks 0–n_locs (max 3806 << 65535). fill_value=0 (rank 0 = no deployment).
     ranks = zcreate(
@@ -230,34 +231,34 @@ function setup_logs(
         )
     )
 
-    seed_log = zcreate(
+    CAq_log = zcreate(
         Float32,
-        seed_dims...;
+        CAq_dims...;
         name="seed",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., batch_size),
+        chunks=(CAq_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "coral_id", "locations", "scenarios"),
             :unique_loc_ids => unique_loc_ids,
             :units => "individuals",
-            :description => "Number of corals seeded per functional group per location"
+            :description => "Number of corals deployed via coral aquaculture per functional group per location"
         )
     )
-    mc_log = zcreate(
+    LvM_log = zcreate(
         Float32,
-        seed_dims...;
+        CAq_dims...;
         name="moving_corals",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., batch_size),
+        chunks=(CAq_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "coral_id", "locations", "scenarios"),
             :unique_loc_ids => unique_loc_ids,
             :units => "individuals",
-            :description => "Number of corals deployed by moving corals (larval method) per functional group per location"
+            :description => "Number of corals deployed via larval methods per functional group per location"
         )
     )
 
@@ -368,7 +369,7 @@ function setup_logs(
         )
     end
 
-    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log
+    return ranks, LvM_log, CAq_log, shading_log, coral_dhw_log, coral_cover_log
 end
 
 """
@@ -414,7 +415,7 @@ Sets up an on-disk result store.
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (loc_outcomes, relative_taxa_cover, site_ranks, mc_log, seed_log, shading_log,
+domain, (loc_outcomes, relative_taxa_cover, site_ranks, LvM_log, CAq_log, shading_log,
 coral_dhw_log, coral_cover_log)
 """
 function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::Int=0)::Tuple
@@ -599,8 +600,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 stat_store_names...,
                 conn_names...,
                 :site_ranks,
-                :mc_log,
-                :seed_log,
+                :LvM_log,
+                :CAq_log,
                 :shading_log,
                 :coral_dhw_log,
                 :coral_cover_log

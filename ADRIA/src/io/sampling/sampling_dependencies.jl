@@ -1,7 +1,7 @@
 # sampling_dependencies.jl
 #
 # Many sampled parameters are only meaningful under certain scenario settings
-# (e.g. seeding/fogging deployment parameters only matter when an intervention
+# (e.g. coral aquaculture/fogging deployment parameters only matter when an intervention
 # is actually enabled, and decision-strategy weights only matter under
 # :guided). Sampling every parameter unconditionally wastes sample budget on
 # combinations that don't affect model output and dilutes sensitivity/PAWN
@@ -134,7 +134,7 @@ const _PARAM_DEPENDENCIES = [
 # ---------------------------------------------------------------------------
 # Group membership (explicit Dict; pre-sampling groups only)
 #
-# :seed_strategy/:fog_strategy/:mc_strategy appear ONLY in :strategy_group,
+# :iv_CAq_strategy/:iv_Fog_strategy/:iv_LvM_strategy appear ONLY in :strategy_group,
 # not in :intervention_group. :strategy_group fixes them to -1.0 for CF and
 # to DECISION_STRATEGY[:periodic] for unguided; including them in
 # :intervention_group (fix_to=0.0) would produce a conflicting fix_to for the

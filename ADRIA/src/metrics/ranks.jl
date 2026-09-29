@@ -1,7 +1,7 @@
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
-Extracts results for a specific intervention (:seed or :fog)
+Extracts results for a specific intervention (:caq or :fog)
 """
 function _get_ranks(rs::ResultSet, intervention::Symbol; kwargs...)
     return slice_results(rs.ranks[intervention = At(intervention)]; kwargs...)
@@ -10,7 +10,7 @@ end
 """
     _collate_ranks(rs, selected)
 
-Collates ranks into seed/fog ranking results into a common structure.
+Collates ranks into coral aquaculture/fog ranking results into a common structure.
 """
 function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
     n_steps, n_locs = size(selected)
@@ -36,7 +36,7 @@ function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
 end
 
 """
-    seed_ranks(rs::ResultSet; kwargs...)
+    CAq_ranks(rs::ResultSet; kwargs...)
 
 # Arguments
 - rs : ResultSet
@@ -47,11 +47,11 @@ YAXArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
-ADRIA.metrics.seed_ranks(rs; timesteps=1:10, scenarios=3:5)
+ADRIA.metrics.CAq_ranks(rs; timesteps=1:10, scenarios=3:5)
 ```
 """
-function seed_ranks(rs::ResultSet; kwargs...)
-    selected = _get_ranks(rs, :seed; kwargs...)
+function CAq_ranks(rs::ResultSet; kwargs...)
+    selected = _get_ranks(rs, :caq; kwargs...)
     return _collate_ranks(rs, selected; kwargs...)
 end
 
@@ -99,15 +99,17 @@ function _collate_ranked_locs(data::YAXArray)::Matrix{Int64}
 end
 
 """
-    n_seed_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
+    n_CAq_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
 
-Determine the number of locations seeded at each time step, for each scenario.
+Determine the number of locations that received coral aquaculture deployment at each time
+step, for each scenario.
 
 # Returns
-YAXArray[timesteps ⋅ scenarios] indicating the number of locations seeded at each time step.
+YAXArray[timesteps ⋅ scenarios] indicating the number of locations that received coral
+aquaculture deployment at each time step.
 """
-function n_seed_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
-    ranked_locs = seed_ranks(rs; kwargs...)
+function n_CAq_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
+    ranked_locs = CAq_ranks(rs; kwargs...)
 
     return DataCube(
         _collate_ranked_locs(ranked_locs);
@@ -135,9 +137,9 @@ function n_fog_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
 end
 
 """
-    top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
+    top_n_CAq_sites(rs::ResultSet, n::Int64; kwargs...)
 
-Get the top n seeded sites over time by their unique location id.
+Get the top n coral aquaculture sites over time by their unique location id.
 Lower rank values are better (e.g., 1 = first choice)
 
 # Arguments
@@ -148,8 +150,8 @@ Lower rank values are better (e.g., 1 = first choice)
 # Returns
 YAXArray[locations, [loc_id, loc_name, rank], scenarios]
 """
-function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
-    ranked_locs = seed_ranks(rs; kwargs...)
+function top_n_CAq_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
+    ranked_locs = CAq_ranks(rs; kwargs...)
 
     r_ids = rs.loc_ids
     min_rank = length(r_ids) + 1
@@ -227,25 +229,25 @@ function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
 end
 
 """
-    deployed_locations(rs::ResultSet; intervention::Symbol=:seed)::Vector{Int}
+    deployed_locations(rs::ResultSet; intervention::Symbol=:caq)::Vector{Int}
 
 Return the integer indices of locations that received at least one deployment of the
 given intervention type, across all timesteps and scenarios.
 
 # Arguments
 - `rs`           : ResultSet
-- `intervention` : Intervention type — one of `:seed`, `:fog`, `:mc` (default: `:seed`)
+- `intervention` : Intervention type — one of `:caq`, `:fog`, `:lvm` (default: `:caq`)
 
 # Returns
 Vector of 1-based integer location indices. Pass directly to metrics that accept a
 `locations` keyword argument, e.g.:
 
 ```julia
-locs = ADRIA.metrics.deployed_locations(rs; intervention=:seed)
+locs = ADRIA.metrics.deployed_locations(rs; intervention=:caq)
 rc   = ADRIA.metrics.scenario_relative_cover(rs; locations=locs)
 ```
 """
-function deployed_locations(rs::ResultSet; intervention::Symbol=:seed)::Vector{Int}
+function deployed_locations(rs::ResultSet; intervention::Symbol=:caq)::Vector{Int}
     iv_ranks = rs.ranks[intervention = At(intervention)]
     # reduce over timesteps (dim 1) and scenarios (dim 3), leaving locations (dim 2)
     ever_deployed = vec(any(Array(iv_ranks) .> 0.0; dims=(1, 3)))

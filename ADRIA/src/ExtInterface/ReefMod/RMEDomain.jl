@@ -40,9 +40,9 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
     Fog_target_locations::Vector{String}   # locations eligible for fogging
-    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
     Shd_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model

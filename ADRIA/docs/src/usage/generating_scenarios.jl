@@ -115,11 +115,11 @@ ADRIA.fix_factor!(dom;
 # ## Setting different sampling bounds
 #
 # Samples can also be taken over a constrained range. For example, one can investigate only
-# scenarios with high fogging and seeding, and select a specific MCDA decision method:
+# scenarios with high fogging and coral aquaculture, and select a specific MCDA decision method:
 
 dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
-## Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
+## Adjust coral aquaculture bounds. Note only lower and upper bounds are needed because the factors in
 ## question have a uniform distribution.
 ADRIA.set_factor_bounds!(dom, :iv_CAq_N_TA, (500000.0, 1000000.0))
 ADRIA.set_factor_bounds!(dom, :iv_CAq_N_CA, (500000.0, 1000000.0))
@@ -145,7 +145,7 @@ ADRIA.set_factor_bounds!(dom, :mcda_method, ("COCOSO",))
 # ## Conditional factor dependencies
 #
 # Some factors are only meaningful under certain scenario regimes. For example,
-# seeding-related deployment factors have no effect on a counterfactual (no intervention)
+# coral-aquaculture-related deployment factors have no effect on a counterfactual (no intervention)
 # scenario, and decision-strategy criteria weights have no effect unless a `guided` MCDA
 # approach is selected. Rather than sampling these factors unconditionally and discarding
 # the result, ADRIA resolves such dependencies automatically, either by:
@@ -219,7 +219,7 @@ scens = ADRIA.sample(dom, 128)
 # everything else, so each row may land in a different intervention regime), ADRIA provides
 # a family of convenience functions that fix the intervention regime for the whole call
 # up-front. This avoids wasting samples on factor combinations that are meaningless for the
-# regime under study (e.g. seeding-related factors when only counterfactual scenarios are
+# regime under study (e.g. coral-aquaculture-related factors when only counterfactual scenarios are
 # wanted), and lets the conditional factor dependencies described above be resolved *before*
 # sampling rather than row-by-row afterwards (see
 # [Conditional factor dependencies](@ref)).

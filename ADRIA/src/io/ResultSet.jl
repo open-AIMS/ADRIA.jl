@@ -46,8 +46,8 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     # raw::AbstractArray
     outcomes::D2
     ranks::A
-    mc_log::B  # Number of individuals deployed per functional group per location
-    seed_log::B  # Number of individuals deployed per functional group per location
+    LvM_log::B  # Number of individuals deployed per functional group per location
+    CAq_log::B  # Number of individuals deployed per functional group per location
     shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
@@ -339,8 +339,8 @@ function combine_results(result_sets...)::ResultSet
         zip(
             [
                 :ranks,
-                :mc_log,
-                :seed_log,
+                :LvM_log,
+                :CAq_log,
                 :shading_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log
@@ -349,10 +349,10 @@ function combine_results(result_sets...)::ResultSet
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :locations),
-                size(rs1.seed_log, :coral_id),
-                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id),
+                size(rs1.CAq_log, :timesteps),
+                size(rs1.CAq_log, :locations),
+                size(rs1.CAq_log, :coral_id),
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.CAq_log, :coral_id),
                 batch_size
             )
         )...
@@ -381,7 +381,7 @@ function combine_results(result_sets...)::ResultSet
         for i = 1:n_rs
             rs_scen_len =
                 isnothing(src[i]) ?
-                size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
+                size(result_sets[i].CAq_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
                 n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
             end

@@ -118,7 +118,7 @@ ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
 # metrics.
 
 ## Calculate frequencies with which each site was selected at each rank
-rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.CAq_ranks(rs))
 
 ## Plot 1st rank frequencies as a colormap
 rank_fig = ADRIA.viz.ranks_to_frequencies(
@@ -145,8 +145,8 @@ dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample_guided(dom, 2^2)
 scen = scens[1, :]
 
-## Get seeding preferences
-seed_pref = ADRIA.decision.CAqPreferences(dom, scen)
+## Get coral aquaculture preferences
+CAq_pref = ADRIA.decision.CAqPreferences(dom, scen)
 
 ## Calculate criteria vectors
 sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
@@ -162,9 +162,9 @@ in_conn, out_conn, network = ADRIA.connectivity_strength(
 )
 
 ## Create decision matrix
-seed_decision_mat = ADRIA.decision.decision_matrix(
+CAq_decision_mat = ADRIA.decision.decision_matrix(
     dom.loc_ids,
-    seed_pref.names;
+    CAq_pref.names;
     iv_CAq_in_connectivity=in_conn,
     iv_CAq_out_connectivity=out_conn,
     iv_CAq_heat_stress=dhw_projection,
@@ -173,15 +173,15 @@ seed_decision_mat = ADRIA.decision.decision_matrix(
 
 ## Get results from applying MCDA algorithm
 crit_agg = ADRIA.decision.criteria_aggregated_scores(
-    seed_pref, seed_decision_mat, mcda_funcs[1]
+    CAq_pref, CAq_decision_mat, mcda_funcs[1]
 )
 
 ## Don't plot constant criteria
-is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+is_const = Bool[length(x) == 1 for x in unique.(eachcol(CAq_decision_mat.data))]
 
 ## Plot normalized scores and criteria as map
 fig = ADRIA.viz.selection_criteria_map(
-    dom, seed_decision_mat[criteria = .!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
+    dom, CAq_decision_mat[criteria = .!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
 )
 ADRIA.viz.savefig(fig, "criteria_plots.html")
 
@@ -544,12 +544,12 @@ dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-## Compute cost from seeded coral counts; ensure every scenario has a positive baseline
-seed_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
-cost = if isempty(seed_cols)
+## Compute cost from coral aquaculture coral counts; ensure every scenario has a positive baseline
+CAq_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
+cost = if isempty(CAq_cols)
     ones(Float64, nrow(scens))
 else
-    Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
+    Float64.(vec(sum(Matrix(scens[:, CAq_cols]); dims=2))) .+ 1.0
 end
 
 ## Get mean coral cover and shelter volume for each scenario

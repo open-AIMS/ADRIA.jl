@@ -54,15 +54,15 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     depth_atten_params = ADRIA.component_params(d.model, ADRIA.DepthAttenuation).fieldname
     ADRIA.fix_factor!(d, depth_atten_params)
 
-    # Fix coral seeding weights
-    seed_criteria_params = ADRIA.component_params(
+    # Fix coral aquaculture weights
+    CAq_criteria_params = ADRIA.component_params(
         d.model,
         ADRIA.CAqCriteriaWeights
     )
-    ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
+    ADRIA.fix_factor!(d, CAq_criteria_params.fieldname)
 
     # Fix moving coral weights
-    # Fix coral seeding weights
+    # Fix coral aquaculture weights
     mc_criteria_params = ADRIA.component_params(
         d.model,
         ADRIA.LvMCriteriaWeights

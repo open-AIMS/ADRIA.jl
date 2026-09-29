@@ -108,10 +108,10 @@ end
         end
 
         # Criteria weights only matter when guided > 0
-        seed_w = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
+        CAq_w = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
         fog_w = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
-        mc_w = ADRIA.component_params(ms, ADRIA.LvMCriteriaWeights).fieldname
-        criteria_cols = string.(vcat(seed_w, fog_w, mc_w))
+        LvM_w = ADRIA.component_params(ms, ADRIA.LvMCriteriaWeights).fieldname
+        criteria_cols = string.(vcat(CAq_w, fog_w, LvM_w))
         if any(non_guided_rows)
             @test all(
                 all.(==(0), eachrow(scens[non_guided_rows, criteria_cols]))
@@ -183,11 +183,11 @@ end
         @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
             "All intervention factors had values <= 0"
 
-        seed_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
+        CAq_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
         fog_weights = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
 
-        @test all(abs.(sum(Matrix(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
-            "Some seeding weights are not properly normalized."
+        @test all(abs.(sum(Matrix(scens[:, CAq_weights]); dims=2) .- 1.0) .< 10e-6) ||
+            "Some coral aquaculture weights are not properly normalized."
         @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some fogging weights are not properly normalized."
     end
@@ -657,18 +657,18 @@ end
     dom = deepcopy(ADRIA_DOM_45)
     scens = ADRIA.sample(dom, 8)
 
-    seed_cols = ADRIA._transform_group_columns(scens, :seed_group)
+    CAq_cols = ADRIA._transform_group_columns(scens, :CAq_group)
     fog_cols = ADRIA._transform_group_columns(scens, :fog_group)
     mc_cols = ADRIA._transform_group_columns(scens, :mc_group)
 
-    @test :iv_CAq_strategy ∉ seed_cols ||
-        ":iv_CAq_strategy in :seed_group reproduces d5871840 regression"
+    @test :iv_CAq_strategy ∉ CAq_cols ||
+        ":iv_CAq_strategy in :CAq_group reproduces d5871840 regression"
     @test :iv_Fog_strategy ∉ fog_cols ||
         ":iv_Fog_strategy in :fog_group reproduces d5871840 regression"
     @test :iv_LvM_strategy ∉ mc_cols ||
         ":iv_LvM_strategy in :mc_group reproduces d5871840 regression"
 
-    @test !isempty(seed_cols) || ":seed_group resolved empty — prefix filter broken"
+    @test !isempty(CAq_cols) || ":CAq_group resolved empty — prefix filter broken"
     @test !isempty(fog_cols) || ":fog_group resolved empty — prefix filter broken"
     @test !isempty(mc_cols) || ":mc_group resolved empty — prefix filter broken"
 end
@@ -702,7 +702,7 @@ end
         end
     end
 
-    @testset "reactive_group dropped when seed is the only reactive-capable lever" begin
+    @testset "reactive_group dropped when coral aquaculture is the only reactive-capable lever" begin
         if all(
             c -> c in propertynames(scens),
             [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy, :reactive_response_delay]
@@ -710,19 +710,19 @@ end
             periodic_seed = scens.iv_CAq_strategy .== Float64(PERIODIC)
             @test all(scens[periodic_seed, :reactive_response_delay] .== 0.0) ||
                 "reactive_group should be 0.0 when iv_CAq_strategy is periodic and " *
-                  "fog/mc are fixed inactive (no reactive-capable lever remains)"
+                  "fog/larval-methods are fixed inactive (no reactive-capable lever remains)"
         end
     end
 end
 
 @testset "Dependency DAG — iv_CAq_wave_stress ordering (§2.12 pt 1)" begin
     # iv_CAq_wave_stress is zeroed AFTER mcda_normalize. For wave_scenario==0
-    # guided+seeded rows, remaining 7 seed weights must sum to <1 (not renormalised).
+    # guided+coral-aquaculture rows, remaining 7 coral aquaculture weights must sum to <1 (not renormalised).
     dom = deepcopy(ADRIA_DOM_45)
     num_samples = 128
     scens = ADRIA.sample_guided(dom, num_samples)
     ms = ADRIA.model_spec(dom)
-    seed_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
+    CAq_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
 
     not_seeded = ADRIA.no_seeding(scens)
     guided_seeded_mask = .!not_seeded .& (scens.guided .> 0)
@@ -731,15 +731,15 @@ end
 
     if any(target_mask)
         @test all(scens[target_mask, :iv_CAq_wave_stress] .== 0.0) ||
-            "iv_CAq_wave_stress should be 0 for wave_scenario==0 guided+seeded rows"
+            "iv_CAq_wave_stress should be 0 for wave_scenario==0 guided+coral-aquaculture rows"
 
-        other_seed_weights = filter(w -> w != :iv_CAq_wave_stress, seed_weights)
-        row_sums = vec(sum(Matrix(scens[target_mask, other_seed_weights]); dims=2))
+        other_CAq_weights = filter(w -> w != :iv_CAq_wave_stress, CAq_weights)
+        row_sums = vec(sum(Matrix(scens[target_mask, other_CAq_weights]); dims=2))
         @test all(row_sums .< 1.0) ||
-            "Remaining seed weights sum to 1 — ordering wrong: mcda_normalize ran " *
+            "Remaining coral aquaculture weights sum to 1 — ordering wrong: mcda_normalize ran " *
               "AFTER zeroing iv_CAq_wave_stress (§2.12 pt 1)"
     else
-        @info "No wave_scenario==0 guided+seeded rows in $num_samples samples; " *
+        @info "No wave_scenario==0 guided+coral-aquaculture rows in $num_samples samples; " *
             "iv_CAq_wave_stress ordering test inconclusive"
     end
 end

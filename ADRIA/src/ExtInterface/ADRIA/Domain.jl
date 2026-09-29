@@ -34,9 +34,9 @@ mutable struct ADRIADomain <: Domain
     # Each element of these vector is a pair weight and list of location ids.
     # The weights represents the share of the intervention capacity that will be distributed
     # to each list of locations
-    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
     Fog_target_locations::Vector{String}   # locations eligible for fogging
-    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
     Shd_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters

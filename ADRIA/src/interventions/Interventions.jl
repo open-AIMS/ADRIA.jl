@@ -22,47 +22,47 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
-        name="Seeded Tabular Acropora",
-        description="Number of Tabular Acropora to seed per deployment event."
+        name="Coral Aquaculture Tabular Acropora",
+        description="Number of Tabular Acropora to deploy via coral aquaculture per deployment event."
     )
     iv_CAq_N_CA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
-        name="Seeded Corymbose Acropora",
-        description="Number of Corymbose Acropora to seed per deployment event."
+        name="Coral Aquaculture Corymbose Acropora",
+        description="Number of Corymbose Acropora to deploy via coral aquaculture per deployment event."
     )
     iv_CAq_N_CNA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
-        name="Seeded Corymbose non-Acropora",
-        description="Number of Corymbose non-Acropora to seed per deployment event."
+        name="Coral Aquaculture Corymbose non-Acropora",
+        description="Number of Corymbose non-Acropora to deploy via coral aquaculture per deployment event."
     )
     iv_CAq_N_SM::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
-        name="Seeded Small Massives",
-        description="Number of small massives/encrusting to seed per deployment event."
+        name="Coral Aquaculture Small Massives",
+        description="Number of small massives/encrusting to deploy via coral aquaculture per deployment event."
     )
     iv_CAq_N_LM::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
-        name="Seeded Large Massives",
-        description="Number of large massives/encrusting to seed per deployment event."
+        name="Coral Aquaculture Large Massives",
+        description="Number of large massives/encrusting to deploy via coral aquaculture per deployment event."
     )
     iv_LvM_N_settlers::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 25_000_000.0, 1_000_000.0),  # increase in steps of 50K
-        name="Moving corals settlers",
+        name="Larval methods settlers",
         description="Number of moving coral settlers added per deployment event."
     )
     iv_CAq_devices_per_m2::Param = Factor(
@@ -70,8 +70,8 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="unordered categorical",
         dist=CategoricalDistribution,
         dist_params=(3, 5, 6, 9),
-        name="seeding_devices_per_m2",
-        description="Number of seeding devices per m²."
+        name="CAq_devices_per_m2",
+        description="Number of coral aquaculture devices per m²."
     )
     min_iv_locations::Param = Factor(
         5;
@@ -86,8 +86,8 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered discrete",
         dist=DiscreteUniform,
         dist_params=(1.0, 400.0),
-        name="Moving corals minimum intervention locations",
-        description="Minimum number of locations to perform moving corals intervention"
+        name="Larval methods minimum intervention locations",
+        description="Minimum number of locations to perform the larval methods intervention"
     )
     iv_Fog::Param = Factor(
         0.0;
@@ -126,8 +126,8 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(5.0, 75.0),
-        name="Years to Seed",
-        description="Number of years to seed for."
+        name="Years for Coral Aquaculture",
+        description="Number of years to deploy coral aquaculture for."
     )
     iv_Shd_years::Param = Factor(
         10;
@@ -166,16 +166,16 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Selection Frequency (Seed)",
-        description="Frequency of seeding deployments (0 deploys once)."
+        name="Selection Frequency (Coral Aquaculture)",
+        description="Frequency of coral aquaculture deployments (0 deploys once)."
     )
     iv_CAq_revisit_cadence::Param = Factor(
         0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Revisit Cadence (Seed)",
-        description="Minimum number of years before a location can be re-selected for seed deployment (0 = no restriction)."
+        name="Revisit Cadence (Coral Aquaculture)",
+        description="Minimum number of years before a location can be re-selected for coral aquaculture deployment (0 = no restriction)."
     )
     iv_Fog_deployment_freq::Param = Factor(
         5;
@@ -206,24 +206,24 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Deployment Frequency (Moving corals)",
-        description="Frequency of moving corals deployments."
+        name="Deployment Frequency (Larval Methods)",
+        description="Frequency of larval methods deployments."
     )
     iv_LvM_revisit_cadence::Param = Factor(
         0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Revisit Cadence (Moving corals)",
-        description="Minimum number of years before a location can be re-selected for mc deployment (0 = no restriction)."
+        name="Revisit Cadence (Larval Methods)",
+        description="Minimum number of years before a location can be re-selected for larval methods deployment (0 = no restriction)."
     )
     iv_CAq_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 25.0),
-        name="Seeding Start Year",
-        description="Start seeding deployments after this number of years has elapsed."
+        name="Coral Aquaculture Start Year",
+        description="Start coral aquaculture deployments after this number of years has elapsed."
     )
     iv_Shd_year_start::Param = Factor(
         2;
@@ -246,16 +246,16 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 25.0),
-        name="Moving corals Start Year",
-        description="Start moving corals deployments after this number of years has elapsed."
+        name="Larval Methods Start Year",
+        description="Start larval methods deployments after this number of years has elapsed."
     )
     iv_LvM_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(5.0, 75.0),
-        name="Years to deploy moving corals",
-        description="Number of years to deploy moving corals."
+        name="Years to deploy larval methods",
+        description="Number of years to deploy larval methods."
     )
     iv_MCB_albedo::Param = Factor(
         0.0;
@@ -288,7 +288,7 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=CategoricalDistribution,
         dist_params=(1.0, 2.0),
-        name="Seed Strategy Type",
+        name="Coral Aquaculture Strategy Type",
         description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
     iv_Fog_strategy::Param = Factor(
@@ -304,7 +304,7 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=CategoricalDistribution,
         dist_params=(1.0, 2.0),
-        name="Moving Corals Strategy Type",
+        name="Larval Methods Strategy Type",
         description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
     reactive_absolute_threshold::Param = Factor(

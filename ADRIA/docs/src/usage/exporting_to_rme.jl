@@ -11,7 +11,7 @@
 #   reefsets in `scenario_info.json`. Current ADRIA GBR DataPackages and current RME data
 #   packages both provide it. Older packages without `GBRMPA_ID`, and non-GBR or synthetic
 #   domains, are not supported.
-# - The standard 5-group functional coral model and the standard seeding factors
+# - The standard 5-group functional coral model and the standard coral aquaculture factors
 #   (`N_seed_*`, `iv_CAq_devices_per_m2`). The evenness normalisation hard-codes 5 groups.
 # - An `RCP` in the results that also exists in the domain's DHW data (needed for the
 #   GCM-name lookup).
@@ -22,7 +22,7 @@
 #
 # 1.  **Unit Scaling**: Proportions (0.0 - 1.0) are scaled to percentages (0 - 100) where required by the economic model.
 # 2.  **Coordinate Variables**: NetCDF outputs include human-readable coordinate variables for `timesteps` (years) and `locations` (Unique Reef IDs).
-# 3.  **Intervention Realization**: ADRIA's spatial intervention logs (`seed_log`) are translated into absolute coral counts and realized intervention areas (km²) for logistical cost calculations.
+# 3.  **Intervention Realization**: ADRIA's spatial intervention logs (`CAq_log`) are translated into absolute coral counts and realized intervention areas (km²) for logistical cost calculations.
 #
 # ## Usage Workflow
 #
@@ -67,7 +67,7 @@ export_to_rme(dom, rs, out_dir)
 # The utility produces the following files in the target directory:
 #
 # *   **`results.nc`**: NetCDF containing `total_cover`, `relative_juveniles`, `relative_shelter_volume` (also written as `relative`), `evenness`, and zero-filled `rubble` / `cots` placeholders, plus `timesteps` / `locations` / `scenarios` coordinate variables.
-# *   **`iv_yearly_scenarios.csv`**: A year-by-year log of absolute coral counts, seeding densities, and deployment areas per scenario.
+# *   **`iv_yearly_scenarios.csv`**: A year-by-year log of absolute coral counts, coral aquaculture densities, and deployment areas per scenario.
 # *   **`scenario_info.json`**: Metadata mapping scenario indices to counterfactual status and defining the unique "reefsets" used each year.
 # *   **`reef_information.csv`**: Spatial metadata for the reefs involved in the simulation.
 #

@@ -20,7 +20,7 @@ rs = ADRIA.run_scenarios(dom, scens, ["45", "60", "85"])
 print(rs)
 
 # Commonly accessed fields include `rs.inputs` (the scenario DataFrame), `rs.outcomes`
-# (named outcome arrays), `rs.ranks` (location ranking logs), `rs.seed_log`,
+# (named outcome arrays), `rs.ranks` (location ranking logs), `rs.CAq_log`,
 # `rs.shading_log`, and `rs.loc_data` (spatial attributes).
 # See [Loading Results](@ref) for a complete field reference.
 

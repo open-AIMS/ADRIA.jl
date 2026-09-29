@@ -51,10 +51,10 @@ end
     N = 2^3
     scens = ADRIA.sample_selection(ADRIA_DOM_45, N)  # get scenario dataframe
 
-    area_to_seed = 962.11  # Area of seeded corals in m^2.
+    area_to_CAq = 962.11  # Area of coral aquaculture corals in m^2.
 
     sum_cover = repeat(sum(ADRIA_DOM_45.init_coral_cover; dims=1), size(scens, 1))
-    ranks = ADRIA.decision.rank_locations(ADRIA_DOM_45, scens, sum_cover, area_to_seed)
+    ranks = ADRIA.decision.rank_locations(ADRIA_DOM_45, scens, sum_cover, area_to_CAq)
 
     @test length(ranks.scenarios) == sum(scens.guided .> 0) ||
         "Specified number of scenarios was not carried out."

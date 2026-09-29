@@ -219,19 +219,19 @@ function export_to_rme(
     ncwrite(scen_indices, nc_path, "scenarios")
     # 3. Dynamic Reef set and IV Scenario synthesis
     # A scenario is a counterfactual if no interventions occur
-    # Check all seeding and intervention factors
+    # Check all coral aquaculture and intervention factors
 
     # Use provided scenario specification if available, otherwise fallback to rs.inputs
     inputs = isnothing(scen_spec) ? rs.inputs : scen_spec
 
-    seed_factors = [
+    CAq_factors = [
         :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM, :iv_LvM_N_settlers
     ]
 
     # Filter to only those present in inputs
-    seed_cols = intersect(seed_factors, propertynames(inputs))
+    CAq_cols = intersect(CAq_factors, propertynames(inputs))
     intensity = zeros(n_scens)
-    for c in seed_cols
+    for c in CAq_cols
         intensity .+= inputs[!, c]
     end
 
@@ -331,16 +331,16 @@ function export_to_rme(
         return nothing
     end
 
-    # Process seed_log: (timesteps, coral_id, locations, scenarios)
+    # Process CAq_log: (timesteps, coral_id, locations, scenarios)
     # Sum over coral_id (2nd dim) to find intervened locations
     for scen = 1:n_scens
         if is_counterfactual[scen]
             continue
         end
         for t = 1:n_timesteps
-            # Find indices of locations where seeding occurred in this (t, scen)
+            # Find indices of locations where coral aquaculture occurred in this (t, scen)
             # Sum over coral_id dimension
-            loc_seeding = sum(rs.seed_log[t, :, :, scen]; dims=1)
+            loc_seeding = sum(rs.CAq_log[t, :, :, scen]; dims=1)
             intervened_loc_indices = getindex.(findall(loc_seeding .> 0), 2)
 
             gcm_name::String = extract_GCM_from_results(dom, rs, scen)
@@ -369,7 +369,7 @@ function export_to_rme(
                     # Get total corals for this regional group
                     regional_total_corals = sum(loc_seeding[indices])
 
-                    # Get the actual seeding density for this scenario
+                    # Get the actual coral aquaculture density for this scenario
                     density = inputs[scen, :iv_CAq_devices_per_m2]
                     # Calculate the realized area in km2 (m2 / 1e6)
                     area_km2 = (regional_total_corals / density) / 1e6
@@ -387,8 +387,8 @@ function export_to_rme(
                 end
             end
 
-            # Process mc_log: (timesteps, coral_id, locations, scenarios)
-            loc_mc = sum(rs.mc_log[t, :, :, scen]; dims=1)
+            # Process LvM_log: (timesteps, coral_id, locations, scenarios)
+            loc_mc = sum(rs.LvM_log[t, :, :, scen]; dims=1)
             mc_loc_indices = getindex.(findall(loc_mc .> 0), 2)
 
             if !isempty(mc_loc_indices)
@@ -415,7 +415,7 @@ function export_to_rme(
                     # Get total corals for this regional group
                     regional_total_mc_corals = sum(loc_mc[indices])
 
-                    # Calculate actual density and area for MC
+                    # Calculate actual density and area for larval methods
                     # loc_area is in m^2
                     total_loc_area_m2 = sum(rs.loc_area[indices])
                     mc_density = regional_total_mc_corals / total_loc_area_m2

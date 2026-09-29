@@ -1,7 +1,7 @@
 """
     CAqCriteriaWeights <: DecisionWeights
 
-Criteria weights for coral aquaculture (seeding) interventions.
+Criteria weights for coral aquaculture interventions.
 """
 Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
     iv_CAq_heat_stress::Param = Factor(
@@ -10,8 +10,8 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.8, 1.0),
         direction=minimum,
-        name="Seed Heat Stress",
-        description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress."
+        name="Coral Aquaculture Heat Stress",
+        description="Importance of avoiding heat stress for coral aquaculture. Prefer locations with lower heat stress."
     )
     iv_CAq_wave_stress::Param = Factor(
         0.5;
@@ -19,7 +19,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="Seed Wave Stress",
+        name="Coral Aquaculture Wave Stress",
         description="Prefer locations with higher wave activity."
     )
     iv_CAq_in_connectivity::Param = Factor(
@@ -28,7 +28,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.2, 1.0),
         direction=maximum,
-        name="Incoming Connectivity (Seed)",
+        name="Incoming Connectivity (Coral Aquaculture)",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
     iv_CAq_out_connectivity::Param = Factor(
@@ -37,7 +37,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.2, 1.0),
         direction=maximum,
-        name="Outgoing Connectivity (Seed)",
+        name="Outgoing Connectivity (Coral Aquaculture)",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
     iv_CAq_depth::Param = Factor(
@@ -46,7 +46,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.8, 1.0),
         direction=maximum,
-        name="Depth (Seed)",
+        name="Depth (Coral Aquaculture)",
         description="Give preference to deeper locations for coral deployments."
     )
     iv_CAq_coral_cover::Param = Factor(
@@ -55,8 +55,8 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
-        name="Seed Coral Cover",
-        description="Preference locations with lower coral cover (higher available space) for seeding deployments."
+        name="Coral Aquaculture Coral Cover",
+        description="Preference locations with lower coral cover (higher available space) for coral aquaculture deployments."
     )
     iv_CAq_cluster_diversity::Param = Factor(
         0.7;
@@ -83,7 +83,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
     #     dist=Uniform,
     #     dist_params=(0.0, 1.0),
     #     direction=maximum,
-    #     name="Predecessor Priority (Seed)",
+    #     name="Predecessor Priority (Coral Aquaculture)",
     #     description="Preference locations that provide larvae to priority reefs.",
     # )
     # iv_CAq_zone::Param = Factor(
@@ -92,7 +92,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
     #     dist=Uniform,
     #     dist_params=(0.0, 1.0),
     #     direction=maximum,
-    #     name="Zone Predecessor (Seed)",
+    #     name="Zone Predecessor (Coral Aquaculture)",
     #     description="Preference locations that provide larvae to priority (target) zones.",
     # )
 end
@@ -100,8 +100,8 @@ end
 """
     CAqPreferences <: DecisionPreference
 
-Preference type specific for coral aquaculture (seeding) interventions to allow
-seeding-specific routines to be handled.
+Preference type specific for coral aquaculture interventions to allow
+coral-aquaculture-specific routines to be handled.
 """
 struct CAqPreferences <: DecisionPreference
     names::Vector{Symbol}
@@ -137,7 +137,7 @@ end
         min_locs::Int64
     )::Vector{<:Union{String,Symbol,Int64}}
 
-Select locations for coral aquaculture (seeding) interventions based on multiple criteria,
+Select locations for coral aquaculture interventions based on multiple criteria,
 including spatial distribution.
 
 # Example

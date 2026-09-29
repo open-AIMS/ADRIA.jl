@@ -134,20 +134,20 @@ scens = DataFrame(rs.inputs)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 mean_s_tac = vec(mean(s_tac; dims=1))
 
-# Deployed seeding locations.
+# Deployed coral aquaculture locations.
 # CF scenarios have rank 0, so the union below covers only guided+unguided sites.
-deployed_locs = ADRIA.metrics.deployed_locations(rs; intervention=:seed)
+deployed_locs = ADRIA.metrics.deployed_locations(rs; intervention=:caq)
 
 # Guided-only deployed locations: exclude sites that only unguided scenarios ever
 # used, so the metric for guided analysis isn't diluted by random-selection sites.
-let _iv_ranks = Array(rs.ranks[intervention = At(:seed)])
+let _iv_ranks = Array(rs.ranks[intervention = At(:caq)])
     # dims: (timesteps × locations × scenarios)
     _guided_ever = vec(any(_iv_ranks[:, :, guided_mask] .> 0.0; dims=(1, 3)))
     global deployed_locs_guided = findall(_guided_ever)
 end
 
 # Counterfactual delta: per-scenario intervention effect (IV minus CF baseline).
-# Outcome = years where relative cover at seeded locations exceeded 20%.
+# Outcome = years where relative cover at coral aquaculture locations exceeded 20%.
 # Run once for ALL intervention scenarios (guided + unguided) so we can split
 # afterwards; DHW stat columns are dropped from the returned feature matrix.
 delta_all = ADRIAanalysis.sensitivity.counterfactual_delta(
@@ -391,11 +391,11 @@ end
 # ----------------------------------------------------------------------------
 
 check("example_dea_fig") do
-    seed_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
-    cost = if isempty(seed_cols)
+    CAq_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
+    cost = if isempty(CAq_cols)
         ones(Float64, nrow(scens))
     else
-        Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
+        Float64.(vec(sum(Matrix(scens[:, CAq_cols]); dims=2))) .+ 1.0
     end
 
     s_tac_mean = dropdims(mean(s_tac; dims=:timesteps); dims=:timesteps)
@@ -475,15 +475,15 @@ end
 # 12. Location selection frequencies
 # ----------------------------------------------------------------------------
 
-const INTERVENTION_TYPES = (:seed, :fog, :shade, :mc)
+const INTERVENTION_TYPES = (:caq, :fog, :shade, :lvm)
 _intervention_name(iv) = get(
-    Dict(:seed => "Seed", :fog => "Fog", :shade => "Shade", :mc => "Moving Corals"),
+    Dict(:caq => "Coral Aquaculture", :fog => "Fog", :shade => "Shade", :lvm => "Larval Methods"),
     iv, titlecase(string(iv))
 )
 
 check("single_rank_plot") do
-    seed_freq = ADRIA.decision.selection_frequency(rs.ranks, :seed)
-    ADRIA.viz.map(rs, seed_freq)
+    CAq_freq = ADRIA.decision.selection_frequency(rs.ranks, :caq)
+    ADRIA.viz.map(rs, CAq_freq)
 end
 
 check("ranks_by_intervention") do
@@ -513,7 +513,7 @@ check("criteria_spatial_plots") do
     guided_scens = ADRIA.sample_guided(example_dom, 2^2)
     scen = guided_scens[1, :]
 
-    seed_pref = ADRIA.decision.CAqPreferences(example_dom, scen)
+    CAq_pref = ADRIA.decision.CAqPreferences(example_dom, scen)
 
     sum_cover = vec(sum(example_dom.init_coral_cover; dims=1).data)
     dhw_scens = example_dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
@@ -529,9 +529,9 @@ check("criteria_spatial_plots") do
         area_weighted_conn, sum_cover, conn_cache
     )
 
-    seed_decision_mat = ADRIA.decision.decision_matrix(
+    CAq_decision_mat = ADRIA.decision.decision_matrix(
         example_dom.loc_ids,
-        seed_pref.names;
+        CAq_pref.names;
         iv_CAq_in_connectivity=in_conn,
         iv_CAq_out_connectivity=out_conn,
         iv_CAq_heat_stress=dhw_projection,
@@ -539,14 +539,14 @@ check("criteria_spatial_plots") do
     )
 
     crit_agg = ADRIA.decision.criteria_aggregated_scores(
-        seed_pref, seed_decision_mat, mcda_funcs[1]
+        CAq_pref, CAq_decision_mat, mcda_funcs[1]
     )
 
-    is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+    is_const = Bool[length(x) == 1 for x in unique.(eachcol(CAq_decision_mat.data))]
 
     ADRIA.viz.selection_criteria_map(
         example_dom,
-        seed_decision_mat[criteria = .!is_const],
+        CAq_decision_mat[criteria = .!is_const],
         crit_agg.scores ./ maximum(crit_agg.scores)
     )
 end

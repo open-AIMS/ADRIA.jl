@@ -180,8 +180,8 @@ if hasmethod(
         scens = ADRIA.sample_selection(ADRIA_DOM_45, N)  # get scenario dataframe
         scen = scens[1, :]
 
-        # Get seeding preferences
-        seed_pref = ADRIA.decision.CAqPreferences(ADRIA_DOM_45, scen)
+        # Get coral aquaculture preferences
+        CAq_pref = ADRIA.decision.CAqPreferences(ADRIA_DOM_45, scen)
 
         # Calculate criteria vectors
         # Cover
@@ -204,9 +204,9 @@ if hasmethod(
         )
 
         # Create decision matrix
-        seed_decision_mat = ADRIA.decision.decision_matrix(
+        CAq_decision_mat = ADRIA.decision.decision_matrix(
             ADRIA_DOM_45.loc_ids,
-            seed_pref.names;
+            CAq_pref.names;
             iv_CAq_in_connectivity=in_conn,
             iv_CAq_out_connectivity=out_conn,
             iv_CAq_heat_stress=dhw_projection,
@@ -215,19 +215,19 @@ if hasmethod(
 
         # Get results from applying MCDA algorithm
         crit_agg = ADRIA.decision.criteria_aggregated_scores(
-            seed_pref, seed_decision_mat, mcda_funcs[1]
+            CAq_pref, CAq_decision_mat, mcda_funcs[1]
         )
 
         # Don't plot constant criteria
-        is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+        is_const = Bool[length(x) == 1 for x in unique.(eachcol(CAq_decision_mat.data))]
 
         @test all(.!isnan.(crit_agg.scores)) || "Criteria aggregate score contains NaNs."
-        @test all(.!isnan.(seed_decision_mat)) || "Decision matrix contains NaNs."
-        @test all(seed_decision_mat .>= 0.0) || "Decision matrix contains negative values."
+        @test all(.!isnan.(CAq_decision_mat)) || "Decision matrix contains NaNs."
+        @test all(CAq_decision_mat .>= 0.0) || "Decision matrix contains negative values."
 
         # Plot normalized scores and criteria as map
         decision_mat_fig = ADRIA.viz.selection_criteria_map(
-            ADRIA_DOM_45, seed_decision_mat[criteria = .!is_const],
+            ADRIA_DOM_45, CAq_decision_mat[criteria = .!is_const],
             crit_agg.scores ./ maximum(crit_agg.scores)
         )
     end

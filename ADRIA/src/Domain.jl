@@ -427,16 +427,16 @@ function switch_RCPs!() end
         location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
     )
 
-Set the locations eligible for coral aquaculture (seeding) interventions.
+Set the locations eligible for coral aquaculture interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of named tuples with weights and target location IDs for seeding
+- `location_ids`: Vector of named tuples with weights and target location IDs for coral aquaculture
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
-# Only seed in marine park zones
+# Only deploy coral aquaculture in marine park zones
 ADRIA.set_CAq_target_locations!(
     dom,
     [(weight=1.0, target_locs=["reef_01", "reef_05", "reef_12"])]
@@ -529,11 +529,11 @@ end
         location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
     )
 
-Set the locations eligible for larval methods (moving corals) interventions.
+Set the locations eligible for larval methods interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of named tuples with weights and target location IDs for moving corals
+- `location_ids`: Vector of named tuples with weights and target location IDs for larval methods
 
 # Example
 ```julia

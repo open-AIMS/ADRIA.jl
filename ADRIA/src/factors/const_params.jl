@@ -31,9 +31,9 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    priority_sites::Vector{Int64} = Int64[]  # sites to prioritize when seeding or shading
+    priority_sites::Vector{Int64} = Int64[]  # sites to prioritize for coral aquaculture or shading
 
-    # Zones to prioritize when seeding or shading, in order of preference
+    # Zones to prioritize for coral aquaculture or shading, in order of preference
     # https://github.com/open-AIMS/ADRIA.jl/issues/231#issuecomment-1340138255
     # https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones
     priority_zones::Vector{String} = String[
