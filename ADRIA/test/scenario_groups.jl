@@ -1,10 +1,10 @@
 @testset "scenario_groups" begin
     df = DataFrames.DataFrame(;
-        N_CAq_TA=Int[0, 100, 100],
-        fogging=Float64[0.0, 0.0, 0.0],
-        Shd=Float64[0.0, 0.0, 0.0],
-        N_LvM_settlers=Int[0, 0, 0],
-        MCB_duration=Float64[0.0, 0.0, 0.0],
+        iv_CAq_N_TA=Int[0, 100, 100],
+        iv_Fog=Float64[0.0, 0.0, 0.0],
+        iv_Shd=Float64[0.0, 0.0, 0.0],
+        iv_LvM_N_settlers=Int[0, 0, 0],
+        iv_MCB_duration=Float64[0.0, 0.0, 0.0],
         guided=Int[0, 0, 1],
         RCP=Int[45, 45, 60]
     )
@@ -35,11 +35,11 @@
 
     @testset "absent type is excluded" begin
         df2 = DataFrames.DataFrame(;
-            N_CAq_TA=Int[0, 100],
-            fogging=Float64[0.0, 0.0],
-            Shd=Float64[0.0, 0.0],
-            N_LvM_settlers=Int[0, 0],
-            MCB_duration=Float64[0.0, 0.0],
+            iv_CAq_N_TA=Int[0, 100],
+            iv_Fog=Float64[0.0, 0.0],
+            iv_Shd=Float64[0.0, 0.0],
+            iv_LvM_N_settlers=Int[0, 0],
+            iv_MCB_duration=Float64[0.0, 0.0],
             guided=Int[0, 0],
             RCP=Int[45, 45]
         )

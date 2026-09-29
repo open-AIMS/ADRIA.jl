@@ -4,7 +4,7 @@
 Criteria weights for fogging interventions.
 """
 Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
-    Fog_heat_stress::Param = Factor(
+    iv_Fog_heat_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -13,7 +13,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Heat Stress",
         description="Preference locations with lower heat stress for fogging."
     )
-    Fog_wave_stress::Param = Factor(
+    iv_Fog_wave_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -22,7 +22,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Wave Stress",
         description="Preference locations with lower wave activity for fogging."
     )
-    Fog_in_connectivity::Param = Factor(
+    iv_Fog_in_connectivity::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -31,7 +31,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Incoming Connectivity (Fog)",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for fogging deployments."
     )
-    Fog_out_connectivity::Param = Factor(
+    iv_Fog_out_connectivity::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -40,7 +40,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Outgoing Connectivity (Fog)",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for fogging deployments."
     )
-    Fog_depth::Param = Factor(
+    iv_Fog_depth::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -49,7 +49,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Depth (Fog)",
         description="Give preference to shallower locations for fogging deployments."
     )
-    Fog_coral_cover::Param = Factor(
+    iv_Fog_coral_cover::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,
@@ -58,7 +58,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Coral Cover",
         description="Higher values give preference to sites with high coral cover for fogging deployments."
     )
-    Fog_cluster_diversity::Param = Factor(
+    iv_Fog_cluster_diversity::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -67,7 +67,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Cluster Diversity",
         description="Prefer to fog locations in clusters that are under-represented."
     )
-    Fog_geographic_separation::Param = Factor(
+    iv_Fog_geographic_separation::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -77,7 +77,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         description="Fog locations that are distant (when maximized) or closer (when minimized) to their neighbors."
     )
     # Disabled as they are currently unnecessary
-    # Fog_priority::Param= Factor(
+    # iv_Fog_priority::Param= Factor(
     #     0.0;
     #     ptype="continuous",
     #     dist=Uniform,
@@ -86,7 +86,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
     #     name="Predecessor Priority (Fog)",
     #     description="Importance of fogging sites that provide larvae to priority reefs.",
     # )
-    # Fog_zone::Param= Factor(
+    # iv_Fog_zone::Param= Factor(
     #     0.0;
     #     ptype="continuous",
     #     dist=Uniform,

@@ -4,7 +4,7 @@
 Criteria weights for larval methods (moving corals) intervention.
 """
 Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
-    LvM_heat_stress::Param = Factor(
+    iv_LvM_heat_stress::Param = Factor(
         0.9;
         ptype="continuous",
         dist=Uniform,
@@ -13,7 +13,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Heat Stress",
         description="Importance of avoiding heat stress. Prefer locations with lower heat stress."
     )
-    LvM_wave_stress::Param = Factor(
+    iv_LvM_wave_stress::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -22,7 +22,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Wave Stress",
         description="Prefer locations with higher wave activity."
     )
-    LvM_in_connectivity::Param = Factor(
+    iv_LvM_in_connectivity::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -31,7 +31,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Incoming Connectivity",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
-    LvM_out_connectivity::Param = Factor(
+    iv_LvM_out_connectivity::Param = Factor(
         0.80;
         ptype="continuous",
         dist=Uniform,
@@ -40,7 +40,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Outgoing Connectivity",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
-    LvM_depth::Param = Factor(
+    iv_LvM_depth::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -49,7 +49,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Depth",
         description="Give preference to deeper locations for coral deployments."
     )
-    LvM_coral_cover::Param = Factor(
+    iv_LvM_coral_cover::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
@@ -58,7 +58,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Coral Cover",
         description="Preference locations with lower coral cover (higher available space)."
     )
-    LvM_cluster_diversity::Param = Factor(
+    iv_LvM_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
@@ -67,7 +67,7 @@ Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
         name="MC Cluster Diversity",
         description="Prefer locations from clusters that are under-represented."
     )
-    LvM_geographic_separation::Param = Factor(
+    iv_LvM_geographic_separation::Param = Factor(
         0.8;
         ptype="continuous",
         dist=Uniform,

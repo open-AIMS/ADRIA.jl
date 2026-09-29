@@ -31,7 +31,7 @@ end
 #  Arguments
 - `strategy_idx` : Can be either `1` (periodic) or `2` (reactive).
 - `param_set` : Single scenario param_set.
-- `iv_type` : Can be either `"CAq"`, `"LvM"` or `"Fog"`.
+- `iv_type` : Can be either `"iv_CAq"`, `"iv_LvM"` or `"iv_Fog"`.
 """
 function strategy_type(strategy_idx::Int64)
     if is_reactive(strategy_idx)

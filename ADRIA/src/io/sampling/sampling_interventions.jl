@@ -39,7 +39,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
         d;
         wave_scenario=0.0,
         cyclone_mortality_scenario=0.0
-        # CAq_strategy=0.0
+        # iv_CAq_strategy=0.0
     )
 
     # Assume coral model has been perfectly parameterized
@@ -158,7 +158,7 @@ and `:depth_thresholds` remain **active** (unchanged) under guided = 0.0 — ung
 scenarios still deploy interventions, just without MCDA-driven site selection. Only
 `:criteria_weights`, `:plan_horizon`, and `:projection_confidence` are zeroed, and
 `:strategy_group` columns
-(`CAq_strategy`/`Fog_strategy`/`LvM_strategy`) are fixed to `DECISION_STRATEGY[:periodic]`
+(`iv_CAq_strategy`/`iv_Fog_strategy`/`iv_LvM_strategy`) are fixed to `DECISION_STRATEGY[:periodic]`
 — mirroring what `sample_unguided`'s pre-sampling `_resolve_conditional_spec!(spec,
 (guided=0.0,))` does.
 

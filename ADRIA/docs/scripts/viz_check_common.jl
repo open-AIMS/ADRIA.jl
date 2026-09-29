@@ -108,11 +108,11 @@ else
 
     ADRIA.set_factor_bounds!(
         example_dom;
-        N_CAq_TA=(1000000.0, 15000000.0, 100000.0),
-        N_CAq_CA=(1000000.0, 15000000.0, 100000.0),
-        N_CAq_CNA=(1000000.0, 15000000.0, 100000.0),
-        N_CAq_SM=(1000000.0, 15000000.0, 100000.0),
-        N_CAq_LM=(1000000.0, 15000000.0, 100000.0)
+        iv_CAq_N_TA=(1000000.0, 15000000.0, 100000.0),
+        iv_CAq_N_CA=(1000000.0, 15000000.0, 100000.0),
+        iv_CAq_N_CNA=(1000000.0, 15000000.0, 100000.0),
+        iv_CAq_N_SM=(1000000.0, 15000000.0, 100000.0),
+        iv_CAq_N_LM=(1000000.0, 15000000.0, 100000.0)
     )
 
     run_scens = ADRIA.sample_set(example_dom, n_scens, "45")
@@ -391,7 +391,7 @@ end
 # ----------------------------------------------------------------------------
 
 check("example_dea_fig") do
-    seed_cols = String[c for c in ("N_CAq_TA", "N_CAq_CA") if c in names(scens)]
+    seed_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
     cost = if isempty(seed_cols)
         ones(Float64, nrow(scens))
     else
@@ -532,10 +532,10 @@ check("criteria_spatial_plots") do
     seed_decision_mat = ADRIA.decision.decision_matrix(
         example_dom.loc_ids,
         seed_pref.names;
-        CAq_in_connectivity=in_conn,
-        CAq_out_connectivity=out_conn,
-        CAq_heat_stress=dhw_projection,
-        CAq_coral_cover=sum_cover
+        iv_CAq_in_connectivity=in_conn,
+        iv_CAq_out_connectivity=out_conn,
+        iv_CAq_heat_stress=dhw_projection,
+        iv_CAq_coral_cover=sum_cover
     )
 
     crit_agg = ADRIA.decision.criteria_aggregated_scores(

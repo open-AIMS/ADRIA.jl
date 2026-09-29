@@ -118,24 +118,24 @@ This is referred to as \$F\$.
 
 # Returns
 Matrix of `s * 8`, where `s` is the number of scenarios and columns are:
-`N_CAq_TA`, `N_CAq_CA`, `N_CAq_CNA`, `N_CAq_SM`, `N_CAq_LM`, `fogging`, `Shd`,
-`CAq_years`, `Shd_years`, `Fog_years`
+`iv_CAq_N_TA`, `iv_CAq_N_CA`, `iv_CAq_N_CNA`, `iv_CAq_N_SM`, `iv_CAq_N_LM`, `iv_Fog`, `iv_Shd`,
+`iv_CAq_years`, `iv_Shd_years`, `iv_Fog_years`
 """
 function intervention_effort(X, ub, lb)
     return (X .- lb) ./ (ub .- lb)
 end
 function intervention_effort(ms::DataFrame, X::DataFrame;
     interv_cols=[
-        :N_CAq_TA,
-        :N_CAq_CA,
-        :N_CAq_CNA,
-        :N_CAq_SM,
-        :N_CAq_LM,
-        :fogging,
-        :Shd,
-        :CAq_years,
-        :Shd_years,
-        :Fog_years
+        :iv_CAq_N_TA,
+        :iv_CAq_N_CA,
+        :iv_CAq_N_CNA,
+        :iv_CAq_N_SM,
+        :iv_CAq_N_LM,
+        :iv_Fog,
+        :iv_Shd,
+        :iv_CAq_years,
+        :iv_Shd_years,
+        :iv_Fog_years
     ]
 )
     interv_s = ms[

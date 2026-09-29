@@ -105,7 +105,7 @@ function Domain(
     end
 
     intervention_params = (
-        MCB_albedo=Factor(
+        iv_MCB_albedo=Factor(
             albedos[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,
@@ -113,7 +113,7 @@ function Domain(
             name="MCB Albedo",
             description="Albedo level to use from 5D DHW dataset."
         ),
-        MCB_duration=Factor(
+        iv_MCB_duration=Factor(
             durations[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,

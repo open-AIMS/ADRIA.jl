@@ -724,11 +724,11 @@ function run_model(
     if dhw_idx > 0.0
         if has_mcb_scenarios(domain.dhw_scens)
             # Cast to axis type to prevent Float32/Float64 mismatch SelectorErrors
-            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("MCB_albedo")])
+            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("iv_MCB_albedo")])
             mcb_duration = eltype(domain.dhw_scens.mcb_durations)(
-                param_set[At("MCB_duration")]
+                param_set[At("iv_MCB_duration")]
             )
-            mcb_freq = Int64(param_set[At("MCB_deployment_freq")])
+            mcb_freq = Int64(param_set[At("iv_MCB_deployment_freq")])
 
             # Hardcode MCB start year to 2035
             mcb_start_year = findfirst(domain.env_layer_md.timeframe .== 2035)
@@ -829,14 +829,14 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
-    mc_min_iv_locs::Int64 = param_set[At("LvM_min_iv_locations")]
+    mc_min_iv_locs::Int64 = param_set[At("iv_LvM_min_iv_locations")]
 
-    fogging::Float64 = param_set[At("fogging")]
-    srm::Float64 = param_set[At("Shd")]  # DHW equivalents reduced by some shading mechanism
-    shade_years::Int64 = param_set[At("Shd_years")]  # number of years to shade
+    fogging::Float64 = param_set[At("iv_Fog")]
+    srm::Float64 = param_set[At("iv_Shd")]  # DHW equivalents reduced by some shading mechanism
+    shade_years::Int64 = param_set[At("iv_Shd_years")]  # number of years to shade
 
     # Years to start seeding/shading/fogging
-    shade_start_year::Int64 = param_set[At("Shd_year_start")]
+    shade_start_year::Int64 = param_set[At("iv_Shd_year_start")]
 
     colony_areas = _to_group_size(
         domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
@@ -916,16 +916,16 @@ function run_model(
 
     # Years at which intervention locations are re-evaluated and deployed
     # seed_decision_years = decision_frequency(
-    #     seed_start_year, tf, seed_years, param_set[At("CAq_deployment_freq")]
+    #     seed_start_year, tf, seed_years, param_set[At("iv_CAq_deployment_freq")]
     # )
     # fog_decision_years = decision_frequency(
-    #     fog_start_year, tf, fog_years, param_set[At("Fog_deployment_freq")]
+    #     fog_start_year, tf, fog_years, param_set[At("iv_Fog_deployment_freq")]
     # )
     last_seed_deployment = zeros(Int64, n_locs)
     last_fog_deployment = zeros(Int64, n_locs)
     last_mc_deployment = zeros(Int64, n_locs)
     shade_decision_years = decision_frequency(
-        shade_start_year, tf, shade_years, param_set[At("Shd_deployment_freq")]
+        shade_start_year, tf, shade_years, param_set[At("iv_Shd_deployment_freq")]
     )
 
     # Define taxa and size class to seed, and identify their factor names
@@ -934,11 +934,11 @@ function run_model(
     _seed_size_groups::BitMatrix = seed_size_groups(n_groups, n_sizes)
 
     # Set up assisted adaptation values
-    a_adapt::Vector{Float64} = fill(param_set[At("CAq_a_adapt")], n_groups)
+    a_adapt::Vector{Float64} = fill(param_set[At("iv_CAq_a_adapt")], n_groups)
 
     seed_idx = findall(n -> contains(n, "N_CAq"), factor_names)
     seed_volume = view(param_set.data, seed_idx)
-    seeding_devices_per_m2::Float64 = param_set[At("CAq_devices_per_m2")]
+    seeding_devices_per_m2::Float64 = param_set[At("iv_CAq_devices_per_m2")]
 
     is_unguided = param_set[At("guided")] == 0.0
     is_seeding = any(>(0), seed_volume)
@@ -951,7 +951,7 @@ function run_model(
     unguided_fogging = is_unguided && is_fogging
 
     # Moving corals flag
-    n_mc_settlers = param_set[At("N_LvM_settlers")]
+    n_mc_settlers = param_set[At("iv_LvM_N_settlers")]
     is_mc = n_mc_settlers > 0.0
     unguided_mc = is_unguided && is_mc
 
@@ -1135,7 +1135,7 @@ function run_model(
 
     # Assume heat tolerance enhancement is based on population from `a_adapt_ref` years ago
     # If a_adapt == 0, use always first year as reference for a_adapt
-    a_adapt_ref::Int64 = param_set[At("CAq_a_adapt_ref")]
+    a_adapt_ref::Int64 = param_set[At("iv_CAq_a_adapt_ref")]
 
     # Depth attenuation of surface DHW (see `effective_dhw_at_depth`). Read once here rather
     # than inside the time loop - they are scenario-level constants.
@@ -1164,9 +1164,9 @@ function run_model(
     # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
     Δcover_loss_proportion = zeros(n_locs)
     _is_reactive =
-        is_reactive(param_set[At("CAq_strategy")]) ||
-        is_reactive(param_set[At("Fog_strategy")]) ||
-        is_reactive(param_set[At("LvM_strategy")])
+        is_reactive(param_set[At("iv_CAq_strategy")]) ||
+        is_reactive(param_set[At("iv_Fog_strategy")]) ||
+        is_reactive(param_set[At("iv_LvM_strategy")])
     dhw_p = is_guided ? similar(dhw_scen) : nothing
     current_loc_cover = zeros(n_locs)
     _loc_coral_cover = zeros(n_locs)
@@ -1541,7 +1541,7 @@ function run_model(
                         candidate_locs, mc_share.target_locs
                     )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "LvM") ==
+                        if ADRIA.decision.strategy_type(param_set, "iv_LvM") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
@@ -1729,7 +1729,7 @@ function run_model(
                         candidate_locs, seed_share.target_locs
                     )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "CAq") ==
+                        if ADRIA.decision.strategy_type(param_set, "iv_CAq") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on

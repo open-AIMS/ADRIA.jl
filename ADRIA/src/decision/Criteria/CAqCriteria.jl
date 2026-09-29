@@ -4,7 +4,7 @@
 Criteria weights for coral aquaculture (seeding) interventions.
 """
 Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
-    CAq_heat_stress::Param = Factor(
+    iv_CAq_heat_stress::Param = Factor(
         0.9;
         ptype="continuous",
         dist=Uniform,
@@ -13,7 +13,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Seed Heat Stress",
         description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress."
     )
-    CAq_wave_stress::Param = Factor(
+    iv_CAq_wave_stress::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -22,7 +22,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Seed Wave Stress",
         description="Prefer locations with higher wave activity."
     )
-    CAq_in_connectivity::Param = Factor(
+    iv_CAq_in_connectivity::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
@@ -31,7 +31,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Incoming Connectivity (Seed)",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
-    CAq_out_connectivity::Param = Factor(
+    iv_CAq_out_connectivity::Param = Factor(
         0.80;
         ptype="continuous",
         dist=Uniform,
@@ -40,7 +40,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Outgoing Connectivity (Seed)",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
-    CAq_depth::Param = Factor(
+    iv_CAq_depth::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -49,7 +49,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Depth (Seed)",
         description="Give preference to deeper locations for coral deployments."
     )
-    CAq_coral_cover::Param = Factor(
+    iv_CAq_coral_cover::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
@@ -58,7 +58,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Seed Coral Cover",
         description="Preference locations with lower coral cover (higher available space) for seeding deployments."
     )
-    CAq_cluster_diversity::Param = Factor(
+    iv_CAq_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
@@ -67,7 +67,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Cluster Diversity",
         description="Prefer locations from clusters that are under-represented."
     )
-    CAq_geographic_separation::Param = Factor(
+    iv_CAq_geographic_separation::Param = Factor(
         0.8;
         ptype="continuous",
         dist=Uniform,
@@ -77,7 +77,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
     )
     # Disabled as they are currently unnecessary
-    # CAq_priority::Param = Factor(
+    # iv_CAq_priority::Param = Factor(
     #     1.0;
     #     ptype="continuous",
     #     dist=Uniform,
@@ -86,7 +86,7 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
     #     name="Predecessor Priority (Seed)",
     #     description="Preference locations that provide larvae to priority reefs.",
     # )
-    # CAq_zone::Param = Factor(
+    # iv_CAq_zone::Param = Factor(
     #     0.0;
     #     ptype="continuous",
     #     dist=Uniform,

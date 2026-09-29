@@ -41,11 +41,11 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
             :wave_scenario,
             :guided,
             :mcda_method,
-            :N_CAq_TA,
-            :N_CAq_CA,
-            :fogging,
-            :Shd,
-            :CAq_a_adapt
+            :iv_CAq_N_TA,
+            :iv_CAq_N_CA,
+            :iv_Fog,
+            :iv_Shd,
+            :iv_CAq_a_adapt
         ]
     )
 
@@ -288,10 +288,10 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     foi = [
         :dhw_scenario,
         :wave_scenario,
-        :N_CAq_TA,
-        :N_CAq_CA,
-        :fogging,
-        :Shd
+        :iv_CAq_N_TA,
+        :iv_CAq_N_CA,
+        :iv_Fog,
+        :iv_Shd
     ]
 
     tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)

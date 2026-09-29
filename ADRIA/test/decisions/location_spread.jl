@@ -44,21 +44,21 @@ end
 
         method = first(ADRIA.mcda_methods())
 
-        ADRIA.fix_factor!(dom; CAq_cluster_diversity=1.0)
-        # ADRIA.fix_factor!(dom, CAq_geographic_separation=1.0)
+        ADRIA.fix_factor!(dom; iv_CAq_cluster_diversity=1.0)
+        # ADRIA.fix_factor!(dom, iv_CAq_geographic_separation=1.0)
 
         sp = ADRIA.decision.CAqPreferences(dom)
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            CAq_depth=loc_data.depth_med,
-            CAq_in_connectivity=zeros(n_locs),
-            CAq_out_connectivity=zeros(n_locs),
-            CAq_heat_stress=zeros(n_locs),
-            CAq_wave_stress=zeros(n_locs),
-            CAq_coral_cover=Float64.(rand(1:100, n_locs)),
-            CAq_cluster_diversity=diversity_scores,
-            CAq_geographic_separation=separation_scores
+            iv_CAq_depth=loc_data.depth_med,
+            iv_CAq_in_connectivity=zeros(n_locs),
+            iv_CAq_out_connectivity=zeros(n_locs),
+            iv_CAq_heat_stress=zeros(n_locs),
+            iv_CAq_wave_stress=zeros(n_locs),
+            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
+            iv_CAq_cluster_diversity=diversity_scores,
+            iv_CAq_geographic_separation=separation_scores
         )
 
         # When only cluster diversity matters, should select from underrepresented clusters
@@ -84,7 +84,7 @@ end
         min_locs = 10  # select at least 10 locations
 
         # Make selecting a location that is close to other locations more important
-        ADRIA.fix_factor!(dom; CAq_geographic_separation=1.0)
+        ADRIA.fix_factor!(dom; iv_CAq_geographic_separation=1.0)
 
         diversity_scores = cluster_diversity(loc_data.cluster_id)
         separation_scores = geographic_separation(loc_data.mean_to_neighbor)
@@ -97,14 +97,14 @@ end
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            CAq_depth=loc_data.depth_med,
-            CAq_in_connectivity=zeros(n_locs),
-            CAq_out_connectivity=zeros(n_locs),
-            CAq_heat_stress=zeros(n_locs),
-            CAq_wave_stress=zeros(n_locs),
-            CAq_coral_cover=Float64.(rand(1:100, n_locs)),
-            CAq_cluster_diversity=diversity_scores,
-            CAq_geographic_separation=separation_scores
+            iv_CAq_depth=loc_data.depth_med,
+            iv_CAq_in_connectivity=zeros(n_locs),
+            iv_CAq_out_connectivity=zeros(n_locs),
+            iv_CAq_heat_stress=zeros(n_locs),
+            iv_CAq_wave_stress=zeros(n_locs),
+            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
+            iv_CAq_cluster_diversity=diversity_scores,
+            iv_CAq_geographic_separation=separation_scores
         )
 
         # If geographic separation is preferred, then should select locations that are

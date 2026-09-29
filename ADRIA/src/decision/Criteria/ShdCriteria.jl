@@ -4,7 +4,7 @@
 Weights for shading (Solar Radiation Management) interventions.
 """
 Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
-    Shd_heat_stress::Param = Factor(
+    iv_Shd_heat_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -13,7 +13,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         name="Shade Heat Stress",
         description="Preference locations with lower heat stress for SRM."
     )
-    Shd_wave_stress::Param = Factor(
+    iv_Shd_wave_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
@@ -22,7 +22,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         name="Shade Wave Stress",
         description="Prefer locations with lower wave stress for SRM."
     )
-    Shd_connectivity::Param = Factor(
+    iv_Shd_connectivity::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,
@@ -31,7 +31,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         name="SRM Connectivity",
         description="Preference locations with higher outgoing connectivity for SRM."
     )
-    Shd_coral_cover::Param = Factor(
+    iv_Shd_coral_cover::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,
@@ -40,7 +40,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         name="Coral Cover (SRM)",
         description="Give greater weight to locations with higher coral cover for SRM."
     )
-    Shd_priority::Param = Factor(
+    iv_Shd_priority::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,
@@ -49,7 +49,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         name="Predecessor Priority (SRM)",
         description="Relative importance of locations with higher outgoing connectivity to priority locations."
     )
-    Shd_zone::Param = Factor(
+    iv_Shd_zone::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,

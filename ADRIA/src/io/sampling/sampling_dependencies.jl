@@ -150,35 +150,35 @@ const _PARAM_DEPENDENCIES = [
 
 const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
     :intervention_group => [
-        :N_CAq_TA, :N_CAq_CA, :N_CAq_CNA, :N_CAq_SM, :N_CAq_LM,
-        :N_LvM_settlers, :CAq_devices_per_m2, :min_iv_locations,
-        :LvM_min_iv_locations, :fogging, :Shd, :CAq_a_adapt, :CAq_a_adapt_ref,
-        :CAq_years, :Shd_years, :Fog_years, :plan_horizon, :projection_confidence,
-        :CAq_deployment_freq, :Fog_deployment_freq, :Shd_deployment_freq,
-        :LvM_deployment_freq, :CAq_year_start, :Shd_year_start,
-        :Fog_year_start, :LvM_year_start, :LvM_years,
-        :MCB_albedo, :MCB_duration, :MCB_deployment_freq,
-        # NOTE: :CAq_strategy/:Fog_strategy/:LvM_strategy are intentionally
+        :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM,
+        :iv_LvM_N_settlers, :iv_CAq_devices_per_m2, :min_iv_locations,
+        :iv_LvM_min_iv_locations, :iv_Fog, :iv_Shd, :iv_CAq_a_adapt, :iv_CAq_a_adapt_ref,
+        :iv_CAq_years, :iv_Shd_years, :iv_Fog_years, :plan_horizon, :projection_confidence,
+        :iv_CAq_deployment_freq, :iv_Fog_deployment_freq, :iv_Shd_deployment_freq,
+        :iv_LvM_deployment_freq, :iv_CAq_year_start, :iv_Shd_year_start,
+        :iv_Fog_year_start, :iv_LvM_year_start, :iv_LvM_years,
+        :iv_MCB_albedo, :iv_MCB_duration, :iv_MCB_deployment_freq,
+        # NOTE: :iv_CAq_strategy/:iv_Fog_strategy/:iv_LvM_strategy are intentionally
         # excluded here — they belong exclusively to :strategy_group (see above).
         :reactive_absolute_threshold, :reactive_loss_threshold,
         :reactive_min_cover_remaining, :reactive_response_delay,
-        :CAq_revisit_cadence, :Fog_revisit_cadence, :LvM_revisit_cadence
+        :iv_CAq_revisit_cadence, :iv_Fog_revisit_cadence, :iv_LvM_revisit_cadence
     ],
     :criteria_weights => [
-        :CAq_heat_stress, :CAq_wave_stress, :CAq_in_connectivity,
-        :CAq_out_connectivity, :CAq_depth, :CAq_coral_cover,
-        :CAq_cluster_diversity, :CAq_geographic_separation,
-        :Fog_heat_stress, :Fog_wave_stress, :Fog_in_connectivity,
-        :Fog_out_connectivity, :Fog_depth, :Fog_coral_cover,
-        :Fog_cluster_diversity, :Fog_geographic_separation,
-        :LvM_heat_stress, :LvM_wave_stress, :LvM_in_connectivity,
-        :LvM_out_connectivity, :LvM_depth, :LvM_coral_cover,
-        :LvM_cluster_diversity, :LvM_geographic_separation
-        # NOTE: Shd_* criteria weights are deliberately excluded — ShdCriteriaWeights is
+        :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
+        :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
+        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation,
+        :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
+        :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
+        :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation,
+        :iv_LvM_heat_stress, :iv_LvM_wave_stress, :iv_LvM_in_connectivity,
+        :iv_LvM_out_connectivity, :iv_LvM_depth, :iv_LvM_coral_cover,
+        :iv_LvM_cluster_diversity, :iv_LvM_geographic_separation
+        # NOTE: iv_Shd_* criteria weights are deliberately excluded — ShdCriteriaWeights is
         # not currently included in the module (see DecisionWeights.jl), so these columns
         # don't exist in model_spec today. Add them here if/when that's revived.
     ], :depth_thresholds => [:depth_min, :depth_offset],
-    :strategy_group => [:CAq_strategy, :Fog_strategy, :LvM_strategy]
+    :strategy_group => [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
 )
 
 # ---------------------------------------------------------------------------

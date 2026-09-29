@@ -224,10 +224,10 @@ fix_factor!(dom, :guided, 1)
 fix_factor!(dom, :mcda_method, 3)
 
 # Fix a set of factors to their default values
-fix_factor!(dom, [:guided, :N_CAq_TA])
+fix_factor!(dom, [:guided, :iv_CAq_N_TA])
 
 # Fix specified factors to provided values
-fix_factor!(dom; guided=1, N_CAq_TA=1e6)
+fix_factor!(dom; guided=1, iv_CAq_N_TA=1e6)
 ```
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing

@@ -18,7 +18,7 @@ function test_small_spec_rs()
 
     # Create scenario spec
     samples = ADRIA.sample(dom, 16)
-    samples[!, :N_CAq_TA] .= 500_000.0
+    samples[!, :iv_CAq_N_TA] .= 500_000.0
 
     # Write out scenario spec
     tmp_dir = mktempdir()

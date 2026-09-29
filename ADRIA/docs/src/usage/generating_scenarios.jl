@@ -91,25 +91,25 @@ dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 ## orig_spec = DataFrame(dom.model)
 
 ## Make the assisted adaptation factor a constant
-ADRIA.fix_factor!(dom, :CAq_a_adapt)
+ADRIA.fix_factor!(dom, :iv_CAq_a_adapt)
 
 ## Set the assisted adaptation factor to a given constant value
-ADRIA.fix_factor!(dom, :CAq_a_adapt, 3.0)
+ADRIA.fix_factor!(dom, :iv_CAq_a_adapt, 3.0)
 
 ## Pass in factor names and their constant values as named arguments
 ## to fix a set of factors.
 ADRIA.fix_factor!(dom;
-    N_CAq_TA=Int64(5e5),
-    N_CAq_CA=Int64(5e5),
-    Shd=0.0,  # Never shade
-    fogging=0.0,  # Never fog
-    CAq_a_adapt=3.0,  # only deploy +3 DHW enhanced corals
-    CAq_years=5,
-    Shd_years=0,
-    CAq_deployment_freq=0,
-    CAq_year_start=3,
-    Shd_year_start=3,
-    CAq_coral_cover=1.0
+    iv_CAq_N_TA=Int64(5e5),
+    iv_CAq_N_CA=Int64(5e5),
+    iv_Shd=0.0,  # Never shade
+    iv_Fog=0.0,  # Never fog
+    iv_CAq_a_adapt=3.0,  # only deploy +3 DHW enhanced corals
+    iv_CAq_years=5,
+    iv_Shd_years=0,
+    iv_CAq_deployment_freq=0,
+    iv_CAq_year_start=3,
+    iv_Shd_year_start=3,
+    iv_CAq_coral_cover=1.0
 )
 
 # ## Setting different sampling bounds
@@ -121,19 +121,19 @@ dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
 ## Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 ## question have a uniform distribution.
-ADRIA.set_factor_bounds!(dom, :N_CAq_TA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_CAq_CA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_TA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_CA, (500000.0, 1000000.0))
 ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
 
 ## Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 ## is a triangular distribution.
-ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
+ADRIA.set_factor_bounds!(dom, :iv_Fog, (0.2, 0.3, 0.1))
 
 ## Adjust multiple factors simultaneously (more efficient than setting these one at a time)
 ADRIA.set_factor_bounds!(dom;
-    CAq_heat_stress=(0.3, 0.7),
-    N_CAq_TA=(500000.0, 1000000.0),
-    N_CAq_CA=(500000.0, 1000000.0))
+    iv_CAq_heat_stress=(0.3, 0.7),
+    iv_CAq_N_TA=(500000.0, 1000000.0),
+    iv_CAq_N_CA=(500000.0, 1000000.0))
 
 ## List of available MCDA decision methods
 ADRIA.decision.mcda_method_names()
@@ -169,7 +169,7 @@ cf_scens = ADRIA.sample_cf(dom, 128)
 
 ## Intervention and criteria weight columns are fixed to a sentinel value for
 ## counterfactual scenarios rather than sampled, since they have no effect.
-cf_scens[:, [:N_CAq_TA, :fogging, :CAq_heat_stress]]
+cf_scens[:, [:iv_CAq_N_TA, :iv_Fog, :iv_CAq_heat_stress]]
 
 # Marine Cloud Brightening factors are handled the same way — see
 # [Marine Cloud Brightening (MCB) Scenarios](@ref) below for a concrete example of fixing
@@ -195,9 +195,9 @@ cf_scens[:, [:N_CAq_TA, :fogging, :CAq_heat_stress]]
 # When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `MCB_` and their sampling distributions are derived from the NetCDF axis labels.
 #
 # The primary MCB factors are:
-# - `MCB_albedo`: The reflectiveness level to apply.
-# - `MCB_duration`: The yearly duration (in days) of MCB deployment.
-# - `MCB_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
+# - `iv_MCB_albedo`: The reflectiveness level to apply.
+# - `iv_MCB_duration`: The yearly duration (in days) of MCB deployment.
+# - `iv_MCB_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
 #
 # Note that `mcb_start_year` is currently hardcoded to **2035**.
 #
@@ -206,8 +206,8 @@ cf_scens[:, [:N_CAq_TA, :fogging, :CAq_heat_stress]]
 dom = ADRIA.load_domain("path/to/5d/domain", "45")
 
 ## Fix MCB to a specific duration and albedo level available in the NetCDF
-ADRIA.fix_factor!(dom, :MCB_duration, 50.0)
-ADRIA.fix_factor!(dom, :MCB_albedo, 0.3)
+ADRIA.fix_factor!(dom, :iv_MCB_duration, 50.0)
+ADRIA.fix_factor!(dom, :iv_MCB_albedo, 0.3)
 
 ## Or allow them to vary across their available categorical range
 ## (Default behavior if not fixed)

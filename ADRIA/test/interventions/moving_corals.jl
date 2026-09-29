@@ -27,11 +27,11 @@ end
     # runs the full simulation, deploys every year, periodic strategy.
     ADRIA.fix_factor!(
         dom;
-        N_LvM_settlers=500_000.0,
-        LvM_year_start=1.0,
-        LvM_years=75.0,
-        LvM_deployment_freq=1.0,
-        LvM_strategy=1.0
+        iv_LvM_N_settlers=500_000.0,
+        iv_LvM_year_start=1.0,
+        iv_LvM_years=75.0,
+        iv_LvM_deployment_freq=1.0,
+        iv_LvM_strategy=1.0
     )
 
     num_samples = 4
@@ -39,7 +39,7 @@ end
     rs = ADRIA.run_scenarios(dom, scens, "45")
 
     # Total MC settlers requested per scenario
-    N_mc = vec(scens.N_LvM_settlers)
+    N_mc = vec(scens.iv_LvM_N_settlers)
 
     mc_log_1 = dropdims(
         sum(rs.mc_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));

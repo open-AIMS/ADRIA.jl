@@ -15,7 +15,7 @@
 # :strategy_group in sampling_dependencies.jl, which already owns them with
 # fix_to=-1.0 for CF). fog_strategy/mc_strategy are instead gated on their own
 # intervention's activity via the dedicated :fog_strategy_gate/:mc_strategy_gate
-# rules below (fix_to=periodic when fogging/N_LvM_settlers == 0), which check
+# rules below (fix_to=periodic when fogging/iv_LvM_N_settlers == 0), which check
 # the CF sentinel before touching the column so they don't reintroduce that
 # regression. seed_strategy is deliberately left out of this: it isn't gated
 # on :any_seeding here, so a seeding-inactive scenario can still draw
@@ -92,7 +92,7 @@ const _TRANSFORM_GATE_COMBINERS = Dict{Symbol,Function}(
             .|, (is_reactive(cols[:, c]) for c in propertynames(cols))
         ),
     # cols[:,1] is the intervention-activity column (e.g. fogging,
-    # N_LvM_settlers), cols[:,2] is the *_strategy column itself. "active"
+    # iv_LvM_N_settlers), cols[:,2] is the *_strategy column itself. "active"
     # (i.e. leave alone) when the intervention is on, OR when the strategy
     # column already holds the CF sentinel (-1.0, set pre-sampling by
     # :strategy_group / re-applied by _apply_guided_dependencies!); this
@@ -102,12 +102,12 @@ const _TRANSFORM_GATE_COMBINERS = Dict{Symbol,Function}(
 
 const _TRANSFORM_GATE_DEFS = [
     (name=:any_seeding,
-        parents=[:N_CAq_TA, :N_CAq_CA, :N_CAq_CNA, :N_CAq_SM, :N_CAq_LM],
+        parents=[:iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM],
         combine=:any_gt0),
-    (name=:any_reactive, parents=[:CAq_strategy, :Fog_strategy, :LvM_strategy],
+    (name=:any_reactive, parents=[:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy],
         combine=:any_reactive),
-    (name=:fog_strategy_gate, parents=[:fogging, :Fog_strategy], combine=:strategy_gate),
-    (name=:mc_strategy_gate, parents=[:N_LvM_settlers, :LvM_strategy],
+    (name=:fog_strategy_gate, parents=[:iv_Fog, :iv_Fog_strategy], combine=:strategy_gate),
+    (name=:mc_strategy_gate, parents=[:iv_LvM_N_settlers, :iv_LvM_strategy],
         combine=:strategy_gate)
 ]
 
@@ -131,37 +131,37 @@ const _TRANSFORM_GATE_DEFS = [
 # ---------------------------------------------------------------------------
 
 const _TRANSFORM_DEPENDENCIES = [
-    (parent=:fogging, child=:fog_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
-    (parent=:N_LvM_settlers, child=:mc_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
-    (parent=:Shd, child=:shade_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (parent=:iv_Fog, child=:fog_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (parent=:iv_LvM_N_settlers, child=:mc_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (parent=:iv_Shd, child=:shade_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
     (
-        parent=:CAq_strategy,
-        child=:CAq_deployment_freq,
+        parent=:iv_CAq_strategy,
+        child=:iv_CAq_deployment_freq,
         op=:is_reactive,
         value=nothing,
         negate=true,
         fix_to=0.0
     ),
     (
-        parent=:LvM_strategy,
-        child=:LvM_deployment_freq,
+        parent=:iv_LvM_strategy,
+        child=:iv_LvM_deployment_freq,
         op=:is_reactive,
         value=nothing,
         negate=true,
         fix_to=0.0
     ),
     (
-        parent=:Fog_strategy,
-        child=:Fog_deployment_freq,
+        parent=:iv_Fog_strategy,
+        child=:iv_Fog_deployment_freq,
         op=:is_periodic,
         value=nothing,
         negate=false,
         fix_to=0.0
     ),
-    # CAq_a_adapt_ref (adaptation reference period) only matters when assisted adaptation is
-    # actually applied -- zero it whenever CAq_a_adapt itself is 0, whether that's a direct
+    # iv_CAq_a_adapt_ref (adaptation reference period) only matters when assisted adaptation is
+    # actually applied -- zero it whenever iv_CAq_a_adapt itself is 0, whether that's a direct
     # sampled draw or an explicit override (e.g. a sensitivity analysis forcing it to 0).
-    (parent=:CAq_a_adapt, child=:CAq_a_adapt_ref, op=:eq, value=0.0, negate=true, fix_to=0.0)
+    (parent=:iv_CAq_a_adapt, child=:iv_CAq_a_adapt_ref, op=:eq, value=0.0, negate=true, fix_to=0.0)
 ]
 
 # ---------------------------------------------------------------------------
@@ -176,25 +176,25 @@ const _TRANSFORM_GATE_RULES = [
     (child=:a_adapt_group, gate=:any_seeding, fix_to=0.0),
     # Must run BEFORE :reactive_group's :any_reactive rule below: that rule
     # reads :fog_strategy/:mc_strategy, and needs to see them already fixed
-    # to periodic here for fogging/N_LvM_settlers-inactive rows, otherwise an
+    # to periodic here for fogging/iv_LvM_N_settlers-inactive rows, otherwise an
     # orphaned reactive draw on an inactive intervention keeps reactive_group
     # alive as pure sampling noise (see file header).
-    (child=:Fog_strategy, gate=:fog_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
-    (child=:LvM_strategy, gate=:mc_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
+    (child=:iv_Fog_strategy, gate=:fog_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
+    (child=:iv_LvM_strategy, gate=:mc_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
     (child=:reactive_group, gate=:any_reactive, fix_to=0.0)
 ]
 
 # ---------------------------------------------------------------------------
 # Live substring-based group membership for post-sampling groups
 #
-# CAq_strategy/Fog_strategy/LvM_strategy are EXCLUDED from
+# iv_CAq_strategy/iv_Fog_strategy/iv_LvM_strategy are EXCLUDED from
 # :seed_group/:fog_group/:mc_group. :strategy_group (pre-sampling,
 # sampling_dependencies.jl) already owns these with fix_to=-1.0 for CF;
 # re-touching them here with fix_to=0.0 would reproduce the d5871840
 # regression (see file header).
 #
-# Behaviour note (intervention-parameter rename, 2026): CAq_devices_per_m2 (formerly
-# seeding_devices_per_m2) now starts with the :seed_group prefix "CAq_", so it is newly
+# Behaviour note (intervention-parameter rename, 2026): iv_CAq_devices_per_m2 (formerly
+# seeding_devices_per_m2) now starts with the :seed_group prefix "iv_CAq_", so it is newly
 # swept into :seed_group's post-sampling zeroing (fixed to 0 whenever :any_seeding is
 # false). Previously "seed_" did not match "seeding_devices_per_m2" as a substring (the
 # character after "seed" was "i", not "_"), so this column was NOT zeroed when seeding
@@ -213,10 +213,10 @@ const _TRANSFORM_GATE_RULES = [
 # ---------------------------------------------------------------------------
 
 const _TRANSFORM_GROUP_PREFIXES = Dict{Symbol,String}(
-    :seed_group => "CAq_",
-    :fog_group => "Fog_",
-    :mc_group => "LvM_",
-    :shade_group => "Shd_"
+    :seed_group => "iv_CAq_",
+    :fog_group => "iv_Fog_",
+    :mc_group => "iv_LvM_",
+    :shade_group => "iv_Shd_"
 )
 
 const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
@@ -226,13 +226,13 @@ const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         :reactive_min_cover_remaining,
         :reactive_response_delay
     ],
-    :a_adapt_group => [:CAq_a_adapt, :CAq_a_adapt_ref]
+    :a_adapt_group => [:iv_CAq_a_adapt, :iv_CAq_a_adapt_ref]
 )
 
 const _TRANSFORM_GROUP_EXCLUDED_MEMBERS = Dict{Symbol,Vector{Symbol}}(
-    :seed_group => [:CAq_strategy],
-    :fog_group => [:Fog_strategy],
-    :mc_group => [:LvM_strategy]
+    :seed_group => [:iv_CAq_strategy],
+    :fog_group => [:iv_Fog_strategy],
+    :mc_group => [:iv_LvM_strategy]
 )
 
 """
@@ -315,30 +315,30 @@ end
 
 const _CRITERIA_WEIGHT_GROUPS = Dict{Symbol,Vector{Symbol}}(
     :seed_weights => [
-        :CAq_heat_stress, :CAq_wave_stress, :CAq_in_connectivity,
-        :CAq_out_connectivity, :CAq_depth, :CAq_coral_cover,
-        :CAq_cluster_diversity, :CAq_geographic_separation
+        :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
+        :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
+        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation
     ],
     :fog_weights => [
-        :Fog_heat_stress, :Fog_wave_stress, :Fog_in_connectivity,
-        :Fog_out_connectivity, :Fog_depth, :Fog_coral_cover,
-        :Fog_cluster_diversity, :Fog_geographic_separation
+        :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
+        :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
+        :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation
     ],
     :mc_weights => [
-        :LvM_heat_stress, :LvM_wave_stress, :LvM_in_connectivity,
-        :LvM_out_connectivity, :LvM_depth, :LvM_coral_cover,
-        :LvM_cluster_diversity, :LvM_geographic_separation
+        :iv_LvM_heat_stress, :iv_LvM_wave_stress, :iv_LvM_in_connectivity,
+        :iv_LvM_out_connectivity, :iv_LvM_depth, :iv_LvM_coral_cover,
+        :iv_LvM_cluster_diversity, :iv_LvM_geographic_separation
     ]
 )
 
 const _TRANSFORM_CALLS = [
     # fog_weights: deliberately NOT gate-based (see section header above).
     (transform=:mcda_normalize, columns=:fog_weights,
-        parent=:fogging, op=:gt, value=0.0, negate=false, gate=nothing),
+        parent=:iv_Fog, op=:gt, value=0.0, negate=false, gate=nothing),
     (transform=:mcda_normalize, columns=:seed_weights,
         parent=nothing, op=nothing, value=nothing, negate=false, gate=:any_seeding),
     (transform=:mcda_normalize, columns=:mc_weights,
-        parent=:N_LvM_settlers, op=:eq, value=0.0, negate=true, gate=nothing)
+        parent=:iv_LvM_N_settlers, op=:eq, value=0.0, negate=true, gate=nothing)
 ]
 
 # ---------------------------------------------------------------------------
@@ -450,9 +450,9 @@ Ordering is load-bearing:
    whenever `deployment_freq` already exceeds it (cadence has zero effect on
    model behaviour in that region).
 6. `_apply_transform_calls!` — mcda_normalize gates.
-7. `CAq_wave_stress` zeroing — must run LAST: mcda_normalize normalizes seed
-   weights (including CAq_wave_stress) to sum=1 first; zeroing
-   CAq_wave_stress afterward deliberately leaves the remaining 7 weights
+7. `iv_CAq_wave_stress` zeroing — must run LAST: mcda_normalize normalizes seed
+   weights (including iv_CAq_wave_stress) to sum=1 first; zeroing
+   iv_CAq_wave_stress afterward deliberately leaves the remaining 7 weights
    summing to <1 for wave_scenario==0 rows, matching production behaviour.
 """
 function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
@@ -460,8 +460,8 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
 
     sample_cols = propertynames(samples)
 
-    if :CAq_a_adapt_ref in sample_cols
-        samples[:, :CAq_a_adapt_ref] .= floor.(samples[:, :CAq_a_adapt_ref])
+    if :iv_CAq_a_adapt_ref in sample_cols
+        samples[:, :iv_CAq_a_adapt_ref] .= floor.(samples[:, :iv_CAq_a_adapt_ref])
     end
 
     # Must precede the zeroing rules below (see docstring above, point 2).
@@ -484,7 +484,7 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
     masks = _apply_transform_dependencies!(samples)
 
     # Must run after _apply_transform_dependencies! (see docstring above, point 5).
-    for prefix in ("CAq", "Fog", "LvM")
+    for prefix in ("iv_CAq", "iv_Fog", "iv_LvM")
         freq_col = Symbol("$(prefix)_deployment_freq")
         cadence_col = Symbol("$(prefix)_revisit_cadence")
         (freq_col in sample_cols && cadence_col in sample_cols) || continue
@@ -493,13 +493,13 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
 
     _apply_transform_calls!(samples, masks)
 
-    # Must run LAST (see docstring above, point 5). CAq_wave_stress is a
+    # Must run LAST (see docstring above, point 5). iv_CAq_wave_stress is a
     # CAqCriteriaWeights member already normalised by mcda_normalize above;
     # zeroing it here deliberately does NOT renormalise the remaining 7 seed
     # weights back to sum=1, matching production behaviour.
-    if :wave_scenario in sample_cols && :CAq_wave_stress in sample_cols
+    if :wave_scenario in sample_cols && :iv_CAq_wave_stress in sample_cols
         no_wave = _CONDITIONS[:eq].(samples.wave_scenario, 0.0)
-        samples[no_wave, :CAq_wave_stress] .= 0.0
+        samples[no_wave, :iv_CAq_wave_stress] .= 0.0
     end
 
     if size(unique(Matrix(samples); dims=1), 1) < nrow(samples)

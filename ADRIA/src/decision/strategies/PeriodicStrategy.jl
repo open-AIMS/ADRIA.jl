@@ -16,7 +16,7 @@ share. A backfilled location — one still within its own cadence window — is 
 the returned candidate list and so is legitimately eligible for selection by *any* share
 that contains it, not just a share short of its own `min_iv_locations`. This is the
 intended effect of aggregate-pool backfill, not a bug. Because `min_iv_locations`/
-`LvM_min_iv_locations` is enforced per deployment share downstream (in `scenario.jl`, for
+`iv_LvM_min_iv_locations` is enforced per deployment share downstream (in `scenario.jl`, for
 seed/mc only — fog has no per-share loop), aggregate backfill does not guarantee any
 individual share clears its own minimum; that is a pre-existing limitation of
 `min_iv_locations` in the multi-share case, unrelated to and not worsened by cadence.
