@@ -181,7 +181,7 @@ if hasmethod(
         scen = scens[1, :]
 
         # Get seeding preferences
-        seed_pref = ADRIA.decision.SeedPreferences(ADRIA_DOM_45, scen)
+        seed_pref = ADRIA.decision.CAqPreferences(ADRIA_DOM_45, scen)
 
         # Calculate criteria vectors
         # Cover
@@ -207,10 +207,10 @@ if hasmethod(
         seed_decision_mat = ADRIA.decision.decision_matrix(
             ADRIA_DOM_45.loc_ids,
             seed_pref.names;
-            seed_in_connectivity=in_conn,
-            seed_out_connectivity=out_conn,
-            seed_heat_stress=dhw_projection,
-            seed_coral_cover=sum_cover
+            CAq_in_connectivity=in_conn,
+            CAq_out_connectivity=out_conn,
+            CAq_heat_stress=dhw_projection,
+            CAq_coral_cover=sum_cover
         )
 
         # Get results from applying MCDA algorithm

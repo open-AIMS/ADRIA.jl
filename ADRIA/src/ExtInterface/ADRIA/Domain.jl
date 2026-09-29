@@ -4,9 +4,9 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights,
-    MCCriteriaWeights
+    LvMCriteriaWeights
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -34,10 +34,10 @@ mutable struct ADRIADomain <: Domain
     # Each element of these vector is a pair weight and list of location ids.
     # The weights represents the share of the intervention capacity that will be distributed
     # to each list of locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
     model::Model  # core model
@@ -105,7 +105,7 @@ function Domain(
     end
 
     intervention_params = (
-        mcb_albedo=Factor(
+        MCB_albedo=Factor(
             albedos[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,
@@ -113,7 +113,7 @@ function Domain(
             name="MCB Albedo",
             description="Albedo level to use from 5D DHW dataset."
         ),
-        mcb_duration=Factor(
+        MCB_duration=Factor(
             durations[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,
@@ -130,9 +130,9 @@ function Domain(
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(; intervention_params...),
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds(),
         coral_instance,
         growth_accel_instance,

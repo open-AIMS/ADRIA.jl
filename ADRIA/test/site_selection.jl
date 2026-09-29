@@ -24,16 +24,16 @@ end
     n_intervention_locs = 5
     pref_seed_sites = zeros(Int64, n_intervention_locs)
     pref_fog_sites = zeros(Int64, n_intervention_locs)
-    seed_years = true
-    fog_years = true
+    CAq_years = true
+    Fog_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
     pref_seed_sites, pref_fog_sites = ADRIA.decision.unguided_site_selection(
         pref_seed_sites,
         pref_fog_sites,
-        seed_years,
-        fog_years,
+        CAq_years,
+        Fog_years,
         5,
         max_cover,
         depth_priority

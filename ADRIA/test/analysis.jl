@@ -41,11 +41,11 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
             :wave_scenario,
             :guided,
             :mcda_method,
-            :N_seed_TA,
-            :N_seed_CA,
+            :N_CAq_TA,
+            :N_CAq_CA,
             :fogging,
-            :SRM,
-            :a_adapt
+            :Shd,
+            :CAq_a_adapt
         ]
     )
 
@@ -246,7 +246,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # Select only desired features
     fields_iv =
         ADRIA.component_params(
-            rs, [Intervention, FogCriteriaWeights, SeedCriteriaWeights]
+            rs, [Intervention, FogCriteriaWeights, CAqCriteriaWeights]
         ).fieldname
 
     # Use SIRUS algorithm to extract rules
@@ -288,10 +288,10 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     foi = [
         :dhw_scenario,
         :wave_scenario,
-        :N_seed_TA,
-        :N_seed_CA,
+        :N_CAq_TA,
+        :N_CAq_CA,
         :fogging,
-        :SRM
+        :Shd
     ]
 
     tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)

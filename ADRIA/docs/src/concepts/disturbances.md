@@ -49,7 +49,7 @@ Population mean tolerance shifts each timestep through two mechanisms:
   preferentially retained, shifting the surviving population mean upward. This is
   formalised via the Breeder's equation using a fixed heritability parameter.
 - **Settler tolerance**: Newly seeded corals can carry a user-specified thermal tolerance
-  offset (`a_adapt`), representing a given level of enhanced thermal tolerance, through
+  offset (`CAq_a_adapt`), representing a given level of enhanced thermal tolerance, through
   assisted gene flow, adaptation or other enhancement process.
 
 The mean tolerance is hard-capped at `initial_mean + HEAT_UB` to represent a biological

@@ -109,9 +109,9 @@ function rank_locations(
         factors=names(scenarios)
     )
 
-    seed_pref = SeedPreferences(dom, scens[1, :])
+    seed_pref = CAqPreferences(dom, scens[1, :])
     fog_pref = FogPreferences(dom, scens[1, :])
-    mc_pref = MCPreferences(dom, scens[1, :])
+    mc_pref = LvMPreferences(dom, scens[1, :])
 
     loc_data = dom.loc_data
     coral_habitable_locs = loc_data.k .> 0.0
@@ -146,9 +146,9 @@ function rank_locations(
 
         MCDA_approach = mcda_methods()[Int64(scen[factors = At("mcda_method")][1])]
 
-        seed_pref = SeedPreferences(dom, scen)
+        seed_pref = CAqPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
-        mc_pref = MCPreferences(dom, scen)
+        mc_pref = LvMPreferences(dom, scen)
 
         # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors = At("dhw_scenario")][1])

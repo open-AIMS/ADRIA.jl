@@ -225,7 +225,7 @@ function export_to_rme(
     inputs = isnothing(scen_spec) ? rs.inputs : scen_spec
 
     seed_factors = [
-        :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM, :N_mc_settlers
+        :N_CAq_TA, :N_CAq_CA, :N_CAq_CNA, :N_CAq_SM, :N_CAq_LM, :N_LvM_settlers
     ]
 
     # Filter to only those present in inputs
@@ -241,8 +241,8 @@ function export_to_rme(
     if hasproperty(inputs, :fogging)
         is_counterfactual = is_counterfactual .& (inputs.fogging .== 0)
     end
-    if hasproperty(inputs, :SRM)
-        is_counterfactual = is_counterfactual .& (inputs.SRM .== 0)
+    if hasproperty(inputs, :Shd)
+        is_counterfactual = is_counterfactual .& (inputs.Shd .== 0)
     end
 
     # Also consider guided status (<= 0 includes unguided and counterfactual)
@@ -370,7 +370,7 @@ function export_to_rme(
                     regional_total_corals = sum(loc_seeding[indices])
 
                     # Get the actual seeding density for this scenario
-                    density = inputs[scen, :seeding_devices_per_m2]
+                    density = inputs[scen, :CAq_devices_per_m2]
                     # Calculate the realized area in km2 (m2 / 1e6)
                     area_km2 = (regional_total_corals / density) / 1e6
 
@@ -440,7 +440,7 @@ function export_to_rme(
     # Map reefset names back to location IDs
     scenario_info = Dict{String,Any}(
         "counterfactual" => Int.(is_counterfactual),
-        "dhw_tolerance" => inputs.a_adapt
+        "dhw_tolerance" => inputs.CAq_a_adapt
     )
 
     if map_counterfactuals

@@ -422,12 +422,12 @@ end
 function switch_RCPs!() end
 
 """
-    set_seed_target_locations!(
+    set_CAq_target_locations!(
         domain::Domain,
         location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
     )
 
-Set the locations eligible for seeding interventions.
+Set the locations eligible for coral aquaculture (seeding) interventions.
 
 # Arguments
 - `domain`: Domain to modify
@@ -437,24 +437,24 @@ Set the locations eligible for seeding interventions.
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
 # Only seed in marine park zones
-ADRIA.set_seed_target_locations!(
+ADRIA.set_CAq_target_locations!(
     dom,
     [(weight=1.0, target_locs=["reef_01", "reef_05", "reef_12"])]
 )
 ```
 """
-function set_seed_target_locations!(
+function set_CAq_target_locations!(
     domain::Domain,
     location_ids::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     _validate_no_overlap(location_ids)
-    domain.seed_target_locations = location_ids
+    domain.CAq_target_locations = location_ids
     return nothing
 end
 
 """
-    set_fog_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_Fog_target_locations!(domain::Domain, location_ids::Vector{String})
 
 Set the locations eligible for fogging interventions.
 
@@ -466,17 +466,17 @@ Set the locations eligible for fogging interventions.
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
 # Only fog high-value tourism reefs
-ADRIA.set_fog_target_locations!(dom, ["reef_03", "reef_07"])
+ADRIA.set_Fog_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """
-function set_fog_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
+function set_Fog_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     _validate_iv_locations(domain, location_ids)
-    domain.fog_target_locations = location_ids
+    domain.Fog_target_locations = location_ids
     return nothing
 end
 
 """
-    set_shade_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_Shd_target_locations!(domain::Domain, location_ids::Vector{String})
 
 Set the locations eligible for shading interventions.
 
@@ -488,12 +488,12 @@ Set the locations eligible for shading interventions.
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
 # Only fog high-value tourism reefs
-ADRIA.set_shade_target_locations!(dom, ["reef_03", "reef_07"])
+ADRIA.set_Shd_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """
-function set_shade_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
+function set_Shd_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     _validate_iv_locations(domain, location_ids)
-    domain.shade_target_locations = location_ids
+    domain.Shd_target_locations = location_ids
     return nothing
 end
 
@@ -524,12 +524,12 @@ function _validate_no_overlap(
 end
 
 """
-    set_mc_target_locations!(
+    set_LvM_target_locations!(
         domain::Domain,
         location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
     )
 
-Set the locations eligible for moving corals interventions.
+Set the locations eligible for larval methods (moving corals) interventions.
 
 # Arguments
 - `domain`: Domain to modify
@@ -538,19 +538,19 @@ Set the locations eligible for moving corals interventions.
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
-ADRIA.set_mc_target_locations!(
+ADRIA.set_LvM_target_locations!(
     dom,
     [(weight=1.0, target_locs=["reef_03", "reef_07"])]
 )
 ```
 """
-function set_mc_target_locations!(
+function set_LvM_target_locations!(
     domain::Domain,
     location_ids::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     _validate_no_overlap(location_ids)
-    domain.mc_target_locations = location_ids
+    domain.LvM_target_locations = location_ids
     return nothing
 end
 

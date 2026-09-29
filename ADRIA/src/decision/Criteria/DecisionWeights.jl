@@ -28,6 +28,11 @@ Base.@kwdef struct DepthThresholds <: DecisionThresholds
     )
 end
 
-include("SeedCriteria.jl")
+include("CAqCriteria.jl")
 include("FogCriteria.jl")
-include("MCCriteria.jl")
+include("LvMCriteria.jl")
+# ShdCriteria.jl (formerly SRMCriteria.jl) is deliberately NOT included here — it has
+# never been wired into the module (SRMPreferences is commented out of decision/Decision.jl's
+# export list), so its criteria-weights component does not currently exist in model_spec.
+# Reviving it is a separate decision (see the shade-vs-mcb architecture issue), not part of
+# this rename.

@@ -21,7 +21,7 @@ end
     @testset "Discrete parameters" begin
         # Create scenario spec
         samples = deepcopy(TEST_SCENS)
-        samples[!, :N_seed_TA] .= 500_000.0
+        samples[!, :N_CAq_TA] .= 500_000.0
 
         # Write out scenario spec
         tmp_dir = mktempdir()
@@ -36,10 +36,10 @@ end
         ADRIA.update_params!(dom, test_scens[5, :])
 
         # Ensure values match
-        @test all(ADRIA.param_table(dom).N_seed_TA .== 500000.0)
+        @test all(ADRIA.param_table(dom).N_CAq_TA .== 500000.0)
 
         # Ensure known discrete values are integer
-        @test all(isinteger.(ADRIA.param_table(dom).seed_years))
+        @test all(isinteger.(ADRIA.param_table(dom).CAq_years))
 
         # Ensure known categoricals are integer values
         @test all(isinteger.(ADRIA.param_table(dom).guided))

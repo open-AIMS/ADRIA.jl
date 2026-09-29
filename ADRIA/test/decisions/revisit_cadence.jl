@@ -261,11 +261,11 @@ end
     # (>= min_iv_locations), so Config A never needs to invoke PeriodicStrategy's
     # backfill path — keeping this subtest a clean test of cadence exclusion alone.
     cadence = 2
-    seed_year_start = 1
-    seed_years = 10
+    CAq_year_start = 1
+    CAq_years = 10
 
     function _configure!(dom, min_iv_locations)
-        ADRIA.set_seed_target_locations!(
+        ADRIA.set_CAq_target_locations!(
             dom,
             [
                 (weight=weight_1, target_locs=share_1_locs),
@@ -274,16 +274,16 @@ end
         )
         ADRIA.fix_factor!(
             dom;
-            N_seed_TA=500_000.0,
-            N_seed_CA=500_000.0,
-            N_seed_CNA=500_000.0,
-            N_seed_SM=500_000.0,
-            N_seed_LM=500_000.0,
-            seed_year_start=Float64(seed_year_start),
-            seed_years=Float64(seed_years),
-            seed_deployment_freq=1.0,  # decision every year
-            seed_revisit_cadence=Float64(cadence),
-            seed_strategy=Float64(ADRIA.DECISION_STRATEGY[:periodic]),
+            N_CAq_TA=500_000.0,
+            N_CAq_CA=500_000.0,
+            N_CAq_CNA=500_000.0,
+            N_CAq_SM=500_000.0,
+            N_CAq_LM=500_000.0,
+            CAq_year_start=Float64(CAq_year_start),
+            CAq_years=Float64(CAq_years),
+            CAq_deployment_freq=1.0,  # decision every year
+            CAq_revisit_cadence=Float64(cadence),
+            CAq_strategy=Float64(ADRIA.DECISION_STRATEGY[:periodic]),
             min_iv_locations=Float64(min_iv_locations)
         )
         return dom
@@ -315,7 +315,7 @@ end
                     >(0), collect(seed_ranks_a[locations = loc_idx, scenarios = At(s)])
                 )
                 deployed_ts = deployed_ts[
-                    seed_year_start .<= deployed_ts .<= (seed_year_start + seed_years - 1)
+                    CAq_year_start .<= deployed_ts .<= (CAq_year_start + CAq_years - 1)
                 ]
                 isempty(deployed_ts) && continue
                 gaps = diff(sort(deployed_ts))
@@ -369,7 +369,7 @@ end
     @testset "Periodic backfill fills the aggregate pool when needed" begin
         found_backfill_evidence = false
         for s = 1:num_samples
-            for tstep = (seed_year_start + 1):(seed_year_start + seed_years - 1)
+            for tstep = (CAq_year_start + 1):(CAq_year_start + CAq_years - 1)
                 deployed_this_year = findall(
                     >(0), collect(seed_ranks_b[timesteps = tstep, scenarios = At(s)])
                 )

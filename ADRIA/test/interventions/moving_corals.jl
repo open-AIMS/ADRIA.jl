@@ -18,7 +18,7 @@ end
     weight_1 = TEST_TARGET_WEIGHT_1
     weight_2 = TEST_TARGET_WEIGHT_2
 
-    ADRIA.set_mc_target_locations!(
+    ADRIA.set_LvM_target_locations!(
         dom, [(weight=weight_1, target_locs=locs_1), (weight=weight_2, target_locs=locs_2)]
     )
 
@@ -27,11 +27,11 @@ end
     # runs the full simulation, deploys every year, periodic strategy.
     ADRIA.fix_factor!(
         dom;
-        N_mc_settlers=500_000.0,
-        mc_year_start=1.0,
-        mc_years=75.0,
-        mc_deployment_freq=1.0,
-        mc_strategy=1.0
+        N_LvM_settlers=500_000.0,
+        LvM_year_start=1.0,
+        LvM_years=75.0,
+        LvM_deployment_freq=1.0,
+        LvM_strategy=1.0
     )
 
     num_samples = 4
@@ -39,7 +39,7 @@ end
     rs = ADRIA.run_scenarios(dom, scens, "45")
 
     # Total MC settlers requested per scenario
-    N_mc = vec(scens.N_mc_settlers)
+    N_mc = vec(scens.N_LvM_settlers)
 
     mc_log_1 = dropdims(
         sum(rs.mc_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));

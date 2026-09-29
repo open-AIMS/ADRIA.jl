@@ -33,9 +33,9 @@ end
         not_cw_mask =
             ms.component .∉
             [(
-                "SeedCriteriaWeights",
+                "CAqCriteriaWeights",
                 "FogCriteriaWeights",
-                "MCCriteriaWeights",
+                "LvMCriteriaWeights",
                 "decision.DepthThresholds"
             )]
 
@@ -88,7 +88,7 @@ end
         interv_params = string.(
             ADRIA.component_params(ADRIA.model_spec(dom), Intervention).fieldname
         )
-        strategy_params = ["seed_strategy", "fog_strategy", "mc_strategy"]
+        strategy_params = ["CAq_strategy", "Fog_strategy", "LvM_strategy"]
         non_strategy_interv_params = String[
             ip for ip in interv_params if ip ∉ vcat(["guided"], strategy_params)
         ]
@@ -108,9 +108,9 @@ end
         end
 
         # Criteria weights only matter when guided > 0
-        seed_w = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+        seed_w = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
         fog_w = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
-        mc_w = ADRIA.component_params(ms, ADRIA.MCCriteriaWeights).fieldname
+        mc_w = ADRIA.component_params(ms, ADRIA.LvMCriteriaWeights).fieldname
         criteria_cols = string.(vcat(seed_w, fog_w, mc_w))
         if any(non_guided_rows)
             @test all(
@@ -146,10 +146,10 @@ end
         )
 
         # Ensure all interventions are deactivated (ignoring "guided").
-        # Strategy params (seed_strategy/fog_strategy/mc_strategy) are set to -1.0
+        # Strategy params (CAq_strategy/Fog_strategy/LvM_strategy) are set to -1.0
         # as a CF sentinel (see §2.3 change 2 in component_dependency_dag_v3.md);
         # all other intervention params are 0.
-        strategy_params = ["seed_strategy", "fog_strategy", "mc_strategy"]
+        strategy_params = ["CAq_strategy", "Fog_strategy", "LvM_strategy"]
         non_strategy_params = String[
             ip for ip in interv_params
                    if ip != "guided" && ip ∉ strategy_params
@@ -183,7 +183,7 @@ end
         @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
             "All intervention factors had values <= 0"
 
-        seed_weights = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+        seed_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
         fog_weights = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
 
         @test all(abs.(sum(Matrix(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
@@ -294,7 +294,7 @@ end
                 [
                     ADRIA.EnvironmentalLayer,
                     ADRIA.Intervention,
-                    ADRIA.SeedCriteriaWeights,
+                    ADRIA.CAqCriteriaWeights,
                     ADRIA.FogCriteriaWeights
                 ]
             ).fieldname
@@ -661,68 +661,68 @@ end
     fog_cols = ADRIA._transform_group_columns(scens, :fog_group)
     mc_cols = ADRIA._transform_group_columns(scens, :mc_group)
 
-    @test :seed_strategy ∉ seed_cols ||
-        ":seed_strategy in :seed_group reproduces d5871840 regression"
-    @test :fog_strategy ∉ fog_cols ||
-        ":fog_strategy in :fog_group reproduces d5871840 regression"
-    @test :mc_strategy ∉ mc_cols ||
-        ":mc_strategy in :mc_group reproduces d5871840 regression"
+    @test :CAq_strategy ∉ seed_cols ||
+        ":CAq_strategy in :seed_group reproduces d5871840 regression"
+    @test :Fog_strategy ∉ fog_cols ||
+        ":Fog_strategy in :fog_group reproduces d5871840 regression"
+    @test :LvM_strategy ∉ mc_cols ||
+        ":LvM_strategy in :mc_group reproduces d5871840 regression"
 
     @test !isempty(seed_cols) || ":seed_group resolved empty — prefix filter broken"
     @test !isempty(fog_cols) || ":fog_group resolved empty — prefix filter broken"
     @test !isempty(mc_cols) || ":mc_group resolved empty — prefix filter broken"
 end
 
-@testset "Dependency DAG — fog_strategy/mc_strategy gated on intervention activity (Issue #1132)" begin
-    # fog_strategy/mc_strategy used to be free to draw reactive even when their
-    # own intervention (fogging/N_mc_settlers) was fixed inactive across all
+@testset "Dependency DAG — Fog_strategy/LvM_strategy gated on intervention activity (Issue #1132)" begin
+    # Fog_strategy/LvM_strategy used to be free to draw reactive even when their
+    # own intervention (fogging/N_LvM_settlers) was fixed inactive across all
     # rows, keeping reactive_group alive as sampling noise. They should now be
     # fixed to PERIODIC whenever their intervention is inactive.
     PERIODIC = ADRIA.DECISION_STRATEGY[:periodic]
 
     dom = deepcopy(ADRIA_DOM_45)
-    ADRIA.fix_factor!(dom; fogging=0.0, N_mc_settlers=0.0)
+    ADRIA.fix_factor!(dom; fogging=0.0, N_LvM_settlers=0.0)
     scens = ADRIA.sample(dom, 64)
 
-    @testset "fog_strategy fixed when fogging inactive" begin
-        if :fog_strategy in propertynames(scens) && :fogging in propertynames(scens)
-            not_cf = scens.fog_strategy .!= -1.0
-            @test all(scens[not_cf, :fog_strategy] .== Float64(PERIODIC)) ||
-                "fog_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
+    @testset "Fog_strategy fixed when fogging inactive" begin
+        if :Fog_strategy in propertynames(scens) && :fogging in propertynames(scens)
+            not_cf = scens.Fog_strategy .!= -1.0
+            @test all(scens[not_cf, :Fog_strategy] .== Float64(PERIODIC)) ||
+                "Fog_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
                   "fogging is fixed inactive"
         end
     end
 
-    @testset "mc_strategy fixed when N_mc_settlers inactive" begin
-        if :mc_strategy in propertynames(scens) && :N_mc_settlers in propertynames(scens)
-            not_cf = scens.mc_strategy .!= -1.0
-            @test all(scens[not_cf, :mc_strategy] .== Float64(PERIODIC)) ||
-                "mc_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
-                  "N_mc_settlers is fixed inactive"
+    @testset "LvM_strategy fixed when N_LvM_settlers inactive" begin
+        if :LvM_strategy in propertynames(scens) && :N_LvM_settlers in propertynames(scens)
+            not_cf = scens.LvM_strategy .!= -1.0
+            @test all(scens[not_cf, :LvM_strategy] .== Float64(PERIODIC)) ||
+                "LvM_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
+                  "N_LvM_settlers is fixed inactive"
         end
     end
 
     @testset "reactive_group dropped when seed is the only reactive-capable lever" begin
         if all(
             c -> c in propertynames(scens),
-            [:seed_strategy, :fog_strategy, :mc_strategy, :reactive_response_delay]
+            [:CAq_strategy, :Fog_strategy, :LvM_strategy, :reactive_response_delay]
         )
-            periodic_seed = scens.seed_strategy .== Float64(PERIODIC)
+            periodic_seed = scens.CAq_strategy .== Float64(PERIODIC)
             @test all(scens[periodic_seed, :reactive_response_delay] .== 0.0) ||
-                "reactive_group should be 0.0 when seed_strategy is periodic and " *
+                "reactive_group should be 0.0 when CAq_strategy is periodic and " *
                   "fog/mc are fixed inactive (no reactive-capable lever remains)"
         end
     end
 end
 
-@testset "Dependency DAG — seed_wave_stress ordering (§2.12 pt 1)" begin
-    # seed_wave_stress is zeroed AFTER mcda_normalize. For wave_scenario==0
+@testset "Dependency DAG — CAq_wave_stress ordering (§2.12 pt 1)" begin
+    # CAq_wave_stress is zeroed AFTER mcda_normalize. For wave_scenario==0
     # guided+seeded rows, remaining 7 seed weights must sum to <1 (not renormalised).
     dom = deepcopy(ADRIA_DOM_45)
     num_samples = 128
     scens = ADRIA.sample_guided(dom, num_samples)
     ms = ADRIA.model_spec(dom)
-    seed_weights = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
+    seed_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
 
     not_seeded = ADRIA.no_seeding(scens)
     guided_seeded_mask = .!not_seeded .& (scens.guided .> 0)
@@ -730,17 +730,17 @@ end
     target_mask = guided_seeded_mask .& wave_zero_mask
 
     if any(target_mask)
-        @test all(scens[target_mask, :seed_wave_stress] .== 0.0) ||
-            "seed_wave_stress should be 0 for wave_scenario==0 guided+seeded rows"
+        @test all(scens[target_mask, :CAq_wave_stress] .== 0.0) ||
+            "CAq_wave_stress should be 0 for wave_scenario==0 guided+seeded rows"
 
-        other_seed_weights = filter(w -> w != :seed_wave_stress, seed_weights)
+        other_seed_weights = filter(w -> w != :CAq_wave_stress, seed_weights)
         row_sums = vec(sum(Matrix(scens[target_mask, other_seed_weights]); dims=2))
         @test all(row_sums .< 1.0) ||
             "Remaining seed weights sum to 1 — ordering wrong: mcda_normalize ran " *
-              "AFTER zeroing seed_wave_stress (§2.12 pt 1)"
+              "AFTER zeroing CAq_wave_stress (§2.12 pt 1)"
     else
         @info "No wave_scenario==0 guided+seeded rows in $num_samples samples; " *
-            "seed_wave_stress ordering test inconclusive"
+            "CAq_wave_stress ordering test inconclusive"
     end
 end
 
@@ -756,12 +756,12 @@ end
     cf_samples = ADRIA.derive_cf(intervention_samples, spec)
 
     zeroed_cols = [
-        :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM,
-        :fogging, :SRM, :N_mc_settlers
+        :N_CAq_TA, :N_CAq_CA, :N_CAq_CNA, :N_CAq_SM, :N_CAq_LM,
+        :fogging, :Shd, :N_LvM_settlers
     ]
     zeroed_cols = filter(c -> c in propertynames(cf_samples), zeroed_cols)
     strategy_cols = filter(
-        c -> c in propertynames(cf_samples), [:seed_strategy, :fog_strategy, :mc_strategy]
+        c -> c in propertynames(cf_samples), [:CAq_strategy, :Fog_strategy, :LvM_strategy]
     )
 
     @testset "CF zeroing" begin
@@ -876,16 +876,16 @@ end
     zeroed_cols = filter(
         c -> c in propertynames(ug_samples),
         [
-            :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,
-            :fog_heat_stress, :mc_heat_stress, :plan_horizon, :projection_confidence
+            :CAq_heat_stress, :CAq_wave_stress, :CAq_in_connectivity,
+            :Fog_heat_stress, :LvM_heat_stress, :plan_horizon, :projection_confidence
         ]
     )
     unchanged_cols = filter(
         c -> c in propertynames(ug_samples),
-        [:N_seed_TA, :N_seed_CA, :fogging, :SRM, :N_mc_settlers, :depth_min]
+        [:N_CAq_TA, :N_CAq_CA, :fogging, :Shd, :N_LvM_settlers, :depth_min]
     )
     strategy_cols = filter(
-        c -> c in propertynames(ug_samples), [:seed_strategy, :fog_strategy, :mc_strategy]
+        c -> c in propertynames(ug_samples), [:CAq_strategy, :Fog_strategy, :LvM_strategy]
     )
 
     @testset "criteria weights/plan_horizon zeroed" begin

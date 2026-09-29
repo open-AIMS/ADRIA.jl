@@ -17,7 +17,7 @@ end
 # @testset "Seeding" begin
 #     n_groups = 5
 #     n_sizes = 7
-#     seeding_devices_per_m2::Float64 = 9.0
+#     CAq_devices_per_m2::Float64 = 9.0
 
 #     # extract inputs for function
 #     total_loc_area = loc_area(ADRIA_DOM_45)
@@ -33,7 +33,7 @@ end
 #     # Randomly generate total seeded area per functional group
 #     seeded_area = ADRIA.DataCube(
 #         rand(Uniform(0.0, 500.0), n_groups);
-#         taxa=["N_seed_TA", "N_seed_CA", "N_seed_CNA", "N_seed_SM", "N_seed_LM"]
+#         taxa=["N_CAq_TA", "N_CAq_CA", "N_CAq_CNA", "N_CAq_SM", "N_CAq_LM"]
 #     )
 #     # Approximate number of corals deployed from the seeded_area
 #     seeded_volume = seeded_area.data ./ colony_area_m²
@@ -47,7 +47,7 @@ end
 #             available_space[seed_locs],
 #             seeded_volume,
 #             colony_areas,
-#             seeding_devices_per_m2
+#             CAq_devices_per_m2
 #         )
 
 #         # Area to be seeded for each site
@@ -76,13 +76,13 @@ end
 #         # total_area_coral_out has integer taxa indices (1:n_groups) because
 #         # distribute_seeded_corals builds its axis from plain Vector inputs
 #         area_TA = total_area_coral_out[taxa=At(1), locations=1][1]
-#         seed_TA = seeded_area[taxa=At("N_seed_TA")][1]
+#         seed_TA = seeded_area[taxa=At("N_CAq_TA")][1]
 
 #         area_CA = total_area_coral_out[taxa=At(2), locations=1][1]
-#         seed_CA = seeded_area[taxa=At("N_seed_CA")][1]
+#         seed_CA = seeded_area[taxa=At("N_CAq_CA")][1]
 
 #         area_SM = total_area_coral_out[taxa=At(4), locations=1][1]
-#         seed_SM = seeded_area[taxa=At("N_seed_SM")][1]
+#         seed_SM = seeded_area[taxa=At("N_CAq_SM")][1]
 
 #         approx_zero(x) = abs(x) + one(1.0) ≈ one(1.0)
 #         @test approx_zero(seed_TA - area_TA) && approx_zero(seed_CA - area_CA) &&
@@ -101,7 +101,7 @@ end
 #     @testset "DHW distribution priors" begin
 #         n_locs = 10
 #         C_cover_t = rand(n_groups, n_sizes, n_locs)  # size class, locations
-#         a_adapt = rand(2.0:6.0, n_groups)
+#         CAq_a_adapt = rand(2.0:6.0, n_groups)
 #         total_location_area = fill(5000.0, n_locs)
 
 #         seed_locs = rand(1:n_locs, 5)  # Pick 5 random locations
@@ -122,7 +122,7 @@ end
 #             leftover_space_m²[seed_locs],
 #             seeded_volume,
 #             colony_areas,
-#             seeding_devices_per_m2
+#             CAq_devices_per_m2
 #         )
 
 #         update_tolerance_distribution!(
@@ -133,7 +133,7 @@ end
 #             dist_std,
 #             seed_locs,
 #             seed_sc,
-#             a_adapt
+#             CAq_a_adapt
 #         )
 
 #         # Ensure correct priors/weightings for each location
@@ -157,21 +157,21 @@ end
     weight_1 = TEST_TARGET_WEIGHT_1
     weight_2 = TEST_TARGET_WEIGHT_2
 
-    ADRIA.set_seed_target_locations!(
+    ADRIA.set_CAq_target_locations!(
         dom, [(weight=weight_1, target_locs=locs_1), (weight=weight_2, target_locs=locs_2)]
     )
 
     ADRIA.fix_factor!(
         dom;
-        N_seed_TA=500_000.0,
-        N_seed_CA=500_000.0,
-        N_seed_CNA=500_000.0,
-        N_seed_SM=500_000.0,
-        N_seed_LM=500_000.0,
-        seed_year_start=1.0,
-        seed_years=75.0,
-        seed_deployment_freq=1.0,
-        seed_strategy=1.0
+        N_CAq_TA=500_000.0,
+        N_CAq_CA=500_000.0,
+        N_CAq_CNA=500_000.0,
+        N_CAq_SM=500_000.0,
+        N_CAq_LM=500_000.0,
+        CAq_year_start=1.0,
+        CAq_years=75.0,
+        CAq_deployment_freq=1.0,
+        CAq_strategy=1.0
     )
 
     num_samples = 4
@@ -179,7 +179,7 @@ end
     rs = ADRIA.run_scenarios(dom, scens, "45")
 
     # Total seeds requested per scenario (sum across all coral species)
-    seed_cols = names(scens, contains.(names(scens), "N_seed"))
+    seed_cols = names(scens, contains.(names(scens), "N_CAq"))
     N_seed = vec(sum(Matrix(scens[:, seed_cols]); dims=2))
 
     seed_log_1 = dropdims(

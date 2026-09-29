@@ -108,11 +108,11 @@ else
 
     ADRIA.set_factor_bounds!(
         example_dom;
-        N_seed_TA=(1000000.0, 15000000.0, 100000.0),
-        N_seed_CA=(1000000.0, 15000000.0, 100000.0),
-        N_seed_CNA=(1000000.0, 15000000.0, 100000.0),
-        N_seed_SM=(1000000.0, 15000000.0, 100000.0),
-        N_seed_LM=(1000000.0, 15000000.0, 100000.0)
+        N_CAq_TA=(1000000.0, 15000000.0, 100000.0),
+        N_CAq_CA=(1000000.0, 15000000.0, 100000.0),
+        N_CAq_CNA=(1000000.0, 15000000.0, 100000.0),
+        N_CAq_SM=(1000000.0, 15000000.0, 100000.0),
+        N_CAq_LM=(1000000.0, 15000000.0, 100000.0)
     )
 
     run_scens = ADRIA.sample_set(example_dom, n_scens, "45")
@@ -391,7 +391,7 @@ end
 # ----------------------------------------------------------------------------
 
 check("example_dea_fig") do
-    seed_cols = String[c for c in ("N_seed_TA", "N_seed_CA") if c in names(scens)]
+    seed_cols = String[c for c in ("N_CAq_TA", "N_CAq_CA") if c in names(scens)]
     cost = if isempty(seed_cols)
         ones(Float64, nrow(scens))
     else
@@ -439,7 +439,7 @@ check("rules_scatter") do
         # component_params returns raw input parameter names; filter to those
         # that survive feature_set post-processing (e.g. N_seed_* are removed).
         fs_cols = Set(names(fs))
-        raw = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+        raw = ADRIA.component_params(rs, [Intervention, CAqCriteriaWeights]).fieldname
         Symbol[f for f in raw if string(f) in fs_cols]
     catch
         foi
@@ -513,7 +513,7 @@ check("criteria_spatial_plots") do
     guided_scens = ADRIA.sample_guided(example_dom, 2^2)
     scen = guided_scens[1, :]
 
-    seed_pref = ADRIA.decision.SeedPreferences(example_dom, scen)
+    seed_pref = ADRIA.decision.CAqPreferences(example_dom, scen)
 
     sum_cover = vec(sum(example_dom.init_coral_cover; dims=1).data)
     dhw_scens = example_dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
@@ -532,10 +532,10 @@ check("criteria_spatial_plots") do
     seed_decision_mat = ADRIA.decision.decision_matrix(
         example_dom.loc_ids,
         seed_pref.names;
-        seed_in_connectivity=in_conn,
-        seed_out_connectivity=out_conn,
-        seed_heat_stress=dhw_projection,
-        seed_coral_cover=sum_cover
+        CAq_in_connectivity=in_conn,
+        CAq_out_connectivity=out_conn,
+        CAq_heat_stress=dhw_projection,
+        CAq_coral_cover=sum_cover
     )
 
     crit_agg = ADRIA.decision.criteria_aggregated_scores(

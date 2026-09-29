@@ -724,11 +724,11 @@ function run_model(
     if dhw_idx > 0.0
         if has_mcb_scenarios(domain.dhw_scens)
             # Cast to axis type to prevent Float32/Float64 mismatch SelectorErrors
-            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("mcb_albedo")])
+            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("MCB_albedo")])
             mcb_duration = eltype(domain.dhw_scens.mcb_durations)(
-                param_set[At("mcb_duration")]
+                param_set[At("MCB_duration")]
             )
-            mcb_freq = Int64(param_set[At("mcb_deployment_freq")])
+            mcb_freq = Int64(param_set[At("MCB_deployment_freq")])
 
             # Hardcode MCB start year to 2035
             mcb_start_year = findfirst(domain.env_layer_md.timeframe .== 2035)
@@ -764,7 +764,7 @@ function run_model(
             # Create hybrid DHW environment (Temporal Splicing)
             dhw_scen = copy(dhw_baseline)
             mcb_years = mcb_start_year:tf
-            mcb_loc_mask = domain.loc_data.UNIQUE_ID .∈ [domain.shade_target_locations]
+            mcb_loc_mask = domain.loc_data.UNIQUE_ID .∈ [domain.Shd_target_locations]
             if !isempty(mcb_years)
                 mcb_active_years = decision_frequency(
                     mcb_start_year, tf, length(mcb_years), mcb_freq
@@ -829,14 +829,14 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
-    mc_min_iv_locs::Int64 = param_set[At("mc_min_iv_locations")]
+    mc_min_iv_locs::Int64 = param_set[At("LvM_min_iv_locations")]
 
     fogging::Float64 = param_set[At("fogging")]
-    srm::Float64 = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
-    shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
+    srm::Float64 = param_set[At("Shd")]  # DHW equivalents reduced by some shading mechanism
+    shade_years::Int64 = param_set[At("Shd_years")]  # number of years to shade
 
     # Years to start seeding/shading/fogging
-    shade_start_year::Int64 = param_set[At("shade_year_start")]
+    shade_start_year::Int64 = param_set[At("Shd_year_start")]
 
     colony_areas = _to_group_size(
         domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
@@ -916,16 +916,16 @@ function run_model(
 
     # Years at which intervention locations are re-evaluated and deployed
     # seed_decision_years = decision_frequency(
-    #     seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")]
+    #     seed_start_year, tf, seed_years, param_set[At("CAq_deployment_freq")]
     # )
     # fog_decision_years = decision_frequency(
-    #     fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")]
+    #     fog_start_year, tf, fog_years, param_set[At("Fog_deployment_freq")]
     # )
     last_seed_deployment = zeros(Int64, n_locs)
     last_fog_deployment = zeros(Int64, n_locs)
     last_mc_deployment = zeros(Int64, n_locs)
     shade_decision_years = decision_frequency(
-        shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")]
+        shade_start_year, tf, shade_years, param_set[At("Shd_deployment_freq")]
     )
 
     # Define taxa and size class to seed, and identify their factor names
@@ -934,11 +934,11 @@ function run_model(
     _seed_size_groups::BitMatrix = seed_size_groups(n_groups, n_sizes)
 
     # Set up assisted adaptation values
-    a_adapt::Vector{Float64} = fill(param_set[At("a_adapt")], n_groups)
+    a_adapt::Vector{Float64} = fill(param_set[At("CAq_a_adapt")], n_groups)
 
-    seed_idx = findall(n -> contains(n, "N_seed"), factor_names)
+    seed_idx = findall(n -> contains(n, "N_CAq"), factor_names)
     seed_volume = view(param_set.data, seed_idx)
-    seeding_devices_per_m2::Float64 = param_set[At("seeding_devices_per_m2")]
+    seeding_devices_per_m2::Float64 = param_set[At("CAq_devices_per_m2")]
 
     is_unguided = param_set[At("guided")] == 0.0
     is_seeding = any(>(0), seed_volume)
@@ -951,7 +951,7 @@ function run_model(
     unguided_fogging = is_unguided && is_fogging
 
     # Moving corals flag
-    n_mc_settlers = param_set[At("N_mc_settlers")]
+    n_mc_settlers = param_set[At("N_LvM_settlers")]
     is_mc = n_mc_settlers > 0.0
     unguided_mc = is_unguided && is_mc
 
@@ -962,32 +962,32 @@ function run_model(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
-    seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
-    mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
-    shade_locs_mask::BitVector = domain.loc_ids .∈ [domain.shade_target_locations]
+    seed_t_locs = vcat(getproperty.(domain.CAq_target_locations, :target_locs)...)
+    mc_t_locs = vcat(getproperty.(domain.LvM_target_locations, :target_locs)...)
+    shade_locs_mask::BitVector = domain.loc_ids .∈ [domain.Shd_target_locations]
 
     if is_guided
         seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, SeedPreferences, seed_t_locs, is_seeding,
-            build_seed_strategy
+            domain, param_set, depth_criteria, CAqPreferences, seed_t_locs, is_seeding,
+            build_CAq_strategy
         )
         fog_pref, fog_decision_mat, fog_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, FogPreferences, domain.fog_target_locations,
-            is_fogging, build_fog_strategy
+            domain, param_set, depth_criteria, FogPreferences, domain.Fog_target_locations,
+            is_fogging, build_Fog_strategy
         )
         mc_pref, mc_decision_mat, mc_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, MCPreferences, mc_t_locs,
-            is_mc, build_mc_strategy
+            domain, param_set, depth_criteria, LvMPreferences, mc_t_locs,
+            is_mc, build_LvM_strategy
         )
     else
         seed_strategy =
-            unguided_seeding ? build_seed_strategy(param_set, domain, seed_t_locs) : nothing
+            unguided_seeding ? build_CAq_strategy(param_set, domain, seed_t_locs) : nothing
         fog_strategy =
             unguided_fogging ?
-            build_fog_strategy(param_set, domain, domain.fog_target_locations) :
+            build_Fog_strategy(param_set, domain, domain.Fog_target_locations) :
             nothing
         mc_strategy =
-            unguided_mc ? build_mc_strategy(param_set, domain, mc_t_locs) : nothing
+            unguided_mc ? build_LvM_strategy(param_set, domain, mc_t_locs) : nothing
     end
 
     dhw_projection::Vector{Float64} = zeros(Float64, n_locs)
@@ -1135,7 +1135,7 @@ function run_model(
 
     # Assume heat tolerance enhancement is based on population from `a_adapt_ref` years ago
     # If a_adapt == 0, use always first year as reference for a_adapt
-    a_adapt_ref::Int64 = param_set[At("a_adapt_ref")]
+    a_adapt_ref::Int64 = param_set[At("CAq_a_adapt_ref")]
 
     # Depth attenuation of surface DHW (see `effective_dhw_at_depth`). Read once here rather
     # than inside the time loop - they are scenario-level constants.
@@ -1164,9 +1164,9 @@ function run_model(
     # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
     Δcover_loss_proportion = zeros(n_locs)
     _is_reactive =
-        is_reactive(param_set[At("seed_strategy")]) ||
-        is_reactive(param_set[At("fog_strategy")]) ||
-        is_reactive(param_set[At("mc_strategy")])
+        is_reactive(param_set[At("CAq_strategy")]) ||
+        is_reactive(param_set[At("Fog_strategy")]) ||
+        is_reactive(param_set[At("LvM_strategy")])
     dhw_p = is_guided ? similar(dhw_scen) : nothing
     current_loc_cover = zeros(n_locs)
     _loc_coral_cover = zeros(n_locs)
@@ -1536,12 +1536,12 @@ function run_model(
                 candidate_locs = filter_candidate_locations(mc_strategy, tstep, state)
 
                 # mc_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for mc_share in domain.mc_target_locations
+                for mc_share in domain.LvM_target_locations
                     share_candidate_locs = intersect(
                         candidate_locs, mc_share.target_locs
                     )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "mc") ==
+                        if ADRIA.decision.strategy_type(param_set, "LvM") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
@@ -1724,12 +1724,12 @@ function run_model(
                 candidate_locs = filter_candidate_locations(seed_strategy, tstep, state)
 
                 # seed_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for seed_share in domain.seed_target_locations
+                for seed_share in domain.CAq_target_locations
                     share_candidate_locs = intersect(
                         candidate_locs, seed_share.target_locs
                     )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "seed") ==
+                        if ADRIA.decision.strategy_type(param_set, "CAq") ==
                             PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on

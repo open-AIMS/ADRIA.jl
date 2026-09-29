@@ -17,7 +17,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="MCDA Method",
         description="Which multi-criteria decision analysis method to use for location selection (only active when `guided` > 0)."
     )
-    N_seed_TA::Param = Factor(
+    N_CAq_TA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -25,7 +25,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment event."
     )
-    N_seed_CA::Param = Factor(
+    N_CAq_CA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -33,7 +33,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment event."
     )
-    N_seed_CNA::Param = Factor(
+    N_CAq_CNA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -41,7 +41,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Corymbose non-Acropora",
         description="Number of Corymbose non-Acropora to seed per deployment event."
     )
-    N_seed_SM::Param = Factor(
+    N_CAq_SM::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -49,7 +49,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment event."
     )
-    N_seed_LM::Param = Factor(
+    N_CAq_LM::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -57,7 +57,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Large Massives",
         description="Number of large massives/encrusting to seed per deployment event."
     )
-    N_mc_settlers::Param = Factor(
+    N_LvM_settlers::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -65,7 +65,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Moving corals settlers",
         description="Number of moving coral settlers added per deployment event."
     )
-    seeding_devices_per_m2::Param = Factor(
+    CAq_devices_per_m2::Param = Factor(
         0;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
@@ -81,7 +81,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Minimum intervention locations",
         description="Minimum number of locations to perform intervention"
     )
-    mc_min_iv_locations::Param = Factor(
+    LvM_min_iv_locations::Param = Factor(
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
@@ -97,7 +97,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Fogging",
         description="Assumed reduction in bleaching mortality."
     )
-    SRM::Param = Factor(
+    Shd::Param = Factor(
         0.0;
         ptype="continuous",
         dist=TriangularDist,
@@ -105,7 +105,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="SRM",
         description="Reduction in DHWs due to shading."
     )
-    a_adapt::Param = Factor(
+    CAq_a_adapt::Param = Factor(
         0.0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -113,15 +113,15 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance."
     )
-    a_adapt_ref::Param = Factor(
-        5.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
+    CAq_a_adapt_ref::Param = Factor(
+        5.0;        # If CAq_a_adapt_ref == 0 uses first year as c_mean reference for entire run
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 15.0, 1.0),
         name="Assisted adaptation reference",
         description="Distance from current year used as reference for assisted adaptation."
     )
-    seed_years::Param = Factor(
+    CAq_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -129,7 +129,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to Seed",
         description="Number of years to seed for."
     )
-    shade_years::Param = Factor(
+    Shd_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -137,7 +137,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to Shade",
         description="Number of years to shade for."
     )
-    fog_years::Param = Factor(
+    Fog_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -161,7 +161,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Projection Confidence",
         description="Confidence in far-future environmental projections when weighting them for site selection (only active when `guided` > 0)."
     )
-    seed_deployment_freq::Param = Factor(
+    CAq_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -169,7 +169,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Selection Frequency (Seed)",
         description="Frequency of seeding deployments (0 deploys once)."
     )
-    seed_revisit_cadence::Param = Factor(
+    CAq_revisit_cadence::Param = Factor(
         0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -177,7 +177,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Revisit Cadence (Seed)",
         description="Minimum number of years before a location can be re-selected for seed deployment (0 = no restriction)."
     )
-    fog_deployment_freq::Param = Factor(
+    Fog_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -185,7 +185,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Selection Frequency (Fog)",
         description="Frequency of fogging deployments (0 deploys once)."
     )
-    fog_revisit_cadence::Param = Factor(
+    Fog_revisit_cadence::Param = Factor(
         0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -193,7 +193,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Revisit Cadence (Fog)",
         description="Minimum number of years before a location can be re-selected for fog deployment (0 = no restriction)."
     )
-    shade_deployment_freq::Param = Factor(
+    Shd_deployment_freq::Param = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -201,7 +201,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Deployment Frequency (Shading)",
         description="Frequency of shading deployments."
     )
-    mc_deployment_freq::Param = Factor(
+    LvM_deployment_freq::Param = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -209,7 +209,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Deployment Frequency (Moving corals)",
         description="Frequency of moving corals deployments."
     )
-    mc_revisit_cadence::Param = Factor(
+    LvM_revisit_cadence::Param = Factor(
         0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -217,7 +217,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Revisit Cadence (Moving corals)",
         description="Minimum number of years before a location can be re-selected for mc deployment (0 = no restriction)."
     )
-    seed_year_start::Param = Factor(
+    CAq_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -225,7 +225,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeding Start Year",
         description="Start seeding deployments after this number of years has elapsed."
     )
-    shade_year_start::Param = Factor(
+    Shd_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -233,7 +233,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Shading Start Year",
         description="Start of shading deployments after this number of years has elapsed."
     )
-    fog_year_start::Param = Factor(
+    Fog_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -241,7 +241,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Fogging Start Year",
         description="Start of fogging deployments after this number of years has elapsed."
     )
-    mc_year_start::Param = Factor(
+    LvM_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -249,7 +249,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Moving corals Start Year",
         description="Start moving corals deployments after this number of years has elapsed."
     )
-    mc_years::Param = Factor(
+    LvM_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -257,7 +257,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to deploy moving corals",
         description="Number of years to deploy moving corals."
     )
-    mcb_albedo::Param = Factor(
+    MCB_albedo::Param = Factor(
         0.0;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
@@ -265,7 +265,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="MCB Albedo",
         description="Albedo level to use from 5D DHW dataset."
     )
-    mcb_duration::Param = Factor(
+    MCB_duration::Param = Factor(
         0.0;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
@@ -273,7 +273,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="MCB Duration",
         description="Duration level (yearly days) to use from 5D DHW dataset."
     )
-    mcb_deployment_freq::Param = Factor(
+    MCB_deployment_freq::Param = Factor(
         1;
         ptype="ordered discrete",
         dist=DiscreteUniform,
@@ -283,7 +283,7 @@ Base.@kwdef struct Intervention <: EcoModel
     )
 
     # Intervention strategy parameters
-    seed_strategy::Param = Factor(
+    CAq_strategy::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
@@ -291,7 +291,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seed Strategy Type",
         description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
-    fog_strategy::Param = Factor(
+    Fog_strategy::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
@@ -299,7 +299,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Fog Strategy Type",
         description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
-    mc_strategy::Param = Factor(
+    LvM_strategy::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
@@ -342,7 +342,7 @@ Base.@kwdef struct Intervention <: EcoModel
 end
 
 function interventions()
-    return [:seed, :fog, :mc]
+    return [:caq, :fog, :lvm]
 end
 
 function year_start_factors(dom::Domain)::DataFrame

@@ -106,7 +106,7 @@ export
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, create_coral_instance,
     create_growth_acceleration_instance, Intervention, SimConstants, DepthAttenuation,
-    SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
+    CAqCriteriaWeights, FogCriteriaWeights, LvMCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
@@ -236,9 +236,9 @@ const COMPAT_DPKG = ["0.8.0"]
         _model = _assemble_domain_model(
             EnvironmentalLayer(_arr, _arr, _arr),
             Intervention(),
-            SeedCriteriaWeights(),
+            CAqCriteriaWeights(),
             FogCriteriaWeights(),
-            MCCriteriaWeights(),
+            LvMCriteriaWeights(),
             DepthThresholds(),
             Coral(),
             GrowthAcceleration(),

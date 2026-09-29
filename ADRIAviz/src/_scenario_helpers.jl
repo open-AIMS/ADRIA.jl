@@ -2,24 +2,24 @@ const _SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
 function _no_seed(scenarios::DataFrame)::BitVector
     return dropdims(
-        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
     ) .== 0
 end
 
 function _counterfactual(scenarios::DataFrame)::BitVector
     no_seed = _no_seed(scenarios)
     no_fog = scenarios.fogging .== 0
-    no_SRM = scenarios.SRM .== 0
-    no_mc = scenarios.N_mc_settlers .== 0
-    no_mcb = scenarios.mcb_duration .== 0
+    no_SRM = scenarios.Shd .== 0
+    no_mc = scenarios.N_LvM_settlers .== 0
+    no_mcb = scenarios.MCB_duration .== 0
     return no_seed .& no_fog .& no_SRM .& no_mc .& no_mcb
 end
 
 function _unguided(scenarios::DataFrame)::BitVector
     has_seed = .!_no_seed(scenarios)
-    has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
-    has_mc_corals = scenarios.N_mc_settlers .> 0
-    has_mcb = scenarios.mcb_duration .> 0
+    has_shade = (scenarios.fogging .> 0) .| (scenarios.Shd .> 0)
+    has_mc_corals = scenarios.N_LvM_settlers .> 0
+    has_mcb = scenarios.MCB_duration .> 0
     return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals .| has_mcb)
 end
 

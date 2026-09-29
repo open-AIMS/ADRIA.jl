@@ -39,7 +39,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
         d;
         wave_scenario=0.0,
         cyclone_mortality_scenario=0.0
-        # seed_strategy=0.0
+        # CAq_strategy=0.0
     )
 
     # Assume coral model has been perfectly parameterized
@@ -57,7 +57,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     # Fix coral seeding weights
     seed_criteria_params = ADRIA.component_params(
         d.model,
-        ADRIA.SeedCriteriaWeights
+        ADRIA.CAqCriteriaWeights
     )
     ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
 
@@ -65,7 +65,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     # Fix coral seeding weights
     mc_criteria_params = ADRIA.component_params(
         d.model,
-        ADRIA.MCCriteriaWeights
+        ADRIA.LvMCriteriaWeights
     )
     ADRIA.fix_factor!(d, mc_criteria_params.fieldname)
 
@@ -158,7 +158,7 @@ and `:depth_thresholds` remain **active** (unchanged) under guided = 0.0 — ung
 scenarios still deploy interventions, just without MCDA-driven site selection. Only
 `:criteria_weights`, `:plan_horizon`, and `:projection_confidence` are zeroed, and
 `:strategy_group` columns
-(`seed_strategy`/`fog_strategy`/`mc_strategy`) are fixed to `DECISION_STRATEGY[:periodic]`
+(`CAq_strategy`/`Fog_strategy`/`LvM_strategy`) are fixed to `DECISION_STRATEGY[:periodic]`
 — mirroring what `sample_unguided`'s pre-sampling `_resolve_conditional_spec!(spec,
 (guided=0.0,))` does.
 

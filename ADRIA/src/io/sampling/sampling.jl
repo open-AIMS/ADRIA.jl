@@ -172,9 +172,9 @@ function sample_selection(
         [
             EnvironmentalLayer,
             Intervention,
-            SeedCriteriaWeights,
+            CAqCriteriaWeights,
             FogCriteriaWeights,
-            MCCriteriaWeights,
+            LvMCriteriaWeights,
             DepthThresholds
         ]
     )

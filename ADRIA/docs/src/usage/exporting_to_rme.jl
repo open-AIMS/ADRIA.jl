@@ -12,7 +12,7 @@
 #   packages both provide it. Older packages without `GBRMPA_ID`, and non-GBR or synthetic
 #   domains, are not supported.
 # - The standard 5-group functional coral model and the standard seeding factors
-#   (`N_seed_*`, `seeding_devices_per_m2`). The evenness normalisation hard-codes 5 groups.
+#   (`N_seed_*`, `CAq_devices_per_m2`). The evenness normalisation hard-codes 5 groups.
 # - An `RCP` in the results that also exists in the domain's DHW data (needed for the
 #   GCM-name lookup).
 #
@@ -79,4 +79,4 @@ export_to_rme(dom, rs, out_dir)
 #
 # ### Counterfactual Detection
 #
-# A scenario is flagged as a `counterfactual` in the export if all intervention factors (`N_seed`, `fogging`, `SRM`, etc.) are set to zero. This bitmask is stored in `scenario_info.json`.
+# A scenario is flagged as a `counterfactual` in the export if all intervention factors (`N_seed`, `fogging`, `Shd`, etc.) are set to zero. This bitmask is stored in `scenario_info.json`.
