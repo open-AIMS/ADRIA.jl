@@ -98,7 +98,7 @@ end
 
 function no_seeding(scenarios::DataFrame)::BitVector
     return dropdims(
-        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
     ) .== 0
 end
 

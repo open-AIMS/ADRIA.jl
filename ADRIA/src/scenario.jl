@@ -921,7 +921,7 @@ function run_model(
     # fog_decision_years = decision_frequency(
     #     fog_start_year, tf, fog_years, param_set[At("iv_Fog_deployment_freq")]
     # )
-    last_seed_deployment = zeros(Int64, n_locs)
+    iv_CAq_last_deployment = zeros(Int64, n_locs)
     last_fog_deployment = zeros(Int64, n_locs)
     last_mc_deployment = zeros(Int64, n_locs)
     shade_decision_years = decision_frequency(
@@ -1453,7 +1453,7 @@ function run_model(
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
-                        last_deployment=last_seed_deployment
+                        last_deployment=iv_CAq_last_deployment
                     )
                 )
             else
@@ -1712,7 +1712,7 @@ function run_model(
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
-                        last_deployment=last_seed_deployment
+                        last_deployment=iv_CAq_last_deployment
                     )
                 )
             else
@@ -1776,10 +1776,10 @@ function run_model(
                         log_val = is_guided ? (1:length(selected_CAq_ranks)) : 1.0
                         log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .=
                             log_val
-                        selected_seed_loc_idx = findall(
+                        selected_CAq_loc_idx = findall(
                             in.(domain.loc_ids, Ref(selected_CAq_ranks))
                         )
-                        last_seed_deployment[selected_seed_loc_idx] .= tstep
+                        iv_CAq_last_deployment[selected_CAq_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected (can reuse previous selection)

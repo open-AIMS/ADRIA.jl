@@ -109,13 +109,13 @@ dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample_site_selection(dom, 8)
 
 ## Area of coral aquaculture corals in m^2
-area_to_seed = 962.11
+iv_CAq_area = 962.11
 
 ## Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
 ## Use rank_locations to get ranks
-ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
+ranks = rank_locations(dom, scens, sum_cover, iv_CAq_area)
 
 # ## Intervention location selection - summary functions
 
@@ -135,13 +135,13 @@ dom = ADRIA.load_domain("path to Domain files", "RCP")
 scens = ADRIA.sample_site_selection(dom, 8)
 
 ## Area of coral aquaculture corals in m^2
-area_to_seed = 962.11
+iv_CAq_area = 962.11
 
 ## Initial coral cover matching number of criteria samples
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
 ## Use rank_locations to get ranks
-ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
+ranks = rank_locations(dom, scens, sum_cover, iv_CAq_area)
 
 ## Get frequencies with which each site is selected for each rank
 rank_freq = ranks_to_frequencies(ranks[intervention = 1])
@@ -154,13 +154,13 @@ sel_score = selection_score(ranks[intervention = 1])
 
 ## Use aggregation function within rank_locations to get direct output
 rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
+    dom, scens, sum_cover, iv_CAq_area, ranks_to_frequencies, 1
 )
 rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, location_selection_frequencies, 1
+    dom, scens, sum_cover, iv_CAq_area, location_selection_frequencies, 1
 )
 rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, selection_score, 1
+    dom, scens, sum_cover, iv_CAq_area, selection_score, 1
 )
 
 ## Example using ADRIA runs

@@ -13,7 +13,7 @@ function _filter_constants(scens::DataFrame)::DataFrame
 end
 
 """
-    _seeding_stats(rs::ResultSet)::Tuple{Vector}
+    _iv_CAq_stats(rs::ResultSet)::Tuple{Vector}
 
 Extract total and average deployment, currently in terms of proportional increase to cover
 relative to the locations' carrying capacity.
