@@ -1,11 +1,11 @@
 """Scenario grouping helper functions used by AnnotatedOutcomes."""
 
 """
-    _no_seed_grp(scenarios::DataFrame)::BitVector
+    _CAq_off_grp(scenarios::DataFrame)::BitVector
 
 Identify scenarios where no corals were deployed via coral aquaculture (all `N_CAq_*` columns are zero).
 """
-function _no_seed_grp(scenarios::DataFrame)::BitVector
+function _CAq_off_grp(scenarios::DataFrame)::BitVector
     return dropdims(
         sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
     ) .== 0
@@ -18,12 +18,12 @@ Identify counterfactual scenarios: no coral aquaculture, no fogging, no SRM, no 
 and no marine cloud brightening.
 """
 function _counterfactual_grp(scenarios::DataFrame)::BitVector
-    no_seed = _no_seed_grp(scenarios)
+    iv_CAq_off = _CAq_off_grp(scenarios)
     no_fog = scenarios.iv_Fog .== 0
     no_SRM = scenarios.iv_Shd .== 0
     no_mc = scenarios.iv_LvM_N_settlers .== 0
     no_mcb = scenarios.iv_MCB_duration .== 0
-    return no_seed .& no_fog .& no_SRM .& no_mc .& no_mcb
+    return iv_CAq_off .& no_fog .& no_SRM .& no_mc .& no_mcb
 end
 
 """
@@ -33,11 +33,11 @@ Identify unguided intervention scenarios: at least one intervention is active bu
 `guided == 0` (i.e., site selection is random rather than MCDA-driven).
 """
 function _unguided_grp(scenarios::DataFrame)::BitVector
-    has_seed = .!_no_seed_grp(scenarios)
+    iv_CAq_on = .!_CAq_off_grp(scenarios)
     has_shade = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
     has_mc_corals = scenarios.iv_LvM_N_settlers .> 0
     has_mcb = scenarios.iv_MCB_duration .> 0
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals .| has_mcb)
+    return (scenarios.guided .== 0) .& (iv_CAq_on .| has_shade .| has_mc_corals .| has_mcb)
 end
 
 """

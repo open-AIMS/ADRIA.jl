@@ -724,10 +724,10 @@ end
     ms = ADRIA.model_spec(dom)
     CAq_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
 
-    not_seeded = ADRIA.no_seeding(scens)
-    guided_seeded_mask = .!not_seeded .& (scens.guided .> 0)
+    iv_CAq_off = ADRIA.CAq_off(scens)
+    guided_CAq_on_mask = .!iv_CAq_off .& (scens.guided .> 0)
     wave_zero_mask = (scens.wave_scenario .== 0.0)
-    target_mask = guided_seeded_mask .& wave_zero_mask
+    target_mask = guided_CAq_on_mask .& wave_zero_mask
 
     if any(target_mask)
         @test all(scens[target_mask, :iv_CAq_wave_stress] .== 0.0) ||

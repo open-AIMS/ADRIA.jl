@@ -96,7 +96,7 @@ function _is_discrete_factor(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
 end
 
-function no_seeding(scenarios::DataFrame)::BitVector
+function CAq_off(scenarios::DataFrame)::BitVector
     return dropdims(
         sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
     ) .== 0

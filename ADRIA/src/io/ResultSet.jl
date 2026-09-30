@@ -162,7 +162,7 @@ function ResultSet(
                 )
             )
         end,
-        let arr = log_set["seed"]
+        let arr = log_set["coral_aquaculture"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,

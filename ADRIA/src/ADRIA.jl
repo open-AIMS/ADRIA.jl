@@ -69,7 +69,7 @@ include("io/calib_params.jl")
 include("decision/Decision.jl")
 include("interventions/Interventions.jl")
 include("interventions/CAq.jl")
-include("interventions/fogging.jl")
+include("interventions/Fog.jl")
 include("interventions/LvM.jl")
 
 include("io/ResultSet.jl")
@@ -111,7 +111,7 @@ export
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz,
-    migrate_resultset_columns!
+    migrate_resultset_columns!, migrate_resultset_logs!, migrate_resultset!
 
 using .analysis: AnnotatedOutcomes, attach_scenario_metadata
 export AnnotatedOutcomes, attach_scenario_metadata

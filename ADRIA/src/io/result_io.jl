@@ -234,7 +234,7 @@ function setup_logs(
     CAq_log = zcreate(
         Float32,
         CAq_dims...;
-        name="seed",
+        name="coral_aquaculture",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
@@ -384,11 +384,11 @@ Sets up an on-disk result store.
 ├───env_stats
 ├───inputs
 ├───logs
+│   ├───coral_aquaculture
 │   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
 │   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
 │   ├───moving_corals
 │   ├───rankings
-│   ├───seed
 │   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
 ├───results
