@@ -2103,6 +2103,7 @@ function run_scenarios(
     cscape_base_scenario_id::Union{Int,Nothing}=nothing,
     coralpop_fpath::Union{String,Nothing}=nothing,
     kora_fpath::Union{String,Nothing}=nothing,
+    corset_fpath::Union{String,Nothing}=nothing,
     use_domain_translation::Bool=false,
     dhw_idx::Int=0,
     wave_idx::Int=0,
@@ -2136,8 +2137,15 @@ function run_scenarios(
         return _run_scenarios_kora(
             dom, scens, kora_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
         )
+    elseif engine === :corset
+        corset_fpath === nothing && throw(ArgumentError(
+            "engine=:corset requires `corset_fpath` (the directory the run's outputs are written to)."
+        ))
+        return _run_scenarios_corset(
+            dom, scens, corset_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
+        )
     else
-        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora."))
+        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora, :corset."))
     end
 end
 
@@ -2180,3 +2188,22 @@ KoraInterface`), so CoralBlox-only users never pull in Kora's dependency tree. C
 `KoraInterface` loaded raises Julia's usual "no method matching" error naming this function.
 """
 function _run_scenarios_kora end
+
+"""
+    _run_scenarios_corset(dom::Domain, scens::DataFrame, fpath::String;
+                         dhw_idx=0, wave_idx=0, cyclone_idx=0, kwargs...)
+
+Dispatch target for `run_scenarios(dom, scens, RCP, :corset; ...)`. Declared here with zero methods for
+the same reason as `_run_scenarios_cscape`/`_run_scenarios_coralpop`/`_run_scenarios_kora`: the
+weak-dependency extension `ext/ADRIACORSETExt.jl` adds the one real method, active only once
+`CORSETInterface` is loaded (`using CORSETInterface`). Calling this without `CORSETInterface` loaded
+raises Julia's usual "no method matching" error naming this function.
+
+CORSET is a from-scratch reimplementation (its own source was never published -- see
+`CORSET.jl/CAVEATS.md`) with no coral size structure and no fish/urchin/benthic state of its own; an
+ADRIA domain supplies far less of what it needs than for `:cscape`/`:coralpop`/`:kora` -- several
+inputs (consumer biomass, benthic composition beyond total coral cover, fish/urchin connectivity) have
+NO domain source at all and must be passed as extra keywords. See
+`CORSETInterface.jl/src/domain_translator.jl`'s file header before using this engine.
+"""
+function _run_scenarios_corset end
