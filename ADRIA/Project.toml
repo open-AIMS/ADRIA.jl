@@ -64,10 +64,12 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 CoralPopInterface = "8b521de6-7b98-4e38-9776-d64b026254f7"
 CscapeInterface = "a1b2c3d4-1234-5678-9abc-def012345678"
+KoraInterface = "f2396b7f-ab6b-447e-a8d8-68bf8c91238a"
 
 [extensions]
 ADRIACoralPopExt = "CoralPopInterface"
 ADRIACscapeExt = "CscapeInterface"
+ADRIAKoraExt = "KoraInterface"
 
 [compat]
 ADRIAIndicators = "0.3"
@@ -82,6 +84,7 @@ CoralBlox = "1.1.10"
 CoralPopInterface = "0.1"
 CpuId = "0.3"
 CscapeInterface = "0.2"
+KoraInterface = "0.1"
 DataFrames = "1"
 DataStructures = "0.18, 0.2, 0.19"
 Dates = "1"
