@@ -2017,13 +2017,17 @@ between engines -- `scens` must already have been sampled from that engine's own
 - `engine` : `:coralblox` (dispatches, unchanged, to today's `run_scenarios`), `:cscape`
   (requires `cscape_fpath`/`cscape_base_scenario_id`, and requires `CscapeInterface` to be
   loaded -- see `ext/ADRIACscapeExt.jl`), `:coralpop` (requires `coralpop_fpath`, and requires
-  `CoralPopInterface` to be loaded -- see `ext/ADRIACoralPopExt.jl`) or `:kora` (requires
-  `kora_fpath`, and requires `KoraInterface` to be loaded -- see `ext/ADRIAKoraExt.jl`).
-  For `:coralpop`/`:kora`, `scens` is from `ADRIA.sample(coralpop_spec(), n)` /
-  `ADRIA.sample(kora_spec(), n)`; `dom` is translated (always -- neither engine has a project
-  directory of its own) into per-site inputs, and `RCP` is accepted-but-unused (the climate
-  member is chosen by `dhw_idx`/`cyclone_idx`; Kora has no cyclone pathway, so its `cyclone_idx`
-  is accepted-but-unused too).
+  `CoralPopInterface` to be loaded -- see `ext/ADRIACoralPopExt.jl`), `:kora` (requires
+  `kora_fpath`, and requires `KoraInterface` to be loaded -- see `ext/ADRIAKoraExt.jl`) or
+  `:reefmod` (requires `reefmod_fpath`, and requires `ReefModInterface` to be loaded -- see
+  `ext/ADRIAReefModExt.jl`; also requires an actual MATLAB on `PATH` -- see that extension's
+  docstring).
+  For `:coralpop`/`:kora`/`:reefmod`, `scens` is from `ADRIA.sample(coralpop_spec(), n)` /
+  `ADRIA.sample(kora_spec(), n)` / `ADRIA.sample(reefmod_spec(), n)`; `dom` is translated (always
+  -- none of the three has a project directory of its own) into per-site inputs, and `RCP` is
+  accepted-but-unused (the climate member is chosen by `dhw_idx`/`cyclone_idx`; Kora has no
+  cyclone pathway and ReefMod's cyclone pathway is its own, not ADRIA's, so both are
+  accepted-but-unused for `:kora`/`:reefmod`).
 
 # Keyword Arguments
 - `cscape_fpath` : `:cscape` only -- path to the `CScape.jl` project directory `scens` was
@@ -2044,10 +2048,13 @@ between engines -- `scens` must already have been sampled from that engine's own
   from earlier runs with other scenario IDs are ignored -- but a same-ID file is overwritten, so
   prefer a fresh directory per run.
 - `kora_fpath` : `:kora` only -- directory the run writes to, same convention as `coralpop_fpath`.
+- `reefmod_fpath` : `:reefmod` only -- directory the run writes to (per-scenario MATLAB `.mat` inputs
+  and outputs), same convention as `coralpop_fpath`.
 - `dhw_idx`/`wave_idx`/`cyclone_idx` apply to `:cscape` (with `use_domain_translation=true`) and to
-  `:coralpop`/`:kora`, which are always domain-translated; pass the same values to every engine
-  being compared. `wave_idx` is unused by CoralPop and Kora; `cyclone_idx` is unused by Kora (it
-  has no cyclone-mortality pathway).
+  `:coralpop`/`:kora`/`:reefmod`, which are always domain-translated; pass the same values to every
+  engine being compared. `wave_idx` is unused by CoralPop, Kora and ReefMod; `cyclone_idx` is unused
+  by Kora (no cyclone-mortality pathway at all) and by ReefMod (it has one, but it is its own, not
+  ADRIA's -- see `ReefModInterface.jl/src/domain_translator.jl`).
 - other keywords are forwarded: `show_progress` to the `:coralblox` path;
   `n_workers`/`export_adria`/`calc_indicators` to `CscapeInterface.run_cscape_native_parallel`
   for the `:cscape` path; `n_workers`/`exeflags`/`coupled`/`keep_raw`/`draw_params`/
@@ -2056,12 +2063,17 @@ between engines -- `scens` must already have been sampled from that engine's own
   `n_workers`/`keep_raw`/`base_scenario_id`/`spec`/`growth_models`/`survival_models` to
   `KoraInterface.run_kora_scenarios` and `load_kora_results` for the `:kora` path (see
   `ext/ADRIAKoraExt.jl`; `n_workers` there is a `Threads.@threads` cap, not a Distributed worker
-  count -- Kora is pure Julia and needs no separate OS processes).
+  count -- Kora is pure Julia and needs no separate OS processes);
+  `n_workers`/`keep_raw`/`calc_indicators`/`base_scenario_id`/`spec`/`matlab_exe`/`reefmod_gbr_dir` to
+  `ReefModInterface.run_reefmod_scenarios` and `load_reefmod_results` for the `:reefmod` path (see
+  `ext/ADRIAReefModExt.jl`; `n_workers` there caps concurrent MATLAB subprocesses, each its own OS
+  process -- like `:coralpop`, not like `:kora`).
 
 # Returns
 `ResultSet` -- ADRIA's own Zarr-backed result set for `:coralblox`,
 `CscapeInterface.CScapeResultSet` for `:cscape`, `CoralPopInterface.CoralPopResultSet` for
-`:coralpop`, or `KoraInterface.KoraResultSet` for `:kora`.
+`:coralpop`, `KoraInterface.KoraResultSet` for `:kora`, or `ReefModInterface.ReefModResultSet` for
+`:reefmod`.
 
 # Examples
 ```julia
@@ -2092,6 +2104,11 @@ rs = ADRIA.run_scenarios(
 using KoraInterface
 scens_kora = ADRIA.sample(kora_spec(), 128)
 rs = ADRIA.run_scenarios(dom, scens_kora, "45", :kora; kora_fpath=fpath, dhw_idx=1)
+
+# ReefMod, on dom's own data -- requires `using ReefModInterface` AND a real MATLAB on PATH
+using ReefModInterface
+scens_rm = ADRIA.sample(reefmod_spec(), 8)
+rs = ADRIA.run_scenarios(dom, scens_rm, "45", :reefmod; reefmod_fpath=fpath, dhw_idx=1, n_workers=4)
 ```
 """
 function run_scenarios(
@@ -2104,6 +2121,7 @@ function run_scenarios(
     coralpop_fpath::Union{String,Nothing}=nothing,
     kora_fpath::Union{String,Nothing}=nothing,
     corset_fpath::Union{String,Nothing}=nothing,
+    reefmod_fpath::Union{String,Nothing}=nothing,
     use_domain_translation::Bool=false,
     dhw_idx::Int=0,
     wave_idx::Int=0,
@@ -2144,8 +2162,15 @@ function run_scenarios(
         return _run_scenarios_corset(
             dom, scens, corset_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
         )
+    elseif engine === :reefmod
+        reefmod_fpath === nothing && throw(ArgumentError(
+            "engine=:reefmod requires `reefmod_fpath` (the directory the run's outputs are written to)."
+        ))
+        return _run_scenarios_reefmod(
+            dom, scens, reefmod_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
+        )
     else
-        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora, :corset."))
+        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora, :corset, :reefmod."))
     end
 end
 
@@ -2207,3 +2232,23 @@ NO domain source at all and must be passed as extra keywords. See
 `CORSETInterface.jl/src/domain_translator.jl`'s file header before using this engine.
 """
 function _run_scenarios_corset end
+
+"""
+    _run_scenarios_reefmod(dom::Domain, scens::DataFrame, fpath::String;
+                          dhw_idx=0, wave_idx=0, cyclone_idx=0, kwargs...)
+
+Dispatch target for `run_scenarios(dom, scens, RCP, :reefmod; ...)`. Declared here with zero methods
+for the same reason as `_run_scenarios_cscape`/`_run_scenarios_coralpop`/`_run_scenarios_kora`/
+`_run_scenarios_corset`: the weak-dependency extension `ext/ADRIAReefModExt.jl` adds the one real
+method, active only once `ReefModInterface` is loaded (`using ReefModInterface`). Calling this without
+`ReefModInterface` loaded raises Julia's usual "no method matching" error naming this function.
+
+Unlike the other four engines, ReefMod (`ymbozec/REEFMOD.7.3_GBR`) is real MATLAB, not Julia or
+Python -- each scenario is run as an external `matlab -batch ...` subprocess (see
+`ReefModInterface.jl/src/reefmod_bridge.jl`'s `run_reefmod_scenarios`), so this call needs an actual
+MATLAB on `PATH` (or `ENV["REEFMOD_MATLAB_EXE"]` pointing at one) and a local clone of ReefMod-GBR with
+`ReefModInterface.jl`'s override hooks applied (`ENV["REEFMOD_GBR_DIR"]`, default: sibling folder
+`ReefMod-GBR`) -- see that package's README. Intended to run the same way inside an Apptainer image
+that bundles Julia + MATLAB + the ReefMod-GBR clone, not only on a workstation with a MATLAB license.
+"""
+function _run_scenarios_reefmod end

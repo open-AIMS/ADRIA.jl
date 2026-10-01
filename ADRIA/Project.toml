@@ -66,12 +66,14 @@ CORSETInterface = "7d4f2c8e-9b1a-4e3f-8c5d-2a9b6e1f3d47"
 CoralPopInterface = "8b521de6-7b98-4e38-9776-d64b026254f7"
 CscapeInterface = "a1b2c3d4-1234-5678-9abc-def012345678"
 KoraInterface = "f2396b7f-ab6b-447e-a8d8-68bf8c91238a"
+ReefModInterface = "e768d920-e017-4495-9ed9-e8b3381c2bcf"
 
 [extensions]
 ADRIACORSETExt = "CORSETInterface"
 ADRIACoralPopExt = "CoralPopInterface"
 ADRIACscapeExt = "CscapeInterface"
 ADRIAKoraExt = "KoraInterface"
+ADRIAReefModExt = "ReefModInterface"
 
 [compat]
 ADRIAIndicators = "0.3"
