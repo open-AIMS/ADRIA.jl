@@ -92,7 +92,9 @@ end
 
 function LvMPreferences(dom, params::YAXArray)::LvMPreferences
     w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
-    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
+    # Strip the `iv_LvM_` prefix (2 segments) to recover the bare criterion name
+    # (e.g. `heat_stress`) so it matches the generic kwargs used in `setup_guided_intervention`.
+    cn = Symbol[Symbol(join(split(string(cn), "_")[3:end], "_")) for cn in w.fieldname]
 
     return LvMPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
