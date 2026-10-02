@@ -671,8 +671,116 @@ end
     load_results(domain::Domain)::ResultSet
 
 Create interface to a given Zarr result set.
+
+Transparently handles result sets saved before the intervention-parameter rename
+(`seed` -> `CAq`, `mc` -> `LvM`, `fog` -> `Fog`, `shade`/`SRM` -> `Shd`, `mcb` -> `MCB`,
+and the `iv_<abbrev>_` prefix pass): old Factor/criteria-weight names are translated to
+their current equivalents entirely in memory, based on the `ADRIA_VERSION` the result set
+was produced with (see `_LAST_PRE_RENAME_VERSION`). `result_loc` itself is never modified
+-- if you want to persist the translated result set under the current naming scheme (e.g.
+to share it, or to stop paying the translation cost on every load), pass the returned
+`ResultSet` to [`combine_results`](@ref), which writes it out fresh to a new location:
+
+```julia
+rs = ADRIA.load_results("path/to/old/result/set")  # old or current naming, handled automatically
+ADRIA.combine_results(rs)                           # optional: persist under the current schema, at a new location
+```
 """
 function load_results(result_loc::String)::ResultSet
+    return _load_results(result_loc)
+end
+function load_results(domain::Domain)::ResultSet
+    return load_results(result_location(domain))
+end
+
+# Last ADRIA release using the pre-intervention-parameter-rename naming (seed/mc/fog/
+# shade-SRM/mcb). Result sets with `ADRIA_VERSION` at or below this are translated by
+# `load_results`; bump only if a further patch release of the pre-rename naming ships.
+const _LAST_PRE_RENAME_VERSION = v"0.18.0"
+
+_parse_adria_version(v::String)::VersionNumber = VersionNumber(lstrip(v, 'v'))
+
+"""
+    load_results_legacy(result_loc::String)::ResultSet
+
+Force-load a result set with pre-rename name translation, bypassing the `ADRIA_VERSION`
+auto-detection that [`load_results`](@ref) normally uses to decide whether a result set
+needs it. You should not need this under normal use -- it exists as an escape hatch for
+the rare case where a result set's stored `ADRIA_VERSION` is missing or unreliable and
+auto-detection can't run.
+"""
+function load_results_legacy(result_loc::String)::ResultSet
+    return _load_results(result_loc; legacy=true)
+end
+
+# Pre-rename (seed/mc/fog/shade-SRM/mcb) -> current (iv_<abbrev>_<name>) Factor/criteria-
+# weight column names. The only place pre-rename names are actually persisted on disk is
+# `inputs.attrs["columns"]` and the `model_spec.csv` `fieldname` column -- both translated
+# in-memory by `load_results_legacy`, never written back to the original result set.
+const _RENAMED_COLUMNS = Dict{String,String}(
+    "N_seed_TA" => "iv_CAq_N_TA",
+    "N_seed_CA" => "iv_CAq_N_CA",
+    "N_seed_CNA" => "iv_CAq_N_CNA",
+    "N_seed_SM" => "iv_CAq_N_SM",
+    "N_seed_LM" => "iv_CAq_N_LM",
+    "N_mc_settlers" => "iv_LvM_N_settlers",
+    "seeding_devices_per_m2" => "iv_CAq_devices_per_m2",
+    "mc_min_iv_locations" => "iv_LvM_min_iv_locations",
+    "fogging" => "iv_Fog",
+    "SRM" => "iv_Shd",
+    "a_adapt" => "iv_CAq_a_adapt",
+    "a_adapt_ref" => "iv_CAq_a_adapt_ref",
+    "seed_years" => "iv_CAq_years",
+    "shade_years" => "iv_Shd_years",
+    "fog_years" => "iv_Fog_years",
+    "seed_deployment_freq" => "iv_CAq_deployment_freq",
+    "seed_revisit_cadence" => "iv_CAq_revisit_cadence",
+    "fog_deployment_freq" => "iv_Fog_deployment_freq",
+    "fog_revisit_cadence" => "iv_Fog_revisit_cadence",
+    "shade_deployment_freq" => "iv_Shd_deployment_freq",
+    "mc_deployment_freq" => "iv_LvM_deployment_freq",
+    "mc_revisit_cadence" => "iv_LvM_revisit_cadence",
+    "seed_year_start" => "iv_CAq_year_start",
+    "shade_year_start" => "iv_Shd_year_start",
+    "fog_year_start" => "iv_Fog_year_start",
+    "mc_year_start" => "iv_LvM_year_start",
+    "mc_years" => "iv_LvM_years",
+    "mcb_albedo" => "iv_MCB_albedo",
+    "mcb_duration" => "iv_MCB_duration",
+    "mcb_deployment_freq" => "iv_MCB_deployment_freq",
+    "seed_strategy" => "iv_CAq_strategy",
+    "fog_strategy" => "iv_Fog_strategy",
+    "mc_strategy" => "iv_LvM_strategy",
+    "seed_heat_stress" => "iv_CAq_heat_stress",
+    "seed_wave_stress" => "iv_CAq_wave_stress",
+    "seed_in_connectivity" => "iv_CAq_in_connectivity",
+    "seed_out_connectivity" => "iv_CAq_out_connectivity",
+    "seed_depth" => "iv_CAq_depth",
+    "seed_coral_cover" => "iv_CAq_coral_cover",
+    "seed_cluster_diversity" => "iv_CAq_cluster_diversity",
+    "seed_geographic_separation" => "iv_CAq_geographic_separation",
+    "fog_heat_stress" => "iv_Fog_heat_stress",
+    "fog_wave_stress" => "iv_Fog_wave_stress",
+    "fog_in_connectivity" => "iv_Fog_in_connectivity",
+    "fog_out_connectivity" => "iv_Fog_out_connectivity",
+    "fog_depth" => "iv_Fog_depth",
+    "fog_coral_cover" => "iv_Fog_coral_cover",
+    "fog_cluster_diversity" => "iv_Fog_cluster_diversity",
+    "fog_geographic_separation" => "iv_Fog_geographic_separation",
+    "mc_heat_stress" => "iv_LvM_heat_stress",
+    "mc_wave_stress" => "iv_LvM_wave_stress",
+    "mc_in_connectivity" => "iv_LvM_in_connectivity",
+    "mc_out_connectivity" => "iv_LvM_out_connectivity",
+    "mc_depth" => "iv_LvM_depth",
+    "mc_coral_cover" => "iv_LvM_coral_cover",
+    "mc_cluster_diversity" => "iv_LvM_cluster_diversity",
+    "mc_geographic_separation" => "iv_LvM_geographic_separation"
+    # srm_* criteria weights deliberately excluded: ShdCriteriaWeights was never wired
+    # into the module (see DecisionWeights.jl), so no ResultSet's `inputs` can contain
+    # those columns.
+)
+
+function _load_results(result_loc::String; legacy::Union{Bool,Nothing}=nothing)::ResultSet
     !isdir(result_loc) ? error("Not a directory: $(result_loc)") : nothing
 
     # Read in results
@@ -709,12 +817,29 @@ function load_results(result_loc::String)::ResultSet
         joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#"
     )
 
-    # Standardize fieldnames to Symbol
-    # TODO: Match all other column data types with original model spec
-    model_spec.fieldname .= Symbol.(model_spec.fieldname)
-
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     t_vers_id = "v" * string(pkgversion(@__MODULE__))
+
+    # Auto-detect result sets saved before the intervention-parameter rename (seed -> CAq,
+    # mc -> LvM, fog -> Fog, shade/SRM -> Shd, mcb -> MCB, iv_<abbrev>_ prefix pass) so
+    # `load_results` translates their old Factor/criteria-weight names transparently --
+    # `legacy` only overrides this when the caller passes something other than `nothing`
+    # (e.g. if ADRIA_VERSION is missing/corrupted and auto-detection can't run).
+    legacy = something(legacy, _parse_adria_version(r_vers_id) <= _LAST_PRE_RENAME_VERSION)
+
+    if legacy
+        @info "Loaded a pre-rename ($(r_vers_id)) result set — translating intervention-parameter names to the current schema in memory. The original result set on disk is unmodified."
+    end
+
+    # Standardize fieldnames to Symbol
+    # TODO: Match all other column data types with original model spec
+    if legacy
+        model_spec.fieldname .= Symbol.(
+            get.(Ref(_RENAMED_COLUMNS), string.(model_spec.fieldname), string.(model_spec.fieldname))
+        )
+    else
+        model_spec.fieldname .= Symbol.(model_spec.fieldname)
+    end
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).
@@ -730,6 +855,9 @@ function load_results(result_loc::String)::ResultSet
 
     # The inputs used
     input_cols::Array{String} = input_set.attrs["columns"]
+    if legacy
+        input_cols = [get(_RENAMED_COLUMNS, c, c) for c in input_cols]
+    end
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
     # Details of the environmental data layer used for the sims
@@ -818,11 +946,9 @@ function load_results(result_loc::String)::ResultSet
         wave_stat_set,
         conn_set,
         loc_data,
-        model_spec
+        model_spec;
+        legacy=legacy
     )
-end
-function load_results(domain::Domain)::ResultSet
-    return load_results(result_location(domain))
 end
 
 """

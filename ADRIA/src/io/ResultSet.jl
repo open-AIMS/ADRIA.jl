@@ -126,11 +126,16 @@ function ResultSet(
     wave_stats_set::Dict,
     conn_data::Dict,
     loc_data::DataFrame,
-    model_spec::DataFrame
+    model_spec::DataFrame;
+    legacy::Bool=false
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
 
     _tag_inputs_metadata!(inputs_used, model_spec)
+
+    # Pre-rename result sets stored these logs under their old on-disk names.
+    LvM_key = legacy && !haskey(log_set, "larval_methods") ? "moving_corals" : "larval_methods"
+    CAq_key = legacy && !haskey(log_set, "coral_aquaculture") ? "seed" : "coral_aquaculture"
 
     return ADRIAResultSet(
         input_set.attrs["name"],
@@ -151,7 +156,7 @@ function ResultSet(
         model_spec,
         outcomes,
         map(Float64, _rankings_data(log_set["rankings"])),
-        let arr = log_set["larval_methods"]
+        let arr = log_set[LvM_key]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,
@@ -162,7 +167,7 @@ function ResultSet(
                 )
             )
         end,
-        let arr = log_set["coral_aquaculture"]
+        let arr = log_set[CAq_key]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,

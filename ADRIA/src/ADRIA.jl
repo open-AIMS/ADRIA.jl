@@ -90,7 +90,6 @@ include("ExtInterface/CScape/CScapeOutcomes.jl")
 
 include("io/result_post_processing.jl")
 include("io/result_io.jl")
-include("io/migrate_resultset.jl")
 include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
@@ -111,7 +110,7 @@ export
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz,
-    migrate_resultset_columns!, migrate_resultset_logs!, migrate_resultset!
+    load_results_legacy
 
 using .analysis: AnnotatedOutcomes, attach_scenario_metadata
 export AnnotatedOutcomes, attach_scenario_metadata
