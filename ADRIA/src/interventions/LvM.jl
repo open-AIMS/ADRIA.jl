@@ -6,7 +6,7 @@ const LvM_CORALS_PER_POOL = 1
     distribute_LvM_corals(
         loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
         available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
-        n_LvM_settlers::Float64,
+        iv_LvM_N_settlers::Float64,
         colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
         prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
     )::Tuple{Matrix{Float64},Matrix{Float64}}
@@ -18,14 +18,14 @@ overall available space across all selected locations.
 # Arguments
 - `loc_k_m²` : Carrying capacity area of locations for larval methods in m².
 - `available_space_per_loc_m2` : Currently available space at each larval methods location in m².
-- `n_LvM_settlers` : Number of yo settlers to add
+- `iv_LvM_N_settlers` : Number of larval methods settlers to add
 - `colony_areas` : Area of one coral of each functional group and size class
 - `prop_fecundity` : Proportional fecundity to infer
 """
 function distribute_LvM_corals(
     loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
     available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
-    n_LvM_settlers::Float64,
+    iv_LvM_N_settlers::Float64,
     colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
     prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
 )::Tuple{Matrix{Float64},Matrix{Float64}}
@@ -33,7 +33,7 @@ function distribute_LvM_corals(
     total_available_space::Float64 = sum(available_space_per_loc_m2)
     prop_available_space = available_space_per_loc_m2 ./ total_available_space
 
-    n_pools = (n_LvM_settlers / LvM_CORALS_PER_POOL)
+    n_pools = (iv_LvM_N_settlers / LvM_CORALS_PER_POOL)
 
     # Use prop_area_avail to determine proportion of corals for each location
     n_pools_per_loc = prop_available_space .* n_pools

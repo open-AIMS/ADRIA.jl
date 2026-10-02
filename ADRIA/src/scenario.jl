@@ -952,8 +952,8 @@ function run_model(
     unguided_fogging = is_unguided && is_fogging
 
     # Larval methods flag
-    n_LvM_settlers = param_set[At("iv_LvM_N_settlers")]
-    is_LvM = n_LvM_settlers > 0.0
+    iv_LvM_N_settlers = param_set[At("iv_LvM_N_settlers")]
+    is_LvM = iv_LvM_N_settlers > 0.0
     unguided_LvM = is_unguided && is_LvM
 
     # Flag indicating whether to apply shading
@@ -1613,7 +1613,7 @@ function run_model(
                             @views LvM_proportional_increase, n_LvM_corals = distribute_LvM_corals(
                                 vec_abs_k[LvM_loc_idx],
                                 available_space,
-                                n_LvM_settlers * LvM_share.weight,
+                                iv_LvM_N_settlers * LvM_share.weight,
                                 colony_areas[_CAq_size_groups],
                                 prop_fecundity[:, LvM_loc_idx]
                             )
