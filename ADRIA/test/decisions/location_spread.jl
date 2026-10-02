@@ -2,7 +2,7 @@ using Test
 using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision:
-    SeedPreferences,
+    CAqPreferences,
     cluster_diversity,
     geographic_separation,
     decision_matrix,
@@ -44,21 +44,21 @@ end
 
         method = first(ADRIA.mcda_methods())
 
-        ADRIA.fix_factor!(dom; seed_cluster_diversity=1.0)
-        # ADRIA.fix_factor!(dom, seed_geographic_separation=1.0)
+        ADRIA.fix_factor!(dom; iv_CAq_cluster_diversity=1.0)
+        # ADRIA.fix_factor!(dom, iv_CAq_geographic_separation=1.0)
 
-        sp = ADRIA.decision.SeedPreferences(dom)
+        sp = ADRIA.decision.CAqPreferences(dom)
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            seed_depth=loc_data.depth_med,
-            seed_in_connectivity=zeros(n_locs),
-            seed_out_connectivity=zeros(n_locs),
-            seed_heat_stress=zeros(n_locs),
-            seed_wave_stress=zeros(n_locs),
-            seed_coral_cover=Float64.(rand(1:100, n_locs)),
-            seed_cluster_diversity=diversity_scores,
-            seed_geographic_separation=separation_scores
+            iv_CAq_depth=loc_data.depth_med,
+            iv_CAq_in_connectivity=zeros(n_locs),
+            iv_CAq_out_connectivity=zeros(n_locs),
+            iv_CAq_heat_stress=zeros(n_locs),
+            iv_CAq_wave_stress=zeros(n_locs),
+            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
+            iv_CAq_cluster_diversity=diversity_scores,
+            iv_CAq_geographic_separation=separation_scores
         )
 
         # When only cluster diversity matters, should select from underrepresented clusters
@@ -84,7 +84,7 @@ end
         min_locs = 10  # select at least 10 locations
 
         # Make selecting a location that is close to other locations more important
-        ADRIA.fix_factor!(dom; seed_geographic_separation=1.0)
+        ADRIA.fix_factor!(dom; iv_CAq_geographic_separation=1.0)
 
         diversity_scores = cluster_diversity(loc_data.cluster_id)
         separation_scores = geographic_separation(loc_data.mean_to_neighbor)
@@ -93,18 +93,18 @@ end
 
         method = first(ADRIA.mcda_methods())
 
-        sp = SeedPreferences(dom)
+        sp = CAqPreferences(dom)
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            seed_depth=loc_data.depth_med,
-            seed_in_connectivity=zeros(n_locs),
-            seed_out_connectivity=zeros(n_locs),
-            seed_heat_stress=zeros(n_locs),
-            seed_wave_stress=zeros(n_locs),
-            seed_coral_cover=Float64.(rand(1:100, n_locs)),
-            seed_cluster_diversity=diversity_scores,
-            seed_geographic_separation=separation_scores
+            iv_CAq_depth=loc_data.depth_med,
+            iv_CAq_in_connectivity=zeros(n_locs),
+            iv_CAq_out_connectivity=zeros(n_locs),
+            iv_CAq_heat_stress=zeros(n_locs),
+            iv_CAq_wave_stress=zeros(n_locs),
+            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
+            iv_CAq_cluster_diversity=diversity_scores,
+            iv_CAq_geographic_separation=separation_scores
         )
 
         # If geographic separation is preferred, then should select locations that are

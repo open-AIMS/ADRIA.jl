@@ -175,6 +175,7 @@ be hundreds/thousands depending on the scenario set run.
 
 ```
 Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
+├───connectivity
 ├───env_stats
 │   ├───dhw
 │   │   ├───45
@@ -186,16 +187,17 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 │       └───85
 ├───inputs
 ├───logs
-│   ├───fog
+│   ├───coral_aquaculture
+│   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
+│   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
+│   ├───larval_methods
 │   ├───rankings
-│   ├───seed
-│   └───shade
+│   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
 ├───results
-│   ├───absolute_shelter_volume
-│   ├───relative_juveniles
-│   ├───relative_shelter_volume
-│   ├───relative_taxa_cover
-│   └───total_absolute_cover
-└───site_data
+│   ├───loc_outcomes     (relative_cover, relative_shelter_volume, absolute_shelter_volume,
+│   │                     relative_juveniles, juvenile_indicator, coral_evenness combined
+│   │                     along a metrics axis)
+│   └───relative_taxa_cover
+└───spatial
 ```

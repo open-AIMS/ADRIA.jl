@@ -1,31 +1,31 @@
 # This represents how many corals survive after one year for each deployment
 # TODO Use a realistic value for this
-const MC_CORALS_PER_POOL = 1
+const LvM_CORALS_PER_POOL = 1
 
 """
-    distribute_moving_corals(
+    distribute_LvM_corals(
         loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
         available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
-        n_mc_settlers::Float64,
+        iv_LvM_N_settlers::Float64,
         colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
         prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
     )::Tuple{Matrix{Float64},Matrix{Float64}}
 
-Distribute pools for moving corals intervention. Number of corals per pool is determined by
-the constant `MC_CORALS_PER_POOL`. Number of pools follows available space relative to the
+Distribute pools for the larval methods intervention. Number of corals per pool is determined by
+the constant `LvM_CORALS_PER_POOL`. Number of pools follows available space relative to the
 overall available space across all selected locations.
 
 # Arguments
-- `loc_k_m²` : Carrying capacity area of locations to seed in m².
-- `available_space_per_loc_m2` : Currently available space at each seed location in m².
-- `n_mc_settlers` : Number of yo settlers to add
+- `loc_k_m²` : Carrying capacity area of locations for larval methods in m².
+- `available_space_per_loc_m2` : Currently available space at each larval methods location in m².
+- `iv_LvM_N_settlers` : Number of larval methods settlers to add
 - `colony_areas` : Area of one coral of each functional group and size class
 - `prop_fecundity` : Proportional fecundity to infer
 """
-function distribute_moving_corals(
+function distribute_LvM_corals(
     loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
     available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
-    n_mc_settlers::Float64,
+    iv_LvM_N_settlers::Float64,
     colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
     prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
 )::Tuple{Matrix{Float64},Matrix{Float64}}
@@ -33,7 +33,7 @@ function distribute_moving_corals(
     total_available_space::Float64 = sum(available_space_per_loc_m2)
     prop_available_space = available_space_per_loc_m2 ./ total_available_space
 
-    n_pools = (n_mc_settlers / MC_CORALS_PER_POOL)
+    n_pools = (iv_LvM_N_settlers / LvM_CORALS_PER_POOL)
 
     # Use prop_area_avail to determine proportion of corals for each location
     n_pools_per_loc = prop_available_space .* n_pools
@@ -47,7 +47,7 @@ function distribute_moving_corals(
 
     # Designate pool_surplus to location with more pools (because it has more available space)
     n_pools_per_loc[findmax(n_pools_per_loc)[2]] += round(pool_surplus)
-    n_settlers_per_loc = n_pools_per_loc .* MC_CORALS_PER_POOL
+    n_settlers_per_loc = n_pools_per_loc .* LvM_CORALS_PER_POOL
 
     # Use prop_fecundity do determine how many settlers of each group per location
     n_deployed_corals = zeros(size(prop_fecundity))
@@ -61,7 +61,7 @@ function distribute_moving_corals(
 
         # If increase in area will exceed available space, decrease the
         if sum(area_increase_per_coral_m2) > available_space_per_loc_m2[i]
-            @debug "MC area increase exceeds available space for some locations. " .*
+            @debug "Larval methods area increase exceeds available space for some locations. " .*
                 "Constraining area and number of larvae."
 
             # Cap increase in cover for each group proportional to the increase in each one

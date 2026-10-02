@@ -91,49 +91,49 @@ dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 ## orig_spec = DataFrame(dom.model)
 
 ## Make the assisted adaptation factor a constant
-ADRIA.fix_factor!(dom, :a_adapt)
+ADRIA.fix_factor!(dom, :iv_CAq_a_adapt)
 
 ## Set the assisted adaptation factor to a given constant value
-ADRIA.fix_factor!(dom, :a_adapt, 3.0)
+ADRIA.fix_factor!(dom, :iv_CAq_a_adapt, 3.0)
 
 ## Pass in factor names and their constant values as named arguments
 ## to fix a set of factors.
 ADRIA.fix_factor!(dom;
-    N_seed_TA=Int64(5e5),
-    N_seed_CA=Int64(5e5),
-    SRM=0.0,  # Never shade
-    fogging=0.0,  # Never fog
-    a_adapt=3.0,  # only deploy +3 DHW enhanced corals
-    seed_years=5,
-    shade_years=0,
-    seed_deployment_freq=0,
-    seed_year_start=3,
-    shade_year_start=3,
-    seed_coral_cover=1.0
+    iv_CAq_N_TA=Int64(5e5),
+    iv_CAq_N_CA=Int64(5e5),
+    iv_Shd=0.0,  # Never shade
+    iv_Fog=0.0,  # Never fog
+    iv_CAq_a_adapt=3.0,  # only deploy +3 DHW enhanced corals
+    iv_CAq_years=5,
+    iv_Shd_years=0,
+    iv_CAq_deployment_freq=0,
+    iv_CAq_year_start=3,
+    iv_Shd_year_start=3,
+    iv_CAq_coral_cover=1.0
 )
 
 # ## Setting different sampling bounds
 #
 # Samples can also be taken over a constrained range. For example, one can investigate only
-# scenarios with high fogging and seeding, and select a specific MCDA decision method:
+# scenarios with high fogging and coral aquaculture, and select a specific MCDA decision method:
 
 dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
-## Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
+## Adjust coral aquaculture bounds. Note only lower and upper bounds are needed because the factors in
 ## question have a uniform distribution.
-ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_TA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_CA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_SA, (500000.0, 1000000.0))
 
 ## Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 ## is a triangular distribution.
-ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
+ADRIA.set_factor_bounds!(dom, :iv_Fog, (0.2, 0.3, 0.1))
 
 ## Adjust multiple factors simultaneously (more efficient than setting these one at a time)
 ADRIA.set_factor_bounds!(dom;
-    seed_heat_stress=(0.3, 0.7),
-    N_seed_TA=(500000.0, 1000000.0),
-    N_seed_CA=(500000.0, 1000000.0))
+    iv_CAq_heat_stress=(0.3, 0.7),
+    iv_CAq_N_TA=(500000.0, 1000000.0),
+    iv_CAq_N_CA=(500000.0, 1000000.0))
 
 ## List of available MCDA decision methods
 ADRIA.decision.mcda_method_names()
@@ -145,7 +145,7 @@ ADRIA.set_factor_bounds!(dom, :mcda_method, ("COCOSO",))
 # ## Conditional factor dependencies
 #
 # Some factors are only meaningful under certain scenario regimes. For example,
-# seeding-related deployment factors have no effect on a counterfactual (no intervention)
+# coral-aquaculture-related deployment factors have no effect on a counterfactual (no intervention)
 # scenario, and decision-strategy criteria weights have no effect unless a `guided` MCDA
 # approach is selected. Rather than sampling these factors unconditionally and discarding
 # the result, ADRIA resolves such dependencies automatically, either by:
@@ -169,7 +169,7 @@ cf_scens = ADRIA.sample_cf(dom, 128)
 
 ## Intervention and criteria weight columns are fixed to a sentinel value for
 ## counterfactual scenarios rather than sampled, since they have no effect.
-cf_scens[:, [:N_seed_TA, :fogging, :seed_heat_stress]]
+cf_scens[:, [:iv_CAq_N_TA, :iv_Fog, :iv_CAq_heat_stress]]
 
 # Marine Cloud Brightening factors are handled the same way — see
 # [Marine Cloud Brightening (MCB) Scenarios](@ref) below for a concrete example of fixing
@@ -192,22 +192,22 @@ cf_scens[:, [:N_seed_TA, :fogging, :seed_heat_stress]]
 #
 # ## Marine Cloud Brightening (MCB) Scenarios
 #
-# When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `mcb_` and their sampling distributions are derived from the NetCDF axis labels.
+# When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `iv_MCB_` and their sampling distributions are derived from the NetCDF axis labels.
 #
 # The primary MCB factors are:
-# - `mcb_albedo`: The reflectiveness level to apply.
-# - `mcb_duration`: The yearly duration (in days) of MCB deployment.
-# - `mcb_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
+# - `iv_MCB_albedo`: The reflectiveness level to apply.
+# - `iv_MCB_duration`: The yearly duration (in days) of MCB deployment.
+# - `iv_MCB_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
 #
-# Note that `mcb_start_year` is currently hardcoded to **2035**.
+# Note that `MCB_start_year` is currently hardcoded to **2035**.
 #
 # Because these factors are tied to specific levels available in the provided NetCDF, it is often necessary to fix them to a specific value or adjust their bounds to match the dataset's constraints.
 
 dom = ADRIA.load_domain("path/to/5d/domain", "45")
 
 ## Fix MCB to a specific duration and albedo level available in the NetCDF
-ADRIA.fix_factor!(dom, :mcb_duration, 50.0)
-ADRIA.fix_factor!(dom, :mcb_albedo, 0.3)
+ADRIA.fix_factor!(dom, :iv_MCB_duration, 50.0)
+ADRIA.fix_factor!(dom, :iv_MCB_albedo, 0.3)
 
 ## Or allow them to vary across their available categorical range
 ## (Default behavior if not fixed)
@@ -219,7 +219,7 @@ scens = ADRIA.sample(dom, 128)
 # everything else, so each row may land in a different intervention regime), ADRIA provides
 # a family of convenience functions that fix the intervention regime for the whole call
 # up-front. This avoids wasting samples on factor combinations that are meaningless for the
-# regime under study (e.g. seeding-related factors when only counterfactual scenarios are
+# regime under study (e.g. coral-aquaculture-related factors when only counterfactual scenarios are
 # wanted), and lets the conditional factor dependencies described above be resolved *before*
 # sampling rather than row-by-row afterwards (see
 # [Conditional factor dependencies](@ref)).
