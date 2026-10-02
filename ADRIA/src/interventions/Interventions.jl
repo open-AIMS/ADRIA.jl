@@ -1,3 +1,5 @@
+# "Coral Aquaculture", "Larval Methods", "Fogging", "Shading" and "Marine Cloud Brightening"
+# Short names: "CAq", "LvM", "Fog", "Shd" and "MCB"
 Base.@kwdef struct Intervention <: EcoModel
     # Intervention Factors
     # Bounds are defined as floats to maintain type stability
@@ -63,7 +65,7 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 25_000_000.0, 1_000_000.0),  # increase in steps of 50K
         name="Larval methods settlers",
-        description="Number of moving coral settlers added per deployment event."
+        description="Number of larval methods settlers added per deployment event."
     )
     iv_CAq_devices_per_m2::Param = Factor(
         0;
@@ -102,7 +104,7 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="continuous",
         dist=TriangularDist,
         dist_params=(0.0, 10.0, 0.0),
-        name="SRM",
+        name="Shading",
         description="Reduction in DHWs due to shading."
     )
     iv_CAq_a_adapt::Param = Factor(
@@ -134,15 +136,15 @@ Base.@kwdef struct Intervention <: EcoModel
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(5.0, 75.0),
-        name="Years to Shade",
-        description="Number of years to shade for."
+        name="Years with Shading",
+        description="Number of years to apply shading for."
     )
     iv_Fog_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(5.0, 75.0),
-        name="Years to fog",
+        name="Years with Fogging",
         description="Number of years to fog for."
     )
     plan_horizon::Param = Factor(

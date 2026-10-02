@@ -109,9 +109,9 @@ end
 
         # Criteria weights only matter when guided > 0
         CAq_w = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
-        fog_w = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
+        Fog_w = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
         LvM_w = ADRIA.component_params(ms, ADRIA.LvMCriteriaWeights).fieldname
-        criteria_cols = string.(vcat(CAq_w, fog_w, LvM_w))
+        criteria_cols = string.(vcat(CAq_w, Fog_w, LvM_w))
         if any(non_guided_rows)
             @test all(
                 all.(==(0), eachrow(scens[non_guided_rows, criteria_cols]))
@@ -184,11 +184,11 @@ end
             "All intervention factors had values <= 0"
 
         CAq_weights = ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).fieldname
-        fog_weights = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
+        Fog_weights = ADRIA.component_params(ms, ADRIA.FogCriteriaWeights).fieldname
 
         @test all(abs.(sum(Matrix(scens[:, CAq_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some coral aquaculture weights are not properly normalized."
-        @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
+        @test all(abs.(sum(Matrix(scens[:, Fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some fogging weights are not properly normalized."
     end
 
@@ -658,19 +658,19 @@ end
     scens = ADRIA.sample(dom, 8)
 
     CAq_cols = ADRIA._transform_group_columns(scens, :CAq_group)
-    fog_cols = ADRIA._transform_group_columns(scens, :fog_group)
-    mc_cols = ADRIA._transform_group_columns(scens, :mc_group)
+    Fog_cols = ADRIA._transform_group_columns(scens, :Fog_group)
+    LvM_cols = ADRIA._transform_group_columns(scens, :LvM_group)
 
     @test :iv_CAq_strategy ∉ CAq_cols ||
         ":iv_CAq_strategy in :CAq_group reproduces d5871840 regression"
-    @test :iv_Fog_strategy ∉ fog_cols ||
-        ":iv_Fog_strategy in :fog_group reproduces d5871840 regression"
-    @test :iv_LvM_strategy ∉ mc_cols ||
-        ":iv_LvM_strategy in :mc_group reproduces d5871840 regression"
+    @test :iv_Fog_strategy ∉ Fog_cols ||
+        ":iv_Fog_strategy in :Fog_group reproduces d5871840 regression"
+    @test :iv_LvM_strategy ∉ LvM_cols ||
+        ":iv_LvM_strategy in :LvM_group reproduces d5871840 regression"
 
     @test !isempty(CAq_cols) || ":CAq_group resolved empty — prefix filter broken"
-    @test !isempty(fog_cols) || ":fog_group resolved empty — prefix filter broken"
-    @test !isempty(mc_cols) || ":mc_group resolved empty — prefix filter broken"
+    @test !isempty(Fog_cols) || ":Fog_group resolved empty — prefix filter broken"
+    @test !isempty(LvM_cols) || ":LvM_group resolved empty — prefix filter broken"
 end
 
 @testset "Dependency DAG — iv_Fog_strategy/iv_LvM_strategy gated on intervention activity (Issue #1132)" begin
@@ -707,8 +707,8 @@ end
             c -> c in propertynames(scens),
             [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy, :reactive_response_delay]
         )
-            periodic_seed = scens.iv_CAq_strategy .== Float64(PERIODIC)
-            @test all(scens[periodic_seed, :reactive_response_delay] .== 0.0) ||
+            periodic_CAq = scens.iv_CAq_strategy .== Float64(PERIODIC)
+            @test all(scens[periodic_CAq, :reactive_response_delay] .== 0.0) ||
                 "reactive_group should be 0.0 when iv_CAq_strategy is periodic and " *
                   "fog/larval-methods are fixed inactive (no reactive-capable lever remains)"
         end

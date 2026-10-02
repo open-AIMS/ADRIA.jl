@@ -61,13 +61,12 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     )
     ADRIA.fix_factor!(d, CAq_criteria_params.fieldname)
 
-    # Fix moving coral weights
-    # Fix coral aquaculture weights
-    mc_criteria_params = ADRIA.component_params(
+    # Fix larval methods weights
+    LvM_criteria_params = ADRIA.component_params(
         d.model,
         ADRIA.LvMCriteriaWeights
     )
-    ADRIA.fix_factor!(d, mc_criteria_params.fieldname)
+    ADRIA.fix_factor!(d, LvM_criteria_params.fieldname)
 
     scenarios = ADRIA.sample(d, n)
 

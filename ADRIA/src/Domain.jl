@@ -57,7 +57,7 @@ function distance_matrix(loc_data::DataFrame)::Matrix{Float64}
 end
 
 """
-    has_mcb_scenarios(dhw::AbstractArray)::Bool
+    has_MCB_scenarios(dhw::AbstractArray)::Bool
 
 Check if the DHW dataset represents prescribed MCB scenarios.
 
@@ -65,7 +65,7 @@ Prescribed MCB datasets are 5D YAXArrays with the following dimension ordering:
 1. timesteps
 2. locations
 3. scenarios
-4. mcb_durations (yearly duration of fogging in days)
+4. mcb_durations (yearly duration of MCB deployment in days)
 5. albedo (reflectiveness levels)
 
 Standard (non-prescribed) DHW datasets are 3D:
@@ -73,7 +73,7 @@ Standard (non-prescribed) DHW datasets are 3D:
 2. locations
 3. scenarios
 """
-function has_mcb_scenarios(dhw::AbstractArray)::Bool
+function has_MCB_scenarios(dhw::AbstractArray)::Bool
     return ndims(dhw) == 5
 end
 
@@ -482,12 +482,12 @@ Set the locations eligible for shading interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of location IDs to target for fogging
+- `location_ids`: Vector of location IDs to target for shading
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
-# Only fog high-value tourism reefs
+# Only shade high-value tourism reefs
 ADRIA.set_Shd_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """

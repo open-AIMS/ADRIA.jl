@@ -185,7 +185,7 @@ function run_scenarios(
         (
             _n_locs_cz * _n_metrics_cz +   # loc_out
             _n_groups_cz +                  # relative_taxa_cover
-            _n_locs_cz * 2 +               # shading_log (fog + shade channels)
+            _n_locs_cz * 2 +               # shading_log (fog + Shd channels)
             _n_locs_cz * _n_ivs_cz +       # site_ranks
             _n_groups_cz * _n_locs_cz * 2  # LvM_log + CAq_log
         )
@@ -419,14 +419,14 @@ function _collect_scenario_results(
     taxa_vals = relative_taxa_cover(rs_raw, lk)
     taxa_vals[taxa_vals .< threshold] .= 0.0
 
-    # Fog and shade combined into a single (tf, n_locs, 2) buffer
-    shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
-    fog_vals = Matrix{Float32}(result_set.fog_log)
-    shade_vals = Matrix{Float32}(result_set.shade_log)
-    fog_vals[fog_vals .< threshold] .= 0.0f0
-    shade_vals[shade_vals .< threshold] .= 0.0f0
-    shading_buf[:, :, 1] .= fog_vals
-    shading_buf[:, :, 2] .= shade_vals
+    # Fog and shading combined into a single (tf, n_locs, 2) buffer
+    Shd_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
+    Fog_vals = Matrix{Float32}(result_set.Fog_log)
+    Shd_vals = Matrix{Float32}(result_set.Shd_log)
+    Fog_vals[Fog_vals .< threshold] .= 0.0f0
+    Shd_vals[Shd_vals .< threshold] .= 0.0f0
+    Shd_buf[:, :, 1] .= Fog_vals
+    Shd_buf[:, :, 2] .= Shd_vals
 
     # Remaining log arrays — apply threshold where possible
     site_ranks_vals = result_set.site_ranks
@@ -449,7 +449,7 @@ function _collect_scenario_results(
     return (
         loc_out=loc_out,
         taxa_cover=taxa_vals,
-        shading=shading_buf,
+        Shd=Shd_buf,
         site_ranks=site_ranks_vals,
         LvM_log=LvM_vals,
         CAq_log=CAq_vals,
@@ -488,11 +488,11 @@ function _write_batch!(
     data_store.relative_taxa_cover[:, :, idx_range] .= taxa_batch
 
     # shading_log: (tf, n_locs, 2, n)
-    shading_batch = Array{Float32}(undef, tf, n_locs, 2, n)
+    Shd_batch = Array{Float32}(undef, tf, n_locs, 2, n)
     for (i, r) in enumerate(results)
-        shading_batch[:, :, :, i] .= r.shading
+        Shd_batch[:, :, :, i] .= r.Shd
     end
-    data_store.shading_log[:, :, :, idx_range] .= shading_batch
+    data_store.Shd_log[:, :, :, idx_range] .= Shd_batch
 
     # site_ranks: (tf, n_locs, n_interventions, n)
     if !isnothing(data_store.site_ranks)
@@ -640,8 +640,9 @@ Core scenario running function. When called with only `domain` and `param_set` a
 NamedTuple of collated results
 - `raw` : Array, Coral cover relative to k area
 - `CAq_log` : Array, Log of coral aquaculture locations
-- `fog_log` : Array, Log of fogged locations
-- `shade_log` : Array, Log of shaded locations
+- `LvM_log` : Array, Log of larval methods locations
+- `Fog_log` : Array, Log of fogged locations
+- `Shd_log` : Array, Log of shaded locations
 - `site_ranks` : Array, Log of location rankings
 - `bleaching_mortality` : Array, Log of bleaching DHW (DHW-weeks) per location/group/size class — used as the lower bound of the tolerance distribution in the following timestep
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
@@ -722,18 +723,18 @@ function run_model(
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
     if dhw_idx > 0.0
-        if has_mcb_scenarios(domain.dhw_scens)
+        if has_MCB_scenarios(domain.dhw_scens)
             # Cast to axis type to prevent Float32/Float64 mismatch SelectorErrors
-            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("iv_MCB_albedo")])
-            mcb_duration = eltype(domain.dhw_scens.mcb_durations)(
+            MCB_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("iv_MCB_albedo")])
+            MCB_duration = eltype(domain.dhw_scens.mcb_durations)(
                 param_set[At("iv_MCB_duration")]
             )
-            mcb_freq = Int64(param_set[At("iv_MCB_deployment_freq")])
+            MCB_freq = Int64(param_set[At("iv_MCB_deployment_freq")])
 
             # Hardcode MCB start year to 2035
-            mcb_start_year = findfirst(domain.env_layer_md.timeframe .== 2035)
-            if isnothing(mcb_start_year)
-                mcb_start_year = 1
+            MCB_start_year = findfirst(domain.env_layer_md.timeframe .== 2035)
+            if isnothing(MCB_start_year)
+                MCB_start_year = 1
                 @warn "MCB start year 2035 not found in timeframe. Defaulting to first year."
             end
 
@@ -749,12 +750,12 @@ function run_model(
 
             # Default treated to baseline. If MCB is active, slice the treated array.
             dhw_treated = dhw_baseline
-            if mcb_duration > 0.0 && mcb_albedo > 0.0
+            if MCB_duration > 0.0 && MCB_albedo > 0.0
                 dhw_treated = @view(
                     domain.dhw_scens[
                         scenarios = dhw_idx,
-                        mcb_durations = At(mcb_duration),
-                        albedo = At(mcb_albedo)
+                        mcb_durations = At(MCB_duration),
+                        albedo = At(MCB_albedo)
                     ]
                 )
             end
@@ -763,15 +764,15 @@ function run_model(
 
             # Create hybrid DHW environment (Temporal Splicing)
             dhw_scen = copy(dhw_baseline)
-            mcb_years = mcb_start_year:tf
-            mcb_loc_mask = domain.loc_data.UNIQUE_ID .∈ [domain.Shd_target_locations]
-            if !isempty(mcb_years)
-                mcb_active_years = decision_frequency(
-                    mcb_start_year, tf, length(mcb_years), mcb_freq
+            MCB_years = MCB_start_year:tf
+            MCB_loc_mask = domain.loc_data.UNIQUE_ID .∈ [domain.Shd_target_locations]
+            if !isempty(MCB_years)
+                MCB_active_years = decision_frequency(
+                    MCB_start_year, tf, length(MCB_years), MCB_freq
                 )
                 for t = 1:tf
-                    if mcb_active_years[t]
-                        dhw_scen[t, mcb_loc_mask] .= dhw_treated[t, mcb_loc_mask]
+                    if MCB_active_years[t]
+                        dhw_scen[t, MCB_loc_mask] .= dhw_treated[t, MCB_loc_mask]
                     end
                 end
             end
@@ -781,7 +782,7 @@ function run_model(
         end
     else
         # Run with no DHW disturbances
-        dhw_scen = if has_mcb_scenarios(domain.dhw_scens)
+        dhw_scen = if has_MCB_scenarios(domain.dhw_scens)
             copy(domain.dhw_scens[:, :, 1, 1, 1])
         else
             copy(domain.dhw_scens[:, :, 1])
@@ -832,11 +833,11 @@ function run_model(
     LvM_min_iv_locs::Int64 = param_set[At("iv_LvM_min_iv_locations")]
 
     fogging::Float64 = param_set[At("iv_Fog")]
-    srm::Float64 = param_set[At("iv_Shd")]  # DHW equivalents reduced by some shading mechanism
-    shade_years::Int64 = param_set[At("iv_Shd_years")]  # number of years to shade
+    Shd::Float64 = param_set[At("iv_Shd")]  # DHW equivalents reduced by some shading mechanism
+    Shd_years::Int64 = param_set[At("iv_Shd_years")]  # number of years with shading
 
     # Years to start coral aquaculture/shading/fogging
-    shade_start_year::Int64 = param_set[At("iv_Shd_year_start")]
+    Shd_start_year::Int64 = param_set[At("iv_Shd_year_start")]
 
     colony_areas = _to_group_size(
         domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
@@ -893,7 +894,7 @@ function run_model(
         intervention=interventions()
     )
 
-    Yshade = spzeros(tf, n_locs)
+    YShd = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
     YCAq = zeros(tf, n_groups, n_locs)  # 3 = the number of coral aquaculture coral types
     YLvM = zeros(tf, n_groups, n_locs)
@@ -922,10 +923,10 @@ function run_model(
     #     fog_start_year, tf, fog_years, param_set[At("iv_Fog_deployment_freq")]
     # )
     iv_CAq_last_deployment = zeros(Int64, n_locs)
-    last_fog_deployment = zeros(Int64, n_locs)
-    last_mc_deployment = zeros(Int64, n_locs)
-    shade_decision_years = decision_frequency(
-        shade_start_year, tf, shade_years, param_set[At("iv_Shd_deployment_freq")]
+    last_Fog_deployment = zeros(Int64, n_locs)
+    last_LvM_deployment = zeros(Int64, n_locs)
+    Shd_decision_years = decision_frequency(
+        Shd_start_year, tf, Shd_years, param_set[At("iv_Shd_deployment_freq")]
     )
 
     # Define taxa and size class for coral aquaculture, and identify their factor names
@@ -936,7 +937,7 @@ function run_model(
     # Set up assisted adaptation values
     a_adapt::Vector{Float64} = fill(param_set[At("iv_CAq_a_adapt")], n_groups)
 
-    CAq_idx = findall(n -> contains(n, "N_CAq"), factor_names)
+    CAq_idx = findall(n -> contains(n, "iv_CAq_N"), factor_names)
     CAq_volume = view(param_set.data, CAq_idx)
     CAq_devices_per_m2::Float64 = param_set[At("iv_CAq_devices_per_m2")]
 
@@ -956,38 +957,38 @@ function run_model(
     unguided_LvM = is_unguided && is_LvM
 
     # Flag indicating whether to apply shading
-    apply_shading = srm > 0.0
+    apply_Shd = Shd > 0.0
 
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
     CAq_t_locs = vcat(getproperty.(domain.CAq_target_locations, :target_locs)...)
-    mc_t_locs = vcat(getproperty.(domain.LvM_target_locations, :target_locs)...)
-    shade_locs_mask::BitVector = domain.loc_ids .∈ [domain.Shd_target_locations]
+    LvM_t_locs = vcat(getproperty.(domain.LvM_target_locations, :target_locs)...)
+    Shd_locs_mask::BitVector = domain.loc_ids .∈ [domain.Shd_target_locations]
 
     if is_guided
         CAq_pref, CAq_decision_mat, CAq_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, CAqPreferences, CAq_t_locs, is_CAq,
             build_CAq_strategy
         )
-        fog_pref, fog_decision_mat, fog_strategy = setup_guided_intervention(
+        Fog_pref, Fog_decision_mat, Fog_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, FogPreferences, domain.Fog_target_locations,
             is_fogging, build_Fog_strategy
         )
         LvM_pref, LvM_decision_mat, LvM_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, LvMPreferences, mc_t_locs,
+            domain, param_set, depth_criteria, LvMPreferences, LvM_t_locs,
             is_LvM, build_LvM_strategy
         )
     else
         CAq_strategy =
             unguided_CAq ? build_CAq_strategy(param_set, domain, CAq_t_locs) : nothing
-        fog_strategy =
+        Fog_strategy =
             unguided_fogging ?
             build_Fog_strategy(param_set, domain, domain.Fog_target_locations) :
             nothing
         LvM_strategy =
-            unguided_LvM ? build_LvM_strategy(param_set, domain, mc_t_locs) : nothing
+            unguided_LvM ? build_LvM_strategy(param_set, domain, LvM_t_locs) : nothing
     end
 
     dhw_projection::Vector{Float64} = zeros(Float64, n_locs)
@@ -1014,7 +1015,7 @@ function run_model(
     # Used as the reference base for a_adapt enhancement (c_mean_reference).
     # Storing the post-coral-aquaculture state would cause a_adapt to compound year-over-year,
     # driving unrealistic tolerance values (>100 DHW-weeks over long runs).
-    c_mean_pre_seed = zeros(n_groups, n_locs)
+    c_mean_pre_CAq = zeros(n_groups, n_locs)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
@@ -1041,7 +1042,7 @@ function run_model(
 
     # Dummy vars to fill/replace with ranks of selected locations
     selected_CAq_ranks = []
-    selected_fog_ranks = []
+    selected_Fog_ranks = []
     selected_LvM_ranks = []
 
     # Cache matrix to store potential settlers
@@ -1323,7 +1324,7 @@ function run_model(
         # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
         # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
         # here would cause the enhancement to compound each deployment year.
-        c_mean_pre_seed .= c_mean_t[:, 1, :]
+        c_mean_pre_CAq .= c_mean_t[:, 1, :]
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
@@ -1377,7 +1378,7 @@ function run_model(
         #
         # Nominal sequence of events is conceptualised as:
         # - Corals spawn and are recruited
-        # - SRM is applied
+        # - Shading is applied
         # - Fogging is applied next
         # - Coral aquaculture interventions occur
         # - bleaching then occurs
@@ -1390,11 +1391,11 @@ function run_model(
         # Shading
         # Apply regional cooling effect before selecting locations for coral aquaculture
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if apply_shading && shade_decision_years[tstep]
-            Yshade[tstep, :] .= srm
+        if apply_Shd && Shd_decision_years[tstep]
+            YShd[tstep, :] .= Shd
 
-            # Apply reduction in DHW due to SRM
-            dhw_t[shade_locs_mask] .= max.(0.0, dhw_t[shade_locs_mask] .- srm)
+            # Apply reduction in DHW due to shading
+            dhw_t[Shd_locs_mask] .= max.(0.0, dhw_t[Shd_locs_mask] .- Shd)
         end
 
         if is_guided
@@ -1422,34 +1423,34 @@ function run_model(
         # Fogging
         # if is_guided
         #     if fog_decision_years[tstep] && (fogging .> 0.0)
-        #         selected_fog_ranks = select_locations(
-        #             fog_pref,
+        #         selected_Fog_ranks = select_locations(
+        #             Fog_pref,
         #             decision_mat,
         #             MCDA_approach,
         #             min_iv_locs
         #         )
 
-        #         if !isempty(selected_fog_ranks)
-        #             log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
-        #                 1:length(selected_fog_ranks)
+        #         if !isempty(selected_Fog_ranks)
+        #             log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .=
+        #                 1:length(selected_Fog_ranks)
         #         end
         #     end
         # elseif apply_fogging && fog_decision_years[tstep]
-        #     selected_fog_ranks = unguided_selection(
+        #     selected_Fog_ranks = unguided_selection(
         #         domain.loc_ids,
         #         min_iv_locs,
         #         vec(leftover_space_m²)
         #         # depth_criteria
         #     )
 
-        #     log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1.0
+        #     log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .= 1.0
         # end
 
         # Fog location selection
-        if !isnothing(fog_strategy)
+        if !isnothing(Fog_strategy)
             state = if is_guided
                 build_state(
-                    domain, fog_strategy,
+                    domain, Fog_strategy,
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
@@ -1461,17 +1462,17 @@ function run_model(
             end
 
             # Get candidate locations from strategy
-            candidate_locs = filter_candidate_locations(fog_strategy, tstep, state)
+            candidate_locs = filter_candidate_locations(Fog_strategy, tstep, state)
             candidate_loc_indices = findall(
                 in.(domain.loc_ids, Ref(candidate_locs))
             )
 
             if !isempty(candidate_locs)
-                selected_fog_ranks = []
+                selected_Fog_ranks = []
                 if is_guided
                     # Update decision matrix with current conditions
                     update_criteria_values!(
-                        fog_decision_mat[location = At(candidate_locs)];
+                        Fog_decision_mat[location = At(candidate_locs)];
                         heat_stress=dhw_projection[candidate_loc_indices],
                         wave_stress=wave_projection[candidate_loc_indices],
                         coral_cover=current_loc_cover[candidate_loc_indices],
@@ -1480,40 +1481,40 @@ function run_model(
                     )
 
                     # Build state for target locations only
-                    selected_fog_ranks = select_locations(
-                        fog_pref,
-                        fog_decision_mat[location = At(candidate_locs)],
+                    selected_Fog_ranks = select_locations(
+                        Fog_pref,
+                        Fog_decision_mat[location = At(candidate_locs)],
                         MCDA_approach,
                         min_iv_locs
                     )
                 else
-                    selected_fog_ranks = unguided_selection(
+                    selected_Fog_ranks = unguided_selection(
                         candidate_locs,
                         min_iv_locs,
                         vec(leftover_space_m²[candidate_loc_indices])
                     )
                 end
-                if !isempty(selected_fog_ranks)
-                    log_val = is_guided ? (1:length(selected_fog_ranks)) : 1.0
-                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+                if !isempty(selected_Fog_ranks)
+                    log_val = is_guided ? (1:length(selected_Fog_ranks)) : 1.0
+                    log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .=
                         log_val
-                    selected_fog_loc_idx = findall(
-                        in.(domain.loc_ids, Ref(selected_fog_ranks))
+                    selected_Fog_loc_idx = findall(
+                        in.(domain.loc_ids, Ref(selected_Fog_ranks))
                     )
-                    last_fog_deployment[selected_fog_loc_idx] .= tstep
+                    last_Fog_deployment[selected_Fog_loc_idx] .= tstep
                 end
             end
         end
 
-        has_fog_locs::Bool = !isempty(selected_fog_ranks)
+        has_Fog_locs::Bool = !isempty(selected_Fog_ranks)
 
         # Fog selected locations
-        if has_fog_locs  # fog_decision_years[tstep] &&
-            fog_locs = findall(log_location_ranks.locations .∈ [selected_fog_ranks])
-            fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
+        if has_Fog_locs  # fog_decision_years[tstep] &&
+            Fog_locs = findall(log_location_ranks.locations .∈ [selected_Fog_ranks])
+            Fog_locations!(@view(Yfog[tstep, :]), Fog_locs, dhw_t, fogging)
 
-            # Empty selected_fog_ranks before the next iteration
-            selected_fog_ranks = []
+            # Empty selected_Fog_ranks before the next iteration
+            selected_Fog_ranks = []
         end
 
         # Larval methods intervention
@@ -1524,7 +1525,7 @@ function run_model(
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
-                        last_deployment=last_mc_deployment
+                        last_deployment=last_LvM_deployment
                     )
                 )
             else
@@ -1587,17 +1588,17 @@ function run_model(
                         log_val = is_guided ? (1:length(selected_LvM_ranks)) : 1.0
                         log_location_ranks[tstep, At(selected_LvM_ranks), At(:lvm)] .=
                             log_val
-                        selected_mc_loc_idx = findall(
+                        selected_LvM_loc_idx = findall(
                             in.(domain.loc_ids, Ref(selected_LvM_ranks))
                         )
-                        last_mc_deployment[selected_mc_loc_idx] .= tstep
+                        last_LvM_deployment[selected_LvM_loc_idx] .= tstep
                     end
 
                     # Check if locations are selected
-                    has_mc_locs::Bool = !isempty(selected_LvM_ranks)
+                    has_LvM_locs::Bool = !isempty(selected_LvM_ranks)
 
                     # Apply Larval Methods (assumed to occur after spawning)
-                    if has_mc_locs
+                    if has_LvM_locs
                         LvM_loc_idx = findall(domain.loc_ids .∈ [selected_LvM_ranks])
 
                         @views available_space = leftover_space_m²[LvM_loc_idx]
@@ -1876,7 +1877,7 @@ function run_model(
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
         end
-        c_mean_reference[:, :, 1] .= c_mean_pre_seed
+        c_mean_reference[:, :, 1] .= c_mean_pre_CAq
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
@@ -1953,8 +1954,8 @@ function run_model(
         raw=C_cover,
         CAq_log=YCAq,
         LvM_log=YLvM,
-        fog_log=Yfog,
-        shade_log=Yshade,
+        Fog_log=Yfog,
+        Shd_log=YShd,
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,

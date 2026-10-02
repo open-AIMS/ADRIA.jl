@@ -153,13 +153,13 @@ location_selection_frequency = location_selection_frequencies(ranks[intervention
 sel_score = selection_score(ranks[intervention = 1])
 
 ## Use aggregation function within rank_locations to get direct output
-rank_frequencies_seed = rank_locations(
+rank_frequencies_CAq = rank_locations(
     dom, scens, sum_cover, iv_CAq_area, ranks_to_frequencies, 1
 )
-rank_frequencies_seed = rank_locations(
+rank_frequencies_CAq = rank_locations(
     dom, scens, sum_cover, iv_CAq_area, location_selection_frequencies, 1
 )
-rank_frequencies_seed = rank_locations(
+rank_frequencies_CAq = rank_locations(
     dom, scens, sum_cover, iv_CAq_area, selection_score, 1
 )
 
@@ -175,7 +175,7 @@ selection_freq = location_selection_frequencies(rs.ranks[intervention = 1])
 
 ## Get selection frequencies over time for unguided runs only
 unguided_freq = location_selection_frequencies(
-    rs.CAq_log[scenarios = findall(scens.guided .>= 1)]
+    rs.iv_CAq_log[scenarios = findall(scens.guided .>= 1)]
 )
 
 ## Get selection score for set of runs
@@ -245,7 +245,7 @@ dom = ADRIA.load_domain("path/to/domain", "45")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-intervention_types = (:caq, :fog, :shade, :lvm)
+intervention_types = (:caq, :fog, :Shd, :lvm)
 labels = String[]
 freq_cols = Vector{Float64}[]
 for iv in intervention_types

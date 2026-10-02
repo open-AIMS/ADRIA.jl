@@ -46,9 +46,9 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     # raw::AbstractArray
     outcomes::D2
     ranks::A
-    LvM_log::B  # Number of individuals deployed per functional group per location
-    CAq_log::B  # Number of individuals deployed per functional group per location
-    shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
+    iv_LvM_log::B  # Number of individuals deployed per functional group per location
+    iv_CAq_log::B  # Number of individuals deployed per functional group per location
+    iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
 end
@@ -70,7 +70,7 @@ end
 Load shading log from a Zarr log group, handling both the new combined format
 (`shading_log`) and old stores that kept `fog` and `shade` as separate arrays.
 """
-function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
+function _load_Shd_log(log_set::Zarr.ZGroup)::YAXArray
     if haskey(log_set, "shading_log")
         arr = log_set["shading_log"]
         ax_names = Symbol.(Tuple(arr.attrs["structure"]))
@@ -151,7 +151,7 @@ function ResultSet(
         model_spec,
         outcomes,
         map(Float64, _rankings_data(log_set["rankings"])),
-        let arr = log_set["moving_corals"]
+        let arr = log_set["larval_methods"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,
@@ -173,7 +173,7 @@ function ResultSet(
                 )
             )
         end,
-        map(Float64, _load_shading_log(log_set)),
+        map(Float64, _load_Shd_log(log_set)),
         let arr = log_set["coral_dhw_log"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
@@ -339,9 +339,9 @@ function combine_results(result_sets...)::ResultSet
         zip(
             [
                 :ranks,
-                :LvM_log,
-                :CAq_log,
-                :shading_log,
+                :iv_LvM_log,
+                :iv_CAq_log,
+                :iv_Shd_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log
             ],
@@ -349,10 +349,10 @@ function combine_results(result_sets...)::ResultSet
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                size(rs1.CAq_log, :timesteps),
-                size(rs1.CAq_log, :locations),
-                size(rs1.CAq_log, :coral_id),
-                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.CAq_log, :coral_id),
+                size(rs1.iv_CAq_log, :timesteps),
+                size(rs1.iv_CAq_log, :locations),
+                size(rs1.iv_CAq_log, :coral_id),
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
                 batch_size
             )
         )...
@@ -381,7 +381,7 @@ function combine_results(result_sets...)::ResultSet
         for i = 1:n_rs
             rs_scen_len =
                 isnothing(src[i]) ?
-                size(result_sets[i].CAq_log, :scenarios) : size(src[i], ndims(src[i]))
+                size(result_sets[i].iv_CAq_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
                 n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
             end

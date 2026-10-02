@@ -437,7 +437,7 @@ check("rules_scatter") do
 
     rule_foi = try
         # component_params returns raw input parameter names; filter to those
-        # that survive feature_set post-processing (e.g. N_seed_* are removed).
+        # that survive feature_set post-processing (e.g. N_CAq_* are removed).
         fs_cols = Set(names(fs))
         raw = ADRIA.component_params(rs, [Intervention, CAqCriteriaWeights]).fieldname
         Symbol[f for f in raw if string(f) in fs_cols]
@@ -475,9 +475,9 @@ end
 # 12. Location selection frequencies
 # ----------------------------------------------------------------------------
 
-const INTERVENTION_TYPES = (:caq, :fog, :shade, :lvm)
+const INTERVENTION_TYPES = (:caq, :fog, :Shd, :lvm)
 _intervention_name(iv) = get(
-    Dict(:caq => "Coral Aquaculture", :fog => "Fog", :shade => "Shade", :lvm => "Larval Methods"),
+    Dict(:caq => "Coral Aquaculture", :fog => "Fog", :Shd => "Shading", :lvm => "Larval Methods"),
     iv, titlecase(string(iv))
 )
 

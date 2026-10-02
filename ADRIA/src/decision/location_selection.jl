@@ -24,7 +24,7 @@ using ADRIA.Graphs
         rcp=nothing,
         min_iv_locs=nothing,
         target_CAq_locs=nothing,
-        target_fog_locs=nothing
+        target_Fog_locs=nothing
     )::YAXArray
 
 Determine location ranks for a given domain and intervention scenarios.
@@ -41,7 +41,7 @@ fogging locations.
 - `rcp` : RCP conditions to assess
 - `min_iv_locs` : Minimum number of locations to intervene
 - `target_CAq_locs` : Specify locations by their IDs to consider for coral aquaculture.
-- `target_fog_locs` : Specify locations by their IDs to consider for fogging.
+- `target_Fog_locs` : Specify locations by their IDs to consider for fogging.
 
 # Returns
 YAXArray[n_locations ⋅ [:caq, :fog] ⋅ n_scenarios], ranks from 1 to number of locations + 1
@@ -54,7 +54,7 @@ function rank_locations(
     rcp=nothing,
     min_iv_locs=nothing,
     target_CAq_locs=nothing,
-    target_fog_locs=nothing
+    target_Fog_locs=nothing
 )::YAXArray
     n_locs = n_locations(dom)
     k_area_locs = loc_k_area(dom)
@@ -79,15 +79,15 @@ function rank_locations(
 
     # Consider all locations
     target_CAq_loc_ids = dom.loc_ids
-    target_fog_loc_ids = dom.loc_ids
+    target_Fog_loc_ids = dom.loc_ids
 
     # Overwrite if specific locations are specified
     if !isnothing(target_CAq_locs)
         target_CAq_loc_ids = target_CAq_locs
     end
 
-    if !isnothing(target_fog_locs)
-        target_fog_loc_ids = target_fog_locs
+    if !isnothing(target_Fog_locs)
+        target_Fog_loc_ids = target_Fog_locs
     end
 
     # Sum of coral cover (relative to k area) at each location and scenario
@@ -110,8 +110,8 @@ function rank_locations(
     )
 
     CAq_pref = CAqPreferences(dom, scens[1, :])
-    fog_pref = FogPreferences(dom, scens[1, :])
-    mc_pref = LvMPreferences(dom, scens[1, :])
+    Fog_pref = FogPreferences(dom, scens[1, :])
+    LvM_pref = LvMPreferences(dom, scens[1, :])
 
     loc_data = dom.loc_data
     coral_habitable_locs = loc_data.k .> 0.0
@@ -137,18 +137,18 @@ function rank_locations(
             @warn "No valid coral aquaculture locations found for scenario $(scen_idx)"
         end
 
-        valid_fog_locs =
+        valid_Fog_locs =
             coral_habitable_locs .& depth_criteria .&
-            (dom.loc_ids .∈ Ref(target_fog_loc_ids))
-        if count(valid_fog_locs) == 0
+            (dom.loc_ids .∈ Ref(target_Fog_loc_ids))
+        if count(valid_Fog_locs) == 0
             @warn "No valid fogging locations found for scenario $(scen_idx)"
         end
 
         MCDA_approach = mcda_methods()[Int64(scen[factors = At("mcda_method")][1])]
 
         CAq_pref = CAqPreferences(dom, scen)
-        fog_pref = FogPreferences(dom, scen)
-        mc_pref = LvMPreferences(dom, scen)
+        Fog_pref = FogPreferences(dom, scen)
+        LvM_pref = LvMPreferences(dom, scen)
 
         # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors = At("dhw_scenario")][1])
@@ -206,26 +206,26 @@ function rank_locations(
             end
         end
 
-        if count(valid_fog_locs) > 0
-            fog_decision_mat = decision_matrix(
-                dom.loc_ids[valid_fog_locs],
+        if count(valid_Fog_locs) > 0
+            Fog_decision_mat = decision_matrix(
+                dom.loc_ids[valid_Fog_locs],
                 CAq_pref.names;
-                depth=loc_data.depth_med[valid_fog_locs],
-                in_connectivity=in_conn[valid_fog_locs],
-                out_connectivity=out_conn[valid_fog_locs],
-                heat_stress=dhw_projection[valid_fog_locs],
-                wave_stress=wave_projection[valid_fog_locs],
-                coral_cover=sum_cover[valid_fog_locs]
+                depth=loc_data.depth_med[valid_Fog_locs],
+                in_connectivity=in_conn[valid_Fog_locs],
+                out_connectivity=out_conn[valid_Fog_locs],
+                heat_stress=dhw_projection[valid_Fog_locs],
+                wave_stress=wave_projection[valid_Fog_locs],
+                coral_cover=sum_cover[valid_Fog_locs]
             )
-            selected_fog_ranks = select_locations(
-                fog_pref, fog_decision_mat, MCDA_approach, min_locs
+            selected_Fog_ranks = select_locations(
+                Fog_pref, Fog_decision_mat, MCDA_approach, min_locs
             )
-            if !isempty(selected_fog_ranks)
+            if !isempty(selected_Fog_ranks)
                 ranks_store[
-                    locations = At(selected_fog_ranks),
+                    locations = At(selected_Fog_ranks),
                     intervention = At(:fog),
                     scenarios = scen_idx
-                ] .= 1:length(selected_fog_ranks)
+                ] .= 1:length(selected_Fog_ranks)
             end
         end
     end
@@ -251,7 +251,7 @@ ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
 CAq_scores = ADRIA.decision.selection_score(ranks, :caq)
 
 # Identify locations that were most desirable for fogging over all scenarios
-fog_scores = ADRIA.decision.selection_score(ranks, :fog)
+Fog_scores = ADRIA.decision.selection_score(ranks, :fog)
 
 # Selection scores can be assessed for a subset of scenarios, including a specific scenario
 ADRIA.decision.selection_score(ranks[scenarios=1:4], :caq)

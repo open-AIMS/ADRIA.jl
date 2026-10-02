@@ -12,7 +12,7 @@
 #   packages both provide it. Older packages without `GBRMPA_ID`, and non-GBR or synthetic
 #   domains, are not supported.
 # - The standard 5-group functional coral model and the standard coral aquaculture factors
-#   (`N_seed_*`, `iv_CAq_devices_per_m2`). The evenness normalisation hard-codes 5 groups.
+#   (`iv_CAq_N_*`, `iv_CAq_devices_per_m2`). The evenness normalisation hard-codes 5 groups.
 # - An `RCP` in the results that also exists in the domain's DHW data (needed for the
 #   GCM-name lookup).
 #

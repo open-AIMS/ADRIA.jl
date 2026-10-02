@@ -34,7 +34,7 @@ else
         # that actually survive into the output.
         candidate_tagged_cols = [
             :dhw_mean, :dhw_stdev, :dhw_complexity,
-            :n_loc_seed_mean, :n_loc_fog_mean, :n_loc_mc_mean,
+            :n_loc_CAq_mean, :n_loc_Fog_mean, :n_loc_LvM_mean,
             :depth_max,
             :CAq_total_deployed_coral_M, :LvM_total_deployed_coral_M
         ]

@@ -54,7 +54,7 @@ Each sub-component is represented by a struct with fields for each parameter. Th
 sub-component holds parameters that define a given adopted intervention strategy/option: how
 many (and type of) corals are to be deployed via coral aquaculture, the length of any deployment, the start/end years,
 and so on. When a 5D DHW dataset (containing MCB durations and albedo levels) is loaded, ADRIA
-dynamically populates additional MCB-specific intervention factors (prefixed with `MCB_`).
+dynamically populates additional MCB-specific intervention factors (prefixed with `iv_MCB_`).
 These factors are used in a "Temporal Splicing" approach, where the environmental conditions
 switch between a baseline and a treated slice according to the specified intervention strategy.
 See [Marine Cloud Brightening (MCB) Scenarios](@ref) for more details.

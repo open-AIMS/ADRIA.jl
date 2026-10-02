@@ -23,15 +23,15 @@ end
 @testset "Unguided site selection" begin
     n_intervention_locs = 5
     iv_CAq_pref_sites = zeros(Int64, n_intervention_locs)
-    pref_fog_sites = zeros(Int64, n_intervention_locs)
+    pref_Fog_sites = zeros(Int64, n_intervention_locs)
     CAq_active = true
     Fog_active = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
-    iv_CAq_pref_sites, pref_fog_sites = ADRIA.decision.unguided_site_selection(
+    iv_CAq_pref_sites, pref_Fog_sites = ADRIA.decision.unguided_site_selection(
         iv_CAq_pref_sites,
-        pref_fog_sites,
+        pref_Fog_sites,
         CAq_active,
         Fog_active,
         5,
@@ -41,10 +41,10 @@ end
 
     # Check that only two sites are selected (the sites where k > 0.0)
     @test length(iv_CAq_pref_sites[iv_CAq_pref_sites .> 0]) == 2
-    @test length(pref_fog_sites[pref_fog_sites .> 0]) == 2
+    @test length(pref_Fog_sites[pref_Fog_sites .> 0]) == 2
 
     @test all([in(sid, [2, 3]) for sid in iv_CAq_pref_sites[iv_CAq_pref_sites .> 0]])
-    @test all([in(sid, [2, 3]) for sid in pref_fog_sites[pref_fog_sites .> 0]])
+    @test all([in(sid, [2, 3]) for sid in pref_Fog_sites[pref_Fog_sites .> 0]])
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin

@@ -55,9 +55,9 @@ Population mean tolerance shifts each timestep through two mechanisms:
 The mean tolerance is hard-capped at `initial_mean + HEAT_UB` to represent a biological
 ceiling on adaptation.
 
-## Fogging and Solar Radiation Management (SRM)
+## Fogging and Shading
 
-Interventions that reduce light and heat reaching corals (fogging and SRM) are modelled
+Interventions that reduce light and heat reaching corals (fogging and shading) are modelled
 as a direct multiplicative reduction of the DHW experienced at selected locations:
 
 ```

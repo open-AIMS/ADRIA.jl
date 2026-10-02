@@ -179,18 +179,18 @@ end
     rs = ADRIA.run_scenarios(dom, scens, "45")
 
     # Total coral aquaculture requested per scenario (sum across all coral species)
-    CAq_cols = names(scens, contains.(names(scens), "N_CAq"))
+    CAq_cols = names(scens, contains.(names(scens), "iv_CAq_N"))
     N_CAq_total = vec(sum(Matrix(scens[:, CAq_cols]); dims=2))
 
     CAq_log_1 = dropdims(
         sum(
-            rs.CAq_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations)
+            rs.iv_CAq_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations)
         );
         dims=(:coral_id, :locations)
     )
     CAq_log_2 = dropdims(
         sum(
-            rs.CAq_log[locations = dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations)
+            rs.iv_CAq_log[locations = dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations)
         );
         dims=(:coral_id, :locations)
     )

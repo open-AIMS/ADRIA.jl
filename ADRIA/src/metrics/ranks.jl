@@ -56,7 +56,7 @@ function CAq_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-    fog_ranks(rs::ResultSet; kwargs...)
+    Fog_ranks(rs::ResultSet; kwargs...)
 
 # Arguments
 - rs : ResultSet
@@ -67,10 +67,10 @@ YAXArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
-ADRIA.metrics.fog_ranks(rs; timesteps=1:10, scenarios=3:5)
+ADRIA.metrics.Fog_ranks(rs; timesteps=1:10, scenarios=3:5)
 ```
 """
-function fog_ranks(rs::ResultSet; kwargs...)
+function Fog_ranks(rs::ResultSet; kwargs...)
     selected = _get_ranks(rs, :fog; kwargs...)
     return _collate_ranks(rs, selected; kwargs...)
 end
@@ -119,15 +119,15 @@ function n_CAq_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
 end
 
 """
-    n_fog_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
+    n_Fog_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
 
 Determine the number of locations fogged at each time step, for each scenario.
 
 # Returns
 YAXArray[timesteps ⋅ scenarios] indicating the number of locations fogged at each time step.
 """
-function n_fog_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
-    ranked_locs = fog_ranks(rs; kwargs...)
+function n_Fog_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
+    ranked_locs = Fog_ranks(rs; kwargs...)
 
     return DataCube(
         _collate_ranked_locs(ranked_locs);

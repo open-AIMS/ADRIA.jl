@@ -20,9 +20,9 @@ rs = ADRIA.load_results("path/to/result_set")
 # | `rs.model_spec` | `DataFrame` describing all model parameters and their bounds |
 # | `rs.outcomes` | `Dict` of named outcome arrays (coral cover, shelter volume, etc.) |
 # | `rs.ranks` | Location ranking log; dims `(timesteps, locations, intervention, scenarios)` |
-# | `rs.CAq_log` | Coral aquaculture deployment log; dims `(timesteps, locations, species, scenarios)` |
-# | `rs.shading_log` | Fogging/shading log; dims `(timesteps, locations, intervention, scenarios)` where `intervention` is `["fog", "shade"]` |
-# | `rs.LvM_log` | Larval methods deployment log |
+# | `rs.iv_CAq_log` | Coral aquaculture deployment log; dims `(timesteps, locations, species, scenarios)` |
+# | `rs.iv_Shd_log` | Fogging/shading log; dims `(timesteps, locations, intervention, scenarios)` where `intervention` is `["fog", "shade"]` |
+# | `rs.iv_LvM_log` | Larval methods deployment log |
 # | `rs.coral_dhw_tol_log` | Per-location DHW tolerance trajectories (only populated when `log_dhw_tols = true` in `config.toml`) |
 # | `rs.coral_cover_log` | Raw coral cover for all size classes (only populated when `log_cover = true` in `config.toml`) |
 # | `rs.loc_ids` | Location identifiers |

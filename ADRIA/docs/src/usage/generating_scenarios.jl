@@ -123,7 +123,7 @@ dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 ## question have a uniform distribution.
 ADRIA.set_factor_bounds!(dom, :iv_CAq_N_TA, (500000.0, 1000000.0))
 ADRIA.set_factor_bounds!(dom, :iv_CAq_N_CA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :iv_CAq_N_SA, (500000.0, 1000000.0))
 
 ## Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 ## is a triangular distribution.
@@ -192,14 +192,14 @@ cf_scens[:, [:iv_CAq_N_TA, :iv_Fog, :iv_CAq_heat_stress]]
 #
 # ## Marine Cloud Brightening (MCB) Scenarios
 #
-# When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `MCB_` and their sampling distributions are derived from the NetCDF axis labels.
+# When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `iv_MCB_` and their sampling distributions are derived from the NetCDF axis labels.
 #
 # The primary MCB factors are:
 # - `iv_MCB_albedo`: The reflectiveness level to apply.
 # - `iv_MCB_duration`: The yearly duration (in days) of MCB deployment.
 # - `iv_MCB_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
 #
-# Note that `mcb_start_year` is currently hardcoded to **2035**.
+# Note that `MCB_start_year` is currently hardcoded to **2035**.
 #
 # Because these factors are tied to specific levels available in the provided NetCDF, it is often necessary to fix them to a specific value or adjust their bounds to match the dataset's constraints.
 

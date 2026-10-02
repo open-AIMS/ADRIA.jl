@@ -10,23 +10,21 @@
 #   - `rs.ranks`'s intervention-axis labels are derived live from `interventions()` at
 #     load time, not stored on disk. Order was preserved across the rename, so old data
 #     already reads correctly with the new labels.
-#   - `moving_corals` and `shading_log`/`rankings` on-disk array names are untouched (only
-#     `seed` was renamed on disk — see below), so the Julia struct fields that receive
-#     them (`rs.LvM_log`, ...) are still just relabelling an unchanged on-disk name.
+#   - `shading_log`/`rankings` on-disk array names are untouched, so the Julia struct
+#     fields that receive them are still just relabelling an unchanged on-disk name.
 #
 # What DOES need migrating:
 #   - `inputs.attrs["columns"]` — the scenario table's column names, stored as a plain
 #     list of strings in the `inputs` Zarr array's `.zattrs`. This is the only place the
 #     *old* Factor/criteria-weight names are actually persisted.
-#   - The `seed` log array's on-disk name. Originally this was left alone deliberately
-#     (the Julia field name and the on-disk Zarr name are independent, so renaming
-#     `rs.seed_log` -> `rs.CAq_log` needed no data migration). That decision was reversed
-#     on request: the on-disk name now also reads `coral_aquaculture` (result_io.jl's
-#     `zcreate(...; name="coral_aquaculture", ...)`, `ResultSet.jl`'s
-#     `log_set["coral_aquaculture"]`), so old result stores need their `logs/seed`
-#     directory physically renamed to `logs/coral_aquaculture` — see
-#     `migrate_resultset_logs!` below. `moving_corals` was NOT renamed on disk (not asked
-#     for yet) — if it is, add an entry to `_RENAMED_LOG_GROUPS`.
+#   - The `seed` and `moving_corals` log arrays' on-disk names. Originally left alone
+#     deliberately (the Julia field name and the on-disk Zarr name are independent, so
+#     renaming `rs.seed_log` -> `rs.iv_CAq_log` needed no data migration on its own). That
+#     decision was reversed on request for both: the on-disk names now read
+#     `coral_aquaculture` and `larval_methods` (result_io.jl's `zcreate(...; name=...)`,
+#     ResultSet.jl's `log_set[...]` lookups), so old result stores need their
+#     `logs/seed` and `logs/moving_corals` directories physically renamed — see
+#     `migrate_resultset_logs!` below.
 
 const _RENAMED_COLUMNS = Dict{String,String}(
     "N_seed_TA" => "iv_CAq_N_TA",
@@ -163,8 +161,8 @@ function migrate_resultset_columns!(result_loc::String; dry_run::Bool=true)::Vec
 end
 
 const _RENAMED_LOG_GROUPS = Dict{String,String}(
-    "seed" => "coral_aquaculture"
-    # "moving_corals" => "larval_methods",  # not renamed on disk yet -- add here if it is
+    "seed" => "coral_aquaculture",
+    "moving_corals" => "larval_methods"
 )
 
 """
@@ -172,9 +170,9 @@ const _RENAMED_LOG_GROUPS = Dict{String,String}(
 
 Rename the on-disk log array directories of a saved `ResultSet` from their pre-rename
 names to their current equivalents. See `_RENAMED_LOG_GROUPS` for the full old -> new
-mapping (currently just `seed -> coral_aquaculture`).
+mapping (`seed -> coral_aquaculture`, `moving_corals -> larval_methods`).
 
-Each rename is a plain filesystem directory move (`logs/seed` -> `logs/coral_aquaculture`)
+Each rename is a plain filesystem directory move (e.g. `logs/seed` -> `logs/coral_aquaculture`)
 — Zarr v2 array metadata does not store the array's own name anywhere inside itself (the
 name is purely the directory it lives in), so no chunk data or `.zarray`/`.zattrs` content
 needs to change, only the containing folder's name.
@@ -229,8 +227,9 @@ end
     migrate_resultset!(result_loc::String; dry_run::Bool=true)::Nothing
 
 Bring a ResultSet saved before the intervention-parameter rename fully up to date: renames
-the `seed` log directory to `coral_aquaculture` (`migrate_resultset_logs!`) and rewrites
-`inputs.attrs["columns"]` to the current `iv_<abbrev>_<name>` names
+the `seed`/`moving_corals` log directories to `coral_aquaculture`/`larval_methods`
+(`migrate_resultset_logs!`) and rewrites `inputs.attrs["columns"]` to the current
+`iv_<abbrev>_<name>` names
 (`migrate_resultset_columns!`). Convenience wrapper — call the two functions separately if
 you want to apply/inspect them independently.
 

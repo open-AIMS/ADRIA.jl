@@ -96,7 +96,7 @@ function Domain(
     calib_params_fn::String=""
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
-    if has_mcb_scenarios(DHW)
+    if has_MCB_scenarios(DHW)
         albedos = collect(DHW.albedo)
         durations = collect(DHW.mcb_durations)
     else

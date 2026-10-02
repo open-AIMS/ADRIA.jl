@@ -7,23 +7,23 @@ Identify scenarios where no corals were deployed via coral aquaculture (all `N_C
 """
 function _CAq_off_grp(scenarios::DataFrame)::BitVector
     return dropdims(
-        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "iv_CAq_N")]); dims=2); dims=2
     ) .== 0
 end
 
 """
     _counterfactual_grp(scenarios::DataFrame)::BitVector
 
-Identify counterfactual scenarios: no coral aquaculture, no fogging, no SRM, no macro-colonization,
-and no marine cloud brightening.
+Identify counterfactual scenarios: no coral aquaculture, no fogging, no shading, no larval
+methods deployment, and no marine cloud brightening.
 """
 function _counterfactual_grp(scenarios::DataFrame)::BitVector
     iv_CAq_off = _CAq_off_grp(scenarios)
-    no_fog = scenarios.iv_Fog .== 0
-    no_SRM = scenarios.iv_Shd .== 0
-    no_mc = scenarios.iv_LvM_N_settlers .== 0
-    no_mcb = scenarios.iv_MCB_duration .== 0
-    return iv_CAq_off .& no_fog .& no_SRM .& no_mc .& no_mcb
+    no_Fog = scenarios.iv_Fog .== 0
+    no_Shd = scenarios.iv_Shd .== 0
+    no_LvM = scenarios.iv_LvM_N_settlers .== 0
+    no_MCB = scenarios.iv_MCB_duration .== 0
+    return iv_CAq_off .& no_Fog .& no_Shd .& no_LvM .& no_MCB
 end
 
 """
@@ -34,10 +34,10 @@ Identify unguided intervention scenarios: at least one intervention is active bu
 """
 function _unguided_grp(scenarios::DataFrame)::BitVector
     iv_CAq_on = .!_CAq_off_grp(scenarios)
-    has_shade = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
-    has_mc_corals = scenarios.iv_LvM_N_settlers .> 0
-    has_mcb = scenarios.iv_MCB_duration .> 0
-    return (scenarios.guided .== 0) .& (iv_CAq_on .| has_shade .| has_mc_corals .| has_mcb)
+    has_Shd = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
+    has_LvM = scenarios.iv_LvM_N_settlers .> 0
+    has_MCB = scenarios.iv_MCB_duration .> 0
+    return (scenarios.guided .== 0) .& (iv_CAq_on .| has_Shd .| has_LvM .| has_MCB)
 end
 
 """

@@ -10,11 +10,11 @@
 #
 # Byte-for-byte fidelity to what `adjust_samples` previously did is maintained,
 # with one exception: iv_CAq_strategy/iv_Fog_strategy/iv_LvM_strategy are EXCLUDED from
-# the :CAq_group/:fog_group/:LvM_group substring matches (commit d5871840,
+# the :CAq_group/:Fog_group/:LvM_group substring matches (commit d5871840,
 # 2025-12-15, fixed a regression where including them here conflicted with
 # :strategy_group in sampling_dependencies.jl, which already owns them with
-# fix_to=-1.0 for CF). fog_strategy/mc_strategy are instead gated on their own
-# intervention's activity via the dedicated :fog_strategy_gate/:mc_strategy_gate
+# fix_to=-1.0 for CF). Fog_strategy/LvM_strategy are instead gated on their own
+# intervention's activity via the dedicated :Fog_strategy_gate/:LvM_strategy_gate
 # rules below (fix_to=periodic when fogging/iv_LvM_N_settlers == 0), which check
 # the CF sentinel before touching the column so they don't reintroduce that
 # regression. iv_CAq_strategy is deliberately left out of this: it isn't gated
@@ -32,7 +32,7 @@
 #
 # 1. Single parent, single child/group -> _TRANSFORM_DEPENDENCIES
 #    Use when a child is zeroed based on ONE other sampled column, evaluated
-#    row-wise (e.g. "zero fog_group when fogging == 0"). Add a row:
+#    row-wise (e.g. "zero Fog_group when fogging == 0"). Add a row:
 #      (parent=:col, child=:target, op=:eq, value=0.0, negate=true, fix_to=0.0)
 #    `child` can be a bare spec column (fixed directly) or a group name
 #    resolved via `_transform_group_columns` (prefix match / extras, see
@@ -41,7 +41,7 @@
 #
 # 2. Multiple parents combined -> _TRANSFORM_GATE_DEFS + _TRANSFORM_GATE_RULES
 #    Use when "active" depends on MORE than one column at once (e.g. "any of
-#    the five N_seed_* columns is > 0"). Two steps:
+#    the five N_CAq_* columns is > 0"). Two steps:
 #      a. Add a combiner function to _TRANSFORM_GATE_COMBINERS if none of the
 #         existing ones (`:any_gt0`, `:any_reactive`, `:strategy_gate`) fit. It takes the
 #         parents' columns as a sub-DataFrame and returns a BitVector/Vector{Bool}
@@ -106,8 +106,8 @@ const _TRANSFORM_GATE_DEFS = [
         combine=:any_gt0),
     (name=:any_reactive, parents=[:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy],
         combine=:any_reactive),
-    (name=:fog_strategy_gate, parents=[:iv_Fog, :iv_Fog_strategy], combine=:strategy_gate),
-    (name=:mc_strategy_gate, parents=[:iv_LvM_N_settlers, :iv_LvM_strategy],
+    (name=:Fog_strategy_gate, parents=[:iv_Fog, :iv_Fog_strategy], combine=:strategy_gate),
+    (name=:LvM_strategy_gate, parents=[:iv_LvM_N_settlers, :iv_LvM_strategy],
         combine=:strategy_gate)
 ]
 
@@ -123,17 +123,17 @@ const _TRANSFORM_GATE_DEFS = [
 # whether that flip came from `op` or from `negate`.
 #
 # e.g. if fogging is disabled for a sample, every fog-related parameter for
-# that sample is meaningless and should be zeroed too. :fog_group encodes
+# that sample is meaningless and should be zeroed too. :Fog_group encodes
 # this with op=:eq, value=0.0, negate=true:
 #   active = .!(fogging .== 0) = (fogging .!= 0)
 #   fix_mask = .!active = (fogging .== 0)
-# i.e. fog_group is zeroed on rows where fogging == 0.
+# i.e. Fog_group is zeroed on rows where fogging == 0.
 # ---------------------------------------------------------------------------
 
 const _TRANSFORM_DEPENDENCIES = [
-    (parent=:iv_Fog, child=:fog_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (parent=:iv_Fog, child=:Fog_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
     (parent=:iv_LvM_N_settlers, child=:LvM_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
-    (parent=:iv_Shd, child=:shade_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (parent=:iv_Shd, child=:Shd_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
     (
         parent=:iv_CAq_strategy,
         child=:iv_CAq_deployment_freq,
@@ -175,12 +175,12 @@ const _TRANSFORM_GATE_RULES = [
     # get zeroed by the no-coral-aquaculture gate itself; this covers that ordering gap.
     (child=:a_adapt_group, gate=:any_CAq, fix_to=0.0),
     # Must run BEFORE :reactive_group's :any_reactive rule below: that rule
-    # reads :fog_strategy/:mc_strategy, and needs to see them already fixed
+    # reads :Fog_strategy/:LvM_strategy, and needs to see them already fixed
     # to periodic here for fogging/iv_LvM_N_settlers-inactive rows, otherwise an
     # orphaned reactive draw on an inactive intervention keeps reactive_group
     # alive as pure sampling noise (see file header).
-    (child=:iv_Fog_strategy, gate=:fog_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
-    (child=:iv_LvM_strategy, gate=:mc_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
+    (child=:iv_Fog_strategy, gate=:Fog_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
+    (child=:iv_LvM_strategy, gate=:LvM_strategy_gate, fix_to=DECISION_STRATEGY[:periodic]),
     (child=:reactive_group, gate=:any_reactive, fix_to=0.0)
 ]
 
@@ -188,7 +188,7 @@ const _TRANSFORM_GATE_RULES = [
 # Live substring-based group membership for post-sampling groups
 #
 # iv_CAq_strategy/iv_Fog_strategy/iv_LvM_strategy are EXCLUDED from
-# :CAq_group/:fog_group/:LvM_group. :strategy_group (pre-sampling,
+# :CAq_group/:Fog_group/:LvM_group. :strategy_group (pre-sampling,
 # sampling_dependencies.jl) already owns these with fix_to=-1.0 for CF;
 # re-touching them here with fix_to=0.0 would reproduce the d5871840
 # regression (see file header).
@@ -214,9 +214,9 @@ const _TRANSFORM_GATE_RULES = [
 
 const _TRANSFORM_GROUP_PREFIXES = Dict{Symbol,String}(
     :CAq_group => "iv_CAq_",
-    :fog_group => "iv_Fog_",
+    :Fog_group => "iv_Fog_",
     :LvM_group => "iv_LvM_",
-    :shade_group => "iv_Shd_"
+    :Shd_group => "iv_Shd_"
 )
 
 const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
@@ -231,7 +231,7 @@ const _TRANSFORM_GROUP_EXTRA_MEMBERS = Dict{Symbol,Vector{Symbol}}(
 
 const _TRANSFORM_GROUP_EXCLUDED_MEMBERS = Dict{Symbol,Vector{Symbol}}(
     :CAq_group => [:iv_CAq_strategy],
-    :fog_group => [:iv_Fog_strategy],
+    :Fog_group => [:iv_Fog_strategy],
     :LvM_group => [:iv_LvM_strategy]
 )
 
@@ -308,8 +308,8 @@ end
 # ---------------------------------------------------------------------------
 # mcda_normalize gating rules
 #
-# fog_weights deliberately recomputes fogging > 0 directly rather than
-# reusing the :fog_group fix_mask, preserving an asymmetry present in the
+# Fog_weights deliberately recomputes fogging > 0 directly rather than
+# reusing the :Fog_group fix_mask, preserving an asymmetry present in the
 # original implementation.
 # ---------------------------------------------------------------------------
 
@@ -319,7 +319,7 @@ const _CRITERIA_WEIGHT_GROUPS = Dict{Symbol,Vector{Symbol}}(
         :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
         :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation
     ],
-    :fog_weights => [
+    :Fog_weights => [
         :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
         :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
         :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation
@@ -332,8 +332,8 @@ const _CRITERIA_WEIGHT_GROUPS = Dict{Symbol,Vector{Symbol}}(
 )
 
 const _TRANSFORM_CALLS = [
-    # fog_weights: deliberately NOT gate-based (see section header above).
-    (transform=:mcda_normalize, columns=:fog_weights,
+    # Fog_weights: deliberately NOT gate-based (see section header above).
+    (transform=:mcda_normalize, columns=:Fog_weights,
         parent=:iv_Fog, op=:gt, value=0.0, negate=false, gate=nothing),
     (transform=:mcda_normalize, columns=:CAq_weights,
         parent=nothing, op=nothing, value=nothing, negate=false, gate=:any_CAq),
@@ -444,7 +444,7 @@ Ordering is load-bearing:
    column (`max(cadence, freq)`) — must run AFTER step 4, since step 4 is what
    settles each `*_deployment_freq` column to either its real sampled value or
    `0.0` (via three different mechanisms across coral aquaculture/fog/larval methods — the
-   `any_seeding` gate rule, and single-parent `_TRANSFORM_DEPENDENCIES` rows
+   `any_CAq` gate rule, and single-parent `_TRANSFORM_DEPENDENCIES` rows
    for fog/larval methods — all applied inside step 4). Without this floor, sensitivity
    analyses over the raw cadence factor would have a large inert region
    whenever `deployment_freq` already exceeds it (cadence has zero effect on
@@ -469,9 +469,9 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
         guided_mask = samples.guided .> 0
         if any(guided_mask)
             CAq_weights = component_params(spec, CAqCriteriaWeights)
-            fog_weights = component_params(spec, FogCriteriaWeights)
+            Fog_weights = component_params(spec, FogCriteriaWeights)
             LvM_weights = component_params(spec, LvMCriteriaWeights)
-            for wf in (CAq_weights.fieldname, fog_weights.fieldname, LvM_weights.fieldname)
+            for wf in (CAq_weights.fieldname, Fog_weights.fieldname, LvM_weights.fieldname)
                 wf = filter(c -> c in sample_cols, wf)
                 isempty(wf) && continue
                 samples[guided_mask, wf] .= gamma_to_dirichlet(

@@ -406,18 +406,18 @@ ADRIA.viz.savefig(rules_scatter_fig, "rules_scatter.html")
 # It is possible for a rule to increase coverage by accepting lower density,
 # and density can often be increased by accepting lower coverage.
 #
-# In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in iv_Shd > 3.94 & Years to Shade > 54.0.
+# In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in iv_Shd > 3.94 & Years with Shading > 54.0.
 #
-# A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., iv_Shd > 3.94 & Years to Shade > 38.0.
+# A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., iv_Shd > 3.94 & Years with Shading > 38.0.
 #
-# iv_Shd and Years to Shade have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
+# iv_Shd and Years with Shading have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
 #
 # Rules also suggest that high temporal variability is also obtained when putting high weight on selecting locations with high outgoing connectivity and low coral cover - in combination with high shading. The rule favouring low coral cover has very low coverage - there are many target scenarios that also do not have low coral cover.
 #
 # For this dataset, according to this analysis:
 #
 # 1) **Ensuring conditions for success**: Temporal variability might be a proxy for high improvement over time, and the scenarios could be visualised or another more specific metric could be used to verify this. It would be unsurprising for high shading to support success.
-# 2) **Avoiding failure**: Binary rules implicitly define scenarios that are excluded. High temporal variability is rarely achieved without high levels of shade.
+# 2) **Avoiding failure**: Binary rules implicitly define scenarios that are excluded. High temporal variability is rarely achieved without high levels of shading.
 # 3) **Planning for failure modes**: A recommendation to favour locations with high outgoing connectivity combined with high iv_Shd seems like it would warrant further investigation - the rule includes many target scenarios (high coverage), but also many scenarios with lower temporal variability (high density).
 # 4) **Further deliberation**: The rules describe very high levels of shading for long periods of time, which may be difficult to achieve. Temporal variability is not directly connected with measures of success - alternative metrics to summarise clusters could be explored. Other algorithms, e.g., PRIM, could also be used to give greater control over coverage and density ([Bryant & Lempert 2010](https://dx.doi.org/10.1016/j.techfore.2009.08.002)).
 #

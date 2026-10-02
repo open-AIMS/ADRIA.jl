@@ -1,26 +1,26 @@
 const _SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
-function _no_seed(scenarios::DataFrame)::BitVector
+function _no_CAq(scenarios::DataFrame)::BitVector
     return dropdims(
-        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_CAq")]); dims=2); dims=2
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "iv_CAq_N")]); dims=2); dims=2
     ) .== 0
 end
 
 function _counterfactual(scenarios::DataFrame)::BitVector
-    no_seed = _no_seed(scenarios)
-    no_fog = scenarios.iv_Fog .== 0
-    no_SRM = scenarios.iv_Shd .== 0
-    no_mc = scenarios.iv_LvM_N_settlers .== 0
-    no_mcb = scenarios.iv_MCB_duration .== 0
-    return no_seed .& no_fog .& no_SRM .& no_mc .& no_mcb
+    no_CAq = _no_CAq(scenarios)
+    no_Fog = scenarios.iv_Fog .== 0
+    no_Shd = scenarios.iv_Shd .== 0
+    no_LvM = scenarios.iv_LvM_N_settlers .== 0
+    no_MCB = scenarios.iv_MCB_duration .== 0
+    return no_CAq .& no_Fog .& no_Shd .& no_LvM .& no_MCB
 end
 
 function _unguided(scenarios::DataFrame)::BitVector
-    has_seed = .!_no_seed(scenarios)
-    has_shade = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
-    has_mc_corals = scenarios.iv_LvM_N_settlers .> 0
-    has_mcb = scenarios.iv_MCB_duration .> 0
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals .| has_mcb)
+    has_CAq = .!_no_CAq(scenarios)
+    has_Shd = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
+    has_LvM = scenarios.iv_LvM_N_settlers .> 0
+    has_MCB = scenarios.iv_MCB_duration .> 0
+    return (scenarios.guided .== 0) .& (has_CAq .| has_Shd .| has_LvM .| has_MCB)
 end
 
 function _guided(scenarios::DataFrame)::BitVector

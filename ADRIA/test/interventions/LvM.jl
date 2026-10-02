@@ -42,11 +42,11 @@ end
     N_LvM = vec(scens.iv_LvM_N_settlers)
 
     LvM_log_1 = dropdims(
-        sum(rs.LvM_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));
+        sum(rs.iv_LvM_log[locations = dom.loc_ids .∈ [locs_1]]; dims=(:coral_id, :locations));
         dims=(:coral_id, :locations)
     )
     LvM_log_2 = dropdims(
-        sum(rs.LvM_log[locations = dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations));
+        sum(rs.iv_LvM_log[locations = dom.loc_ids .∈ [locs_2]]; dims=(:coral_id, :locations));
         dims=(:coral_id, :locations)
     )
 

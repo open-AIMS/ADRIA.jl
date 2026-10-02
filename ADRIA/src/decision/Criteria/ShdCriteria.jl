@@ -1,7 +1,7 @@
 """
     ShdCriteriaWeights <: DecisionWeights
 
-Weights for shading (Solar Radiation Management) interventions.
+Weights for shading interventions.
 """
 Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
     iv_Shd_heat_stress::Param = Factor(
@@ -10,8 +10,8 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
-        name="Shade Heat Stress",
-        description="Preference locations with lower heat stress for SRM."
+        name="Shading Heat Stress",
+        description="Preference locations with lower heat stress for shading."
     )
     iv_Shd_wave_stress::Param = Factor(
         1.0;
@@ -19,8 +19,8 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
-        name="Shade Wave Stress",
-        description="Prefer locations with lower wave stress for SRM."
+        name="Shading Wave Stress",
+        description="Prefer locations with lower wave stress for shading."
     )
     iv_Shd_connectivity::Param = Factor(
         0.0;
@@ -28,8 +28,8 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="SRM Connectivity",
-        description="Preference locations with higher outgoing connectivity for SRM."
+        name="Shading Connectivity",
+        description="Preference locations with higher outgoing connectivity for shading."
     )
     iv_Shd_coral_cover::Param = Factor(
         0.0;
@@ -37,8 +37,8 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="Coral Cover (SRM)",
-        description="Give greater weight to locations with higher coral cover for SRM."
+        name="Coral Cover (Shading)",
+        description="Give greater weight to locations with higher coral cover for shading."
     )
     iv_Shd_priority::Param = Factor(
         0.0;
@@ -46,7 +46,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="Predecessor Priority (SRM)",
+        name="Predecessor Priority (Shading)",
         description="Relative importance of locations with higher outgoing connectivity to priority locations."
     )
     iv_Shd_zone::Param = Factor(
@@ -55,7 +55,7 @@ Base.@kwdef struct ShdCriteriaWeights <: DecisionWeights
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="Zone Predecessor (SRM)",
+        name="Zone Predecessor (Shading)",
         description="Relative importance of locations with higher outgoing connectivitiy to priority (target) zones."
     )
 end

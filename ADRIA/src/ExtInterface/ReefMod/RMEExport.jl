@@ -340,8 +340,8 @@ function export_to_rme(
         for t = 1:n_timesteps
             # Find indices of locations where coral aquaculture occurred in this (t, scen)
             # Sum over coral_id dimension
-            loc_seeding = sum(rs.CAq_log[t, :, :, scen]; dims=1)
-            intervened_loc_indices = getindex.(findall(loc_seeding .> 0), 2)
+            loc_CAq = sum(rs.iv_CAq_log[t, :, :, scen]; dims=1)
+            intervened_loc_indices = getindex.(findall(loc_CAq .> 0), 2)
 
             gcm_name::String = extract_GCM_from_results(dom, rs, scen)
 
@@ -367,7 +367,7 @@ function export_to_rme(
                     year = start_year + t - 1
 
                     # Get total corals for this regional group
-                    regional_total_corals = sum(loc_seeding[indices])
+                    regional_total_corals = sum(loc_CAq[indices])
 
                     # Get the actual coral aquaculture density for this scenario
                     density = inputs[scen, :iv_CAq_devices_per_m2]
@@ -388,47 +388,47 @@ function export_to_rme(
             end
 
             # Process LvM_log: (timesteps, coral_id, locations, scenarios)
-            loc_mc = sum(rs.LvM_log[t, :, :, scen]; dims=1)
-            mc_loc_indices = getindex.(findall(loc_mc .> 0), 2)
+            loc_LvM = sum(rs.iv_LvM_log[t, :, :, scen]; dims=1)
+            LvM_loc_indices = getindex.(findall(loc_LvM .> 0), 2)
 
-            if !isempty(mc_loc_indices)
+            if !isempty(LvM_loc_indices)
                 # Group by region
-                regional_groups_mc = Dict{String,Vector{Int}}()
-                for idx in mc_loc_indices
+                regional_groups_LvM = Dict{String,Vector{Int}}()
+                for idx in LvM_loc_indices
                     region = loc_idx_to_region[idx]
-                    push!(get!(regional_groups_mc, region, Int[]), idx)
+                    push!(get!(regional_groups_LvM, region, Int[]), idx)
                 end
 
-                for (region, indices) in regional_groups_mc
-                    loc_set_mc = Set(indices)
+                for (region, indices) in regional_groups_LvM
+                    loc_set_LvM = Set(indices)
 
                     # Assign or retrieve reefset name with similarity check
-                    rs_name_mc = find_similar_reefset(region, loc_set_mc, reefset_registry)
-                    if isnothing(rs_name_mc)
-                        rs_name_mc = "reefset_$(region)_$(reefset_counter)"
-                        reefset_registry[(region, loc_set_mc)] = rs_name_mc
+                    rs_name_LvM = find_similar_reefset(region, loc_set_LvM, reefset_registry)
+                    if isnothing(rs_name_LvM)
+                        rs_name_LvM = "reefset_$(region)_$(reefset_counter)"
+                        reefset_registry[(region, loc_set_LvM)] = rs_name_LvM
                         reefset_counter += 1
                     end
 
                     year = start_year + t - 1
 
                     # Get total corals for this regional group
-                    regional_total_mc_corals = sum(loc_mc[indices])
+                    regional_total_LvM_corals = sum(loc_LvM[indices])
 
                     # Calculate actual density and area for larval methods
                     # loc_area is in m^2
                     total_loc_area_m2 = sum(rs.loc_area[indices])
-                    mc_density = regional_total_mc_corals / total_loc_area_m2
-                    mc_area_km2 = total_loc_area_m2 / 1e6
+                    LvM_density = regional_total_LvM_corals / total_loc_area_m2
+                    LvM_area_km2 = total_loc_area_m2 / 1e6
 
                     push!(
                         iv_df,
                         (
-                            iv_id_map[scen], gcm_name, "lm", rs_name_mc, year,
+                            iv_id_map[scen], gcm_name, "lm", rs_name_LvM, year,
                             rep_map[scen],
-                            Float64(regional_total_mc_corals),
-                            Float64(mc_density),
-                            Float64(mc_area_km2)
+                            Float64(regional_total_LvM_corals),
+                            Float64(LvM_density),
+                            Float64(LvM_area_km2)
                         )
                     )
                 end

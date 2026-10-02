@@ -17,6 +17,6 @@ end
     no_CAq = (dropdims(sum(rs_raw.CAq_log; dims=(1, 2)); dims=(1, 2)) .> 0.0)[.!target_mask]
     @test all(no_CAq .== 0.0)
 
-    no_fog = (dropdims(sum(rs_raw.fog_log; dims=1); dims=1) .> 0.0)[.!target_mask]
-    @test all(no_fog .== 0.0)
+    no_Fog = (dropdims(sum(rs_raw.Fog_log; dims=1); dims=1) .> 0.0)[.!target_mask]
+    @test all(no_Fog .== 0.0)
 end

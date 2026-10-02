@@ -10,13 +10,13 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 """
 function summarize_env_data(
     data::AbstractArray;
-    mcb_albedo_idx::Int64=1,
-    mcb_duration_idx::Int64=1
+    MCB_albedo_idx::Int64=1,
+    MCB_duration_idx::Int64=1
 )::Array{Float64}
-    if has_mcb_scenarios(data)
-        # Slice to baseline: mcb_duration_idx, mcb_albedo_idx
+    if has_MCB_scenarios(data)
+        # Slice to baseline: MCB_duration_idx, MCB_albedo_idx
         # Optimized order: (timesteps, locations, scenarios, mcb_durations, albedo)
-        baseline_data = data[:, :, :, mcb_duration_idx, mcb_albedo_idx]
+        baseline_data = data[:, :, :, MCB_duration_idx, MCB_albedo_idx]
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
         stats_store = zeros(3, size(baseline_data, 3), size(baseline_data, 2))
@@ -185,7 +185,7 @@ end
 """
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, CAq_log, shading_log, coral_dhw_log, and coral_cover_log.
+Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 
 # Arguments
 - `z_store` : ZArray
@@ -249,7 +249,7 @@ function setup_logs(
     LvM_log = zcreate(
         Float32,
         CAq_dims...;
-        name="moving_corals",
+        name="larval_methods",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
@@ -262,16 +262,16 @@ function setup_logs(
         )
     )
 
-    shading_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
+    Shd_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
     # Float16: DHW-reduction values 0–8, precision ~0.001 DHW at 8 weeks — adequate.
-    shading_log = zcreate(
+    Shd_log = zcreate(
         Float16,
-        shading_dims...;
+        Shd_dims...;
         name="shading_log",
         fill_value=Float16(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(shading_dims[1:3]..., batch_size),
+        chunks=(Shd_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "locations", "intervention", "scenarios"),
             :interventions => ["fog", "shade"],
@@ -369,7 +369,7 @@ function setup_logs(
         )
     end
 
-    return ranks, LvM_log, CAq_log, shading_log, coral_dhw_log, coral_cover_log
+    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log
 end
 
 """
@@ -387,7 +387,7 @@ Sets up an on-disk result store.
 │   ├───coral_aquaculture
 │   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
 │   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
-│   ├───moving_corals
+│   ├───larval_methods
 │   ├───rankings
 │   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
@@ -415,7 +415,7 @@ Sets up an on-disk result store.
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (loc_outcomes, relative_taxa_cover, site_ranks, LvM_log, CAq_log, shading_log,
+domain, (loc_outcomes, relative_taxa_cover, site_ranks, LvM_log, CAq_log, Shd_log,
 coral_dhw_log, coral_cover_log)
 """
 function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::Int=0)::Tuple
@@ -602,7 +602,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :site_ranks,
                 :LvM_log,
                 :CAq_log,
-                :shading_log,
+                :Shd_log,
                 :coral_dhw_log,
                 :coral_cover_log
             ),

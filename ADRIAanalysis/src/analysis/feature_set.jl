@@ -97,8 +97,8 @@ Extract a feature set from results for analysis purposes.
 In addition to the raw realized-deployment columns (`n_loc_*_mean`,
 `*_volume_mean_*`, `*_volume_total_M_*`), a `*_effort` counterpart is added for
 each: a min-max normalization of that column computed over the *current
-scenario set only* (e.g. `n_loc_seed_mean_effort = (n_loc_seed_mean .-
-minimum(n_loc_seed_mean)) ./ (maximum(n_loc_seed_mean) - minimum(n_loc_seed_mean))`).
+scenario set only* (e.g. `n_loc_CAq_mean_effort = (n_loc_CAq_mean .-
+minimum(n_loc_CAq_mean)) ./ (maximum(n_loc_CAq_mean) - minimum(n_loc_CAq_mean))`).
 This is analogous in spirit to `intervention_effort` (`performance.jl`), but
 normalizes *actual simulated deployment* rather than pre-simulation sampled
 targets. The resulting 0-1 scale is **relative to the most/least effort seen
@@ -164,20 +164,20 @@ function feature_set(rs::ResultSet)::DataFrame
 
     # Add indicators of deployments
     CAq_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :caq)
-    fog_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
+    Fog_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
     LvM_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :lvm)
 
     # Only attach mean of deployment effort
     insertcols!(
         scens,
         :n_loc_CAq_mean => CAq_stats[stats = At(:mean)].data[:],
-        :n_loc_fog_mean => fog_stats[stats = At(:mean)].data[:],
+        :n_loc_Fog_mean => Fog_stats[stats = At(:mean)].data[:],
         :n_loc_LvM_mean => LvM_stats[stats = At(:mean)].data[:]
     )
     colmetadata!(scens, :n_loc_CAq_mean, "ptype", "continuous"; style=:note)
     colmetadata!(scens, :n_loc_CAq_mean, "label", "Mean coral aquaculture locations"; style=:note)
-    colmetadata!(scens, :n_loc_fog_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_fog_mean, "label", "Mean fogged locations"; style=:note)
+    colmetadata!(scens, :n_loc_Fog_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :n_loc_Fog_mean, "label", "Mean fogged locations"; style=:note)
     colmetadata!(scens, :n_loc_LvM_mean, "ptype", "continuous"; style=:note)
     colmetadata!(scens, :n_loc_LvM_mean, "label", "Mean larval methods locations"; style=:note)
 
@@ -188,7 +188,7 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:depth_offset)]
 
     # Transform aggregate deployment totals into units of millions
-    CAq_volume_mean, CAq_volume_total = _iv_log_stats(rs.CAq_log; prefix="CAq_")
+    CAq_volume_mean, CAq_volume_total = _iv_log_stats(rs.iv_CAq_log; prefix="CAq_")
     CAq_volume_total_M = DataFrame(
         Matrix(CAq_volume_total) ./ 1e6,
         replace.(names(CAq_volume_total), "volume_total_" => "volume_total_M_")
@@ -212,7 +212,7 @@ function feature_set(rs::ResultSet)::DataFrame
         "Total coral aquaculture deployment (millions)"; style=:note
     )
 
-    LvM_volume_mean, LvM_volume_total = _iv_log_stats(rs.LvM_log; prefix="LvM_")
+    LvM_volume_mean, LvM_volume_total = _iv_log_stats(rs.iv_LvM_log; prefix="LvM_")
     LvM_volume_total_M = DataFrame(
         Matrix(LvM_volume_total) ./ 1e6,
         replace.(names(LvM_volume_total), "volume_total_" => "volume_total_M_")
@@ -245,7 +245,7 @@ function feature_set(rs::ResultSet)::DataFrame
     effort_source_cols = filter(
         c -> c in names(scens),
         vcat(
-            ["n_loc_CAq_mean", "n_loc_fog_mean", "n_loc_LvM_mean"],
+            ["n_loc_CAq_mean", "n_loc_Fog_mean", "n_loc_LvM_mean"],
             names(CAq_volume_mean), names(CAq_volume_total_M),
             names(LvM_volume_mean), names(LvM_volume_total_M)
         )
@@ -270,7 +270,7 @@ function feature_set(rs::ResultSet)::DataFrame
     # Remove correlated features
     # Remove coral aquaculture deployment target values as `N_CAq_*` factors indicate
     # maximum (desired) deployment effort, not actual simulated deployment
-    scens = scens[:, .!contains.(names(scens), "N_CAq")]
+    scens = scens[:, .!contains.(names(scens), "iv_CAq_N")]
 
     # Set missing values to 0
     for col in eachcol(scens)
