@@ -437,7 +437,7 @@ check("rules_scatter") do
 
     rule_foi = try
         # component_params returns raw input parameter names; filter to those
-        # that survive feature_set post-processing (e.g. N_CAq_* are removed).
+        # that survive feature_set post-processing (e.g. iv_CAq_N_* are removed).
         fs_cols = Set(names(fs))
         raw = ADRIA.component_params(rs, [Intervention, CAqCriteriaWeights]).fieldname
         Symbol[f for f in raw if string(f) in fs_cols]

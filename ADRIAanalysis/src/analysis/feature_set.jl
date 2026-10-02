@@ -268,7 +268,7 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:dhw_scenario)]
 
     # Remove correlated features
-    # Remove coral aquaculture deployment target values as `N_CAq_*` factors indicate
+    # Remove coral aquaculture deployment target values as `iv_CAq_N_*` factors indicate
     # maximum (desired) deployment effort, not actual simulated deployment
     scens = scens[:, .!contains.(names(scens), "iv_CAq_N")]
 

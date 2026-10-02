@@ -372,7 +372,7 @@ function _create_inputs_dataframe(
     deployment_area = _default_missing(scenario_spec[Symbol("Deployment area")], 0.0)
     total_corals = Float64.(_default_missing(scenario_spec.TotalCorals, 1.0))
 
-    n_CAq = [0.0, 0.0, 0.0, 0.0, 0.0]
+    iv_CAq_N = [0.0, 0.0, 0.0, 0.0, 0.0]
     taxa_deployed = if ismissing(scenario_spec.species)
         []
     else
@@ -380,10 +380,10 @@ function _create_inputs_dataframe(
             Int64, split(scenario_spec.species, '_')
         )
     end
-    n_CAq[taxa_deployed] .= total_corals / length(taxa_deployed)
+    iv_CAq_N[taxa_deployed] .= total_corals / length(taxa_deployed)
     corals_deployed = Dict(
-        Symbol("N_CAq_" * _ft_acronym(ft)) => n_corals
-        for (ft, n_corals) in zip(functional_types, n_CAq)
+        Symbol("iv_CAq_N_" * _ft_acronym(ft)) => n_corals
+        for (ft, n_corals) in zip(functional_types, iv_CAq_N)
     )
 
     enhancement_mean, enhancement_std = parse.(
@@ -448,7 +448,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     settle_ub = repeat([1.0], length(settle_names))
 
     # Number of corals deployed via coral aquaculture
-    CAq_names = filter(factor -> contains(factor, "N_CAq_"), factor_names)
+    CAq_names = filter(factor -> contains(factor, "iv_CAq_N_"), factor_names)
     CAq_readable = human_readable_name.(CAq_names)
     CAq_names = Symbol.(CAq_names)
     CAq_ptype = repeat(["continuous"], length(settle_names))

@@ -79,4 +79,4 @@ export_to_rme(dom, rs, out_dir)
 #
 # ### Counterfactual Detection
 #
-# A scenario is flagged as a `counterfactual` in the export if all intervention factors (`N_CAq_*`, `iv_Fog`, `iv_Shd`, etc.) are set to zero. This bitmask is stored in `scenario_info.json`.
+# A scenario is flagged as a `counterfactual` in the export if all intervention factors (`iv_CAq_N_*`, `iv_Fog`, `iv_Shd`, etc.) are set to zero. This bitmask is stored in `scenario_info.json`.

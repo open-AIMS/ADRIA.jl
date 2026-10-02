@@ -41,7 +41,7 @@
 #
 # 2. Multiple parents combined -> _TRANSFORM_GATE_DEFS + _TRANSFORM_GATE_RULES
 #    Use when "active" depends on MORE than one column at once (e.g. "any of
-#    the five N_CAq_* columns is > 0"). Two steps:
+#    the five iv_CAq_N_* columns is > 0"). Two steps:
 #      a. Add a combiner function to _TRANSFORM_GATE_COMBINERS if none of the
 #         existing ones (`:any_gt0`, `:any_reactive`, `:strategy_gate`) fit. It takes the
 #         parents' columns as a sub-DataFrame and returns a BitVector/Vector{Bool}
