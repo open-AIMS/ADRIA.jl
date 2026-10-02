@@ -21,7 +21,7 @@ jobs:
           version: '1.12'
       - uses: julia-actions/cache@v3
       - name: Install dependencies
-        run: julia --project=ADRIA/docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path="ADRIA")); Pkg.develop(PackageSpec(path="ADRIAanalysis")); Pkg.instantiate()'
+        run: julia --project=ADRIA/docs/ -e 'using Pkg; Pkg.develop([PackageSpec(path="ADRIA"), PackageSpec(path="ADRIAanalysis")]); Pkg.instantiate()'
       - name: Build documentation
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
