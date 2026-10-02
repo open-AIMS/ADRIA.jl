@@ -977,3 +977,20 @@ end
         @test count(==("45"), scens.ssp) == 3 * n_per_stratum * length(ssp_strata)
     end
 end
+
+@testset "single free parameter" begin
+    # When all but one parameter are held constant, only one dimension is sampled.
+    # QuasiMonteCarlo's OwenScramble crashes for d=1, so sampling must fall back to
+    # an unscrambled Sobol sequence rather than throwing a BoundsError.
+    dom = deepcopy(ADRIA_DOM_45)
+    spec = ADRIA._filtered_model_spec(
+        ADRIA.model_spec(dom), dom.loc_data.CB_CALIB_GROUPS
+    )
+
+    free_idx = findfirst(.!spec.is_constant)
+    spec.is_constant .= true
+    spec.is_constant[free_idx] = false
+
+    scens = ADRIA.sample(spec, 32)
+    @test size(scens, 1) == 32 || "Expected 32 samples with a single free parameter"
+end
