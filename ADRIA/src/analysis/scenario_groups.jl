@@ -3,7 +3,7 @@
 """
     _CAq_off_grp(scenarios::DataFrame)::BitVector
 
-Identify scenarios where no corals were deployed via coral aquaculture (all `N_CAq_*` columns are zero).
+Identify scenarios where no corals were deployed via coral aquaculture (all `iv_CAq_N_*` columns are zero).
 """
 function _CAq_off_grp(scenarios::DataFrame)::BitVector
     return dropdims(
@@ -19,11 +19,11 @@ methods deployment, and no marine cloud brightening.
 """
 function _counterfactual_grp(scenarios::DataFrame)::BitVector
     iv_CAq_off = _CAq_off_grp(scenarios)
-    no_Fog = scenarios.iv_Fog .== 0
-    no_Shd = scenarios.iv_Shd .== 0
-    no_LvM = scenarios.iv_LvM_N_settlers .== 0
-    no_MCB = scenarios.iv_MCB_duration .== 0
-    return iv_CAq_off .& no_Fog .& no_Shd .& no_LvM .& no_MCB
+    iv_Fog_off = scenarios.iv_Fog .== 0
+    iv_Shd_off = scenarios.iv_Shd .== 0
+    iv_LvM_off = scenarios.iv_LvM_N_settlers .== 0
+    iv_MCB_off = scenarios.iv_MCB_duration .== 0
+    return iv_CAq_off .& iv_Fog_off .& iv_Shd_off .& iv_LvM_off .& iv_MCB_off
 end
 
 """
@@ -34,10 +34,10 @@ Identify unguided intervention scenarios: at least one intervention is active bu
 """
 function _unguided_grp(scenarios::DataFrame)::BitVector
     iv_CAq_on = .!_CAq_off_grp(scenarios)
-    has_Shd = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
-    has_LvM = scenarios.iv_LvM_N_settlers .> 0
-    has_MCB = scenarios.iv_MCB_duration .> 0
-    return (scenarios.guided .== 0) .& (iv_CAq_on .| has_Shd .| has_LvM .| has_MCB)
+    iv_Shd_on = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
+    iv_LvM_on = scenarios.iv_LvM_N_settlers .> 0
+    iv_MCB_on = scenarios.iv_MCB_duration .> 0
+    return (scenarios.guided .== 0) .& (iv_CAq_on .| iv_Shd_on .| iv_LvM_on .| iv_MCB_on)
 end
 
 """
