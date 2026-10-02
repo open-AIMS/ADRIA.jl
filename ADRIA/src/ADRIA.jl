@@ -109,8 +109,7 @@ export
     CAqCriteriaWeights, FogCriteriaWeights, LvMCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
-    metrics, select, timesteps, env_stats, viz,
-    load_results_legacy
+    metrics, select, timesteps, env_stats, viz
 
 using .analysis: AnnotatedOutcomes, attach_scenario_metadata
 export AnnotatedOutcomes, attach_scenario_metadata
