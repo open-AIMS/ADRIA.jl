@@ -175,11 +175,15 @@ function feature_set(rs::ResultSet)::DataFrame
         :n_loc_LvM_mean => LvM_stats[stats = At(:mean)].data[:]
     )
     colmetadata!(scens, :n_loc_CAq_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_CAq_mean, "label", "Mean coral aquaculture locations"; style=:note)
+    colmetadata!(
+        scens, :n_loc_CAq_mean, "label", "Mean coral aquaculture locations"; style=:note
+    )
     colmetadata!(scens, :n_loc_Fog_mean, "ptype", "continuous"; style=:note)
     colmetadata!(scens, :n_loc_Fog_mean, "label", "Mean fogged locations"; style=:note)
     colmetadata!(scens, :n_loc_LvM_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_LvM_mean, "label", "Mean larval methods locations"; style=:note)
+    colmetadata!(
+        scens, :n_loc_LvM_mean, "label", "Mean larval methods locations"; style=:note
+    )
 
     # Replace `depth_offset` with maximum depth
     scens.depth_max = scens.depth_min .+ scens.depth_offset
@@ -196,13 +200,20 @@ function feature_set(rs::ResultSet)::DataFrame
     DataFrames.hcat!(scens, CAq_volume_mean)
     for col in names(CAq_volume_mean)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
-        colmetadata!(scens, col, "label", "Mean coral aquaculture deployment volume ($col)"; style=:note)
+        colmetadata!(
+            scens,
+            col,
+            "label",
+            "Mean coral aquaculture deployment volume ($col)";
+            style=:note
+        )
     end
     DataFrames.hcat!(scens, CAq_volume_total_M)
     for col in names(CAq_volume_total_M)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
         colmetadata!(
-            scens, col, "label", "Total coral aquaculture deployment volume ($col)"; style=:note
+            scens, col, "label", "Total coral aquaculture deployment volume ($col)";
+            style=:note
         )
     end
     scens.CAq_total_deployed_coral_M = vec(sum(Matrix(CAq_volume_total_M); dims=2))
@@ -228,7 +239,8 @@ function feature_set(rs::ResultSet)::DataFrame
     for col in names(LvM_volume_total_M)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
         colmetadata!(
-            scens, col, "label", "Total larval methods deployment volume ($col)"; style=:note
+            scens, col, "label", "Total larval methods deployment volume ($col)";
+            style=:note
         )
     end
     scens.LvM_total_deployed_coral_M = vec(sum(Matrix(LvM_volume_total_M); dims=2))

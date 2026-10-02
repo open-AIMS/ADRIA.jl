@@ -132,7 +132,14 @@ const _TRANSFORM_GATE_DEFS = [
 
 const _TRANSFORM_DEPENDENCIES = [
     (parent=:iv_Fog, child=:Fog_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
-    (parent=:iv_LvM_N_settlers, child=:LvM_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
+    (
+        parent=:iv_LvM_N_settlers,
+        child=:LvM_group,
+        op=:eq,
+        value=0.0,
+        negate=true,
+        fix_to=0.0
+    ),
     (parent=:iv_Shd, child=:Shd_group, op=:eq, value=0.0, negate=true, fix_to=0.0),
     (
         parent=:iv_CAq_strategy,
@@ -161,7 +168,14 @@ const _TRANSFORM_DEPENDENCIES = [
     # iv_CAq_a_adapt_ref (adaptation reference period) only matters when assisted adaptation is
     # actually applied -- zero it whenever iv_CAq_a_adapt itself is 0, whether that's a direct
     # sampled draw or an explicit override (e.g. a sensitivity analysis forcing it to 0).
-    (parent=:iv_CAq_a_adapt, child=:iv_CAq_a_adapt_ref, op=:eq, value=0.0, negate=true, fix_to=0.0)
+    (
+        parent=:iv_CAq_a_adapt,
+        child=:iv_CAq_a_adapt_ref,
+        op=:eq,
+        value=0.0,
+        negate=true,
+        fix_to=0.0
+    )
 ]
 
 # ---------------------------------------------------------------------------

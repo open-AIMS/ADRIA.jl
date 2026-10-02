@@ -225,7 +225,8 @@ function export_to_rme(
     inputs = isnothing(scen_spec) ? rs.inputs : scen_spec
 
     CAq_factors = [
-        :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM, :iv_LvM_N_settlers
+        :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM,
+        :iv_LvM_N_settlers
     ]
 
     # Filter to only those present in inputs
@@ -403,7 +404,9 @@ function export_to_rme(
                     loc_set_LvM = Set(indices)
 
                     # Assign or retrieve reefset name with similarity check
-                    rs_name_LvM = find_similar_reefset(region, loc_set_LvM, reefset_registry)
+                    rs_name_LvM = find_similar_reefset(
+                        region, loc_set_LvM, reefset_registry
+                    )
                     if isnothing(rs_name_LvM)
                         rs_name_LvM = "reefset_$(region)_$(reefset_counter)"
                         reefset_registry[(region, loc_set_LvM)] = rs_name_LvM

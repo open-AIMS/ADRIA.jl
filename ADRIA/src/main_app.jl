@@ -83,8 +83,12 @@ Display results for indicative purposes, just to demonstrate things are working.
 Not intended for production.
 """
 function _indicative_result_display(res)
-    nodeploy_scens = findall(select(res, "guided .== 0") .&& select(res, "iv_CAq_N_TA .== 0"))
-    unguided_scens = findall(select(res, "guided .== 0") .&& select(res, "iv_CAq_N_TA .> 0"))
+    nodeploy_scens = findall(
+        select(res, "guided .== 0") .&& select(res, "iv_CAq_N_TA .== 0")
+    )
+    unguided_scens = findall(
+        select(res, "guided .== 0") .&& select(res, "iv_CAq_N_TA .> 0")
+    )
     guided_scens = findall(select(res, "guided .> 0") .&& select(res, "iv_CAq_N_TA .> 0"))
 
     Y_no = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, nodeploy_scens))

@@ -694,7 +694,8 @@ end
     end
 
     @testset "iv_LvM_strategy fixed when iv_LvM_N_settlers inactive" begin
-        if :iv_LvM_strategy in propertynames(scens) && :iv_LvM_N_settlers in propertynames(scens)
+        if :iv_LvM_strategy in propertynames(scens) &&
+            :iv_LvM_N_settlers in propertynames(scens)
             not_cf = scens.iv_LvM_strategy .!= -1.0
             @test all(scens[not_cf, :iv_LvM_strategy] .== Float64(PERIODIC)) ||
                 "iv_LvM_strategy should be PERIODIC ($PERIODIC) for all non-CF rows once " *
@@ -705,7 +706,12 @@ end
     @testset "reactive_group dropped when coral aquaculture is the only reactive-capable lever" begin
         if all(
             c -> c in propertynames(scens),
-            [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy, :reactive_response_delay]
+            [
+                :iv_CAq_strategy,
+                :iv_Fog_strategy,
+                :iv_LvM_strategy,
+                :reactive_response_delay
+            ]
         )
             periodic_CAq = scens.iv_CAq_strategy .== Float64(PERIODIC)
             @test all(scens[periodic_CAq, :reactive_response_delay] .== 0.0) ||
@@ -761,7 +767,8 @@ end
     ]
     zeroed_cols = filter(c -> c in propertynames(cf_samples), zeroed_cols)
     strategy_cols = filter(
-        c -> c in propertynames(cf_samples), [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
+        c -> c in propertynames(cf_samples),
+        [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
     )
 
     @testset "CF zeroing" begin
@@ -885,7 +892,8 @@ end
         [:iv_CAq_N_TA, :iv_CAq_N_CA, :iv_Fog, :iv_Shd, :iv_LvM_N_settlers, :depth_min]
     )
     strategy_cols = filter(
-        c -> c in propertynames(ug_samples), [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
+        c -> c in propertynames(ug_samples),
+        [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
     )
 
     @testset "criteria weights/plan_horizon zeroed" begin

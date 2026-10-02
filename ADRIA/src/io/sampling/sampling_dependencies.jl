@@ -152,8 +152,10 @@ const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
     :intervention_group => [
         :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM,
         :iv_LvM_N_settlers, :iv_CAq_devices_per_m2, :min_iv_locations,
-        :iv_LvM_min_iv_locations, :iv_Fog, :iv_Shd, :iv_CAq_a_adapt, :iv_CAq_a_adapt_ref,
-        :iv_CAq_years, :iv_Shd_years, :iv_Fog_years, :plan_horizon, :projection_confidence,
+        :iv_LvM_min_iv_locations, :iv_Fog, :iv_Shd, :iv_CAq_a_adapt,
+        :iv_CAq_a_adapt_ref,
+        :iv_CAq_years, :iv_Shd_years, :iv_Fog_years, :plan_horizon,
+        :projection_confidence,
         :iv_CAq_deployment_freq, :iv_Fog_deployment_freq, :iv_Shd_deployment_freq,
         :iv_LvM_deployment_freq, :iv_CAq_year_start, :iv_Shd_year_start,
         :iv_Fog_year_start, :iv_LvM_year_start, :iv_LvM_years,

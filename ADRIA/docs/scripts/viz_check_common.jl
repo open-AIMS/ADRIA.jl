@@ -477,7 +477,12 @@ end
 
 const INTERVENTION_TYPES = (:caq, :fog, :Shd, :lvm)
 _intervention_name(iv) = get(
-    Dict(:caq => "Coral Aquaculture", :fog => "Fog", :Shd => "Shading", :lvm => "Larval Methods"),
+    Dict(
+        :caq => "Coral Aquaculture",
+        :fog => "Fog",
+        :Shd => "Shading",
+        :lvm => "Larval Methods"
+    ),
     iv, titlecase(string(iv))
 )
 

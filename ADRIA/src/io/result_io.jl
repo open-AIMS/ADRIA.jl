@@ -711,13 +711,15 @@ function _load_results(result_loc::String)::ResultSet
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     if _parse_adria_version(r_vers_id) < _MIN_SUPPORTED_VERSION
-        error("""
-        This result set was produced with ADRIA $(r_vers_id), which is not compatible \
-        with ADRIA >= $(_MIN_SUPPORTED_VERSION). Intervention parameters were renamed in \
-        $(_MIN_SUPPORTED_VERSION) (seed -> CAq, mc -> LvM, fog -> Fog, shade/SRM -> Shd, \
-        mcb -> MCB), so result sets from earlier versions can no longer be loaded. Use an \
-        ADRIA version older than $(_MIN_SUPPORTED_VERSION) to load this result set instead.
-        """)
+        error(
+            """
+      This result set was produced with ADRIA $(r_vers_id), which is not compatible \
+      with ADRIA >= $(_MIN_SUPPORTED_VERSION). Intervention parameters were renamed in \
+      $(_MIN_SUPPORTED_VERSION) (seed -> CAq, mc -> LvM, fog -> Fog, shade/SRM -> Shd, \
+      mcb -> MCB), so result sets from earlier versions can no longer be loaded. Use an \
+      ADRIA version older than $(_MIN_SUPPORTED_VERSION) to load this result set instead.
+      """
+        )
     end
 
     dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
