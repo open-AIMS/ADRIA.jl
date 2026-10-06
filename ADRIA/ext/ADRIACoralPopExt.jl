@@ -44,6 +44,8 @@ Keywords
   (each with its own Python interpreter). Workers inherit this process's environment, so
   `JULIA_PYTHONCALL_EXE` etc. must be set before `using CoralPopInterface`.
 - `coupled`: exchange larvae between sites (default) or run sites independently.
+- `larvae_via_connectivity`: CoralPop's own larval retention off, so all spawner larvae (a site's own
+  through the matrix diagonal) travel through `dom`'s connectivity, as in CoralBlox and C~scape.
 - `keep_raw`: also keep the ~15 MB raw output per scenario (default: indicators only, ~4 MB).
 - `draw_params`: redraw CoralPop's native random parameters from each scenario seed.
 - `spec`: the `coralpop_spec` table `scens` was sampled from, so the result set's `model_spec`
@@ -57,6 +59,7 @@ function ADRIA._run_scenarios_coralpop(
     dhw_idx::Int=0, wave_idx::Int=0, cyclone_idx::Int=0,
     base_scenario_id::Int=1, n_workers::Int=0, exeflags::Vector{String}=String[],
     coupled::Bool=true, draw_params::Bool=false, keep_raw::Bool=false,
+    larvae_via_connectivity::Bool=false,
     spec::Union{DataFrame,Nothing}=nothing
 )
     inp = CoralPopInterface.domain_to_coralpop_inputs(dom; dhw_idx, wave_idx, cyclone_idx)
@@ -65,7 +68,7 @@ function ADRIA._run_scenarios_coralpop(
     ## indicators are always computed: the result set is built from them
     _, failures = CoralPopInterface.run_coralpop_scenarios(
         inp, scenarios, fpath; n_workers, exeflags, coupled, draw_params,
-        calc_indicators=true, keep_raw
+        calc_indicators=true, keep_raw, larvae_via_connectivity
     )
     isempty(failures) || @warn "Some CoralPop scenarios failed" ids = [f.id for f in failures]
 

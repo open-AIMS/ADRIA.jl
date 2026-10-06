@@ -44,6 +44,8 @@ Keywords
   `:coralpop`/`:cscape`, this never spawns separate OS processes).
 - `keep_raw`: also keep the per-scenario raw output (default: indicators only).
 - `growth_models`/`survival_models`: override Kora's bundled "offshore_north" fits.
+- `larvae_via_connectivity`: route all larvae through `dom`'s connectivity matrix (a site's own via the
+  diagonal; Kora's `self_seed` then has no effect) instead of keeping every site closed and self-seeding.
 - `spec`: the `kora_spec` table `scens` was sampled from, so the result set's `model_spec` carries the
   real factor bounds (optional).
 - any other keyword is an error (nothing is silently dropped).
@@ -54,7 +56,7 @@ function ADRIA._run_scenarios_kora(
     dom::Domain, scens::DataFrame, fpath::String;
     dhw_idx::Int=0, wave_idx::Int=0, cyclone_idx::Int=0,
     base_scenario_id::Int=1, n_workers::Int=0, keep_raw::Bool=false,
-    growth_models=nothing, survival_models=nothing,
+    growth_models=nothing, survival_models=nothing, larvae_via_connectivity::Bool=false,
     spec::Union{DataFrame,Nothing}=nothing
 )
     inp = KoraInterface.domain_to_kora_inputs(dom; dhw_idx, wave_idx, cyclone_idx)
@@ -63,7 +65,7 @@ function ADRIA._run_scenarios_kora(
     ## indicators are always computed: the result set is built from them
     _, failures = KoraInterface.run_kora_scenarios(
         inp, scenarios, fpath; growth_models, survival_models, n_workers,
-        calc_indicators=true, keep_raw
+        calc_indicators=true, keep_raw, larvae_via_connectivity
     )
     isempty(failures) || @warn "Some Kora scenarios failed" ids = [f.id for f in failures]
 
