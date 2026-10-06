@@ -1491,7 +1491,8 @@ function run_model(
                     selected_Fog_ranks = unguided_selection(
                         candidate_locs,
                         min_iv_locs,
-                        vec(leftover_space_m²[candidate_loc_indices])
+                        vec(leftover_space_m²[candidate_loc_indices]);
+                        rng=rng
                     )
                 end
                 if !isempty(selected_Fog_ranks)
@@ -1581,7 +1582,8 @@ function run_model(
                             share_candidate_locs,
                             LvM_min_iv_locs,
                             vec(leftover_space_m²[share_candidate_loc_idx]),
-                            depth_criteria[share_candidate_loc_idx]
+                            depth_criteria[share_candidate_loc_idx];
+                            rng=rng
                         )
                     end
                     if !isempty(selected_LvM_ranks)
@@ -1770,7 +1772,8 @@ function run_model(
                             share_candidate_locs,
                             min_iv_locs,
                             vec(leftover_space_m²[share_candidate_loc_idx]),
-                            depth_criteria[share_candidate_loc_idx]
+                            depth_criteria[share_candidate_loc_idx];
+                            rng=rng
                         )
                     end
                     if !isempty(selected_CAq_ranks)

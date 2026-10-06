@@ -190,6 +190,22 @@ function custom_indegree_centrality(g::SimpleWeightedDiGraph)
 end
 
 """
+    deterministic_eigenvector_centrality(g)::Vector{Float64}
+
+Eigenvector centrality as in `Graphs.eigenvector_centrality`, but starting the iteration
+from a fixed vector. Without it, ArnoldiMethod starts from a random vector drawn from the
+global RNG, so results vary between calls by ~1e-13, which can flip near-tied location
+rankings.
+"""
+function deterministic_eigenvector_centrality(g)::Vector{Float64}
+    A = Graphs.adjacency_matrix(g)
+    _, Q = Graphs.LinAlg.eigs(
+        A; which=Graphs.LinAlg.LM(), nev=1, v1=ones(eltype(A), size(A, 1))
+    )
+    return abs.(vec(Q))
+end
+
+"""
     connectivity_strength(conn::AbstractArray)::NamedTuple
 
 Determine in/out degree centralities for all nodes.
@@ -208,7 +224,7 @@ NamedTuple:
 function connectivity_strength(
     conn::AbstractMatrix{<:Union{Float32,Float64}};
     in_method=custom_indegree_centrality,
-    out_method=eigenvector_centrality
+    out_method=deterministic_eigenvector_centrality
 )::NamedTuple
     g = SimpleWeightedDiGraph(conn)
 
@@ -252,7 +268,7 @@ function connectivity_strength(
     cover::Vector{<:Union{Float32,Float64}},
     conn_cache::AbstractMatrix{Float64};
     in_method=custom_indegree_centrality,
-    out_method=eigenvector_centrality
+    out_method=deterministic_eigenvector_centrality
 )::NamedTuple
     # Accounts for cases where there is no coral cover
     conn_cache .= (area_weighted_conn .* cover)
