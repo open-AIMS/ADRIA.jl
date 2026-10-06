@@ -53,6 +53,7 @@ import{_ as a,o as n,c as i,ao as e}from"./chunks/framework.B1QXaJza.js";const t
 <span class="line"><span>        wave_RCP45.nc</span></span>
 <span class="line"><span>        wave_RCP60.nc</span></span>
 <span class="line"><span>        wave_RCP85.nc</span></span></code></pre></div><h2 id="ResultSets" tabindex="-1">ResultSets <a class="header-anchor" href="#ResultSets" aria-label="Permalink to &quot;ResultSets {#ResultSets}&quot;">​</a></h2><p>The directory holding results is also treated as a data package referred to as a <code>ResultSet</code>. Scenario outcomes are written out to disk as they complete to a directory located in the user-defined <code>Output</code> directory (see <a href="/ADRIA.jl/dev/usage/getting_started#Getting-Started">Getting Started</a>).</p><p>The directory name follows the convention of <code>[Domain Name]__[IDs of RCPs]__[date/time of run]</code>. For example: <code>Moore_2022-11-17__RCPs45_60__2023-01-01_19_00_00_000</code></p><p>The above example <code>ResultSet</code> indicates the &quot;Moore_2022-11-17&quot; Domain was run for RCPs 4.5 and 6.0 at precisely 7pm (i.e., 19:00:00.000, where the trailing &quot;000&quot; indicates milliseconds). Note that each &quot;portion&quot; of information is separated by a double underscore (<code>__</code>).</p><p>Simulation results are stored in <a href="https://zarr.readthedocs.io/en/stable/spec/v2.html" target="_blank" rel="noreferrer">Zarr format</a>. A <code>ResultSet</code> also holds a copy of:</p><ul><li><p>the scenario specifications</p></li><li><p>the geospatial data used</p></li><li><p>Summary statistics for the DHW/wave scenarios run, and</p></li><li><p>Logs indicating which locations were intervened on</p></li></ul><p>Below is a diagram of the directory structure. Filenames are not shown here as there may be hundreds/thousands depending on the scenario set run.</p><div class="language- vp-adaptive-theme"><button title="Copy Code" class="copy"></button><span class="lang"></span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span>Example_domain__RCP45_60_85__2023-03-11_19_00_00_000</span></span>
+<span class="line"><span>├───connectivity</span></span>
 <span class="line"><span>├───env_stats</span></span>
 <span class="line"><span>│   ├───dhw</span></span>
 <span class="line"><span>│   │   ├───45</span></span>
@@ -64,15 +65,16 @@ import{_ as a,o as n,c as i,ao as e}from"./chunks/framework.B1QXaJza.js";const t
 <span class="line"><span>│       └───85</span></span>
 <span class="line"><span>├───inputs</span></span>
 <span class="line"><span>├───logs</span></span>
-<span class="line"><span>│   ├───fog</span></span>
+<span class="line"><span>│   ├───coral_aquaculture</span></span>
+<span class="line"><span>│   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)</span></span>
+<span class="line"><span>│   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)</span></span>
+<span class="line"><span>│   ├───larval_methods</span></span>
 <span class="line"><span>│   ├───rankings</span></span>
-<span class="line"><span>│   ├───seed</span></span>
-<span class="line"><span>│   └───shade</span></span>
+<span class="line"><span>│   └───shading_log      (fog and shade combined along an intervention axis)</span></span>
 <span class="line"><span>├───model_spec</span></span>
 <span class="line"><span>├───results</span></span>
-<span class="line"><span>│   ├───absolute_shelter_volume</span></span>
-<span class="line"><span>│   ├───relative_juveniles</span></span>
-<span class="line"><span>│   ├───relative_shelter_volume</span></span>
-<span class="line"><span>│   ├───relative_taxa_cover</span></span>
-<span class="line"><span>│   └───total_absolute_cover</span></span>
-<span class="line"><span>└───site_data</span></span></code></pre></div>`,39)])])}const g=a(p,[["render",l]]);export{E as __pageData,g as default};
+<span class="line"><span>│   ├───loc_outcomes     (relative_cover, relative_shelter_volume, absolute_shelter_volume,</span></span>
+<span class="line"><span>│   │                     relative_juveniles, juvenile_indicator, coral_evenness combined</span></span>
+<span class="line"><span>│   │                     along a metrics axis)</span></span>
+<span class="line"><span>│   └───relative_taxa_cover</span></span>
+<span class="line"><span>└───spatial</span></span></code></pre></div>`,39)])])}const g=a(p,[["render",l]]);export{E as __pageData,g as default};
