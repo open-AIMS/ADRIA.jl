@@ -99,7 +99,7 @@ function rank_locations(
     conn_cache = similar(area_weighted_conn)
 
     in_conn, out_conn, network = connectivity_strength(
-        area_weighted_conn, sum_cover, conn_cache; out_method=eigenvector_centrality
+        area_weighted_conn, sum_cover, conn_cache
     )
     # strong_pred = strongest_source(g, network)
 

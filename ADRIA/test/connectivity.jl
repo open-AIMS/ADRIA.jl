@@ -32,3 +32,11 @@ end
     @test all(d2.dim.val.data .== loc_data.reef_siteid) ||
         "Sites do not match expected order!"
 end
+
+@testset "Connectivity strength is deterministic" begin
+    conn = ADRIA.SparseArrays.sprand(MersenneTwister(1), 200, 200, 0.1)
+    out_1 = ADRIA.connectivity_strength(Matrix(conn)).out_conn
+    out_2 = ADRIA.connectivity_strength(Matrix(conn)).out_conn
+
+    @test out_1 == out_2
+end
