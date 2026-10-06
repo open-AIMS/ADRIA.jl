@@ -1,5 +1,6 @@
 module decision
 
+using Random
 using StatsBase
 using YAXArrays
 using ADRIA:
