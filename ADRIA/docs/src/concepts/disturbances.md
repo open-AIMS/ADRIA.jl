@@ -48,16 +48,16 @@ Population mean tolerance shifts each timestep through two mechanisms:
 - **Survival selection**: After a bleaching event, individuals with higher tolerances are
   preferentially retained, shifting the surviving population mean upward. This is
   formalised via the Breeder's equation using a fixed heritability parameter.
-- **Settler tolerance**: Newly seeded corals can carry a user-specified thermal tolerance
-  offset (`a_adapt`), representing a given level of enhanced thermal tolerance, through
+- **Settler tolerance**: Newly deployed coral aquaculture corals can carry a user-specified thermal tolerance
+  offset (`iv_CAq_a_adapt`), representing a given level of enhanced thermal tolerance, through
   assisted gene flow, adaptation or other enhancement process.
 
 The mean tolerance is hard-capped at `initial_mean + HEAT_UB` to represent a biological
 ceiling on adaptation.
 
-## Fogging and Solar Radiation Management (SRM)
+## Fogging and Shading
 
-Interventions that reduce light and heat reaching corals (fogging and SRM) are modelled
+Interventions that reduce light and heat reaching corals (fogging and shading) are modelled
 as a direct multiplicative reduction of the DHW experienced at selected locations:
 
 ```

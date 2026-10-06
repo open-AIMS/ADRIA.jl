@@ -1,29 +1,29 @@
 """Scenario grouping helper functions used by AnnotatedOutcomes."""
 
 """
-    _no_seed_grp(scenarios::DataFrame)::BitVector
+    _CAq_off_grp(scenarios::DataFrame)::BitVector
 
-Identify scenarios where no corals were seeded (all `N_seed_*` columns are zero).
+Identify scenarios where no corals were deployed via coral aquaculture (all `iv_CAq_N_*` columns are zero).
 """
-function _no_seed_grp(scenarios::DataFrame)::BitVector
+function _CAq_off_grp(scenarios::DataFrame)::BitVector
     return dropdims(
-        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "iv_CAq_N")]); dims=2); dims=2
     ) .== 0
 end
 
 """
     _counterfactual_grp(scenarios::DataFrame)::BitVector
 
-Identify counterfactual scenarios: no seeding, no fogging, no SRM, no macro-colonization,
-and no marine cloud brightening.
+Identify counterfactual scenarios: no coral aquaculture, no fogging, no shading, no larval
+methods deployment, and no marine cloud brightening.
 """
 function _counterfactual_grp(scenarios::DataFrame)::BitVector
-    no_seed = _no_seed_grp(scenarios)
-    no_fog = scenarios.fogging .== 0
-    no_SRM = scenarios.SRM .== 0
-    no_mc = scenarios.N_mc_settlers .== 0
-    no_mcb = scenarios.mcb_duration .== 0
-    return no_seed .& no_fog .& no_SRM .& no_mc .& no_mcb
+    iv_CAq_off = _CAq_off_grp(scenarios)
+    iv_Fog_off = scenarios.iv_Fog .== 0
+    iv_Shd_off = scenarios.iv_Shd .== 0
+    iv_LvM_off = scenarios.iv_LvM_N_settlers .== 0
+    iv_MCB_off = scenarios.iv_MCB_duration .== 0
+    return iv_CAq_off .& iv_Fog_off .& iv_Shd_off .& iv_LvM_off .& iv_MCB_off
 end
 
 """
@@ -33,11 +33,11 @@ Identify unguided intervention scenarios: at least one intervention is active bu
 `guided == 0` (i.e., site selection is random rather than MCDA-driven).
 """
 function _unguided_grp(scenarios::DataFrame)::BitVector
-    has_seed = .!_no_seed_grp(scenarios)
-    has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
-    has_mc_corals = scenarios.N_mc_settlers .> 0
-    has_mcb = scenarios.mcb_duration .> 0
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals .| has_mcb)
+    iv_CAq_on = .!_CAq_off_grp(scenarios)
+    iv_Shd_on = (scenarios.iv_Fog .> 0) .| (scenarios.iv_Shd .> 0)
+    iv_LvM_on = scenarios.iv_LvM_N_settlers .> 0
+    iv_MCB_on = scenarios.iv_MCB_duration .> 0
+    return (scenarios.guided .== 0) .& (iv_CAq_on .| iv_Shd_on .| iv_LvM_on .| iv_MCB_on)
 end
 
 """

@@ -93,11 +93,11 @@ opts = Dict(
         :wave_scenario,
         :guided,
         :mcda_method,
-        :N_seed_TA,
-        :N_seed_CA,
-        :fogging,
-        :SRM,
-        :a_adapt
+        :iv_CAq_N_TA,
+        :iv_CAq_N_CA,
+        :iv_Fog,
+        :iv_Shd,
+        :iv_CAq_a_adapt
     ]
 )
 
@@ -118,7 +118,7 @@ ADRIA.viz.savefig(fig_s_tac, "scenarios_tac.html")
 # metrics.
 
 ## Calculate frequencies with which each site was selected at each rank
-rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.CAq_ranks(rs))
 
 ## Plot 1st rank frequencies as a colormap
 rank_fig = ADRIA.viz.ranks_to_frequencies(
@@ -145,8 +145,8 @@ dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample_guided(dom, 2^2)
 scen = scens[1, :]
 
-## Get seeding preferences
-seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
+## Get coral aquaculture preferences
+CAq_pref = ADRIA.decision.CAqPreferences(dom, scen)
 
 ## Calculate criteria vectors
 sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
@@ -162,26 +162,26 @@ in_conn, out_conn, network = ADRIA.connectivity_strength(
 )
 
 ## Create decision matrix
-seed_decision_mat = ADRIA.decision.decision_matrix(
+CAq_decision_mat = ADRIA.decision.decision_matrix(
     dom.loc_ids,
-    seed_pref.names;
-    seed_in_connectivity=in_conn,
-    seed_out_connectivity=out_conn,
-    seed_heat_stress=dhw_projection,
-    seed_coral_cover=sum_cover
+    CAq_pref.names;
+    iv_CAq_in_connectivity=in_conn,
+    iv_CAq_out_connectivity=out_conn,
+    iv_CAq_heat_stress=dhw_projection,
+    iv_CAq_coral_cover=sum_cover
 )
 
 ## Get results from applying MCDA algorithm
 crit_agg = ADRIA.decision.criteria_aggregated_scores(
-    seed_pref, seed_decision_mat, mcda_funcs[1]
+    CAq_pref, CAq_decision_mat, mcda_funcs[1]
 )
 
 ## Don't plot constant criteria
-is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+is_const = Bool[length(x) == 1 for x in unique.(eachcol(CAq_decision_mat.data))]
 
 ## Plot normalized scores and criteria as map
 fig = ADRIA.viz.selection_criteria_map(
-    dom, seed_decision_mat[criteria = .!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
+    dom, CAq_decision_mat[criteria = .!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
 )
 ADRIA.viz.savefig(fig, "criteria_plots.html")
 
@@ -382,7 +382,7 @@ tgt = target_clusters(clusters, s_tac)
 
 # When the SIRUS Rule Induction algorithm produces rules involving two factors, they can be visualised as scatterplots.
 
-rule_foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
+rule_foi = ADRIA.component_params(rs, [Intervention, CAqCriteriaWeights]).fieldname
 
 max_rules = 10
 rules_iv = cluster_rules(
@@ -406,19 +406,19 @@ ADRIA.viz.savefig(rules_scatter_fig, "rules_scatter.html")
 # It is possible for a rule to increase coverage by accepting lower density,
 # and density can often be increased by accepting lower coverage.
 #
-# In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in SRM > 3.94 & Years to Shade > 54.0.
+# In these results, a number of rules have many blue points outside the grey area - the rule has low coverage of the target scenarios, e.g., in iv_Shd > 3.94 & Years with Shading > 54.0.
 #
-# A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., SRM > 3.94 & Years to Shade > 38.0.
+# A number of rules also have many orange points within the grey area - the rule has low density of target scenarios, e.g., iv_Shd > 3.94 & Years with Shading > 38.0.
 #
-# SRM and Years to Shade have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
+# iv_Shd and Years with Shading have been selected as key factors in several of the rules. In this dataset, high temporal variability is obtained when a large reduction in DHW is applied, and for a long period of time. This may reflect a large increase in coral cover - but would need further investigation.
 #
 # Rules also suggest that high temporal variability is also obtained when putting high weight on selecting locations with high outgoing connectivity and low coral cover - in combination with high shading. The rule favouring low coral cover has very low coverage - there are many target scenarios that also do not have low coral cover.
 #
 # For this dataset, according to this analysis:
 #
 # 1) **Ensuring conditions for success**: Temporal variability might be a proxy for high improvement over time, and the scenarios could be visualised or another more specific metric could be used to verify this. It would be unsurprising for high shading to support success.
-# 2) **Avoiding failure**: Binary rules implicitly define scenarios that are excluded. High temporal variability is rarely achieved without high levels of shade.
-# 3) **Planning for failure modes**: A recommendation to favour locations with high outgoing connectivity combined with high SRM seems like it would warrant further investigation - the rule includes many target scenarios (high coverage), but also many scenarios with lower temporal variability (high density).
+# 2) **Avoiding failure**: Binary rules implicitly define scenarios that are excluded. High temporal variability is rarely achieved without high levels of shading.
+# 3) **Planning for failure modes**: A recommendation to favour locations with high outgoing connectivity combined with high iv_Shd seems like it would warrant further investigation - the rule includes many target scenarios (high coverage), but also many scenarios with lower temporal variability (high density).
 # 4) **Further deliberation**: The rules describe very high levels of shading for long periods of time, which may be difficult to achieve. Temporal variability is not directly connected with measures of success - alternative metrics to summarise clusters could be explored. Other algorithms, e.g., PRIM, could also be used to give greater control over coverage and density ([Bryant & Lempert 2010](https://dx.doi.org/10.1016/j.techfore.2009.08.002)).
 #
 # ### Regional Sensitivity Analysis
@@ -466,7 +466,7 @@ mean_s_tac = vec(mean(s_tac; dims=1))
 
 X = ADRIA.feature_set(rs)
 
-foi = [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM]
+foi = [:dhw_scenario, :wave_scenario, :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_Fog, :iv_Shd]
 
 om_fig = ADRIA.viz.outcome_map(X, mean_s_tac, foi)
 ADRIA.viz.savefig(om_fig, "outcome_map.html")
@@ -544,12 +544,12 @@ dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-## Compute cost from seeded coral counts; ensure every scenario has a positive baseline
-seed_cols = String[c for c in ("N_seed_TA", "N_seed_CA") if c in names(scens)]
-cost = if isempty(seed_cols)
+## Compute cost from coral aquaculture coral counts; ensure every scenario has a positive baseline
+CAq_cols = String[c for c in ("iv_CAq_N_TA", "iv_CAq_N_CA") if c in names(scens)]
+cost = if isempty(CAq_cols)
     ones(Float64, nrow(scens))
 else
-    Float64.(vec(sum(Matrix(scens[:, seed_cols]); dims=2))) .+ 1.0
+    Float64.(vec(sum(Matrix(scens[:, CAq_cols]); dims=2))) .+ 1.0
 end
 
 ## Get mean coral cover and shelter volume for each scenario

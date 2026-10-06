@@ -6,7 +6,7 @@ Uses simple summation as aggregation method for decision criteria.
 Then orders sites from highest aggregate score to lowest.
 
 # Arguments
-- `S` : Decision matrix (seeding or shading)
+- `S` : Decision matrix (coral aquaculture or shading)
 
 # Returns
 - aggregate score for ranking.
@@ -38,7 +38,7 @@ S_p  = √{∑(criteria .- NIS)²}
     https://doi.org/10.1016/S0377-2217(03)00020-1.
 
 # Arguments
-- `S` : Decision matrix (seeding or shading)
+- `S` : Decision matrix (coral aquaculture or shading)
 
 # Returns
 - `C` : aggregate score for ranking.

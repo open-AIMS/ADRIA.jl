@@ -299,7 +299,7 @@ Built as NamedTuples rather than `ADRIAanalysis.Rule` directly since ADRIAviz's
 test environment does not depend on ADRIAanalysis.
 """
 function _plotly_rules(; n_rules=4)
-    features = ["N_seed_TA", "fogging"]
+    features = ["iv_CAq_N_TA", "iv_Fog"]
     return [
         (;
             condition=[
@@ -318,12 +318,12 @@ Minimal scenario DataFrame with the columns expected by `rules_scatter`.
 """
 function _plotly_scenarios_df(; n_scenarios=20)
     return DataFrame(;
-        N_seed_TA=rand(n_scenarios),
-        fogging=rand(n_scenarios),
+        iv_CAq_N_TA=rand(n_scenarios),
+        iv_Fog=rand(n_scenarios),
         guided=rand(0:3, n_scenarios),
-        SRM=zeros(n_scenarios),
-        N_mc_settlers=zeros(Int, n_scenarios),
-        mcb_duration=zeros(Int, n_scenarios),
+        iv_Shd=zeros(n_scenarios),
+        iv_LvM_N_settlers=zeros(Int, n_scenarios),
+        iv_MCB_duration=zeros(Int, n_scenarios),
         RCP=rand([45, 60], n_scenarios)
     )
 end

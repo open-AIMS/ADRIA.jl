@@ -256,7 +256,7 @@ corals and are within the desired depth range.
 If no depth range is provided, then simply selects from reefs with available space.
 
 # Arguments
-- `n_iv_locs` : Number of locations to seed
+- `n_iv_locs` : Number of intervention locations to select
 - `k_area` : Coral habitable available at each location (`k` value) in either relative or
              absolute units.
 - `depth` : vector of location ids found to be within desired depth range

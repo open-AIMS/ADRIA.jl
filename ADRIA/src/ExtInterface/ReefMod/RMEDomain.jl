@@ -12,7 +12,7 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights
 
 abstract type AbstractReefModDomain <: Domain end
@@ -40,10 +40,10 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
     sim_constants::SimConstants
@@ -288,9 +288,9 @@ function load_domain(
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 

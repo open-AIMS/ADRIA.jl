@@ -13,7 +13,7 @@ function _filter_constants(scens::DataFrame)::DataFrame
 end
 
 """
-    _seeding_stats(rs::ResultSet)::Tuple{Vector}
+    _iv_CAq_stats(rs::ResultSet)::Tuple{Vector}
 
 Extract total and average deployment, currently in terms of proportional increase to cover
 relative to the locations' carrying capacity.
@@ -97,8 +97,8 @@ Extract a feature set from results for analysis purposes.
 In addition to the raw realized-deployment columns (`n_loc_*_mean`,
 `*_volume_mean_*`, `*_volume_total_M_*`), a `*_effort` counterpart is added for
 each: a min-max normalization of that column computed over the *current
-scenario set only* (e.g. `n_loc_seed_mean_effort = (n_loc_seed_mean .-
-minimum(n_loc_seed_mean)) ./ (maximum(n_loc_seed_mean) - minimum(n_loc_seed_mean))`).
+scenario set only* (e.g. `n_loc_CAq_mean_effort = (n_loc_CAq_mean .-
+minimum(n_loc_CAq_mean)) ./ (maximum(n_loc_CAq_mean) - minimum(n_loc_CAq_mean))`).
 This is analogous in spirit to `intervention_effort` (`performance.jl`), but
 normalizes *actual simulated deployment* rather than pre-simulation sampled
 targets. The resulting 0-1 scale is **relative to the most/least effort seen
@@ -163,23 +163,27 @@ function feature_set(rs::ResultSet)::DataFrame
     )
 
     # Add indicators of deployments
-    seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
-    fog_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
-    mc_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :mc)
+    CAq_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :caq)
+    Fog_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
+    LvM_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :lvm)
 
     # Only attach mean of deployment effort
     insertcols!(
         scens,
-        :n_loc_seed_mean => seed_stats[stats = At(:mean)].data[:],
-        :n_loc_fog_mean => fog_stats[stats = At(:mean)].data[:],
-        :n_loc_mc_mean => mc_stats[stats = At(:mean)].data[:]
+        :n_loc_CAq_mean => CAq_stats[stats = At(:mean)].data[:],
+        :n_loc_Fog_mean => Fog_stats[stats = At(:mean)].data[:],
+        :n_loc_LvM_mean => LvM_stats[stats = At(:mean)].data[:]
     )
-    colmetadata!(scens, :n_loc_seed_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_seed_mean, "label", "Mean seeded locations"; style=:note)
-    colmetadata!(scens, :n_loc_fog_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_fog_mean, "label", "Mean fogged locations"; style=:note)
-    colmetadata!(scens, :n_loc_mc_mean, "ptype", "continuous"; style=:note)
-    colmetadata!(scens, :n_loc_mc_mean, "label", "Mean moving-coral locations"; style=:note)
+    colmetadata!(scens, :n_loc_CAq_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :n_loc_CAq_mean, "label", "Mean coral aquaculture locations"; style=:note
+    )
+    colmetadata!(scens, :n_loc_Fog_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(scens, :n_loc_Fog_mean, "label", "Mean fogged locations"; style=:note)
+    colmetadata!(scens, :n_loc_LvM_mean, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :n_loc_LvM_mean, "label", "Mean larval methods locations"; style=:note
+    )
 
     # Replace `depth_offset` with maximum depth
     scens.depth_max = scens.depth_min .+ scens.depth_offset
@@ -188,54 +192,62 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:depth_offset)]
 
     # Transform aggregate deployment totals into units of millions
-    seed_volume_mean, seed_volume_total = _iv_log_stats(rs.seed_log; prefix="seed_")
-    seed_volume_total_M = DataFrame(
-        Matrix(seed_volume_total) ./ 1e6,
-        replace.(names(seed_volume_total), "volume_total_" => "volume_total_M_")
+    CAq_volume_mean, CAq_volume_total = _iv_log_stats(rs.iv_CAq_log; prefix="CAq_")
+    CAq_volume_total_M = DataFrame(
+        Matrix(CAq_volume_total) ./ 1e6,
+        replace.(names(CAq_volume_total), "volume_total_" => "volume_total_M_")
     )
-    DataFrames.hcat!(scens, seed_volume_mean)
-    for col in names(seed_volume_mean)
-        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
-        colmetadata!(scens, col, "label", "Mean seed deployment volume ($col)"; style=:note)
-    end
-    DataFrames.hcat!(scens, seed_volume_total_M)
-    for col in names(seed_volume_total_M)
+    DataFrames.hcat!(scens, CAq_volume_mean)
+    for col in names(CAq_volume_mean)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
         colmetadata!(
-            scens, col, "label", "Total seed deployment volume ($col)"; style=:note
+            scens,
+            col,
+            "label",
+            "Mean coral aquaculture deployment volume ($col)";
+            style=:note
         )
     end
-    scens.seed_total_deployed_coral_M = vec(sum(Matrix(seed_volume_total_M); dims=2))
-    colmetadata!(scens, :seed_total_deployed_coral_M, "ptype", "continuous"; style=:note)
+    DataFrames.hcat!(scens, CAq_volume_total_M)
+    for col in names(CAq_volume_total_M)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, col, "label", "Total coral aquaculture deployment volume ($col)";
+            style=:note
+        )
+    end
+    scens.CAq_total_deployed_coral_M = vec(sum(Matrix(CAq_volume_total_M); dims=2))
+    colmetadata!(scens, :CAq_total_deployed_coral_M, "ptype", "continuous"; style=:note)
     colmetadata!(
-        scens, :seed_total_deployed_coral_M, "label",
-        "Total seeded coral deployment (millions)"; style=:note
+        scens, :CAq_total_deployed_coral_M, "label",
+        "Total coral aquaculture deployment (millions)"; style=:note
     )
 
-    mc_volume_mean, mc_volume_total = _iv_log_stats(rs.mc_log; prefix="mc_")
-    mc_volume_total_M = DataFrame(
-        Matrix(mc_volume_total) ./ 1e6,
-        replace.(names(mc_volume_total), "volume_total_" => "volume_total_M_")
+    LvM_volume_mean, LvM_volume_total = _iv_log_stats(rs.iv_LvM_log; prefix="LvM_")
+    LvM_volume_total_M = DataFrame(
+        Matrix(LvM_volume_total) ./ 1e6,
+        replace.(names(LvM_volume_total), "volume_total_" => "volume_total_M_")
     )
-    DataFrames.hcat!(scens, mc_volume_mean)
-    for col in names(mc_volume_mean)
+    DataFrames.hcat!(scens, LvM_volume_mean)
+    for col in names(LvM_volume_mean)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
         colmetadata!(
-            scens, col, "label", "Mean moving-coral deployment volume ($col)"; style=:note
+            scens, col, "label", "Mean larval methods deployment volume ($col)"; style=:note
         )
     end
-    DataFrames.hcat!(scens, mc_volume_total_M)
-    for col in names(mc_volume_total_M)
+    DataFrames.hcat!(scens, LvM_volume_total_M)
+    for col in names(LvM_volume_total_M)
         colmetadata!(scens, col, "ptype", "continuous"; style=:note)
         colmetadata!(
-            scens, col, "label", "Total moving-coral deployment volume ($col)"; style=:note
+            scens, col, "label", "Total larval methods deployment volume ($col)";
+            style=:note
         )
     end
-    scens.mc_total_deployed_coral_M = vec(sum(Matrix(mc_volume_total_M); dims=2))
-    colmetadata!(scens, :mc_total_deployed_coral_M, "ptype", "continuous"; style=:note)
+    scens.LvM_total_deployed_coral_M = vec(sum(Matrix(LvM_volume_total_M); dims=2))
+    colmetadata!(scens, :LvM_total_deployed_coral_M, "ptype", "continuous"; style=:note)
     colmetadata!(
-        scens, :mc_total_deployed_coral_M, "label",
-        "Total moving-coral deployment (millions)"; style=:note
+        scens, :LvM_total_deployed_coral_M, "label",
+        "Total larval methods deployment (millions)"; style=:note
     )
 
     # Add normalized "actual effort" columns: min-max normalization of realized
@@ -245,9 +257,9 @@ function feature_set(rs::ResultSet)::DataFrame
     effort_source_cols = filter(
         c -> c in names(scens),
         vcat(
-            ["n_loc_seed_mean", "n_loc_fog_mean", "n_loc_mc_mean"],
-            names(seed_volume_mean), names(seed_volume_total_M),
-            names(mc_volume_mean), names(mc_volume_total_M)
+            ["n_loc_CAq_mean", "n_loc_Fog_mean", "n_loc_LvM_mean"],
+            names(CAq_volume_mean), names(CAq_volume_total_M),
+            names(LvM_volume_mean), names(LvM_volume_total_M)
         )
     )
     for col in effort_source_cols
@@ -268,9 +280,9 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:dhw_scenario)]
 
     # Remove correlated features
-    # Remove seed deployment target values as `N_seed_*` factors indicate
+    # Remove coral aquaculture deployment target values as `iv_CAq_N_*` factors indicate
     # maximum (desired) deployment effort, not actual simulated deployment
-    scens = scens[:, .!contains.(names(scens), "N_seed")]
+    scens = scens[:, .!contains.(names(scens), "iv_CAq_N")]
 
     # Set missing values to 0
     for col in eachcol(scens)

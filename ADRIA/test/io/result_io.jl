@@ -5,9 +5,9 @@ end
 
 @testset "Log element types are Float64 on load" begin
     @test eltype(TEST_RS.ranks) == Float64
-    @test eltype(TEST_RS.mc_log) == Float64
-    @test eltype(TEST_RS.seed_log) == Float64
-    @test eltype(TEST_RS.shading_log) == Float64
+    @test eltype(TEST_RS.iv_LvM_log) == Float64
+    @test eltype(TEST_RS.iv_CAq_log) == Float64
+    @test eltype(TEST_RS.iv_Shd_log) == Float64
     @test eltype(TEST_RS.coral_dhw_tol_log) == Float64
 
     # coral_cover_log: enabled via log_cover=true in test/config.toml
