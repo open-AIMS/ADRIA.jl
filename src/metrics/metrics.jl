@@ -513,11 +513,10 @@ as `1 - 1/evenness`, which is equivalent to `1 - D`.
 function _coral_diversity(
     ce::YAXArray{T}
 )::YAXArray{T} where {T<:Real}
-    # cd = 1 - (1 / ce)
-    # Replace NaNs and Infs with 0.0
-    cd = 1.0 .- (1.0 ./ ce)
-    replace!(cd.data, NaN => 0.0, Inf => 0.0, -Inf => 0.0)
-    return cd
+    # A function is defined to keep the computation lazy and keep the guard clause against
+    # zero-evenness locations. `one`/`zero` preserve the element type `T`.
+    _gini_simpson(x::T)::T = x > zero(T) ? one(T) - one(T) / x : zero(T)
+    return _gini_simpson.(ce)
 end
 function _coral_diversity(rs::ResultSet)::AbstractArray{<:Real}
     ce = coral_evenness(rs)
