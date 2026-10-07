@@ -107,7 +107,10 @@ function pathway_diversity(
     # Use per-location total absolute cover (km²) rather than relative cover for the outcome metric.
     abs_cover_data =
         Array(ADRIA.metrics.total_absolute_cover(rs)[scenarios=idx_scens]) .* 1e-6
-    fd_data = Array(rs.outcomes[:coral_evenness][scenarios=idx_scens])
+    # Functional diversity is the Gini-Simpson index (1 - D), derived from coral_evenness
+    # (the inverse Simpson index, 1/D). This matches the coral_diversity criterion used in the
+    # seeding decision matrix (see run_model in scenario.jl), so both paths use the same index.
+    fd_data = Array(ADRIA.metrics.coral_diversity(rs)[scenarios=idx_scens])
     max_time = size(abs_cover_data, 1)
     scen_to_idx = Dict(s => i for (i, s) in enumerate(idx_scens))
 
@@ -542,11 +545,11 @@ function _prefix_option_perf(
         haskey(perf, key) && continue                       # first match is enough
         scen_idx = scen_to_idx[scen]
         cover_window = cover_data[tstep:t_end, :, scen_idx]          # (n_ts, n_locs)
-        evenness_window = fd_data[tstep:t_end, :, scen_idx]           # (n_ts, n_locs)
+        fd_window = fd_data[tstep:t_end, :, scen_idx]                # (n_ts, n_locs)
 
         # cum total absolute cover (km²) / cum_fd: sum over time, per location
         rel_tac_vals = vec(sum(cover_window; dims=1))
-        fd_vals = vec(sum(evenness_window; dims=1))
+        fd_vals = vec(sum(fd_window; dims=1))
 
         perf[key] = DataCube(
             permutedims(hcat(rel_tac_vals, fd_vals));
