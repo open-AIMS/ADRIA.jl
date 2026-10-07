@@ -35,8 +35,8 @@ Mirrors the manual pipeline in `ReefModInterface.jl`'s README: `domain_to_reefmo
 `ADRIA.run_scenarios`.
 
 Keywords
-- `dhw_idx`: which member of `dom`'s DHW data to use (0 = none, but `run_reefmod_scenarios` refuses
-  that -- ReefMod needs ADRIA's own DHW, see `domain_translator.jl`); pass the same value every other
+- `dhw_idx`: which member of `dom`'s DHW data to use (0 = none: ReefMod then gets an all-zero DHW,
+  i.e. no bleaching, see `domain_translator.jl`'s `_translate_dhw`); pass the same value every other
   engine being compared uses. `wave_idx`/`cyclone_idx` are accepted for a uniform signature and
   ignored (ReefMod has no ADRIA-forced wave pathway, and its own cyclone pathway is switched off for
   this comparison, not driven by `cyclone_idx` -- see `domain_translator.jl`'s header).
