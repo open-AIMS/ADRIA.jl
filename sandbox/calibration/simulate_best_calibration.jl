@@ -7,11 +7,15 @@ using ADRIA
 using CSV, DataFrames, Statistics, Random, Dates
 
 println("=== Unified ADRIA COTS Calibration Simulation Driver ===")
+ENV["COTS_ALLEE_THRESHOLD"] = get(ENV, "COTS_ALLEE_THRESHOLD", "3.0")
 
 # 1. Load historical domain & reef mapping
 println("Loading Lizard Island historical domain...")
-dom = ADRIA.load_domain(ADRIA.LizardDomain, "sandbox/data/Lizard_Historical_v0.1", "historical")
-site_to_reef = CSV.read("sandbox/data/Lizard_Historical_v0.1/site_to_reef.csv", DataFrame)
+domain_version = get(ENV, "LIZARD_DOMAIN_VERSION", "Lizard_Historical_v0.1")
+occursin(r"^[A-Za-z0-9_.-]+$", domain_version) || error("Unsupported LIZARD_DOMAIN_VERSION")
+domain_path = joinpath(REPO_ROOT, "sandbox", "data", domain_version)
+dom = ADRIA.load_domain(ADRIA.LizardDomain, domain_path, "historical")
+site_to_reef = CSV.read(joinpath(domain_path, "site_to_reef.csv"), DataFrame)
 site_to_reef.reef_name_clean = [split(r, " (")[1] for r in site_to_reef.reef_name]
 unique_reefs_clean = unique(site_to_reef.reef_name_clean)
 
@@ -78,6 +82,7 @@ for col in names(best_summary_df)
         scen_template[!, Symbol(col)] .= best_row[col]
     end
 end
+scen_template[!, :allee_threshold] .= parse(Float64, ENV["COTS_ALLEE_THRESHOLD"])
 
 # Handle seed multiplier & pulse environment variables
 if hasproperty(best_row, :seed_mult)
@@ -109,7 +114,7 @@ jitter_specs = [
     (:a_ricker, 2.0, 10.0), (:b_ricker, 0.01, 0.5),
     (:m1, 0.1, 0.9), (:m2, 0.05, 0.5), (:m3, 0.05, 0.3),
     (:p_tilde, 0.8, 1.0), (:C_max, 0.4, 1.0),
-    (:tau_condition, 1.0, 10.0), (:allee_threshold, 0.1, 5.0),
+    (:tau_condition, 1.0, 10.0),
     (:imm_threshold, 0.1, 0.8), (:eta_imm, 1.0, 5.0),
 ]
 if N_scens > 1 && stochastic_mode in ["demographic", "combined"]
@@ -133,6 +138,16 @@ simulation_metadata[!, :stochastic_seed] = fill(stochastic_seed, N_scens)
 simulation_metadata[!, :cots_connectivity_mode] = fill(
     lowercase(get(ENV, "ADRIA_COTS_CONNECTIVITY_MODE", "auto")), N_scens
 )
+for key in [
+    "COTS_ALLEE_THRESHOLD", "COTS_CONNECTIVITY_TEMPORAL_MODE",
+    "COTS_CONNECTIVITY_SEED", "COTS_APPLY_LARVAL_SURVIVAL",
+    "COTS_EXTERNAL_SOURCE_DENSITY", "COTS_JUVENILE_STORAGE",
+    "COTS_HABITAT_MEDIATION", "COTS_CALENDAR_START_YEAR",
+    "COTS_SEPARATED_RECRUITMENT", "COTS_LARVAL_FECUNDITY",
+    "COTS_SETTLEMENT_PROBABILITY", "COTS_EXTERNAL_OUTBREAK_PRODUCTION"
+]
+    simulation_metadata[!, Symbol(lowercase(key))] = fill(get(ENV, key, ""), N_scens)
+end
 
 # 4. Execute Simulation Runs & Collect Trajectories
 sim_df = DataFrame(
@@ -159,6 +174,16 @@ site_df = DataFrame(
     sim_coral_cover = Float64[]
 )
 
+flow_df = DataFrame(
+    sim_id=Int[], year=Int[], forcing_year=Int[], reef_name=String[], site_index=Int[],
+    local_fecundity=Float64[], background_immigration=Float64[],
+    internal_immigration=Float64[], external_immigration=Float64[],
+    maturation=Float64[], retained_juveniles=Float64[], settlement_gate=Float64[],
+    local_retention=Float64[], pelagic_survivors=Float64[],
+    settled_recruits=Float64[], external_potential=Float64[],
+    external_pelagic=Float64[]
+)
+
 for s in 1:N_scens
     if N_scens > 1
         println("Simulating run $s / $N_scens ...")
@@ -178,6 +203,7 @@ for s in 1:N_scens
     juvenile_cots_site = rs.cots_log[:, 2, :]
     adult_cots_site = rs.cots_log[:, 3, :]
     condition_cots_site = rs.cots_condition_log
+    cots_flow_site = rs.cots_flow_log
     total_cover_site = dropdims(sum(rs.raw, dims=(2, 3)), dims=(2, 3))
     n_timesteps = size(adult_cots_site, 1)
     years = 1985:(1984 + n_timesteps)
@@ -206,6 +232,18 @@ for s in 1:N_scens
                         recruit_cots_site[t, site_idx], juvenile_cots_site[t, site_idx],
                         adult_cots_site[t, site_idx], condition_cots_site[t, site_idx],
                         total_cover_site[t, site_idx]
+                    )
+                )
+                push!(
+                    flow_df,
+                    (
+                        s, years[t], rs.cots_forcing_year[t], reef, site_idx,
+                        cots_flow_site[t, 1, site_idx], cots_flow_site[t, 2, site_idx],
+                        cots_flow_site[t, 3, site_idx], cots_flow_site[t, 4, site_idx],
+                        cots_flow_site[t, 5, site_idx], cots_flow_site[t, 6, site_idx],
+                        cots_flow_site[t, 7, site_idx], cots_flow_site[t, 8, site_idx],
+                        cots_flow_site[t, 9, site_idx], cots_flow_site[t, 10, site_idx],
+                        cots_flow_site[t, 11, site_idx], cots_flow_site[t, 12, site_idx]
                     )
                 )
             end
@@ -237,13 +275,16 @@ end
 # 5. Export Standardized Datasets
 out_traj_path = joinpath(artifact_dir, "best_calibrated_trajectories.csv")
 out_site_path = joinpath(artifact_dir, "best_calibrated_site_trajectories.csv")
+out_flow_path = joinpath(artifact_dir, "best_calibrated_cots_flows.csv")
 out_metadata_path = joinpath(artifact_dir, "simulation_metadata.csv")
 
 CSV.write(out_traj_path, sim_df)
 CSV.write(out_site_path, site_df)
+CSV.write(out_flow_path, flow_df)
 CSV.write(out_metadata_path, simulation_metadata)
 
 println("Saved calibrated trajectories to: $out_traj_path")
 println("Saved site-level trajectories to: $out_site_path")
+println("Saved decomposed COTS flows to: $out_flow_path")
 println("Saved simulation metadata to: $out_metadata_path")
 println("=== Simulation completed successfully ===")

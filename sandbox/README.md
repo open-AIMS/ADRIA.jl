@@ -3,7 +3,9 @@
 > [!WARNING]
 > The calibration sections in this document describe the archived LHS-era
 > workflow. Use `sandbox/calibration/README.md` for the active BlackBoxOptim
-> workflow, current status, and development gates.
+> workflow, current status, and development gates. Use
+> `sandbox/domain_building/README.md` for the versioned V2 domain build and
+> connectivity contracts.
 
 ## Overview
 
@@ -16,6 +18,14 @@ The goal is to reproduce two empirical COTS outbreak peaks:
 - **Peak 2 ≈ 2012–2014** — the second outbreak, approximately 15 years later
 
 ---
+
+## Current domain versions
+
+The reproducible control remains `Lizard_Historical_v0.1`. The additive
+`Lizard_Historical_v0.2` package contains the final V2 subreef polygons,
+`indexV2`-labelled interim site connectivity, corrected historical DHW, a legacy
+COTS-connectivity control, and an explicitly opt-in Owen 2018-2023 COTS option.
+See `domain_building/README.md` before comparing either domain.
 
 ## Directory Structure
 
@@ -218,6 +228,13 @@ loss = Σ_reef [ Σ_obs (sim_norm - emp_norm)²
 
 ## How to Run
 
+The workflow below describes the older V1 calibration examples. Do **not**
+use it for V2 production optimization: the V2 optimizer is gated. The current
+V1/V2/Owen area-weighted, three-seed comparison and updated COTS peak plot are
+documented in `sandbox/calibration/README.md` under "Paired domain gate, Owen
+coverage, and observation smoothing". Source-build and missing-survival audits
+are documented in `sandbox/domain_building/README.md`.
+
 ### Prerequisites
 - Julia 1.10+ with ADRIA.jl activated (`Pkg.activate(".")` from repo root)
 - Python 3.10+ with `pandas` and `matplotlib` for plotting
@@ -226,9 +243,8 @@ loss = Σ_reef [ Σ_obs (sim_norm - emp_norm)²
 ### Workflow
 
 ```bash
-# 1. (Optional) Rebuild domain from RME data
-julia sandbox/domain_building/build_lizard_domain.jl
-julia sandbox/domain_building/build_historical_dhw.jl
+# 1. Rebuild or validate the versioned V2 domain using the commands in
+#    sandbox/domain_building/README.md
 
 # 2. Run BBO optimisation (single best candidate)
 julia sandbox/calibration/calibrate_lizard_cots.jl

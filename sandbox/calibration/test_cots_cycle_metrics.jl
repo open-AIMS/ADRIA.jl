@@ -97,6 +97,8 @@ end
 end
 
 @testset "Calendar-aware surveys and scoring window" begin
+    @test calendar_moving_average([2000, 2001, 2008], [1.0, 3.0, 10.0];
+                                  window_years=3) == [2.0, 2.0, 10.0]
     irregular_years = [1985, 1988, 1994, 1995, 1997, 2003, 2009, 2010, 2012, 2018]
     irregular_values = [0.02, 0.03, 0.45, 1.0, 0.2, 0.02, 0.35, 0.85, 0.15, 0.02]
     irregular_peaks = detect_cots_peaks(irregular_years, irregular_values)
@@ -116,4 +118,22 @@ end
     duplicate_years, duplicate_values = yearly_series([1995, 1995, 1996], [0.8, 1.2, 0.4])
     @test duplicate_years == [1995, 1996]
     @test duplicate_values == [1.0, 0.4]
+end
+
+@testset "Three-year observed smoothing sensitivity" begin
+    observations = CSV.read(joinpath(@__DIR__, "..", "data", "reef_cots.csv"), DataFrame)
+    expected = Dict(
+        "Lizard Isles" => [1997, 2013],
+        "Macgillivray Reef" => [1997, 2015],
+        "North Direction Island" => [1994, 2013],
+        "Eyrie Reef" => [2013],
+    )
+    for (reef_name, expected_years) in expected
+        reef = sort(observations[(observations.reef_name .== reef_name) .&
+                                 (observations.year .<= 2024), :], :year)
+        years = Int.(reef.year)
+        smoothed = calendar_moving_average(years, Float64.(reef.cotsptow);
+                                           window_years=3)
+        @test [p.year for p in detect_cots_peaks(years, smoothed)] == expected_years
+    end
 end

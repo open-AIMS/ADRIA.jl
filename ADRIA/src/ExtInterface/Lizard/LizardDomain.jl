@@ -1,5 +1,5 @@
 using CSV, DataFrames, ModelParameters
-using ADRIA: SimConstants, Domain, GDF, EnvLayer, CoralGrowth, YAXArray, ZeroDataCube, DataCube, Model, EnvironmentalLayer, Intervention, Coral, GrowthAcceleration, CotsParams, adjust_sampling_bounds, load_env_data, load_initial_cover, location_connectivity, distance_matrix, nearest_neighbor_distances
+using ADRIA: SimConstants, Domain, GDF, EnvLayer, CoralGrowth, YAXArray, ZeroDataCube, DataCube, Model, EnvironmentalLayer, Intervention, Coral, GrowthAcceleration, CotsParams, COTSConnectivityForcing, adjust_sampling_bounds, load_env_data, load_initial_cover, location_connectivity, load_cots_connectivity_forcing, distance_matrix, nearest_neighbor_distances
 using ADRIA.decision:
     DecisionThresholds,
     DecisionWeights,
@@ -15,6 +15,7 @@ mutable struct LizardDomain <: Domain
     scenario_invoke_time::String
     const conn::YAXArray
     const cots_conn::YAXArray
+    const cots_forcing::Union{COTSConnectivityForcing,Nothing}
     loc_data::DataFrame
     const loc_id_col::String
     const cluster_id_col::String
@@ -95,13 +96,26 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
     )
 
     connectivity = location_connectivity(joinpath(path, "connectivity"), loc_ids)
-    cots_conn_path = joinpath(path, "cots_connectivity")
+    cots_conn_root = joinpath(path, "cots_connectivity")
+    cots_connectivity_dataset = get(ENV, "ADRIA_COTS_CONNECTIVITY_DATASET", "legacy")
+    occursin(r"^[A-Za-z0-9_.-]+$", cots_connectivity_dataset) || error(
+        "ADRIA_COTS_CONNECTIVITY_DATASET contains unsupported path characters"
+    )
+    cots_conn_path = if cots_connectivity_dataset == "legacy"
+        cots_conn_root
+    else
+        joinpath(cots_conn_root, "datasets", cots_connectivity_dataset)
+    end
     cots_connectivity_mode = lowercase(get(ENV, "ADRIA_COTS_CONNECTIVITY_MODE", "auto"))
     cots_connectivity_mode in ["auto", "cots", "coral"] || error(
         "ADRIA_COTS_CONNECTIVITY_MODE must be auto, cots, or coral; got '$cots_connectivity_mode'"
     )
     has_cots_connectivity = isdir(cots_conn_path) &&
         any(endswith(".csv"), readdir(cots_conn_path))
+    if cots_connectivity_dataset != "legacy" &&
+       cots_connectivity_mode != "coral" && !has_cots_connectivity
+        error("Selected COTS dataset is missing its connectivity CSV: $cots_conn_path")
+    end
     cots_connectivity = if cots_connectivity_mode != "coral" && has_cots_connectivity
         loaded = location_connectivity(cots_conn_path, loc_ids)
         isempty(loaded.truncated) || error(
@@ -112,10 +126,23 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
         error("COTS connectivity was required but no CSV was found in $cots_conn_path")
     else
         if cots_connectivity_mode == "auto"
-            @warn "No COTS-specific connectivity found; using coral connectivity for COTS dispersal" path
+            @warn "No COTS-specific connectivity found; using coral connectivity for COTS dispersal" path cots_connectivity_dataset
         end
         connectivity
     end
+    cots_temporal_mode = lowercase(get(ENV, "COTS_CONNECTIVITY_TEMPORAL_MODE", "mean"))
+    cots_temporal_mode in ["mean", "cycle", "sample"] || error(
+        "COTS_CONNECTIVITY_TEMPORAL_MODE must be mean, cycle, or sample; got '$cots_temporal_mode'"
+    )
+    cots_forcing_dir = joinpath(cots_conn_path, "annual_forcing")
+    cots_forcing = if isfile(joinpath(cots_forcing_dir, "provenance.toml"))
+        load_cots_connectivity_forcing(cots_forcing_dir, loc_ids)
+    else
+        nothing
+    end
+    cots_temporal_mode == "mean" || !isnothing(cots_forcing) || error(
+        "Annual COTS forcing is required for temporal mode '$cots_temporal_mode'; run build_lizard_cots_connectivity.jl"
+    )
     
     # Drop truncated locations from loc_data to ensure matrix size alignment
     if length(connectivity.truncated) > 0
@@ -187,6 +214,7 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
         "",
         connectivity.conn,
         cots_connectivity.conn,
+        cots_forcing,
         loc_data,
         location_id_col,
         cluster_id_col,

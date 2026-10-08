@@ -18,8 +18,19 @@ println("=== ADRIA COTS Submodel BlackBoxOptim Calibration Driver ===")
 
 # 1. Load historical domain & observation mapping
 println("Loading Lizard Island historical domain...")
-dom = ADRIA.load_domain(ADRIA.LizardDomain, "sandbox/data/Lizard_Historical_v0.1", "historical")
-site_to_reef = CSV.read("sandbox/data/Lizard_Historical_v0.1/site_to_reef.csv", DataFrame)
+domain_version = get(ENV, "LIZARD_DOMAIN_VERSION", "Lizard_Historical_v0.1")
+occursin(r"^[A-Za-z0-9_.-]+$", domain_version) || error("Unsupported LIZARD_DOMAIN_VERSION")
+domain_path = joinpath(REPO_ROOT, "sandbox", "data", domain_version)
+cots_dataset = get(ENV, "ADRIA_COTS_CONNECTIVITY_DATASET", "legacy")
+occursin(r"^[A-Za-z0-9_.-]+$", cots_dataset) || error("Unsupported ADRIA_COTS_CONNECTIVITY_DATASET")
+domain_version == "Lizard_Historical_v0.2" && error(
+    "V2 production calibration is gated: the area-weighted reef observation contract is tested in compare_lizard_domain_gate.jl, but the qualitative peak gate and Owen source/survival policies remain unresolved. Do not optimize V2 yet."
+)
+cots_data_path = cots_dataset == "legacy" ?
+    joinpath(domain_path, "cots_connectivity") :
+    joinpath(domain_path, "cots_connectivity", "datasets", cots_dataset)
+dom = ADRIA.load_domain(ADRIA.LizardDomain, domain_path, "historical")
+site_to_reef = CSV.read(joinpath(domain_path, "site_to_reef.csv"), DataFrame)
 emp_df = CSV.read("sandbox/data/reef_cots.csv", DataFrame)
 
 site_to_reef.reef_name_clean = [split(r, " (")[1] for r in site_to_reef.reef_name]
@@ -41,6 +52,7 @@ sim_to_emp_map = Dict(
 
 # Set base environment defaults
 ENV["COTS_EXTERNAL_PULSE"] = get(ENV, "COTS_EXTERNAL_PULSE", "false")
+ENV["COTS_ALLEE_THRESHOLD"] = get(ENV, "COTS_ALLEE_THRESHOLD", "3.0")
 ENV["COTS_SEED_FIRST_N"] = get(ENV, "COTS_SEED_FIRST_N", "10")
 ENV["ADRIA_DEBUG_SEED_FIRST_N"] = ENV["COTS_SEED_FIRST_N"]
 
@@ -50,6 +62,7 @@ p_df = ADRIA.param_table(dom)
 for col in names(scen_template)
     scen_template[!, col] .= p_df[1, col]
 end
+scen_template[!, :allee_threshold] .= parse(Float64, ENV["COTS_ALLEE_THRESHOLD"])
 
 # 2. Configure Search Mode & Space
 mode = run_config.mode
@@ -69,7 +82,7 @@ elseif mode == "EXPANDED"
     param_names = [
         "a_F", "a_S", "IMM", "seed_mult",
         "a_ricker", "b_ricker", "m1", "m2", "m3",
-        "p_tilde", "C_max", "tau_condition", "allee_threshold",
+        "p_tilde", "C_max", "tau_condition",
         "imm_threshold", "eta_imm"
     ]
     search_space = [
@@ -85,7 +98,6 @@ elseif mode == "EXPANDED"
         (0.8, 1.0),   # p_tilde
         (0.4, 1.0),   # C_max
         (1.0, 10.0),  # tau_condition
-        (0.1, 5.0),   # allee_threshold
         (0.1, 0.8),   # imm_threshold
         (1.0, 5.0)    # eta_imm
     ]
@@ -93,7 +105,7 @@ elseif mode == "EXPANDED_PULSE"
     param_names = [
         "a_F", "a_S", "IMM", "seed_mult",
         "a_ricker", "b_ricker", "m1", "m2", "m3",
-        "p_tilde", "C_max", "tau_condition", "allee_threshold",
+        "p_tilde", "C_max", "tau_condition",
         "imm_threshold", "eta_imm",
         "pulse_start", "pulse_duration", "pulse_relative_magnitude"
     ]
@@ -110,7 +122,6 @@ elseif mode == "EXPANDED_PULSE"
         (0.8, 1.0),   # p_tilde
         (0.4, 1.0),   # C_max
         (1.0, 10.0),  # tau_condition
-        (0.1, 5.0),   # allee_threshold
         (0.1, 0.8),   # imm_threshold
         (1.0, 5.0),   # eta_imm
         (15.0, 30.0), # pulse_start
@@ -136,9 +147,14 @@ by_reef_log_file = joinpath(run_config.output_dir, "evaluated_by_reef.csv")
 metadata_file = joinpath(run_config.output_dir, "run_metadata.toml")
 input_paths = [
     joinpath(REPO_ROOT, "sandbox", "data", "reef_cots.csv"),
-    joinpath(REPO_ROOT, "sandbox", "data", "Lizard_Historical_v0.1", "site_to_reef.csv"),
-    joinpath(REPO_ROOT, "sandbox", "data", "Lizard_Historical_v0.1", "connectivity", "Lizard_Connectivity.csv"),
-    joinpath(REPO_ROOT, "sandbox", "data", "Lizard_Historical_v0.1", "cots_connectivity", "Lizard_COTS_Connectivity.csv"),
+    joinpath(domain_path, "site_to_reef.csv"),
+    joinpath(domain_path, "connectivity", "Lizard_Connectivity.csv"),
+    joinpath(cots_data_path, "Lizard_COTS_Connectivity.csv"),
+    joinpath(cots_data_path, "annual_forcing", "provenance.toml"),
+    joinpath(
+        REPO_ROOT, "sandbox", "data", "rme_ml_2025_06_05", "data_files", "water_csv",
+        "COTS_LARVAL_REDUCTION_$(get(ENV, "COTS_WATER_QUALITY_SCENARIO", "q3baseline")).csv"
+    ),
 ]
 if !run_config.resume || !isfile(metadata_file)
     write_run_metadata(metadata_file, run_config, REPO_ROOT, param_names, search_space, input_paths)

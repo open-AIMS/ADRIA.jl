@@ -10,7 +10,7 @@ run_dir = joinpath(REPO_ROOT, "sandbox", "calibration", "runs", run_id)
 trajectories = CSV.read(joinpath(run_dir, "best_calibrated_trajectories.csv"), DataFrame)
 best = first(CSV.read(joinpath(run_dir, "best_summary.csv"), DataFrame))
 split_year = parse(Int, get(ENV, "COTS_TEMPORAL_SPLIT_YEAR", "2005"))
-allee_threshold = Float64(best.allee_threshold)
+allee_threshold = parse(Float64, get(ENV, "COTS_ALLEE_THRESHOLD", "3.0"))
 
 diagnostics = DataFrame(
     reef_name=String[],

@@ -1157,7 +1157,29 @@ function run_model(
         a_ricker = param_set[At("a_ricker")],
         b_ricker = param_set[At("b_ricker")],
         tau_condition = param_set[At("tau_condition")],
-        allee_threshold = param_set[At("allee_threshold")]
+        allee_threshold = parse(
+            Float64,
+            get(ENV, "COTS_ALLEE_THRESHOLD", string(param_set[At("allee_threshold")]))
+        ),
+        separated_recruitment = lowercase(
+            get(ENV, "COTS_SEPARATED_RECRUITMENT", "false")
+        ) == "true",
+        larval_fecundity = parse(
+            Float64,
+            get(ENV, "COTS_LARVAL_FECUNDITY", string(param_set[At("a_ricker")]))
+        ),
+        settlement_probability = parse(
+            Float64, get(ENV, "COTS_SETTLEMENT_PROBABILITY", "1.0")
+        ),
+        juvenile_storage = lowercase(get(ENV, "COTS_JUVENILE_STORAGE", "false")) == "true",
+        juvenile_maturation_min = parse(Float64, get(ENV, "COTS_JUVENILE_MATURATION_MIN", "0.05")),
+        juvenile_maturation_max = parse(Float64, get(ENV, "COTS_JUVENILE_MATURATION_MAX", "1.0")),
+        juvenile_maturation_cover = parse(Float64, get(ENV, "COTS_JUVENILE_MATURATION_COVER", "0.4")),
+        habitat_mediation = lowercase(get(ENV, "COTS_HABITAT_MEDIATION", "false")) == "true",
+        settlement_floor = parse(Float64, get(ENV, "COTS_SETTLEMENT_FLOOR", "0.05")),
+        low_cover_mortality = lowercase(get(ENV, "COTS_LOW_COVER_MORTALITY", "false")) == "true",
+        low_cover_threshold = parse(Float64, get(ENV, "COTS_LOW_COVER_THRESHOLD", "0.10")),
+        low_cover_strength = parse(Float64, get(ENV, "COTS_LOW_COVER_STRENGTH", "0.0"))
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1193,16 +1215,116 @@ function run_model(
         init_density=_cots_init_density,
         rng=rng
     )
+    # Explicit historical stage densities are an opt-in initial-condition
+    # treatment. The legacy probability-based initializer remains the default.
+    _cots_initial_state_csv = get(ENV, "COTS_INITIAL_STATE_CSV", "")
+    if !isempty(_cots_initial_state_csv)
+        cots_enabled || error("COTS_INITIAL_STATE_CSV requires COTS to be enabled")
+        stage_state = load_cots_initial_state_csv(_cots_initial_state_csv, domain.loc_ids)
+        apply_cots_initial_state!(cots_models, stage_state)
+    end
 
     # Use COTS-specific larval connectivity when the domain provides it, while retaining
     # coral connectivity as the backwards-compatible fallback for existing domains.
     cots_conn = sparse(cots_connectivity(domain).data)
     cots_max_larval_supply = zeros(Float64, n_locs)
+    cots_temporal_mode = lowercase(get(ENV, "COTS_CONNECTIVITY_TEMPORAL_MODE", "mean"))
+    cots_temporal_mode in ["mean", "cycle", "sample"] || error(
+        "COTS_CONNECTIVITY_TEMPORAL_MODE must be mean, cycle, or sample"
+    )
+    cots_forcing = hasproperty(domain, :cots_forcing) ? domain.cots_forcing : nothing
+    cots_temporal_mode == "mean" || !isnothing(cots_forcing) || error(
+        "Temporal COTS connectivity requested for a domain without annual forcing"
+    )
+    cots_connectivity_seed = parse(Int, get(ENV, "COTS_CONNECTIVITY_SEED", "20260929"))
+    cots_apply_larval_survival = lowercase(get(ENV, "COTS_APPLY_LARVAL_SURVIVAL", "false")) == "true"
+    cots_separated_recruitment = cots_params.separated_recruitment
+    blackout_start = get(ENV, "COTS_INTERNAL_SETTLEMENT_BLACKOUT_START_YEAR", "")
+    blackout_end = get(ENV, "COTS_INTERNAL_SETTLEMENT_BLACKOUT_END_YEAR", "")
+    isempty(blackout_start) == isempty(blackout_end) || error(
+        "Both COTS internal-settlement blackout years must be set together"
+    )
+    cots_internal_blackout = if isempty(blackout_start)
+        nothing
+    else
+        start_year = parse(Int, blackout_start)
+        end_year = parse(Int, blackout_end)
+        start_year <= end_year || error("COTS internal-settlement blackout years are reversed")
+        cots_separated_recruitment || error(
+            "COTS internal-settlement blackout requires separated recruitment"
+        )
+        start_year:end_year
+    end
+    grazing_off_start = get(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR", "")
+    grazing_off_end = get(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR", "")
+    isempty(grazing_off_start) == isempty(grazing_off_end) || error(
+        "Both COTS diagnostic grazing-off years must be set together"
+    )
+    cots_grazing_off_years = if isempty(grazing_off_start)
+        nothing
+    else
+        start_year = parse(Int, grazing_off_start)
+        end_year = parse(Int, grazing_off_end)
+        start_year <= end_year || error("COTS diagnostic grazing-off years are reversed")
+        start_year:end_year
+    end
+    cots_params.larval_fecundity >= 0.0 ||
+        error("COTS_LARVAL_FECUNDITY must be non-negative")
+    0.0 <= cots_params.settlement_probability <= 1.0 ||
+        error("COTS_SETTLEMENT_PROBABILITY must lie in [0, 1]")
+    cots_params.low_cover_threshold > 0.0 ||
+        error("COTS_LOW_COVER_THRESHOLD must be positive")
+    0.0 <= cots_params.low_cover_strength <= 1.0 ||
+        error("COTS_LOW_COVER_STRENGTH must lie in [0, 1]")
+    cots_separated_recruitment && isnothing(cots_forcing) && error(
+        "Separated COTS recruitment requires reef-scale forcing and reef areas"
+    )
+    cots_mean_reef_conn = isnothing(cots_forcing) ? nothing :
+        reduce(+, cots_forcing.reef_connectivity) ./ length(cots_forcing.reef_connectivity)
+    cots_mean_source_survival = isnothing(cots_forcing) ? nothing :
+        vec(sum(cots_forcing.source_survival; dims=2)) ./ size(cots_forcing.source_survival, 2)
+    # Kept as COTS_EXTERNAL_SOURCE_DENSITY for compatibility, but this is an
+    # absolute pre-dispersal recruit-production flux, not external adult density.
+    cots_external_source_recruits = parse(Float64, get(ENV, "COTS_EXTERNAL_SOURCE_DENSITY", "0.0"))
+    cots_external_source_recruits >= 0.0 || error("COTS_EXTERNAL_SOURCE_DENSITY must be non-negative")
+    cots_separated_recruitment && cots_external_source_recruits > 0.0 && error(
+        "COTS_EXTERNAL_SOURCE_DENSITY is a legacy settled-supply control; use " *
+        "COTS_EXTERNAL_OUTBREAK_PRODUCTION with separated recruitment"
+    )
+    cots_external_outbreak_production = parse(
+        Float64, get(ENV, "COTS_EXTERNAL_OUTBREAK_PRODUCTION", "0.0")
+    )
+    cots_external_outbreak_production >= 0.0 ||
+        error("COTS_EXTERNAL_OUTBREAK_PRODUCTION must be non-negative")
+    cots_external_outbreak_production > 0.0 && !cots_separated_recruitment && error(
+        "Evidence-derived outbreak supply requires COTS_SEPARATED_RECRUITMENT=true"
+    )
+    cots_calendar_start_year = parse(
+        Int, get(ENV, "COTS_CALENDAR_START_YEAR", "0")
+    )
+    raw_cots_timeframe = Int.(domain.env_layer_md.timeframe[1:tf])
+    cots_calendar_years = if all(raw_cots_timeframe .>= 1000)
+        raw_cots_timeframe
+    elseif cots_calendar_start_year > 0
+        collect(cots_calendar_start_year:(cots_calendar_start_year + tf - 1))
+    else
+        raw_cots_timeframe
+    end
+    cots_external_outbreak_production > 0.0 &&
+        !any(in(cots_forcing.outbreak_years), cots_calendar_years) && error(
+            "Evidence-derived outbreak supply has no calendar-year overlap; " *
+            "set COTS_CALENDAR_START_YEAR for relative-time domains"
+        )
 
     # COTS population log: [timesteps, 3 age classes, locations]
     Ycots = zeros(tf, 3, n_locs)
     # COTS body condition log: [timesteps, locations]
     Ycots_bc = zeros(tf, n_locs)
+    # Flow channels 1:7 preserve the legacy output contract. Channels 8:12 add
+    # local retention, pelagic survivors, settled recruits, potential external
+    # production, and pelagic external supply.
+    Ycots_flow = zeros(tf, 12, n_locs)
+    Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1914,11 +2036,65 @@ function run_model(
         end
 
         # COTS predation mortality (operates on relative cover)
-        apply_predation!(C_cover_t, cots_models, cots_prey_map)
+        apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
+            cots_calendar_years[tstep], cots_grazing_off_years)
 
         # Disperse COTS larvae between locations via connectivity
-        _cots_imm_scalar = parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0"))
-        disperse_larvae!(cots_models, cots_conn; scalar=_cots_imm_scalar)
+        _cots_imm_scalar = cots_internal_settlement_scalar(
+            parse(Float64, get(ENV, "COTS_IMMIGRATION_SCALAR", "1.0")),
+            cots_calendar_years[tstep],
+            cots_internal_blackout
+        )
+        forcing_idx = 0
+        if cots_temporal_mode == "mean" && !cots_separated_recruitment
+            disperse_larvae!(cots_models, cots_conn; scalar=_cots_imm_scalar)
+        elseif cots_temporal_mode == "mean"
+            source_survival = cots_apply_larval_survival ?
+                cots_mean_source_survival : nothing
+            disperse_larvae_by_reef!(
+                cots_models,
+                cots_mean_reef_conn,
+                cots_forcing.site_to_reef;
+                scalar=_cots_imm_scalar,
+                source_survival=source_survival,
+                reef_areas=cots_forcing.reef_habitable_area_ha
+            )
+        else
+            forcing_idx = cots_forcing_index(
+                cots_forcing, tstep - 1, cots_temporal_mode, cots_connectivity_seed
+            )
+            source_survival = cots_apply_larval_survival ?
+                @view(cots_forcing.source_survival[:, forcing_idx]) : nothing
+            disperse_larvae_by_reef!(
+                cots_models,
+                cots_forcing.reef_connectivity[forcing_idx],
+                cots_forcing.site_to_reef;
+                scalar=_cots_imm_scalar,
+                source_survival=source_survival,
+                reef_areas=cots_separated_recruitment ?
+                    cots_forcing.reef_habitable_area_ha : nothing
+            )
+            Ycots_forcing_year[tstep] = cots_forcing.years[forcing_idx]
+            if cots_external_source_recruits > 0.0
+                external_supply = cots_external_supply_by_site(
+                    cots_forcing, forcing_idx, cots_external_source_recruits
+                )
+                apply_external_supply!(cots_models, external_supply)
+            end
+        end
+        if cots_external_outbreak_production > 0.0
+            calendar_year = cots_calendar_years[tstep]
+            potential_supply, pelagic_supply = cots_external_outbreak_supply_by_site(
+                cots_forcing,
+                forcing_idx,
+                calendar_year,
+                cots_external_outbreak_production
+            )
+            !cots_apply_larval_survival && (pelagic_supply = potential_supply)
+            apply_external_larval_supply!(
+                cots_models, potential_supply, pelagic_supply
+            )
+        end
 
         # Mimic incoming larvae/recruitment from upstream outbreak (Cairns Initiation Box).
         # External pulses are off by default. When enabled, they add a relative
@@ -1938,10 +2114,23 @@ function run_model(
             apply_external_supply!(cots_models, _cots_seed_locs, pulse_vals)
         end
 
-        # Log COTS populations
+        # Log COTS populations and decomposed demographic/connectivity flows.
+        cots_flows = cots_flow_diagnostics(cots_models)
         for loc in 1:n_locs
             Ycots[tstep, :, loc] .= cots_models[loc].N
             Ycots_bc[tstep, loc] = cots_models[loc].body_condition
+            Ycots_flow[tstep, 1, loc] = cots_flows.local_fecundity[loc]
+            Ycots_flow[tstep, 2, loc] = cots_flows.background_immigration[loc]
+            Ycots_flow[tstep, 3, loc] = cots_flows.internal_immigration[loc]
+            Ycots_flow[tstep, 4, loc] = cots_flows.external_immigration[loc]
+            Ycots_flow[tstep, 5, loc] = cots_flows.maturation[loc]
+            Ycots_flow[tstep, 6, loc] = cots_flows.retained_juveniles[loc]
+            Ycots_flow[tstep, 7, loc] = cots_flows.settlement_gate[loc]
+            Ycots_flow[tstep, 8, loc] = cots_flows.local_retention[loc]
+            Ycots_flow[tstep, 9, loc] = cots_flows.pelagic_survivors[loc]
+            Ycots_flow[tstep, 10, loc] = cots_flows.settled_recruits[loc]
+            Ycots_flow[tstep, 11, loc] = cots_flows.external_potential[loc]
+            Ycots_flow[tstep, 12, loc] = cots_flows.external_pelagic[loc]
         end
 
         # Calculate survival_rate due to env. disturbances
@@ -2019,6 +2208,9 @@ function run_model(
         coral_dhw_log=collated_dhw_tol_log,
         coral_cover_log=collated_cover_log,
         cots_log=Ycots,
-        cots_condition_log=Ycots_bc
+        cots_condition_log=Ycots_bc,
+        cots_flow_log=Ycots_flow,
+        cots_forcing_year=Ycots_forcing_year,
+        cots_calendar_year=cots_calendar_years
     )
 end

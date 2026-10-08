@@ -39,6 +39,22 @@ function git_revision(path::AbstractString)::String
     end
 end
 
+function git_dirty(path::AbstractString)::Bool
+    try
+        return !isempty(strip(readchomp(Cmd(["git", "-C", path, "status", "--porcelain"]))))
+    catch
+        return true
+    end
+end
+
+function git_tracked_diff_sha256(path::AbstractString)::String
+    try
+        return bytes2hex(sha256(read(Cmd(["git", "-C", path, "diff", "--binary", "HEAD"]))))
+    catch
+        return "unknown"
+    end
+end
+
 file_sha256(path::AbstractString)::String = isfile(path) ? bytes2hex(sha256(read(path))) : "missing"
 
 function write_run_metadata(
@@ -65,6 +81,10 @@ function write_run_metadata(
         "revision" => Dict(
             "adria_repository" => git_revision(repo_root),
             "cotsmod_repository" => git_revision(normpath(joinpath(repo_root, "..", "COTSMod.jl"))),
+            "adria_worktree_dirty" => git_dirty(repo_root),
+            "cotsmod_worktree_dirty" => git_dirty(normpath(joinpath(repo_root, "..", "COTSMod.jl"))),
+            "adria_tracked_diff_sha256" => git_tracked_diff_sha256(repo_root),
+            "cotsmod_tracked_diff_sha256" => git_tracked_diff_sha256(normpath(joinpath(repo_root, "..", "COTSMod.jl"))),
         ),
         "search" => Dict(
             "parameter_names" => collect(param_names),
@@ -77,8 +97,17 @@ function write_run_metadata(
                 "COTS_EXTERNAL_PULSE", "COTS_PULSE_START", "COTS_PULSE_DURATION",
                 "COTS_PULSE_REPEAT_INTERVAL", "COTS_PULSE_RELATIVE_MAGNITUDE",
                 "COTS_SEED_FIRST_N", "COTS_INITIAL_MULTIPLIER",
-                "ADRIA_COTS_CONNECTIVITY_MODE", "BBO_EXCLUDE_REEFS",
-                "COTS_TEMPORAL_SPLIT_YEAR"
+                "ADRIA_COTS_CONNECTIVITY_MODE", "ADRIA_COTS_CONNECTIVITY_DATASET",
+                "LIZARD_DOMAIN_VERSION", "BBO_EXCLUDE_REEFS",
+                "COTS_TEMPORAL_SPLIT_YEAR", "COTS_ALLEE_THRESHOLD",
+                "COTS_CONNECTIVITY_TEMPORAL_MODE", "COTS_CONNECTIVITY_SEED",
+                "COTS_APPLY_LARVAL_SURVIVAL", "COTS_EXTERNAL_SOURCE_DENSITY",
+                "COTS_JUVENILE_STORAGE", "COTS_JUVENILE_MATURATION_MIN",
+                "COTS_JUVENILE_MATURATION_MAX", "COTS_JUVENILE_MATURATION_COVER",
+                "COTS_HABITAT_MEDIATION", "COTS_SETTLEMENT_FLOOR",
+                "COTS_WATER_QUALITY_SCENARIO", "COTS_CALENDAR_START_YEAR",
+                "COTS_SEPARATED_RECRUITMENT", "COTS_LARVAL_FECUNDITY",
+                "COTS_SETTLEMENT_PROBABILITY", "COTS_EXTERNAL_OUTBREAK_PRODUCTION"
             ]
         ),
     )

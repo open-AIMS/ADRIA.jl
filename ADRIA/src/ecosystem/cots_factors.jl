@@ -6,7 +6,7 @@ Base.@kwdef struct CotsParams <: EcoModel
     # Ricker recruitment parameters
     a_ricker::Param = Factor(6.0; ptype="continuous", dist=TriangularDist, dist_params=(2.0, 10.0, 6.0), name="Ricker a", description="Ricker recruitment max parameter")
     b_ricker::Param = Factor(0.1; ptype="continuous", dist=TriangularDist, dist_params=(0.01, 0.5, 0.1), name="Ricker b", description="Ricker density dependence parameter")
-    allee_threshold::Param = Factor(1.0; ptype="continuous", dist=TriangularDist, dist_params=(0.1, 5.0, 1.0), name="Allee Threshold", description="Allee effect threshold (population size where fertilization halves)")
+    allee_threshold::Param = Factor(1.0; ptype="continuous", dist=TriangularDist, dist_params=(0.1, 5.0, 1.0), name="Allee Threshold", description="Allee half-saturation density in COTS ha^-1; calibration fixes this through COTS_ALLEE_THRESHOLD")
     fecundity_gate::Param = Factor(0; ptype="unordered categorical", dist=CategoricalDistribution, dist_params=(0.0, 1.0), name="Fecundity Gate", description="Toggle maternal condition gating on fecundity (0=off, 1=on)")
     
     # Mortality and starvation
@@ -26,7 +26,7 @@ Base.@kwdef struct CotsParams <: EcoModel
     eta_S::Param = Factor(1.0; ptype="continuous", dist=TriangularDist, dist_params=(1.0, 3.0, 1.0), name="Slow Consumption Exponent", description="Shape exponent for slow coral consumption (Type II/III switch)")
 
     # Dispersal / Immigration
-    IMM::Param = Factor(0.002; ptype="continuous", dist=TriangularDist, dist_params=(0.0, 0.01, 0.002), name="Base Immigration", description="Base background immigration rate per timestep")
+    IMM::Param = Factor(0.002; ptype="continuous", dist=TriangularDist, dist_params=(0.0, 0.01, 0.002), name="Base Immigration", description="Background recruit density in COTS ha^-1 per timestep")
     imm_threshold::Param = Factor(0.35; ptype="continuous", dist=TriangularDist, dist_params=(0.1, 0.8, 0.35), name="Immigration Threshold", description="Coral cover fraction below which immigration drops off")
     eta_imm::Param = Factor(2.0; ptype="continuous", dist=TriangularDist, dist_params=(1.0, 5.0, 2.0), name="Immigration Exponent", description="Shape parameter for immigration gating function")
 end
