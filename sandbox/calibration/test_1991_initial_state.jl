@@ -94,3 +94,46 @@ end
     @test all(default_models[i].N == direct_models[i].N for i in eachindex(models))
     @test all(bypass_models[i].N == direct_models[i].N for i in eachindex(models))
 end
+
+@testset "Opt-in preferred-prey starvation and adult senescence adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    legacy = ADRIA._cots_runtime_params(base)
+    @test !legacy.preferred_prey_starvation
+    @test !legacy.adult_senescence
+    @test !legacy.per_capita_consumption
+    treated = ADRIA._cots_runtime_params(merge(base, (
+        preferred_prey_starvation=true, starvation_preferred_threshold=0.05,
+        starvation_memory_years=0.5, adult_senescence=true, senescence_age=6,
+        senescence_mortality=0.8, per_capita_consumption=true,
+        consumption_m2_per_adult_year=12.0)))
+    @test treated.preferred_prey_starvation
+    @test treated.starvation_preferred_threshold == 0.05
+    @test treated.starvation_memory_years == 0.5
+    @test treated.adult_senescence
+    @test treated.senescence_age == 6
+    @test treated.senescence_mortality == 0.8
+    @test treated.per_capita_consumption
+    @test treated.consumption_m2_per_adult_year == 12.0
+
+    params = COTSMod.COTSParams(m3=0.2, adult_senescence=true,
+        preferred_prey_starvation=true, IMM=0.0)
+    models = COTSMod.initialize_cots(2, params; spatial_initial_density=[0.0, 0.0])
+    models[1].preferred_food_memory = 0.3
+    ADRIA.apply_cots_initial_state!(models, [1.0 2.0 4.0; 0.0 0.0 0.0])
+    @test sum(models[1].adult_ages) ≈ 4.0
+    @test length(models[1].adult_ages) == 5
+    @test all(iszero, models[2].adult_ages)
+    @test isnan(models[1].preferred_food_memory)
+    COTSMod.cots_timestep!(models[1], 0.01, 0.3)
+    diagnostics = ADRIA.cots_mechanism_diagnostics(models)
+    @test diagnostics.preferred_food_memory[1] == 0.01
+    @test diagnostics.food_survival[1] < 1.0
+    @test diagnostics.senescent_adults[1] ≈ 4.0 * COTSMod.stable_adult_ages(params, 1.0)[end]
+    @test models[1].N[3] ≈ sum(models[1].adult_ages)
+
+    legacy_models = COTSMod.initialize_cots(1, COTSMod.COTSParams();
+        spatial_initial_density=[0.0])
+    ADRIA.apply_cots_initial_state!(legacy_models, [0.0 0.0 4.0])
+    @test isempty(legacy_models[1].adult_ages)
+end

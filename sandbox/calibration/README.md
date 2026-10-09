@@ -2103,3 +2103,57 @@ $env:OWEN_1991_RUN_ID = '<unused_cohort_audit_run_id>'
 julia --compiled-modules=no --pkgimages=no --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/plot_1991_cohort_audit.py sandbox/calibration/runs/<unused_cohort_audit_run_id>
 ```
+
+### Preferred-prey starvation × adult senescence screen (2026-10-09)
+
+The [preregistered four-arm screen](crash_mechanism_protocol.md) crossed two
+opt-in COTSMod switches on the 1991 full-cohort anchor:
+- `preferred_prey_starvation`: food survival from remembered fast cover, threshold `0.05`, memory `0.5` yr;
+- `adult_senescence`: adult ages 2–5 at the archived `m3`, and a 6+ class at `0.8` annual mortality.
+
+Everything else was held fixed: seed, `q=0.015` preload, 3 COTS/ha Allee threshold, external outbreak production, connectivity, fecundity and consumption, frozen observation scales and score. `per_capita_consumption` is implemented but was **not run**, pending the units decision below. See [metadata](runs/20261009T_structural_crash_1991_v1/metadata.toml), [audit](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.json), [per-reef table](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.csv) and [COTS/coral plot](runs/20261009T_structural_crash_1991_v1/cots_coral_structural_crash.png).
+
+Integrity checks:
+- The control replays the archived trajectories and all 12 flux channels exactly (max delta `0`).
+- External immigration is identical in every arm.
+- Mechanism adults equal trajectory adults exactly.
+- Switched-off diagnostics are inert.
+
+Tests: COTSMod `205/205`; the 1991 adapter test file passes, including the new 20-assertion adapter set; parse tests `36/36`.
+
+| Arm | Two-wave reefs with 2 peaks | Worst trough ratio | Matched peaks | Lizard first peak | Min first-peak height vs control | Min 2012 coral vs control |
+| --- | --- | --- | --- | --- | --- | --- |
+| Control | 3/3 | `0.594` | 6/7 | 1997 | 1.00 | 1.00 |
+| Preferred starvation | 2/3 | `0.723` | 6/7 | 1995 | 0.14 | 2.94 |
+| Senescence | 3/3 | `0.473` | 6/7 | 1997 | 0.83 | 1.09 |
+| Both | 2/3 | `0.710` | 6/7 | 1995 | 0.14 | 3.00 |
+
+**No arm passes the gate; nothing is promoted.**
+
+**Preferred-prey starvation.** The new food channel exposes a structural fact the legacy rule hid: in the control, Lizard **fast coral is ~0 from 1992 to 2024**. The archived `a_F=1.18` with linear (`h=0`) grazing removes a fraction `a_F·A ≥ 1` of fast coral per year at the 1991–92 densities. Model COTS have therefore lived on massives for the whole run, which total-cover starvation could not see.
+
+Under preferred-prey starvation, COTS starve immediately (Lizard food survival `0.20` in 1994). Peaks fall to 14% of control. Total coral recovers towards, and at MacGillivray and North Direction close to, the LTMP 9 m values.
+
+The residual population (about `0.3 COTS/ha`) still removes about `a_F·0.3 ≈ 35%` of fast coral each year. Fast coral is held at `0.02–0.035`, just under the threshold, so the consumer–resource lock-in has moved from total to preferred coral rather than becoming boom–bust.
+
+This is **not a fair test of H1**. The archived `a_F` was fitted jointly with total-cover starvation, so H1 cannot be judged until consumption is restructured.
+
+**Adult senescence.** This arm behaves as specified. It lowers the worst trough ratio (`0.594→0.473`; Lizard `0.399→0.326`), keeps Lizard's 1997 first peak (height −17%), and slightly raises 2012 coral.
+
+It is insufficient because the 2004–12 adults are mostly *young*. Lizard maturation averaged `0.32 COTS/ha/yr` in the gap, fed by internal immigration of `1.0–1.8 COTS/ha/yr` in 2000–04 from asynchronously outbreaking domain reefs, plus external supply. Senescent deaths average only `~0.05 COTS/ha/yr` there. Ageing removes the outbreak cohort, but continuous settlement replaces it.
+
+**Decision and next gate.** Keep both switches experimental and off by default. The binding constraints are now:
+1. Linear grazing with an `a_F` that removes all preferred coral at about one model adult/ha.
+2. The unresolved density unit: the frozen `0.2942 COTS/tow per model COTS/ha`, versus `~0.015` in CoCoNet (Moran & De'ath 1992) and implied by ReefMod.
+3. Settlement supply in the gap from asynchronously outbreaking domain reefs.
+
+Testing `per_capita_consumption` (or a saturating `h>0`) with preferred-prey starvation requires an explicit, documented decision to fix the observation scale or otherwise justify the density unit. That is a change to the frozen observation model, not a mechanism tweak.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'structural_crash'
+$env:OWEN_1991_RUN_ID = '<unused_structural_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_structural_crash.py sandbox/calibration/runs/<unused_structural_run_id>
+```

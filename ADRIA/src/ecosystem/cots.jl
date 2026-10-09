@@ -246,7 +246,15 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         hazard_width_ha=Float64(get(params, :hazard_width_ha, 0.5)),
         hazard_coral_threshold=Float64(get(params, :hazard_coral_threshold, 0.15)),
         hazard_coral_width=Float64(get(params, :hazard_coral_width, 0.03)),
-        hazard_max=Float64(get(params, :hazard_max, 0.0))
+        hazard_max=Float64(get(params, :hazard_max, 0.0)),
+        preferred_prey_starvation=Bool(get(params, :preferred_prey_starvation, false)),
+        starvation_preferred_threshold=Float64(get(params, :starvation_preferred_threshold, 0.05)),
+        starvation_memory_years=Float64(get(params, :starvation_memory_years, 0.0)),
+        adult_senescence=Bool(get(params, :adult_senescence, false)),
+        senescence_age=Int(get(params, :senescence_age, 6)),
+        senescence_mortality=Float64(get(params, :senescence_mortality, 0.8)),
+        per_capita_consumption=Bool(get(params, :per_capita_consumption, false)),
+        consumption_m2_per_adult_year=Float64(get(params, :consumption_m2_per_adult_year, 10.0))
     )
 end
 
@@ -316,6 +324,8 @@ function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Re
         model.last_burden_ha = 0.0
         model.last_hazard = 0.0
         model.last_hazard_deaths_ha = 0.0
+        # Spread adults over the stable age profile (when enabled) and clear food memory.
+        COTSMod.reset_adult_ages!(model)
     end
     return nothing
 end
@@ -368,3 +378,4 @@ end
 
 cots_flow_diagnostics(cots_state::CotsState) = COTSMod.cots_flow_diagnostics(cots_state)
 cots_hazard_diagnostics(cots_state::CotsState) = COTSMod.cots_hazard_diagnostics(cots_state)
+cots_mechanism_diagnostics(cots_state::CotsState) = COTSMod.cots_mechanism_diagnostics(cots_state)

@@ -71,54 +71,59 @@ sandbox/
 
 ---
 
-## COTS Population Model (`src/ecosystem/cots.jl`)
+## COTS Population Model (`COTSMod.jl`)
 
-### Architecture
+The ecological transition lives in the sibling `COTSMod.jl` package
+(`src/COTSMod.jl`). `ADRIA/src/ecosystem/cots.jl` is a thin adapter that maps
+ADRIA parameters and `COTS_*` environment switches onto `COTSMod.COTSParams`,
+converts coral tensors, and logs diagnostics. Densities are COTS ha^-1; coral
+prey cover is a fraction of each site's habitable area. Defaults below are the
+`COTSParams` defaults; calibrated values are recorded in each run's metadata.
 
-The model is a **stage-structured predator-prey system** with three age classes
-tracked per spatial location:
+### Architecture (legacy default path)
 
-| Age Class | Description | Key Mortality |
-|-----------|-------------|---------------|
-| Age 0 | Recruits (settled larvae) | `m1` (default 0.4) |
-| Age 1 | Juveniles | `m2` (default 0.2) |
-| Age 2+ | Adults (predatory stage) | `m3` (default 0.08) + starvation |
+The model is a **stage-structured predator-prey system** with three classes
+per site, stepped annually:
 
-### Key Biological Mechanisms
+| Class | Description | Annual survival |
+|-------|-------------|-----------------|
+| `N[1]` | Settled recruits (age 0) | `1-m1` (default `m1=0.4`); not food-limited |
+| `N[2]` | Juveniles (age 1) | `(1-m2)·f` (default `m2=0.2`) |
+| `N[3]` | Adults, age 2+ plus group | `(1-m3)·f` (default `m3=0.1`) |
 
-1. **Ricker Recruitment** — Allows overcompensation (massive larval pulses)
-   gated by maternal body condition. At high adult density, density-dependent
-   effects reduce per-capita recruitment, but the *total* larval output can
-   still spike dramatically:
-   ```
-   R = a_ricker × body_condition² × N_adults × exp(-b_ricker × N_adults)
-   ```
+`f` is food survival. By default `f=1` while **total** prey cover `F+S`
+exceeds `0.15·C_max`, then falls cubically to `1-p_tilde`. The exponent 3 is
+hard-coded; the sampled `eta_starve` factor is currently **unused**, as are the
+Beverton-Holt `a`, `b` and `fecundity_gate` factors.
 
-2. **Maternal Body Condition** — An exponential moving average of food
-   availability with memory timescale `tau_condition` (default 3 years).
-   This creates a critical *lag*: good conditions now → larval explosion
-   2–3 years later when recruits mature to adults.
+1. **Ricker recruitment with Allee fertilisation** —
+   `larvae = a_ricker · condition² · A · exp(-b_ricker·A) · A²/(allee² + A²)`.
+   With `COTS_SEPARATED_RECRUITMENT=true` production is dispersed through the
+   reef-scale connectivity before settlement.
+2. **Maternal body condition** — an exponential moving average of total cover
+   with timescale `tau_condition` (default 5 years). It scales fecundity only.
+3. **Consumption** — `Cons_F = A·a_F·F^eta_F / (1 + h(a_F F^eta_F + a_S S^eta_S))`
+   using post-transition adults. The default `h=0` (used in all calibrated
+   runs to date) makes this **linear (Type I)**: the fraction of fast coral
+   removed each year is `a_F·A`, independent of how much remains.
+4. **Coral-gated background immigration** — `IMM` scaled by a cover gate.
 
-3. **Threshold Starvation** — Adult mortality stays near-zero while coral
-   prey exceeds 15% of `C_max`. Below that threshold, survival crashes
-   steeply (cubic drop-off). This is biologically accurate: COTS can
-   survive for extended periods with moderate food, then starve rapidly.
+### Opt-in experimental switches (all default off)
 
-4. **Holling Type II/III Functional Response** — Consumption saturates at
-   high prey density via handling time `h`. The generalized form supports
-   both Type II (linear numerator) and Type III (sigmoidal) via exponents
-   `eta_F` and `eta_S`:
-   ```
-   Cons_F = N_adults × (a_F × F^eta_F) / (1 + h × (a_F × F^eta_F + a_S × S^eta_S))
-   ```
+Each switch is set through `COTS_*` environment variables in `scenario.jl`.
+None is promoted; see `calibration/MODEL_LOG.md` and
+`calibration/crash_mechanism_protocol.md` for evidence and decisions.
 
-5. **Coral-Gated Immigration** — External larval immigration is modulated
-   by local food availability. Immigration shuts off when coral cover is
-   too low to support incoming settlers.
-
-6. **Allee Effect** — Fertilisation success crashes when the adult
-   population is too sparse, preventing runaway recruitment from near-zero
-   populations.
+| Switch | Mechanism |
+|--------|-----------|
+| `COTS_JUVENILE_STORAGE` | Cover-dependent maturation; unmatured juveniles are retained |
+| `COTS_HABITAT_MEDIATION` | Settlement gated by open habitat |
+| `COTS_LOW_COVER_MORTALITY` | Extra mortality below a total-cover threshold |
+| `COTS_SIZE_WEIGHTED_FECUNDITY` | Two adult size classes with size-weighted fecundity |
+| `COTS_LAGGED_ADULT_HAZARD` | Density/food-triggered adult hazard with lagged burden |
+| `COTS_PREFERRED_PREY_STARVATION` | Food survival driven by remembered **fast** cover (threshold `COTS_STARVATION_PREFERRED_THRESHOLD`, memory `COTS_STARVATION_MEMORY_YEARS`) |
+| `COTS_ADULT_SENESCENCE` | Adult age classes 2..`COTS_SENESCENCE_AGE`; the plus group dies at `COTS_SENESCENCE_MORTALITY` |
+| `COTS_PER_CAPITA_CONSUMPTION` | Fixed m² of coral per adult per year (`COTS_CONSUMPTION_M2_PER_ADULT_YEAR`), preferred prey first. Requires a resolved density unit; not yet run |
 
 ### Prey Categories
 
@@ -129,17 +134,18 @@ tracked per spatial location:
 
 ### Spatial Components
 
-- **Larval Dispersal** (`disperse_cots_larvae!`) — Uses the coral
-  connectivity matrix as a proxy for COTS larval transport. An
-  `immigration_scalar` bridges the orders-of-magnitude difference in
-  larval production between corals and COTS.
-- **Spatial Initialization** (`init_cots_from_spatial`) — Seeded from a
-  COTS probability raster (habitat suitability), scaled by an
-  `ENV["COTS_INITIAL_MULTIPLIER"]` for calibration tuning.
+- **Larval dispersal** — the legacy `mean` mode uses the domain's COTS (or
+  coral-proxy) site matrix. The `cycle`/`sample` modes use annual reef-scale
+  COTS matrices (e.g. Owen 2018–2023, source rows → sink columns), with
+  optional source larval survival and an evidence-derived external outbreak
+  boundary. See `domain_building/README.md`.
+- **Initialization** — from the domain's COTS probability surface scaled by
+  `COTS_INITIAL_MULTIPLIER`, or from an explicit site-by-stage CSV via
+  `COTS_INITIAL_STATE_CSV`.
 
 ---
 
-## Calibration Parameters
+## Calibration Parameters (archived LHS-era workflow)
 
 ### Primary Calibration Targets (swept in LHS)
 

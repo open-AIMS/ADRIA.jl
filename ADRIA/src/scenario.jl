@@ -1195,7 +1195,15 @@ function run_model(
         hazard_width_ha = parse(Float64, get(ENV, "COTS_HAZARD_WIDTH_HA", "0.5")),
         hazard_coral_threshold = parse(Float64, get(ENV, "COTS_HAZARD_CORAL_THRESHOLD", "0.15")),
         hazard_coral_width = parse(Float64, get(ENV, "COTS_HAZARD_CORAL_WIDTH", "0.03")),
-        hazard_max = parse(Float64, get(ENV, "COTS_HAZARD_MAX", "0.0"))
+        hazard_max = parse(Float64, get(ENV, "COTS_HAZARD_MAX", "0.0")),
+        preferred_prey_starvation = lowercase(get(ENV, "COTS_PREFERRED_PREY_STARVATION", "false")) == "true",
+        starvation_preferred_threshold = parse(Float64, get(ENV, "COTS_STARVATION_PREFERRED_THRESHOLD", "0.05")),
+        starvation_memory_years = parse(Float64, get(ENV, "COTS_STARVATION_MEMORY_YEARS", "0.0")),
+        adult_senescence = lowercase(get(ENV, "COTS_ADULT_SENESCENCE", "false")) == "true",
+        senescence_age = parse(Int, get(ENV, "COTS_SENESCENCE_AGE", "6")),
+        senescence_mortality = parse(Float64, get(ENV, "COTS_SENESCENCE_MORTALITY", "0.8")),
+        per_capita_consumption = lowercase(get(ENV, "COTS_PER_CAPITA_CONSUMPTION", "false")) == "true",
+        consumption_m2_per_adult_year = parse(Float64, get(ENV, "COTS_CONSUMPTION_M2_PER_ADULT_YEAR", "10.0"))
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1307,6 +1315,19 @@ function run_model(
         isfinite(cots_params.hazard_max) && cots_params.hazard_max >= 0.0 ||
             error("COTS_HAZARD_MAX must be nonnegative")
     end
+    if cots_params.preferred_prey_starvation
+        0.0 < cots_params.starvation_preferred_threshold <= 1.0 ||
+            error("COTS_STARVATION_PREFERRED_THRESHOLD must lie in (0, 1]")
+        cots_params.starvation_memory_years >= 0.0 ||
+            error("COTS_STARVATION_MEMORY_YEARS must be nonnegative")
+    end
+    if cots_params.adult_senescence
+        cots_params.senescence_age >= 3 || error("COTS_SENESCENCE_AGE must be at least 3")
+        0.0 < cots_params.senescence_mortality <= 1.0 ||
+            error("COTS_SENESCENCE_MORTALITY must lie in (0, 1]")
+    end
+    cots_params.consumption_m2_per_adult_year >= 0.0 ||
+        error("COTS_CONSUMPTION_M2_PER_ADULT_YEAR must be nonnegative")
     cots_separated_recruitment && isnothing(cots_forcing) && error(
         "Separated COTS recruitment requires reef-scale forcing and reef areas"
     )
@@ -1359,6 +1380,9 @@ function run_model(
     Ycots_size = zeros(tf, 4, n_locs)
     # Burden (COTS ha^-1), one-year cumulative hazard, extra adult deaths (COTS ha^-1 yr^-1).
     Ycots_hazard = zeros(tf, 3, n_locs)
+    # Remembered preferred cover (habitable fraction; NaN when off), realized food
+    # survival factor, senescent adults and excess senescent deaths (COTS ha^-1).
+    Ycots_mechanism = zeros(tf, 4, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
@@ -2152,6 +2176,7 @@ function run_model(
         # Log COTS populations and decomposed demographic/connectivity flows.
         cots_flows = cots_flow_diagnostics(cots_models)
         cots_hazard = cots_hazard_diagnostics(cots_models)
+        cots_mechanism = cots_mechanism_diagnostics(cots_models)
         for loc in 1:n_locs
             Ycots[tstep, :, loc] .= cots_models[loc].N
             Ycots_bc[tstep, loc] = cots_models[loc].body_condition
@@ -2174,6 +2199,10 @@ function run_model(
             Ycots_hazard[tstep, 1, loc] = cots_hazard.burden_ha[loc]
             Ycots_hazard[tstep, 2, loc] = cots_hazard.hazard[loc]
             Ycots_hazard[tstep, 3, loc] = cots_hazard.adult_deaths_ha[loc]
+            Ycots_mechanism[tstep, 1, loc] = cots_mechanism.preferred_food_memory[loc]
+            Ycots_mechanism[tstep, 2, loc] = cots_mechanism.food_survival[loc]
+            Ycots_mechanism[tstep, 3, loc] = cots_mechanism.senescent_adults[loc]
+            Ycots_mechanism[tstep, 4, loc] = cots_mechanism.senescent_deaths_ha[loc]
         end
 
         # Calculate survival_rate due to env. disturbances
@@ -2255,6 +2284,7 @@ function run_model(
         cots_flow_log=Ycots_flow,
         cots_size_log=Ycots_size,
         cots_hazard_log=Ycots_hazard,
+        cots_mechanism_log=Ycots_mechanism,
         cots_forcing_year=Ycots_forcing_year,
         cots_calendar_year=cots_calendar_years
     )

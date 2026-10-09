@@ -60,6 +60,7 @@ run_id,decision_log_linked,metadata_file,metadata_sha256,metadata_status,metadat
 20261008Tsize_weighted_pair020,false,,,missing_metadata,,false,false,,1
 20261008Tsize_weighted_pair020_v2,true,metadata.toml,5bd2cddc6b091702e0b2a45ef0e2075c58ff85d07458ae66ca3594d53ef88b0e,opt_in_size_weighted_qualitative_screen_not_promoted,,true,true,0,10
 20261009T_cohort_audit_1991_v1,true,metadata.toml,2171de80639a1f2cb280ed4514130a43f1edd9fe783993f3f4a8878a446aa869,bounded_1991_cohort_audit_screen_not_promoted,,true,true,0,10
+20261009T_structural_crash_1991_v1,true,metadata.toml,ce8ad614eb8d902c990a718cb7ffbcc96363adaba54486db4d16cb7d5564e583,bounded_1991_structural_crash_screen_not_promoted,,true,true,0,11
 expanded_cotsconn_pilot_seed20260930,false,,,missing_metadata,,false,false,,13
 expanded_peak_pilot_seed20260930,false,,,missing_metadata,,false,false,,4
 expanded_pulse_peak_pilot_seed20261001,false,,,missing_metadata,,false,false,,4

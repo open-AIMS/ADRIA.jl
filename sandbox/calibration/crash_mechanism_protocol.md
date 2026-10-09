@@ -162,3 +162,20 @@ The frozen Lizard observation scale is `0.2942 COTS/tow` per model adult/ha. CoC
 H1 and H2 are expressed in cover fractions and years, so they are insensitive to this ambiguity, which is why they are tested first.
 
 A third opt-in switch, `per_capita_consumption`, is implemented and unit-tested but **not run** here. It removes `A·c/10⁴` cover per year (`c` in m² per adult per year, default `10`, the Keesing & Lucas 1992 order of magnitude) preferred-first, capped by available prey. It interprets `N[3]` strictly as adult COTS per habitable hectare, so it is only meaningful once the observation scale is fixed near `0.015` or otherwise justified. That decision is a separate, explicit change to the frozen observation model and has not been made.
+
+### Decision (2026-10-09)
+
+[Run](runs/20261009T_structural_crash_1991_v1/metadata.toml) and [audit](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.json): the control replay is exact, and external immigration is identical in every arm. **No arm passes.**
+
+| Arm | Worst trough ratio | Matched peaks | Lizard first peak |
+| --- | --- | --- | --- |
+| Control | `0.594` | 6/7 | 1997 |
+| H1 (preferred starvation) | `0.723` | 6/7 | 1995, 14% of control height |
+| H2 (senescence) | `0.473` | 6/7 | 1997, −17% |
+| H1×H2 | `0.710` | 6/7 | 1995 |
+
+The H1 risk stated above materialised. Control fast coral is about 0 from 1992 because linear grazing at `a_F=1.18` removes all of it. H1 therefore starves the first wave and then pins COTS at about `0.3 COTS/ha`, holding fast coral just under `θ`. That makes it a test of the archived consumption calibration rather than of H1.
+
+H2 deepens the trough as predicted, but the gap adults are young recruits from continued settlement, so senescent deaths are small there.
+
+Both switches stay experimental and off. Next gate: an explicit, documented observation-unit decision, then a bounded test of preferred-first consumption (`per_capita_consumption` or `h>0`) combined with H1 and H2. The Allee threshold and external supply stay fixed throughout.
