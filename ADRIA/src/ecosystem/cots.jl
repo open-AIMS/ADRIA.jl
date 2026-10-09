@@ -230,7 +230,23 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         settlement_floor=Float64(get(params, :settlement_floor, 0.05)),
         low_cover_mortality=Bool(get(params, :low_cover_mortality, false)),
         low_cover_threshold=Float64(get(params, :low_cover_threshold, 0.10)),
-        low_cover_strength=Float64(get(params, :low_cover_strength, 0.0))
+        low_cover_strength=Float64(get(params, :low_cover_strength, 0.0)),
+        size_weighted_fecundity=Bool(get(params, :size_weighted_fecundity, false)),
+        size_small_diameter_mm=Float64(get(params, :size_small_diameter_mm, 200.0)),
+        size_large_diameter_mm=Float64(get(params, :size_large_diameter_mm, 300.0)),
+        size_fecundity_slope_per_mm=Float64(get(params, :size_fecundity_slope_per_mm, 0.0115)),
+        size_initial_large_fraction=Float64(get(params, :size_initial_large_fraction, 0.5)),
+        size_growth_max=Float64(get(params, :size_growth_max, 0.5)),
+        size_growth_cover=Float64(get(params, :size_growth_cover, 0.4)),
+        size_growth_food_mediated=Bool(get(params, :size_growth_food_mediated, false)),
+        lagged_adult_hazard=Bool(get(params, :lagged_adult_hazard, false)),
+        hazard_food_coupled=Bool(get(params, :hazard_food_coupled, false)),
+        hazard_rho=Float64(get(params, :hazard_rho, 0.5)),
+        hazard_threshold_ha=Float64(get(params, :hazard_threshold_ha, 1.5)),
+        hazard_width_ha=Float64(get(params, :hazard_width_ha, 0.5)),
+        hazard_coral_threshold=Float64(get(params, :hazard_coral_threshold, 0.15)),
+        hazard_coral_width=Float64(get(params, :hazard_coral_width, 0.03)),
+        hazard_max=Float64(get(params, :hazard_max, 0.0))
     )
 end
 
@@ -292,6 +308,14 @@ function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Re
         error("COTS initial-state densities must be finite and non-negative")
     for (model, row) in zip(models, eachrow(state))
         model.N .= row
+        model.large_adults = model.params.size_weighted_fecundity ?
+            row[3] * model.params.size_initial_large_fraction : 0.0
+        model.last_effective_breeders = 0.0
+        model.last_small_adult_growth = 0.0
+        model.burden_ha = 0.0
+        model.last_burden_ha = 0.0
+        model.last_hazard = 0.0
+        model.last_hazard_deaths_ha = 0.0
     end
     return nothing
 end
@@ -343,3 +367,4 @@ function apply_external_larval_supply!(
 end
 
 cots_flow_diagnostics(cots_state::CotsState) = COTSMod.cots_flow_diagnostics(cots_state)
+cots_hazard_diagnostics(cots_state::CotsState) = COTSMod.cots_hazard_diagnostics(cots_state)

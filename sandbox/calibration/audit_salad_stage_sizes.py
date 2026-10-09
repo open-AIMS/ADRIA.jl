@@ -31,6 +31,9 @@ def main(overlap: Path, output: Path) -> None:
         reef_year = list(csv.DictReader(stream))
     keys = {(row["salad_reef"], int(row["year"])) for row in reef_year}
     by_key = defaultdict(lambda: {"individuals": 0, "sized": 0,
+                                  "adult_at_least_150mm": 0,
+                                  "small_adult_150_to_250mm": 0,
+                                  "large_adult_over_250mm": 0,
                                   "at_least_250mm": 0, "at_least_260mm": 0,
                                   "scars": 0})
     workbook = openpyxl.load_workbook(SOURCE, read_only=True, data_only=True)
@@ -56,6 +59,9 @@ def main(overlap: Path, output: Path) -> None:
                 except (ValueError, TypeError):
                     continue
                 group["sized"] += 1
+                group["adult_at_least_150mm"] += size >= 150
+                group["small_adult_150_to_250mm"] += 150 <= size <= 250
+                group["large_adult_over_250mm"] += size > 250
                 group["at_least_250mm"] += size >= 250
                 group["at_least_260mm"] += size >= 260
     finally:
@@ -64,6 +70,10 @@ def main(overlap: Path, output: Path) -> None:
     for row in reef_year:
         key = (row["salad_reef"], int(row["year"]))
         group = by_key[key]
+        if (group["small_adult_150_to_250mm"] +
+                group["large_adult_over_250mm"] !=
+                group["adult_at_least_150mm"]):
+            raise ValueError(f"Adult-size categories do not reconcile for {key}")
         track_count = float(row["salad_cots_count_all_sizes"])
         area = float(row["salad_survey_area_m2"])
         result.append({
@@ -72,8 +82,14 @@ def main(overlap: Path, output: Path) -> None:
             "salad_individual_cots_records": group["individuals"],
             "count_reconciliation_difference": group["individuals"] - track_count,
             "sized_individuals": group["sized"],
+            "adult_at_least_150mm": group["adult_at_least_150mm"],
+            "small_adult_150_to_250mm": group["small_adult_150_to_250mm"],
+            "large_adult_over_250mm": group["large_adult_over_250mm"],
             "at_least_250mm": group["at_least_250mm"],
             "at_least_260mm": group["at_least_260mm"],
+            "adult150_per_ha_if_reconciled":
+                round(10000 * group["adult_at_least_150mm"] / area, 6)
+                if abs(group["individuals"] - track_count) < 1e-9 else "",
             "adult250_per_ha_if_reconciled":
                 round(10000 * group["at_least_250mm"] / area, 6)
                 if abs(group["individuals"] - track_count) < 1e-9 else "",
@@ -98,9 +114,12 @@ def main(overlap: Path, output: Path) -> None:
                                             for row in result),
         "individuals": sum(row["salad_individual_cots_records"] for row in result),
         "sized_individuals": sum(row["sized_individuals"] for row in result),
+        "adult_at_least_150mm": sum(row["adult_at_least_150mm"] for row in result),
+        "small_adult_150_to_250mm": sum(row["small_adult_150_to_250mm"] for row in result),
+        "large_adult_over_250mm": sum(row["large_adult_over_250mm"] for row in result),
         "at_least_250mm": sum(row["at_least_250mm"] for row in result),
         "at_least_260mm": sum(row["at_least_260mm"] for row in result),
-        "note": "250/260 mm are sensitivity cutoffs; blank adult densities mean track and individual counts do not exactly reconcile. No historical 1991 age information is supplied.",
+        "note": "User-defined adults are >=150 mm, small adults are 150-250 mm inclusive, and larger adults are >250 mm. Old >=250/260 mm columns remain for archival comparison only. Blank densities mean track and individual counts do not exactly reconcile. No historical 1991 age information is supplied.",
         "inputs": {"salad_workbook": sha256(SOURCE), "overlap": sha256(overlap),
                    "script": sha256(Path(__file__))},
         "output_sha256": sha256(output_csv),
@@ -108,7 +127,9 @@ def main(overlap: Path, output: Path) -> None:
     (output / "metadata.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({k: summary[k] for k in ("rows", "exact_count_reconciliations",
                                              "individuals", "sized_individuals",
-                                             "at_least_250mm", "at_least_260mm")}, indent=2))
+                                             "adult_at_least_150mm",
+                                             "small_adult_150_to_250mm",
+                                             "large_adult_over_250mm")}, indent=2))
 
 
 if __name__ == "__main__":

@@ -17,7 +17,8 @@ include(joinpath(@__DIR__, "calibration_run.jl"))
 
 const SEED = 20260930
 const EXPERIMENT = get(ENV, "OWEN_1991_EXPERIMENT", "initialization")
-EXPERIMENT in ("initialization", "cohort_history", "gap_grazing") ||
+EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
+    "crash_factorial", "lagged_hazard", "cohort_audit") ||
     error("Unknown 1991 experiment")
 const RUN_ID = get(ENV, "OWEN_1991_RUN_ID",
     Dates.format(now(), "yyyymmddTHHMMSS") * "_owen_1991_" * EXPERIMENT)
@@ -75,6 +76,15 @@ ENV["COTS_ALLEE_THRESHOLD"] = "3.0"
 ENV["COTS_EXTERNAL_PULSE"] = "false"
 ENV["COTS_EXTERNAL_SOURCE_DENSITY"] = "0.0"
 ENV["COTS_JUVENILE_STORAGE"] = "false"
+ENV["COTS_SIZE_WEIGHTED_FECUNDITY"] = "false"
+ENV["COTS_LAGGED_ADULT_HAZARD"] = "false"
+ENV["COTS_HAZARD_FOOD_COUPLED"] = "false"
+ENV["COTS_HAZARD_RHO"] = "0.5"
+ENV["COTS_HAZARD_THRESHOLD_HA"] = "1.5"
+ENV["COTS_HAZARD_WIDTH_HA"] = "0.5"
+ENV["COTS_HAZARD_CORAL_THRESHOLD"] = "0.15"
+ENV["COTS_HAZARD_CORAL_WIDTH"] = "0.03"
+ENV["COTS_HAZARD_MAX"] = "0.0"
 ENV["COTS_HABITAT_MEDIATION"] = "false"
 ENV["COTS_SEPARATED_RECRUITMENT"] = "true"
 ENV["COTS_APPLY_LARVAL_SURVIVAL"] = "false"
@@ -159,6 +169,19 @@ treatments = EXPERIMENT == "initialization" ? [
     (name="idw_alpha015_cohort_full", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
     (name="idw_alpha150_cohort_full", alpha=0.150, coral="inherited_2023", initial="cohort_full"),
     (name="coral_only_no_cots", alpha=NaN, coral="inherited_2023", initial="no_cots"),
+] : EXPERIMENT == "crash_factorial" ? [
+    (name="cohort_full_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="cohort_full_stage_gate", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="cohort_full_mortality030", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="cohort_full_stage_gate_mortality030", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : EXPERIMENT == "lagged_hazard" ? [
+    (name="cohort_full_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="density_h075", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="density_h150", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="density_food_h075", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="density_food_h150", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : EXPERIMENT == "cohort_audit" ? [
+    (name="cohort_full_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
 ] : [
     (name="inherited_1991", alpha=NaN, coral="inherited_2023", initial="legacy"),
     (name="inherited_grazing_off_2004_2012", alpha=NaN,
@@ -171,7 +194,11 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha015_cohort_half" => make_initial_state(0.015, "alpha015_cohort_half"; cohort_multiplier=0.5),
     "idw_alpha015_cohort_full" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0),
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
-) : Dict{String,String}()
+) : EXPERIMENT in ("crash_factorial", "lagged_hazard", "cohort_audit") ? let
+    state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
+    Dict(t.name => state_path for t in treatments)
+end : Dict{String,String}()
+archived_m3 = Float64(scenario[1, :m3])
 raw_obs = CSV.read(OBS, DataFrame)
 scores = DataFrame(treatment=String[], reef_name=String[], observation_treatment=String[],
     loss=Float64[], sim_peak_count=Int[], sim_peak_years=String[],
@@ -182,12 +209,32 @@ flows = DataFrame(treatment=String[], reef_name=String[], year=Int[])
 for name in FLOW_NAMES
     flows[!, name] = Float64[]
 end
+hazards = DataFrame(treatment=String[], reef_name=String[], year=Int[],
+    burden_ha=Float64[], hazard=Float64[], adult_deaths_ha=Float64[])
+cohorts = DataFrame(treatment=String[], reef_name=String[], year=Int[],
+    recruits_ha=Float64[], subadults_ha=Float64[], adults_ha=Float64[],
+    opening_recruits_ha=Float64[], opening_subadults_ha=Float64[],
+    opening_adults_ha=Float64[], maturation_ha=Float64[],
+    adult_carryover_ha=Float64[], adult_losses_ha=Float64[],
+    subadult_food_factor=Float64[], adult_food_factor=Float64[],
+    recruits_to_subadults_ha=Float64[])
 initial_reef = DataFrame(treatment=String[], reef_name=String[],
     seed_adults_ha=Float64[], seed_corals_fraction=Float64[],
     idw_cpue=Float64[], idw_manta_coral_fraction=Float64[])
 failures = DataFrame(treatment=String[], error=String[])
 
 for t in treatments
+    ENV["COTS_LAGGED_ADULT_HAZARD"] = EXPERIMENT == "lagged_hazard" &&
+        t.name != "cohort_full_control" ? "true" : "false"
+    ENV["COTS_HAZARD_FOOD_COUPLED"] = EXPERIMENT == "lagged_hazard" &&
+        occursin("density_food", t.name) ? "true" : "false"
+    ENV["COTS_HAZARD_MAX"] = EXPERIMENT == "lagged_hazard" &&
+        occursin("h150", t.name) ? "1.5" :
+        EXPERIMENT == "lagged_hazard" && occursin("h075", t.name) ? "0.75" : "0.0"
+    ENV["COTS_JUVENILE_STORAGE"] = EXPERIMENT == "crash_factorial" &&
+        occursin("stage_gate", t.name) ? "true" : "false"
+    scenario[!, :m3] .= EXPERIMENT == "crash_factorial" &&
+        occursin("mortality030", t.name) ? 0.30 : archived_m3
     set_initial_cover!(t.coral == "manta_1989_1991" ? new_cover : baseline_cover)
     if t.name == "inherited_grazing_off_2004_2012"
         ENV["COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR"] = "2004"
@@ -216,6 +263,22 @@ for t in treatments
                 error("No-COTS diagnostic received nonzero COTS state")
         end
         coral = dropdims(sum(result.raw; dims=(2, 3)); dims=(2, 3))
+        if EXPERIMENT == "lagged_hazard"
+            size(result.cots_hazard_log) == (length(years), 3, length(domain.loc_ids)) ||
+                error("Unexpected site hazard log dimensions")
+            site_table = DataFrame(
+                treatment=fill(t.name, length(years) * length(domain.loc_ids)),
+                site_index=repeat(collect(1:length(domain.loc_ids)); inner=length(years)),
+                year=repeat(years, length(domain.loc_ids)),
+                adults_ha=vec(Matrix(result.cots_log[:, 3, :])),
+                coral_cover=vec(coral),
+                burden_ha=vec(Matrix(result.cots_hazard_log[:, 1, :])),
+                hazard=vec(Matrix(result.cots_hazard_log[:, 2, :])),
+                adult_deaths_ha=vec(Matrix(result.cots_hazard_log[:, 3, :]))
+            )
+            path = joinpath(OUT, "site_hazard.csv")
+            CSV.write(path, site_table; append=isfile(path), writeheader=!isfile(path))
+        end
         for target in TARGETS
             reef = target.model
             m = mapping[reef]
@@ -233,6 +296,12 @@ for t in treatments
                 sum(m.weights .* interpolated_cover[m.indices])))
             reef_flows = [aggregate_reef_density(Matrix(result.cots_flow_log[:, channel, :]), m)
                 for channel in 1:length(FLOW_NAMES)]
+            reef_stages = EXPERIMENT == "cohort_audit" ?
+                [aggregate_reef_density(Matrix(result.cots_log[:, stage, :]), m)
+                    for stage in 1:3] : Vector{Float64}[]
+            reef_hazards = EXPERIMENT == "lagged_hazard" ?
+                [aggregate_reef_density(Matrix(result.cots_hazard_log[:, channel, :]), m)
+                    for channel in 1:3] : Vector{Float64}[]
             scale = fixed_scales[reef]
             for (idx, year) in enumerate(years)
                 push!(trajectories, (t.name, reef, year,
@@ -240,6 +309,33 @@ for t in treatments
                     coral_reef[idx]))
                 push!(flows, (t.name, reef, year,
                     (values[idx] for values in reef_flows)...))
+                if EXPERIMENT == "lagged_hazard"
+                    push!(hazards, (t.name, reef, year,
+                        (values[idx] for values in reef_hazards)...))
+                end
+                if EXPERIMENT == "cohort_audit" && idx > 1
+                    initial_adults = Float64.(surface.cots_cpue_1989_1991_idw) ./ t.alpha
+                    opening = idx == 2 ?
+                        (6.0 * sum(m.weights .* initial_adults[m.indices]),
+                         3.0 * sum(m.weights .* initial_adults[m.indices]),
+                         sum(m.weights .* initial_adults[m.indices])) :
+                        (reef_stages[1][idx - 1], reef_stages[2][idx - 1],
+                         reef_stages[3][idx - 1])
+                    maturation = reef_flows[5][idx]
+                    carryover = reef_stages[3][idx] - maturation
+                    carryover >= -1e-9 || error("Negative adult carryover")
+                    abs(reef_stages[2][idx] - opening[1] * (1.0 - scenario[1, :m1])) < 1e-8 ||
+                        error("Unexpected subadult transition with storage off")
+                    subadult_denominator = opening[2] * (1.0 - scenario[1, :m2])
+                    adult_denominator = opening[3] * (1.0 - scenario[1, :m3])
+                    push!(cohorts, (t.name, reef, year,
+                        reef_stages[1][idx], reef_stages[2][idx], reef_stages[3][idx],
+                        opening[1], opening[2], opening[3], maturation, carryover,
+                        opening[3] - carryover,
+                        subadult_denominator > 0 ? maturation / subadult_denominator : NaN,
+                        adult_denominator > 0 ? carryover / adult_denominator : NaN,
+                        reef_stages[2][idx]))
+                end
             end
             t.initial == "no_cots" && continue
             obs = sort(raw_obs[(raw_obs.reef_name .== target.observed) .&
@@ -271,11 +367,16 @@ for t in treatments
         ("failures.csv", failures))
         CSV.write(joinpath(OUT, file), table)
     end
+    EXPERIMENT == "lagged_hazard" && CSV.write(joinpath(OUT, "hazards.csv"), hazards)
+    EXPERIMENT == "cohort_audit" && CSV.write(joinpath(OUT, "cohorts.csv"), cohorts)
 end
 delete!(ENV, "COTS_INITIAL_STATE_CSV")
 delete!(ENV, "ADRIA_COTS_ENABLED")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR")
+delete!(ENV, "COTS_LAGGED_ADULT_HAZARD")
+delete!(ENV, "COTS_HAZARD_FOOD_COUPLED")
+delete!(ENV, "COTS_HAZARD_MAX")
 
 metadata = Dict(
     "status" => "bounded_1991_$(EXPERIMENT)_screen_not_promoted",
@@ -287,7 +388,15 @@ metadata = Dict(
         "adult-only for IDW treatments; inherited 6:3:1 for control" :
         EXPERIMENT == "cohort_history" ?
         "IDW adult CPUE with 0.5 or 1.0 times inherited 6:3:1 immature:adult ratio; no-COTS coral counterfactual" :
+        EXPERIMENT in ("crash_factorial", "lagged_hazard", "cohort_audit") ?
+        "all arms: IDW adult CPUE at alpha=0.015 and assumed 6:3:1 immature:adult ratio" :
         "inherited 6:3:1 control, with a 2004-2012 experimental grazing bypass",
+    "archived_adult_mortality_fraction_per_year" => archived_m3,
+    "crash_factorial_adult_mortality_fraction_per_year" => EXPERIMENT == "crash_factorial" ? 0.30 : archived_m3,
+    "crash_factorial_stage_gate" => EXPERIMENT == "crash_factorial" ?
+        "existing juvenile_storage switch; min=0.05 max=1 cover=0.4" : "not tested",
+    "lagged_hazard_factorial" => EXPERIMENT == "lagged_hazard" ?
+        "control plus density-only and density-times-food at hazard_max=0.75 and 1.5; rho=0.5 threshold=1.5 COTS/ha width=0.5 COTS/ha coral threshold=0.15 fraction coral width=0.03 fraction" : "not tested",
     "alpha_015_meaning" => "0.015 COTS/tow per adult/ha; provisional threshold-equivalence sensitivity, not validated conversion",
     "alpha_150_meaning" => "0.150 COTS/tow per adult/ha; provisional high conversion sensitivity, not validated conversion",
     "coral_initialization" => "9 m manta fraction used as whole-reef proxy; preserve inherited species/size proportions",
@@ -298,8 +407,9 @@ metadata = Dict(
     "hydrodynamic_mode" => "sample", "hydrodynamic_seed" => SEED,
     "julia_version" => string(VERSION),
     "active_project" => string(Base.active_project()),
-    "adria_revision" => git_revision(ROOT),
-    "cotsmod_revision" => git_revision(joinpath(ROOT, "..", "COTSMod.jl")),
+    "adria_revision" => get(ENV, "COTS_RUN_ADRIA_REVISION", git_revision(ROOT)),
+    "cotsmod_revision" => get(ENV, "COTS_RUN_COTSMOD_REVISION",
+        git_revision(joinpath(ROOT, "..", "COTSMod.jl"))),
     "inputs" => Dict(
         "surface" => file_sha256(surface_path),
         "surface_provenance" => file_sha256(joinpath(SURFACE_DIR, "metadata.json")),
@@ -311,12 +421,24 @@ metadata = Dict(
         "owen_forcing" => file_sha256(joinpath(V2, "cots_connectivity", "datasets",
             "owen_global_2018_2023", "provenance.json")),
         "script" => file_sha256(@__FILE__),
+        "archived_cohort_trajectories" => EXPERIMENT in ("crash_factorial", "lagged_hazard", "cohort_audit") ?
+            file_sha256(joinpath(@__DIR__, "runs", "20261007T199111_owen_1991_cohort_history_final", "trajectories.csv")) : "not_applicable",
+        "archived_cohort_initial_state" => EXPERIMENT in ("crash_factorial", "lagged_hazard", "cohort_audit") ?
+            file_sha256(joinpath(@__DIR__, "runs", "20261007T199111_owen_1991_cohort_history_final", "initial_state_alpha015_cohort_full.csv")) : "not_applicable",
         "adapter" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
         "scenario" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),
+        "core" => file_sha256(joinpath(ROOT, "..", "COTSMod.jl", "src", "COTSMod.jl")),
+        "score_definition" => file_sha256(joinpath(@__DIR__, "cots_cycle_metrics.jl")),
+        "reef_mapping" => file_sha256(joinpath(@__DIR__, "reef_observation_mapping.jl")),
+        "project" => file_sha256(joinpath(ROOT, "sandbox", "Project.toml")),
+        "manifest" => file_sha256(joinpath(ROOT, "sandbox", "Manifest.toml")),
     ),
     "outputs" => Dict(file => file_sha256(joinpath(OUT, file)) for file in
         vcat(["scores.csv", "trajectories.csv", "flows.csv", "initial_reef.csv",
-              "failures.csv"], basename.(collect(values(initial_paths))))),
+              "failures.csv"], EXPERIMENT == "lagged_hazard" ?
+              ["hazards.csv", "site_hazard.csv"] :
+              EXPERIMENT == "cohort_audit" ? ["cohorts.csv"] : String[],
+              basename.(collect(values(initial_paths))))),
 )
 open(joinpath(OUT, "metadata.toml"), "w") do io
     TOML.print(io, metadata)

@@ -1179,7 +1179,23 @@ function run_model(
         settlement_floor = parse(Float64, get(ENV, "COTS_SETTLEMENT_FLOOR", "0.05")),
         low_cover_mortality = lowercase(get(ENV, "COTS_LOW_COVER_MORTALITY", "false")) == "true",
         low_cover_threshold = parse(Float64, get(ENV, "COTS_LOW_COVER_THRESHOLD", "0.10")),
-        low_cover_strength = parse(Float64, get(ENV, "COTS_LOW_COVER_STRENGTH", "0.0"))
+        low_cover_strength = parse(Float64, get(ENV, "COTS_LOW_COVER_STRENGTH", "0.0")),
+        size_weighted_fecundity = lowercase(get(ENV, "COTS_SIZE_WEIGHTED_FECUNDITY", "false")) == "true",
+        size_small_diameter_mm = parse(Float64, get(ENV, "COTS_SIZE_SMALL_DIAMETER_MM", "200.0")),
+        size_large_diameter_mm = parse(Float64, get(ENV, "COTS_SIZE_LARGE_DIAMETER_MM", "300.0")),
+        size_fecundity_slope_per_mm = parse(Float64, get(ENV, "COTS_SIZE_FECUNDITY_SLOPE_PER_MM", "0.0115")),
+        size_initial_large_fraction = parse(Float64, get(ENV, "COTS_SIZE_INITIAL_LARGE_FRACTION", "0.5")),
+        size_growth_max = parse(Float64, get(ENV, "COTS_SIZE_GROWTH_MAX", "0.5")),
+        size_growth_cover = parse(Float64, get(ENV, "COTS_SIZE_GROWTH_COVER", "0.4")),
+        size_growth_food_mediated = lowercase(get(ENV, "COTS_SIZE_GROWTH_FOOD_MEDIATED", "false")) == "true",
+        lagged_adult_hazard = lowercase(get(ENV, "COTS_LAGGED_ADULT_HAZARD", "false")) == "true",
+        hazard_food_coupled = lowercase(get(ENV, "COTS_HAZARD_FOOD_COUPLED", "false")) == "true",
+        hazard_rho = parse(Float64, get(ENV, "COTS_HAZARD_RHO", "0.5")),
+        hazard_threshold_ha = parse(Float64, get(ENV, "COTS_HAZARD_THRESHOLD_HA", "1.5")),
+        hazard_width_ha = parse(Float64, get(ENV, "COTS_HAZARD_WIDTH_HA", "0.5")),
+        hazard_coral_threshold = parse(Float64, get(ENV, "COTS_HAZARD_CORAL_THRESHOLD", "0.15")),
+        hazard_coral_width = parse(Float64, get(ENV, "COTS_HAZARD_CORAL_WIDTH", "0.03")),
+        hazard_max = parse(Float64, get(ENV, "COTS_HAZARD_MAX", "0.0"))
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1276,6 +1292,21 @@ function run_model(
         error("COTS_LOW_COVER_THRESHOLD must be positive")
     0.0 <= cots_params.low_cover_strength <= 1.0 ||
         error("COTS_LOW_COVER_STRENGTH must lie in [0, 1]")
+    if cots_params.lagged_adult_hazard
+        isfinite(cots_params.hazard_rho) && 0.0 <= cots_params.hazard_rho < 1.0 ||
+            error("COTS_HAZARD_RHO must lie in [0, 1)")
+        isfinite(cots_params.hazard_threshold_ha) && cots_params.hazard_threshold_ha >= 0.0 ||
+            error("COTS_HAZARD_THRESHOLD_HA must be nonnegative")
+        isfinite(cots_params.hazard_width_ha) && cots_params.hazard_width_ha > 0.0 ||
+            error("COTS_HAZARD_WIDTH_HA must be positive")
+        isfinite(cots_params.hazard_coral_threshold) &&
+            0.0 <= cots_params.hazard_coral_threshold <= 1.0 ||
+            error("COTS_HAZARD_CORAL_THRESHOLD must lie in [0, 1]")
+        isfinite(cots_params.hazard_coral_width) && cots_params.hazard_coral_width > 0.0 ||
+            error("COTS_HAZARD_CORAL_WIDTH must be positive")
+        isfinite(cots_params.hazard_max) && cots_params.hazard_max >= 0.0 ||
+            error("COTS_HAZARD_MAX must be nonnegative")
+    end
     cots_separated_recruitment && isnothing(cots_forcing) && error(
         "Separated COTS recruitment requires reef-scale forcing and reef areas"
     )
@@ -1324,6 +1355,10 @@ function run_model(
     # local retention, pelagic survivors, settled recruits, potential external
     # production, and pelagic external supply.
     Ycots_flow = zeros(tf, 12, n_locs)
+    # Opt-in adult-size diagnostics: small, large, effective breeders, growth.
+    Ycots_size = zeros(tf, 4, n_locs)
+    # Burden (COTS ha^-1), one-year cumulative hazard, extra adult deaths (COTS ha^-1 yr^-1).
+    Ycots_hazard = zeros(tf, 3, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
@@ -2116,6 +2151,7 @@ function run_model(
 
         # Log COTS populations and decomposed demographic/connectivity flows.
         cots_flows = cots_flow_diagnostics(cots_models)
+        cots_hazard = cots_hazard_diagnostics(cots_models)
         for loc in 1:n_locs
             Ycots[tstep, :, loc] .= cots_models[loc].N
             Ycots_bc[tstep, loc] = cots_models[loc].body_condition
@@ -2131,6 +2167,13 @@ function run_model(
             Ycots_flow[tstep, 10, loc] = cots_flows.settled_recruits[loc]
             Ycots_flow[tstep, 11, loc] = cots_flows.external_potential[loc]
             Ycots_flow[tstep, 12, loc] = cots_flows.external_pelagic[loc]
+            Ycots_size[tstep, 1, loc] = cots_flows.small_adults[loc]
+            Ycots_size[tstep, 2, loc] = cots_flows.large_adults[loc]
+            Ycots_size[tstep, 3, loc] = cots_flows.effective_breeders[loc]
+            Ycots_size[tstep, 4, loc] = cots_flows.small_adult_growth[loc]
+            Ycots_hazard[tstep, 1, loc] = cots_hazard.burden_ha[loc]
+            Ycots_hazard[tstep, 2, loc] = cots_hazard.hazard[loc]
+            Ycots_hazard[tstep, 3, loc] = cots_hazard.adult_deaths_ha[loc]
         end
 
         # Calculate survival_rate due to env. disturbances
@@ -2210,6 +2253,8 @@ function run_model(
         cots_log=Ycots,
         cots_condition_log=Ycots_bc,
         cots_flow_log=Ycots_flow,
+        cots_size_log=Ycots_size,
+        cots_hazard_log=Ycots_hazard,
         cots_forcing_year=Ycots_forcing_year,
         cots_calendar_year=cots_calendar_years
     )

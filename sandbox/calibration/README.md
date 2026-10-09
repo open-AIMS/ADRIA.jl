@@ -1,5 +1,13 @@
 # COTSMod Calibration Workflow
 
+The curated [model log](MODEL_LOG.md) tracks what has been tried, which runs are
+valid evidence, and the current decision. The [crash-mechanism protocol](crash_mechanism_protocol.md)
+freezes the next 1991 cohort-state factorial before interpretation; neither
+document changes the supported model defaults. The generated
+[run inventory](MODEL_RUN_INVENTORY.csv) indexes every non-hidden run directory,
+including incomplete/unreviewed runs; its metadata statuses are not biological
+promotion decisions.
+
 This folder is the working seed for the standalone COTSMod calibration study repository. The goal is to calibrate COTS outbreak dynamics against Lizard Island reef observations while keeping the ecological model in `COTSMod.jl` and the ecosystem orchestration in `ADRIA.jl`.
 
 > [!IMPORTANT]
@@ -1663,23 +1671,28 @@ near-date groups have nonzero manta COTS counts. The audit preserves the raw
 workbooks, checks SALAD's count/5 m swath-area density calculation, and makes
 the reef-ID crosswalk explicit. [Reef-year counts and densities](runs/20261007T199110_conversion_overlap/reef_year_overlap.csv)
 are an *overlap inventory*, not conversion estimates. SALAD `Density(Ha)`
-includes all detected sizes, EOTR manta is not LTMP manta, culling is targeted,
+includes all detected sizes; EOTR and LTMP manta are treated as comparable
+for this analysis, but culling is targeted,
 the Lizard/South Direction groups each pool several reef IDs, and matching by
 reef/year does not establish the same tow path or detection probability. The
-separate [SALAD size audit](runs/20261007T199112_salad_stage_sizes/metadata.json)
-finds 991 individually recorded COTS in these 22 reef-years, all with sizes;
-949 are at least 250 mm and 929 at least 260 mm. Track-level and individual
+original [SALAD size audit](runs/20261007T199112_salad_stage_sizes/metadata.json)
+finds 991 individually recorded COTS in these 22 reef-years, all with sizes.
+Its >=250/260 mm counts are archival sensitivities, not the agreed adult
+definition. The [revised audit](runs/20261008Tsalad_adult150_sizes_checked/metadata.json)
+uses the agreed categories: 985 are adults >=150 mm, of which 56 are small
+adults 150-250 mm inclusive and 929 are larger adults >250 mm. Track-level and individual
 counts reconcile exactly in only 13 of 22 reef-years, and in only 6 of the 9
 near-date manta matches. Only 3 of those 6 have nonzero manta counts. The
-[size audit rows](runs/20261007T199112_salad_stage_sizes/salad_stage_sizes.csv)
-therefore report adult COTS/ha only for exact reconciliations; they do not
-justify a fitted tow-to-density coefficient yet. A 250/260 mm adult cutoff
-remains a labelled sensitivity pending biological agreement.
+[revised size audit rows](runs/20261008Tsalad_adult150_sizes_checked/salad_stage_sizes.csv)
+therefore report >=150 mm adult COTS/ha only for exact reconciliations; they
+do not justify a fitted tow-to-density coefficient yet. The 250/260 mm
+cutoffs remain labelled archival comparators, not an adult definition.
 The next observation-model gate is to resolve the track/individual count
 mismatches, use SALAD per-animal sizes to define an adult-density outcome,
 pair surveys as closely as spatially/temporally
 possible, explicitly model zero-heavy tow counts and tow distance, and
-propagate uncertainty and the EOTR-to-LTMP protocol difference. The
+propagate uncertainty in detection and tow-distance despite treating EOTR
+and LTMP manta counts as comparable for this calibration. The
 RosettaCOTS cull-to-SALAD relationship can provide an additional noisy bridge
 only if its outcome definitions (COTS **plus scars**) and effort/selection
 match; do not chain point estimates as if they were direct measurements.
@@ -1717,4 +1730,376 @@ python sandbox/calibration/audit_cots_conversion_overlap.py --output sandbox/cal
 python sandbox/calibration/audit_salad_stage_sizes.py --overlap sandbox/calibration/runs/<unused_overlap_run_id>/reef_year_overlap.csv --output sandbox/calibration/runs/<unused_size_run_id>
 python sandbox/calibration/match_salad_manta_tracks.py --output sandbox/calibration/runs/<unused_spatial_run_id>
 python sandbox/calibration/match_salad_manta_tracks.py --output sandbox/calibration/runs/<unused_strict_run_id> --max-days 7 --max-km 0.5
+```
+
+### Coherent-conversion cycle-capacity screen and adult size (2026-10-08)
+
+The user's observation contract is now **adult >=15 cm**, comprising small
+adults 15-25 cm inclusive and larger adults >25 cm. EOTR and LTMP manta-tow
+counts are treated as comparable for this calibration. There are no observed
+historical immature cohorts, so a 1991 6:3:1 juvenile:subadult:adult preload
+is a sensitivity scenario, not a reconstruction. The revised SALAD inventory
+above uses these categories but does not resolve tow detectability.
+
+[Babcock, Milton & Pratchett (2016)](https://doi.org/10.1007/s00227-016-3009-5)
+report a fitted female gonad-mass relationship of approximately
+`G_f(D_mm) = 3.384 exp(0.0115 D_mm)` grams (`R^2 = 0.55`, 103 females), and
+a comparable male fit. On this curve a 40 cm animal has approximately 10 times
+the female gonad mass of a 20 cm animal. Their oocyte estimates use 90,000
+oocytes per gram of female gonad, with substantial individual scatter and
+uncertainty about mature egg release. The paper also gives a power-law fit of
+oocyte production to *body mass*; exponential-in-diameter and power-in-mass
+are not interchangeable parameterizations. The current COTS adult state has
+no within-adult size distribution: its `body_condition^2` fecundity factor
+does not reproduce this size effect. A future opt-in mechanism should track
+small and large adults or a size distribution, apply size-specific gamete
+output **before** the fertilisation term, and test growth/food dependence.
+With no cohort observations, assumed maturation and growth histories must be
+bounded sensitivities. Using `G(E[D])` in place of `E[G(D)]` would also
+understate reproductive output when adult sizes vary.
+
+Before adding that mechanism, the [paired capacity runner](screen_1991_cycle_capacity.jl)
+tests whether existing parameters can produce the missing two-peak/deep-trough
+shape. This is not a production optimiser. It uses 24 deterministic
+space-filling design points plus an archived-state control, each at the
+supported `theta=3 COTS/ha` and a separately labelled `theta=1` historical
+counterfactual. Design axes are one provisional global `q=0.005-0.30`
+`COTS/tow per adult COTS/ha` factor; 1991 immature preload 0, half or full;
+inherited or IDW coral; fecundity 0.5-2x; external boundary 0-1.5x; adult
+mortality 0.08-0.30/year; and feeding 0.6-1.5x. These are **diagnostic ranges**,
+not validated biological bounds. The same `q` maps IDW CPUE to 1991 adult
+density and modeled adult density back to CPUE, fixing the earlier
+initialization/observation-scale inconsistency *within this screen*. A global
+`q` is intentionally restrictive; it is not a fitted SALAD-manta conversion.
+The frozen 3-year-smoothed observed peaks and scoring function are used, but
+losses from this coherent-`q` screen are not directly comparable with old
+reef-specific-scale losses. All stochastic draws use recorded seeds and Owen
+hydrodynamic years; the 3 COTS/ha anchor checks the archived adult, coral and
+forcing-year trajectory to numerical tolerance.
+
+The [independent audit](audit_1991_cycle_capacity.py) requires exact 2/2/2/1
+peak counts, all seven observed peaks matched, trough/minimum-adjacent-peak
+ratio <=0.10 at Lizard, MacGillivray and North Direction, all peak years
+within four years and all heights within 0.5-2 times the observations. Coral
+minimum and 2015 cover and local/internal/external recruitment during 2004-09
+are reported separately; whole-reef modeled coral and 9 m manta coral remain
+different measurement supports. Passing this qualitative screen would permit
+replication and stricter coral/hold-out validation, **not** promotion. If only
+`theta=1` passes, test the size-weighted breeder hypothesis before changing
+the supported threshold. If neither passes, expand the diagnostic design or
+test an independently motivated time-varying recruitment/size structure;
+do not infer impossibility from 24 space-filling points. The legacy/default
+model is untouched, and all experimental files can be ignored without a
+rollback migration.
+
+```powershell
+$env:OWEN_CAPACITY_PAIRS = '24'
+$env:OWEN_CAPACITY_RUN_ID = '<unused_capacity_run_id>'
+julia --project=sandbox sandbox/calibration/screen_1991_cycle_capacity.jl
+python sandbox/calibration/audit_1991_cycle_capacity.py sandbox/calibration/runs/<unused_capacity_run_id>
+```
+
+The [2026-10-08 attempted 24-pair run](runs/20261008Tcycle_capacity_24pairs/incomplete_provenance.json)
+completed the control plus 23 design pairs (48 treatments). The final pair
+had `q=0.00849`, half the inherited immature preload, and low adult mortality;
+its `theta=3` run exceeded ten minutes of sustained CPU and was stopped before
+either threshold produced a result. Both treatments for pair 24 are marked
+**untested**, not failures of the ecological hypothesis. The completed
+treatments have no logged exception and passed the independent finite-value,
+unique-year, and four-reef completeness checks. The control's `theta=3`
+adult, coral and selected hydrodynamic-year trajectories replayed the archived
+1991 cohort run to `1e-12`. See the [design](runs/20261008Tcycle_capacity_24pairs/design.csv),
+[per-reef audit](runs/20261008Tcycle_capacity_24pairs/capacity_audit.csv),
+[treatment summary](runs/20261008Tcycle_capacity_24pairs/capacity_treatment_summary.csv),
+and [audit metadata](runs/20261008Tcycle_capacity_24pairs/capacity_audit.json).
+The [paired COTS/coral trajectory figure](runs/20261008Tcycle_capacity_24pairs/cots_coral_capacity_pair_020.png)
+shows the lowest-loss supported-threshold completed treatment (`pair 20`),
+its `theta=1` counterfactual, and the archived-state control against raw and
+3-year-smoothed COTS/tow and LTMP manta coral. Its first modeled peaks are
+late on Lizard, MacGillivray and North Direction, modeled mid-cycle COTS
+persist, and modeled coral falls much lower than the 9 m manta observations
+around the first wave. Coral supports differ, but this is not an acceptable
+peak-and-coral calibration.
+
+| Allee branch | Completed treatments | Maximum matched / 7 peaks | Best single-reef trough ratios: Lizard / MacGillivray / North Direction | Full qualitative passes |
+| --- | ---: | ---: | --- | ---: |
+| Supported `3 COTS/ha` | 24 | 6 | 0.293 / 0.229 / 0.254 | 0 |
+| `1 COTS/ha` counterfactual | 24 | 6 | 0.287 / 0.277 / 0.266 | 0 |
+
+The three *best single-reef* ratios in each row can come from different
+parameter settings; they do not describe one successful treatment. No
+completed treatment reached the <=0.10 trough criterion even on **one** of
+the three two-wave reefs. Only one treatment in each branch had exactly the
+observed 2/2/2/1 peak counts, and neither matched all seven peaks. Across
+paired reef comparisons that had two detectable peaks at both thresholds,
+reducing `theta` changed the median trough ratio by only `-0.005`. In the
+2004-09 gap the median internal settled immigration was 0.587 recruits/ha/year
+at `theta=3` and 1.720 at `theta=1` (paired median ratio `2.61`); median
+external settlement was 0.149 recruits/ha/year in both. Thus lowering the
+local fertilisation half-saturation mainly amplified within-domain larval
+supply without solving the adult-density floor. Across the 96 reef-treatment
+comparisons in each branch, the median modeled 2015 coral fraction fell from
+0.077 at `theta=3` to 0.055 at `theta=1`; this is a whole-reef diagnostic,
+not a direct LTMP 9 m coral fit.
+
+This screen **does not prove** that the supported-threshold model has no
+solution: 23 non-control points sparsely cover several uncertain dimensions,
+the conversion is not validated or reef-specific, and one extreme point is
+unfinished. It does, however, reject the narrow idea that simply lowering
+the Allee half-saturation will create the missing crash in this Owen/1991
+configuration. The next bounded mechanism test should explicitly target the
+joint gap-period **internal and external larval floor**, while retaining
+the density-dependent fertilisation term and checking adult survival. A
+size-structured breeder mechanism is biologically motivated by Babcock et
+al., but should include growth/maturation and adult mortality or grazing
+consequences; size-dependent fecundity alone cannot remove surviving adults
+from the manta count. Fit a spatial/zero-aware SALAD-to-manta observation
+operator as a separate evidence task, and only then widen optimization or
+replicate/promote a mechanism. The model default remains unchanged.
+
+### Opt-in size-weighted breeder candidate (2026-10-08)
+
+The [mechanism protocol](size_weighted_candidate.md) records the hypothesis,
+equations, units, bounds, control, rollback and qualitative failure criteria
+before promotion. The sibling `COTSMod.jl` core now has an **off-by-default**
+two-adult-size production switch. The `N[3]` state and the 1991 observation
+mapping still mean **all adults >=15 cm in COTS/ha**. Within that total, a
+tracked >25 cm class and the residual 15–25 cm class contribute to potential
+larvae with weights 1 and `exp(beta*(D_small-D_large))`, respectively. The
+default representative 200/300 mm classes and published female gonad slope
+`beta=0.0115 mm^-1` imply a small-adult weight of about 0.317. These are
+diagnostic class representatives, not measured historical size means or a
+validated gamete-to-recruit conversion. The existing 3 COTS/ha fertilisation
+half-saturation acts on **total** adults. The optional growth rule moves
+surviving small adults into the large class at fixed probability or at a
+probability reduced by low coral cover; new adults enter the small class.
+Existing survival and per-adult coral consumption remain unchanged, so this
+candidate can lower future recruitment but cannot by itself remove a standing
+population of adult grazers.
+
+The [bounded screen](screen_1991_size_weighted.jl) replays archived capacity
+pair 20 at `theta=3` as a strict control, then tests fixed versus
+food-mediated size-class growth and two initial large-adult fractions plus a
+350 mm large-class representative. It freezes the coherent but provisional
+`q=0.2281847 COTS/tow per adult COTS/ha`, 1991 initial stage and coral state,
+three-year-smoothed peak objective, Owen connectivity and external boundary,
+and forcing seed. The [audit](audit_1991_size_weighted.py) checks size
+accounting, all four reef trajectories, peak counts/timing/height, three
+inter-peak troughs, component recruitment fluxes and coral guardrails. This
+one-seed, one-anchor factorial is a *qualitative* screen, not a fitted size
+history or production optimization. The four-channel `cots_size_log` stores
+post-transition small and large adults, pre-transition effective breeders,
+and annual small-to-large growth flux (all COTS/ha, except growth is
+COTS/ha/year). The existing 12-channel `cots_flow_log` is unchanged.
+
+```powershell
+$env:JULIA_DEPOT_PATH = (Join-Path (Get-Location) '.julia_cots_screen') + ';' + (Join-Path $env:USERPROFILE '.julia')
+julia --compiled-modules=existing --project=sandbox ..\COTSMod.jl\test\runtests.jl
+julia --compiled-modules=existing --project=sandbox sandbox/calibration/test_1991_initial_state.jl
+$env:OWEN_SIZE_RUN_ID = '<unused_size_run_id>'
+julia --compiled-modules=existing --project=sandbox sandbox/calibration/screen_1991_size_weighted.jl
+python sandbox/calibration/audit_1991_size_weighted.py sandbox/calibration/runs/<unused_size_run_id>
+```
+
+Do not promote the switch based on a single-anchor result. A passing treatment
+still needs replicate seeds, class-size/growth and tow-conversion sensitivity,
+coral support assessment, held-out reefs/years and regional validation. If
+every arm fails, retain the negative diagnostic and investigate an adult
+survival/grazing mechanism or shared internal/external recruitment floor
+without changing the supported Allee threshold.
+
+The [completed one-seed pair-20 run](runs/20261008Tsize_weighted_pair020_v2/metadata.toml)
+passed the archived-control replay and completed all five arms without model
+exceptions. The [independent audit](runs/20261008Tsize_weighted_pair020_v2/size_audit.json)
+and [COTS/coral figure](runs/20261008Tsize_weighted_pair020_v2/cots_coral_size_weighted_pair020.png)
+show that **none** passes the qualitative cycle gate. Every arm matches at
+most six of seven frozen observed peaks; all have incorrect 2/2/2/1 peak
+counts, late first peaks, and inter-peak adult-density floors far above the
+required <=0.10 trough-to-smaller-peak ratio. The worst of the three
+two-wave reef trough ratios is 0.360 for control, 0.359 with food-mediated
+size growth, and 0.383 when the large representative is 350 mm. Mean frozen
+loss falls from 3.130 to 2.967 in the food-mediated arm, but the modest loss
+change is **not** a mechanism pass. First modeled peaks remain 2002/2002/2001
+at Lizard/MacGillivray/North Direction versus observed 1997/1997/1994, and
+second modeled peaks remain near 2014-15.
+
+The mechanism acts as intended on production. Across the 2004-09 gap,
+food-mediated weighting changes effective breeder density at Lizard from
+1.189 to 0.603 COTS/ha, local potential production from 6.253 to 4.977
+COTS/ha/year, and internal settled immigration from 1.779 to 0.912
+COTS/ha/year. At MacGillivray the corresponding production drops from
+15.652 to 7.466 and internal settlement from 2.341 to 1.181. External
+settlement is unchanged in each paired reef (Lizard 0.226,
+MacGillivray 0.197 COTS/ha/year), because this treatment does not alter the
+out-of-domain boundary. These reductions do not translate into deep enough
+adult troughs: existing adults survive and graze, and settlement from the
+external boundary persists. Modeled coral still drops far below 9 m manta
+observations, though the supports differ. Thus the size proxy is retained
+**experimental and off by default**. Do not compensate by lowering the
+supported Allee threshold. A next discriminating test should combine an
+explicitly bounded post-peak adult survival/grazing response with size
+weighting, with external supply controlled in a separate arm, and require
+both peaks and coral guardrails before optimization.
+
+### 1991 cohort-anchored crash factorial (2026-10-08)
+
+The next [preregistered screen](crash_mechanism_protocol.md) returns to the
+1991 full-cohort state that recovers Lizard's first-peak year. It crosses
+the existing opt-in coral-dependent juvenile-storage switch with adult
+background mortality `m3=0.30/year`, retaining the archived control, Owen
+boundary, `q=0.015` observation conversion sensitivity, Allee `3 COTS/ha`,
+reef mapping, hydrodynamic seed, and score. The aim is to see whether delayed
+maturation and adult attrition interact to deepen the gap *without* losing
+either peak; it is not an optimization or a validated cohort reconstruction.
+The [runner](run_1991_initialization_test.jl) uses
+`OWEN_1991_EXPERIMENT=crash_factorial`; the [independent audit](audit_1991_crash_factorial.py)
+checks the archived control/state replay, unchanged external immigration,
+peak/trough/coral diagnostics and component fluxes, and makes a paired plot.
+Results and the promotion decision are added below only after the audit passes.
+
+```powershell
+$env:JULIA_DEPOT_PATH = (Join-Path (Get-Location) '.julia_cots_screen') + ';' + (Join-Path $env:USERPROFILE '.julia')
+$env:OWEN_1991_EXPERIMENT = 'crash_factorial'
+$env:OWEN_1991_RUN_ID = '<unused_crash_factorial_run_id>'
+julia --compiled-modules=existing --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_crash_factorial.py sandbox/calibration/runs/<unused_crash_factorial_run_id>
+```
+
+The [completed four-arm run](runs/20261008T_crash_factorial_1991_v1/metadata.toml)
+and [independent audit](runs/20261008T_crash_factorial_1991_v1/crash_factorial_audit.json)
+replayed the archived cohort control and all its logged fluxes exactly
+(`max absolute difference = 0`) and held external immigration identical
+across arms. The Julia metadata recorded Git revisions as `unknown`; a
+[post-run provenance supplement](runs/20261008T_crash_factorial_1991_v1/provenance_supplement.json)
+records actual revisions, dirty flags and source/manifest hashes. This is a
+dirty-worktree diagnostic—both repositories contained uncommitted changes,
+not corrupted model files—so revision IDs alone cannot reconstruct it. See the
+[paired COTS/coral figure](runs/20261008T_crash_factorial_1991_v1/cots_coral_crash_factorial.png)
+and [per-reef readout](runs/20261008T_crash_factorial_1991_v1/crash_factorial_audit.csv).
+
+| 1991 full-cohort arm | Worst available two-wave trough/smaller-peak | Observed peaks matched / 7 | Lizard first detected peak | Lizard first height, COTS/tow |
+| --- | ---: | ---: | ---: | ---: |
+| Control | 0.594 | 6 | 1997 | 0.847 |
+| Juvenile stage gate | 0.691 | 5 | 2007 | 0.401 |
+| Adult `m3=0.30` | 0.515 | 5 | 2005 | 0.370 |
+| Stage gate + `m3=0.30` | 0.474* | 4 | no first-wave peak | — |
+
+`*` The combined-arm ratio excludes Lizard because it no longer has two
+detected peaks; it is **not** a passing three-reef trough result. The stage
+gate retains juveniles and later recruitment rather than removing adults:
+at Lizard its 2004–12 mean adult density rises from `1.028` to `1.126
+COTS/ha`, mean retained juveniles from `0` to `0.309 COTS/ha/year`, and
+2012 model coral falls from `0.093` to `0.078`. Constant mortality slightly
+spares coral but sacrifices the early peak; even the combined arm remains
+far from the `<=0.10` trough criterion. The paired plot also shows that
+whole-reef model coral generally remains below 9 m manta coral observations,
+while those two supports are not directly interchangeable. **No arm is
+promoted.** The next discriminating opt-in candidate is an adult-specific
+lagged density burden, with density-only versus density × coral-stress arms
+and independently bounded hazard parameters, while preserving the same
+archived control and upstream boundary. It must not be implemented as a
+calendar-wave timer or mislabelled as confirmed pathogen mortality. The
+bounded implementation and its negative result are recorded below.
+
+### Opt-in lagged adult-hazard screen (2026-10-08)
+
+The [protocol](crash_mechanism_protocol.md) preregisters a site-level burden
+`B[t+1]=rho*B[t]+(1-rho)*A[t]`, with `B[0]=0` in adult COTS/ha. A density
+factor switches on only above its separate `1.5 COTS/ha` threshold; optional
+coral stress multiplies it. The resulting one-year hazard removes a fraction
+`1-exp(-h)` of adults that survived existing background and food mortality.
+Newly matured adults are not subject to that additional hazard until the next
+step. The switch `COTS_LAGGED_ADULT_HAZARD` is **false by default**, and
+`COTS_HAZARD_MAX=0` also reproduces the legacy transition. All five arms hold
+the supported `3 COTS/ha` Allee half-saturation, Owen boundary, 1991 cohort
+seed, provisional `q=0.015`, hydrodynamic seed, area-weighted reef mapping,
+and three-year-smoothed score fixed. Diagnostic strengths are `h_max=0.75`
+and `1.5`; these are **not** estimated pathogen-mortality rates.
+
+The [completed run](runs/20261008T_lagged_hazard_1991_v1/metadata.toml),
+[independent audit](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.json),
+[reef readout](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.csv),
+[site-year hazard summary](runs/20261008T_lagged_hazard_1991_v1/site_hazard_summary.csv),
+and [paired COTS/coral plot](runs/20261008T_lagged_hazard_1991_v1/cots_coral_lagged_hazard.png)
+show that **none passes the qualitative gate**. The archived control and all
+12 recruitment-flux channels replay exactly; external immigration is
+identical in every arm. The site-level burden recurrence and extra-adult-death
+mass bounds pass. A [provenance supplement](runs/20261008T_lagged_hazard_1991_v1/provenance_supplement.json)
+records dirty-worktree/source hashes alongside the run metadata's revisions,
+seeds, Manifest hash, settings and output hashes.
+
+| Arm | Worst available two-wave trough/smaller-peak | Matched observed peaks / 7 | Lizard first detected peak |
+| --- | ---: | ---: | ---: |
+| Control | 0.593935 | 6 | 1997 |
+| Density-only, `h_max=0.75` | 0.616370* | 5 | 2017* |
+| Density-only, `h_max=1.5` | 0.600000 | 6 | 2001 |
+| Density × food, `h_max=0.75` | 0.605740* | 5 | 2017* |
+| Density × food, `h_max=1.5` | 0.593493 | 6 | 2001 |
+
+`*` The weak-hazard arms lose Lizard's first detected wave; their worst ratio
+excludes that reef. The strongest food-coupled arm's `0.000442` change in
+worst trough ratio is negligible and comes with delayed/weaker first peaks.
+The hazard acts early, then shuts off: in the strong density-only arm it is
+active at about `33%` of sites in 1995 and `51%` in 2005, but only `0.5%`
+in 2008 and `0.3%` in 2012. At North Direction, mean added adult deaths in
+the 2004–12 gap are effectively zero despite ongoing external settlement
+(`0.529 COTS/ha/year`). Coral improves slightly but remains low relative to
+9 m manta observations, with different observation support. This is a
+**negative structural diagnostic, not a calibrated mortality mechanism**.
+Changing only the memory weight to `0.75` or `0.9` in an *offline recurrence*
+on the fixed control trajectory leaves no more than `1%` of sites above the
+same burden threshold by 2012; that calculation is not a model treatment.
+The next gate is a separately justified post-peak persistence/recovery or
+boundary mechanism, not a broad optimization of this hazard.
+
+```powershell
+$env:JULIA_DEPOT_PATH = (Join-Path (Get-Location) '.julia_cots_screen') + ';' + (Join-Path $env:USERPROFILE '.julia')
+julia --compiled-modules=existing --project=sandbox ..\COTSMod.jl\test\runtests.jl
+julia --compiled-modules=existing --project=sandbox sandbox/calibration/test_1991_initial_state.jl
+$env:OWEN_1991_EXPERIMENT = 'lagged_hazard'
+$env:OWEN_1991_RUN_ID = '<unused_lagged_hazard_run_id>'
+$env:COTS_RUN_ADRIA_REVISION = (git rev-parse HEAD).Trim()
+$env:COTS_RUN_COTSMOD_REVISION = (git -C ..\COTSMod.jl rev-parse HEAD).Trim()
+julia --compiled-modules=existing --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_lagged_hazard.py sandbox/calibration/runs/<unused_lagged_hazard_run_id>
+```
+
+### Readout-only cohort floor audit (2026-10-09)
+
+The [exact-control replay](runs/20261009T_cohort_audit_1991_v1/metadata.toml)
+adds [area-weighted annual N1/N2/adult and transition diagnostics](runs/20261009T_cohort_audit_1991_v1/cohorts.csv)
+without changing COTS dynamics. Adults, coral, and all 12 recruitment-flow
+channels agree with the archived 1991 full-cohort control exactly (`max absolute
+difference = 0`). The [Lizard cohort plot](runs/20261009T_cohort_audit_1991_v1/cohort_floor_diagnostics.png)
+shows why the adult series sawtooths after the first peak: food survival
+alternates sharply during 1999–2007, affecting both N2 maturation and
+established adults. It is not an adult-only mortality factor. N1 recruits are
+not food-limited by that factor. By 2008–12 the mean realized adult food factor
+is `0.986`; Lizard adults average `0.805 COTS/ha`, split into `0.667` surviving
+adults and `0.138` newly matured. External settlement still averages `0.542
+COTS/ha/year` and maintains the later cohort pipeline. The frozen Lizard
+observation scale is `0.2942 COTS/tow per adult COTS/ha`, so `0.1 COTS/tow`
+corresponds to `0.340 adult COTS/ha` **under that provisional mapping**. The
+`q=0.015` factor used to seed 1991 adults is not the plotting scale.
+
+[ReefMod 7.0's settings](https://github.com/ymbozec/REEFMOD.7.0_GBR/blob/main/settings/settings_COTS.m)
+and [transition](https://github.com/ymbozec/REEFMOD.7.0_GBR/blob/main/functions/f_runmodel.m)
+use a density-gated `4–6`-year checked outbreak duration and reset older age
+classes to low background abundance while leaving younger recruits. A
+different-version [regional report](https://www.barrierreef.org/uploads/CCIP-R-04-Final-Report-Regional-Modelling.pdf)
+describes a `2–5`-year disease window and separate low-preferred-coral reset.
+These justify an opt-in *phenomenological benchmark*, not a claim that disease
+caused the observed Lizard crash or that ReefMod parameters transfer directly
+between `COTS/400 m²`, `COTS/ha`, and manta-tow units. The bounded next-test
+design and failure gates are in the [crash protocol](crash_mechanism_protocol.md);
+no timer was implemented or promoted in this audit.
+
+To reproduce the cohort readout with a new run ID:
+
+```powershell
+$env:JULIA_DEPOT_PATH = (Join-Path (Get-Location) '.julia_cots_screen') + ';' + (Join-Path $env:USERPROFILE '.julia')
+$env:OWEN_1991_EXPERIMENT = 'cohort_audit'
+$env:OWEN_1991_RUN_ID = '<unused_cohort_audit_run_id>'
+julia --compiled-modules=no --pkgimages=no --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/plot_1991_cohort_audit.py sandbox/calibration/runs/<unused_cohort_audit_run_id>
 ```
