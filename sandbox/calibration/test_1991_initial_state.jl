@@ -137,3 +137,16 @@ end
     ADRIA.apply_cots_initial_state!(legacy_models, [0.0 0.0 4.0])
     @test isempty(legacy_models[1].adult_ages)
 end
+
+@testset "Per-capita grazing receives site habitable fraction" begin
+    params = COTSMod.COTSParams(IMM=0.0, per_capita_consumption=true,
+        consumption_m2_per_adult_year=10.0)
+    cover = zeros(5, 1, 2)
+    cover[1, 1, :] .= 0.3
+    models = [COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 0.0, 50.0), 0.8, params)
+        for _ in 1:2]
+    ADRIA.apply_cots_predation_diagnostic!(cover, models,
+        ADRIA.CotsPreyMap([1, 2, 3], [4, 5]), 2000, nothing;
+        habitable_fraction=[1.0, 0.25])
+    @test 0.3 - cover[1, 1, 2] ≈ 4.0 * (0.3 - cover[1, 1, 1])
+end

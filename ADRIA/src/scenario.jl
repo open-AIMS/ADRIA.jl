@@ -1328,6 +1328,10 @@ function run_model(
     end
     cots_params.consumption_m2_per_adult_year >= 0.0 ||
         error("COTS_CONSUMPTION_M2_PER_ADULT_YEAR must be nonnegative")
+    # Per-capita grazing converts adults per site hectare into habitable-cover
+    # fractions; the legacy response is already a fraction and ignores this.
+    cots_habitable_fraction = cots_params.per_capita_consumption ?
+        Float64.(location_k(domain)) : nothing
     cots_separated_recruitment && isnothing(cots_forcing) && error(
         "Separated COTS recruitment requires reef-scale forcing and reef areas"
     )
@@ -2096,7 +2100,8 @@ function run_model(
 
         # COTS predation mortality (operates on relative cover)
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
-            cots_calendar_years[tstep], cots_grazing_off_years)
+            cots_calendar_years[tstep], cots_grazing_off_years;
+            habitable_fraction=cots_habitable_fraction)
 
         # Disperse COTS larvae between locations via connectivity
         _cots_imm_scalar = cots_internal_settlement_scalar(

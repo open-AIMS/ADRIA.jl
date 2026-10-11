@@ -2157,3 +2157,26 @@ $env:OWEN_1991_RUN_ID = '<unused_structural_run_id>'
 julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_structural_crash.py sandbox/calibration/runs/<unused_structural_run_id>
 ```
+
+### Observation unit fixed at q=0.015 (2026-10-09)
+
+**Decision (project lead):** simulated manta CPUE is `0.015 × adult COTS/ha` on every reef (`fixed_q0015`). This replaces the per-reef fitted scales for new mechanism screens; archived runs keep their frozen scales. `0.015` is the CoCoNet `ε` (citing Moran & De'ath 1992) and agrees with ReefMod's "~1 per tow" comment on 2.7 COTS/400 m². Both rest on pairing the 0.22 COTS/tow and 15 COTS/ha outbreak benchmarks. It is a **shared convention, not a measured conversion**: manta-tow detectability is low and variable, so `q` sensitivity remains a later promotion gate. See the [protocol](crash_mechanism_protocol.md) for the parameter migration (`k=19.61`, Lizard-exact) and the five-arm design.
+
+**Reproducibility finding.** ADRIA seeds the coral RNG with `floor(sum(parameter values))` unless `ADRIA_RNG_SEED` is set (`ADRIA/src/utils/setup.jl`). Any treatment or optimizer candidate that changes a parameter value therefore also changes the coral random stream. In this setup (cyclones and waves zeroed) the effect is small, at most 0.3% on adults, but it broke the v1 compatibility replay and violates the recorded-seed rule. **Pin `ADRIA_RNG_SEED` in calibration and comparison runs.** ADRIA's default was not changed, because that would alter every legacy replay.
+
+**Results** ([v2 audit](runs/20261009T_unit_migration_q015_1991_v2/unit_migration_audit.json), [plot](runs/20261009T_unit_migration_q015_1991_v2/cots_coral_unit_migration.png)):
+- The compatibility arm replays the archived control ×k exactly.
+- Under consistent units the legacy model produces a boom–bust: peaks of 1.0–1.4 COTS/tow around 2000, second waves around 2014, worst trough `0.381`. Coral never recovers.
+- Per-capita grazing (10 m²/adult/yr, preferred-first, habitable-area corrected) combined with preferred-prey starvation and senescence gives an outbreak, starvation crash and coral recovery close to the LTMP 9 m values. Lizard's trough ratio is `0.171`, but MacGillivray and North Direction show no second wave (3/7 matched), and first peaks fall around 2001.
+- No arm passes the gate, and nothing is promoted.
+
+Reproduce (new run IDs only):
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'unit_migration_q015'
+$env:OWEN_1991_RUN_ID = '<unused_unit_migration_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_unit_migration.py sandbox/calibration/runs/<unused_unit_migration_run_id>
+```
+
+The diagnostics `ulp_noise_floor` and `unit_compat_k2` (with `OWEN_1991_COMPAT_K`) reproduce the RNG isolation tests.

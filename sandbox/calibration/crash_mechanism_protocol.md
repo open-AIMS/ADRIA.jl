@@ -179,3 +179,109 @@ The H1 risk stated above materialised. Control fast coral is about 0 from 1992 b
 H2 deepens the trough as predicted, but the gap adults are young recruits from continued settlement, so senescent deaths are small there.
 
 Both switches stay experimental and off. Next gate: an explicit, documented observation-unit decision, then a bounded test of preferred-first consumption (`per_capita_consumption` or `h>0`) combined with H1 and H2. The Allee threshold and external supply stay fixed throughout.
+
+## Observation-unit migration to q = 0.015 and consumption factorial (2026-10-09)
+
+Status: **observation-model change approved by the project lead on 2026-10-09; preregistered before implementation.** Earlier runs keep their per-reef frozen scales and are not rescored or overwritten. The new objective is labelled `fixed_q0015`.
+
+### Observation-unit decision
+
+Simulated manta CPUE is `q·A`, where `A` is adult COTS per hectare of site area and `q = 0.015 COTS/tow per COTS/ha` is used **for every reef**. This replaces the per-reef fitted nuisance scales (Lizard `0.2942`, MacGillivray `0.1642`, North Direction `0.1258`, Eyrie `0.0647`).
+
+Basis:
+- CoCoNet v3.4 Table A.5 uses `ε = 0.015` ("control program CoTS ha⁻¹ to CoTS per manta tow", citing Moran & De'ath 1992).
+- ReefMod 7.0 comments its `2.7 COTS/400 m²` (≈67.5/ha) dieback threshold as "~1 per tow", which implies ≈0.0148.
+- Both follow from pairing two outbreak benchmarks, `0.22 COTS/tow` and `15 COTS/ha` (Moran & De'ath 1992): `0.22/15 ≈ 0.0147`.
+
+This is a **shared modelling convention, not a measured conversion**. No source states it as a fitted relationship. Tow-area assumptions differ between sources, and manta-tow detectability is low and variable: Fernandes et al. 1990 suggest under 5% detection; reported detectability across methods ranges from about 23% to 88%. `q` is therefore fixed rather than fitted, and its uncertainty remains an open observation-model limitation.
+
+Consequences:
+- Per-reef amplitude differences that the fitted scales used to absorb now count against the model.
+- Literature density thresholds (the 3 COTS/ha Allee half-saturation, the 15 COTS/ha outbreak benchmark) become comparable to the model state.
+
+### Parameter-unit migration and compatibility test
+
+The archived candidate was fitted in a compressed density unit. Under Lizard's frozen scale, one model unit equals `k = 0.294195/0.015 ≈ 19.61` COTS/ha at `q`. Lizard is the primary calibration reef, so the migration uses Lizard's `k`. The other reefs' residual factors (`10.9`, `8.4`, `4.3`) are reported as amplitude mismatches, not hidden.
+
+Every density-dimensioned quantity is transformed, which is an exact reparameterisation:
+
+| Quantity | Transform |
+| --- | --- |
+| Adult, juvenile and recruit state; 1991 initial CSV | `×k` |
+| Background immigration `IMM`; external outbreak production | `×k` |
+| Ricker `b_ricker`; linear consumption `a_F`, `a_S` | `÷k` |
+| Allee threshold | `×k` (compatibility arm only) |
+| Per-adult fecundity, survival, cover thresholds, connectivity, settlement | unchanged |
+
+**Compatibility test:**
+- **Core:** a COTSMod unit test shows that scaling state and density parameters by `k` reproduces the trajectory `×k` and the same coral consumption.
+- **Integration:** the run's compatibility arm (Allee `3k`, initial state `×k`) must reproduce the archived control's adults and flows `×k` to relative tolerance `1e-9`, with identical Lizard simulated CPUE.
+
+The **migrated control** then differs from the archived control in two respects only:
+
+1. **Allee half-saturation.** It is held at the evidence-based `3 COTS/ha` in true units, which is `k` times weaker relative to the dynamics than in the archived run.
+2. **1991 initial state.** The `IDW CPUE/q` preload is now consistent with the observation unit. Under the archived scale it was effectively `k` times too large.
+
+The archived 1997 Lizard first-peak match depended on that inconsistency. The migrated control is expected to shift the first wave, likely later from the lower start, although the weaker Allee pushes the other way. This must be reported, not tuned away.
+
+### Consumption factorial (2×2, plus the compatibility arm)
+
+Units: per-capita grazing removes `A·c/(10⁴·h)` of habitable prey cover per year, where:
+- `A` is adults per site hectare;
+- `c = 10 m²` per adult per year, the Keesing & Lucas 1992 order of magnitude for adult feeding;
+- `h` is the site habitable fraction (`location_k`).
+
+Fast prey is taken first, then slow, capped by availability.
+
+| Arm | Consumption | Starvation / adult structure |
+| --- | --- | --- |
+| `compat_rescaled_exact` | migrated linear | legacy, with Allee `3k` and initial `×k` |
+| `migrated_control` | migrated linear | legacy |
+| `migrated_structural` | migrated linear | H1 (`θ=0.05`, memory `0.5` yr) + H2 (`a_s=6`, `m_s=0.8`) |
+| `per_capita_legacy` | per-capita, `c=10` | legacy |
+| `per_capita_structural` | per-capita, `c=10` | H1 + H2 |
+
+H1 and H2 are combined because the previous screen separated their effects. The new factor is the consumption form.
+
+All arms keep the following unchanged: seed `20260930`, Allee `3 COTS/ha` (except the compatibility arm), migrated `IMM` and external production, connectivity, fecundity, frozen three-year-smoothed score with `q=0.015` on every reef, and the reef mapping. There is no optimizer.
+
+**Expected:**
+- Per-capita grazing removes about `0.0017·A` habitable cover per year at `h≈0.6`. Fast coral should therefore persist through low and moderate densities and be stripped only at outbreak densities (`A ≳ 30–60/ha`).
+- With H1 this should produce a starvation-driven crash *after* the outbreak peak, followed by coral release.
+- Risk: with grazing per adult about 10× weaker than the migrated linear fit, outbreaks may no longer limit coral, and peaks may overshoot or fail to crash.
+
+**Gate and failures.** The qualitative gate is unchanged, but amplitudes are now absolute under `q`. Failures include:
+- a compatibility mismatch;
+- any change to external immigration other than the documented `×k` migration;
+- a non-finite state;
+- losing all first waves;
+- an improvement achieved only by extinguishing external supply.
+
+A one-seed pass remains a candidate pending replicated seeds, `q` sensitivity (e.g. `0.0075`–`0.03`), held-out years/reefs, and a refit under the new unit.
+
+**Rollback.** The per-reef frozen-scale objective and archived parameters remain valid for legacy comparisons. All switches default off.
+
+### Unit-migration decision (2026-10-09)
+
+**Deviation from preregistration (disclosed).** v1 failed its compatibility arm. The cause is ADRIA's parameter-derived coral RNG seed (`floor(sum(parameter values))`), not the migration. A one-ulp replay, a k=1 identity and a k=2 power-of-two rescale isolated it. v2 pins `ADRIA_RNG_SEED` to the archived control's derived value (`90972102`) for every migration arm. That keeps the archived control's random stream and makes the comparison fair. No other setting changed.
+
+[v2 run](runs/20261009T_unit_migration_q015_1991_v2/metadata.toml) and [audit](runs/20261009T_unit_migration_q015_1991_v2/unit_migration_audit.json): the compatibility replay is exact (max relative delta `3e-15`); external immigration is identical in every arm; simulated CPUE equals `q·A`. **No arm passes.**
+
+| Arm | Two-wave reefs with 2 peaks | Worst trough | Matched | Lizard first peak |
+| --- | --- | --- | --- | --- |
+| Compatibility (archived ×k) | 3/3 | `0.594` | 6/7 | 1997, 0.85 COTS/tow |
+| Migrated control | 3/3 | `0.381` | 6/7 | 2000, 1.07 |
+| Migrated linear + H1 + H2 | 3/3 | `0.801` | 6/7 | 2000, 0.24 |
+| Per-capita | 0/3 | — | 2/7 | 2003, 2.62 |
+| Per-capita + H1 + H2 | 1/3 | `0.171` | 3/7 | 2001, 1.37 |
+
+Per-capita grazing with H1 and H2 reproduces the expected sequence:
+1. Fast coral persists while COTS build.
+2. The outbreak strips it.
+3. Remembered preferred food collapses (food survival 0.06–0.12) and senescent deaths peak (2.6 COTS/ha/yr in 2002).
+4. Adults fall from 120 to about 3 COTS/ha.
+5. Coral recovers.
+
+Its failures are the absent second waves at MacGillivray and North Direction and first peaks around 2001. The migrated control's lateness (2000 versus 1997) shows that the archived timing match depended on the inconsistent preload.
+
+None is promotable. The per-capita structural configuration is the first candidate that passes the *qualitative crash* part of the mechanism gate on Lizard. The next bounded diagnostic should decompose second-wave supply on the reefs that fail to reseed, holding the Allee threshold and external supply fixed, before any refit under the new unit.

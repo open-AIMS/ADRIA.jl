@@ -330,18 +330,23 @@ function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Re
     return nothing
 end
 
-function apply_predation!(coral_cover::AbstractArray{Float64,3}, cots_state::CotsState, prey_map::CotsPreyMap)::Nothing
-    return COTSMod.apply_predation!(coral_cover, cots_state, prey_map)
+function apply_predation!(coral_cover::AbstractArray{Float64,3}, cots_state::CotsState,
+    prey_map::CotsPreyMap; habitable_fraction=nothing)::Nothing
+    return COTSMod.apply_predation!(coral_cover, cots_state, prey_map;
+        habitable_fraction=habitable_fraction)
 end
 
 """Experimental grazing bypass: advance COTS normally but leave coral untouched in a labelled year window."""
 function apply_cots_predation_diagnostic!(coral_cover::AbstractArray{Float64,3},
     cots_state::CotsState, prey_map::CotsPreyMap, calendar_year::Int,
-    grazing_off_years::Union{Nothing,AbstractUnitRange{Int}})::Nothing
+    grazing_off_years::Union{Nothing,AbstractUnitRange{Int}};
+    habitable_fraction=nothing)::Nothing
     if !isnothing(grazing_off_years) && calendar_year in grazing_off_years
-        apply_predation!(copy(coral_cover), cots_state, prey_map)
+        apply_predation!(copy(coral_cover), cots_state, prey_map;
+            habitable_fraction=habitable_fraction)
     else
-        apply_predation!(coral_cover, cots_state, prey_map)
+        apply_predation!(coral_cover, cots_state, prey_map;
+            habitable_fraction=habitable_fraction)
     end
     return nothing
 end
