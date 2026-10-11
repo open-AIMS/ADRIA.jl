@@ -285,3 +285,86 @@ Per-capita grazing with H1 and H2 reproduces the expected sequence:
 Its failures are the absent second waves at MacGillivray and North Direction and first peaks around 2001. The migrated control's lateness (2000 versus 1997) shows that the archived timing match depended on the inconsistent preload.
 
 None is promotable. The per-capita structural configuration is the first candidate that passes the *qualitative crash* part of the mechanism gate on Lizard. The next bounded diagnostic should decompose second-wave supply on the reefs that fail to reseed, holding the Allee threshold and external supply fixed, before any refit under the new unit.
+
+## Preregistered second-wave factorial: prey switching × preferred-food condition (2026-10-12)
+
+Status: **preregistered before implementation; no default or objective change.** The base model is the project lead's preferred configuration, `per_capita_structural` from [unit migration v2](runs/20261009T_unit_migration_q015_1991_v2/metadata.toml):
+- per-capita grazing at `10 m²/adult/yr`, preferred-first, habitable-area corrected;
+- H1 preferred-prey starvation (`θ=0.05`, memory `0.5` yr);
+- H2 senescence (`a_s=6`, `m_s=0.8`);
+- `q=0.015` on every reef, migrated parameters (`k=19.61`), Allee `3 COTS/ha`;
+- `ADRIA_RNG_SEED=90972102`.
+
+### Diagnosis motivating the test
+
+The [second-wave readout](runs/20261009T_second_wave_audit_1991_v1/metadata.toml) shows that settlement during the second build-up equals wave 1, so supply is not limiting. Two problems are:
+
+1. **Fast coral is driven almost extinct.** Exhaustive preferred-first grazing takes fast cover to `0.001–0.005`. It regrows at only about `+0.01/yr`, reaching about `0.035` before wave 2 against `0.13–0.14` before wave 1, so wave 2 starves early.
+2. **Starving adults stay fertile.** Body condition tracks *total* cover over `tau_condition=8.3` yr, so starving adults keep breeding. 63% of local larval production comes from sites with food survival `<0.5`. The fertile residual population keeps grazing fast coral.
+
+### Hypotheses and equations
+
+Fast and slow cover `F`, `S` are fractions of habitable area. `D = A·c/(10⁴·h)` is the per-capita grazing demand.
+
+**S1 — prey switching** (`prey_switching`, requires `per_capita_consumption`). Following MICE (Rogers & Plagányi 2022), the share of demand directed at preferred prey falls as preferred cover is depleted:
+
+`ρ = 1 / (1 + exp(-s·(F/K - F_mid)))`, with `K = 1` (cover is already relative to habitable area).
+
+`Cons_F = min(ρ·D, F)`, `Cons_S = min(D - Cons_F, S)`.
+
+Unmet preferred demand still falls on slow prey. Preregistered: `F_mid = 0.10`, `s = 70`, taken directly from the MICE prey-switching logistic.
+
+*Expected:* remnant fast coral survives the first wave (no near-extinction), so fast coral recovers sooner and to a higher level, giving a larger, earlier second wave.
+
+*Risk:* weaker coral loss in wave 1. H1 starvation still keys on fast cover, so COTS can feed on massives yet still be recorded as starving.
+
+**S2 — preferred-food condition** (`preferred_condition`). Body condition (the multiplier on fecundity via `bc²`) is driven by fast cover rather than total cover:
+
+`signal = min(1, F/F_c)`, `bc_t = (1-α)·bc_{t-1} + α·signal`, with `α = 1 - exp(-1/τ_c)`.
+
+Preregistered: `F_c = 0.10` (the same preferred cover at which diet becomes preferred-dominated) and `τ_c = 1` yr. Supported by Caballes et al. maternal-diet trials: Acropora-fed females had heavier gonads and larger oocytes than Porites-fed or starved females (60-day trials, three females per treatment, so qualitative support only).
+
+*Expected:* residual starving adults stop producing larvae, internal immigration falls in troughs, and troughs deepen. With less residual grazing, fast coral recovers sooner.
+
+*Risk:* the second wave weakens unless external supply and recovered condition carry it, and the first wave builds more slowly.
+
+### Factorial
+
+2×2 on the base:
+
+| Arm | Prey switching | Preferred-food condition |
+| --- | --- | --- |
+| `base` | off | off |
+| `switching` | on | off |
+| `condition` | off | on |
+| `switching_condition` | on | on |
+
+`base` must replay v2 `per_capita_structural` exactly (trajectories, flows and mechanisms), and external immigration must be identical in every arm.
+
+Held fixed: seed, `q`, `k`, Allee, external production, connectivity, fecundity scale, `c=10`, H1/H2 settings, frozen three-year-smoothed score. No optimizer.
+
+Record (in addition to the existing diagnostics): reef-level body condition and the fast-diet share `ρ`.
+
+### Gate, failures and rollback
+
+The qualitative gate is unchanged and in absolute CPUE under `q`:
+- two detected peaks on Lizard, MacGillivray and North Direction;
+- 7/7 observed peaks matched;
+- worst trough ratio `≤0.10`;
+- no material coral degradation against `base`.
+
+Also report second-wave height against the observed 2013–15 peaks (0.67–0.85 COTS/tow), fast coral at second-wave onset, and trough adult density.
+
+Failures:
+- inexact base replay, or changed external supply;
+- non-finite states;
+- losing all first waves;
+- improvement only through extinguishing external supply.
+
+A one-seed pass is a candidate only, pending replicated seeds, `q` sensitivity, held-out tests and a refit.
+
+Rollback: both switches default off.
+
+Known confounders deferred to the next step:
+- the uniform `0.5` habitable fraction on all target sites;
+- zeroed cyclone and wave forcing.

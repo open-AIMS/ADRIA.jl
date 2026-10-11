@@ -20,7 +20,7 @@ const EXPERIMENT = get(ENV, "OWEN_1991_EXPERIMENT", "initialization")
 EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "crash_factorial", "lagged_hazard", "cohort_audit", "structural_crash",
     "unit_migration_q015", "ulp_noise_floor", "unit_compat_k2",
-    "second_wave_audit") ||
+    "second_wave_audit", "switching_condition") ||
     error("Unknown 1991 experiment")
 const RUN_ID = get(ENV, "OWEN_1991_RUN_ID",
     Dates.format(now(), "yyyymmddTHHMMSS") * "_owen_1991_" * EXPERIMENT)
@@ -73,7 +73,14 @@ length(fixed_scales) == length(TARGETS) || error("Missing frozen observation sca
 # COTS/tow per adult COTS/ha convention (CoCoNet epsilon; Moran & De'ath 1992
 # threshold pairing). k converts the archived compressed density unit to COTS/ha
 # using Lizard's frozen scale; it is exact for Lizard only.
-const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "second_wave_audit")
+const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "second_wave_audit",
+    "switching_condition")
+# Preregistered 2x2 on the per-capita structural base (protocol, 2026-10-12).
+const SWITCHING_CONDITION = EXPERIMENT == "switching_condition"
+const SWITCH_MIDPOINT = 0.10
+const SWITCH_STEEPNESS = 70.0
+const CONDITION_SATURATION = 0.10
+const CONDITION_MEMORY_YEARS = 1.0
 # Readout-only replay of two v2 arms with site-level second-wave diagnostics.
 const SECOND_WAVE_AUDIT = EXPERIMENT == "second_wave_audit"
 const Q_FIXED = 0.015
@@ -203,6 +210,11 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : SWITCHING_CONDITION ? [
+    (name="base", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="condition", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switching_condition", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
 ] : SECOND_WAVE_AUDIT ? [
     (name="migrated_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
     (name="per_capita_structural", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
@@ -279,7 +291,8 @@ mechanisms = DataFrame(treatment=String[], reef_name=String[], year=Int[],
     recruits_ha=Float64[], subadults_ha=Float64[], adults_ha=Float64[],
     maturation_ha=Float64[], fast_coral=Float64[], total_coral=Float64[],
     preferred_food_memory=Float64[], food_survival=Float64[],
-    senescent_adults_ha=Float64[], senescent_deaths_ha=Float64[])
+    senescent_adults_ha=Float64[], senescent_deaths_ha=Float64[],
+    preferred_diet_share=Float64[], body_condition=Float64[])
 site_audit = DataFrame(treatment=String[], reef_name=String[], site_index=Int[],
     reef_weight=Float64[], habitable_fraction=Float64[], year=Int[],
     recruits_ha=Float64[], subadults_ha=Float64[], adults_ha=Float64[],
@@ -304,7 +317,7 @@ for t in treatments
     structural = EXPERIMENT == "structural_crash"
     compat = MIGRATION && t.name == "compat_rescaled_exact"
     k = MIGRATION ? K_MIGRATION : 1.0
-    migration_structural = MIGRATION && endswith(t.name, "_structural")
+    migration_structural = MIGRATION && (endswith(t.name, "_structural") || SWITCHING_CONDITION)
     ENV["COTS_PREFERRED_PREY_STARVATION"] = (structural &&
         occursin("preferred_starvation", t.name)) || migration_structural ? "true" : "false"
     ENV["COTS_STARVATION_PREFERRED_THRESHOLD"] = string(STRUCTURAL_THRESHOLD)
@@ -314,7 +327,15 @@ for t in treatments
     ENV["COTS_SENESCENCE_AGE"] = string(STRUCTURAL_SENESCENCE_AGE)
     ENV["COTS_SENESCENCE_MORTALITY"] = string(STRUCTURAL_SENESCENCE_MORTALITY)
     ENV["COTS_PER_CAPITA_CONSUMPTION"] = MIGRATION &&
-        startswith(t.name, "per_capita") ? "true" : "false"
+        (startswith(t.name, "per_capita") || SWITCHING_CONDITION) ? "true" : "false"
+    ENV["COTS_PREY_SWITCHING"] = SWITCHING_CONDITION &&
+        startswith(t.name, "switching") ? "true" : "false"
+    ENV["COTS_SWITCH_MIDPOINT"] = string(SWITCH_MIDPOINT)
+    ENV["COTS_SWITCH_STEEPNESS"] = string(SWITCH_STEEPNESS)
+    ENV["COTS_PREFERRED_CONDITION"] = SWITCHING_CONDITION &&
+        endswith(t.name, "condition") ? "true" : "false"
+    ENV["COTS_CONDITION_SATURATION"] = string(CONDITION_SATURATION)
+    ENV["COTS_CONDITION_MEMORY_YEARS"] = string(CONDITION_MEMORY_YEARS)
     ENV["COTS_CONSUMPTION_M2_PER_ADULT_YEAR"] = string(PER_CAPITA_M2_PER_ADULT_YEAR)
     # Exact density-unit reparameterisation; identity outside the migration screen.
     scenario[!, :a_F] .= EXPERIMENT == "ulp_noise_floor" ?
@@ -419,8 +440,10 @@ for t in treatments
                 [aggregate_reef_density(Matrix(result.cots_hazard_log[:, channel, :]), m)
                     for channel in 1:3] : Vector{Float64}[]
             reef_mechanisms = EXPERIMENT == "structural_crash" || MIGRATION ?
-                [aggregate_reef_density(Matrix(result.cots_mechanism_log[:, channel, :]), m)
-                    for channel in 1:4] : Vector{Float64}[]
+                vcat([aggregate_reef_density(Matrix(result.cots_mechanism_log[:, channel, :]), m)
+                    for channel in 1:5],
+                    [aggregate_reef_density(Matrix(result.cots_condition_log), m)]) :
+                Vector{Float64}[]
             reef_fast_coral = aggregate_reef_density(fast_coral, m)
             scale = MIGRATION ? Q_FIXED : fixed_scales[reef]
             for (idx, year) in enumerate(years)
@@ -510,7 +533,9 @@ delete!(ENV, "ADRIA_RNG_SEED")
 for name in ("COTS_PREFERRED_PREY_STARVATION", "COTS_STARVATION_PREFERRED_THRESHOLD",
         "COTS_STARVATION_MEMORY_YEARS", "COTS_ADULT_SENESCENCE", "COTS_SENESCENCE_AGE",
         "COTS_SENESCENCE_MORTALITY", "COTS_PER_CAPITA_CONSUMPTION",
-        "COTS_CONSUMPTION_M2_PER_ADULT_YEAR")
+        "COTS_CONSUMPTION_M2_PER_ADULT_YEAR", "COTS_PREY_SWITCHING",
+        "COTS_SWITCH_MIDPOINT", "COTS_SWITCH_STEEPNESS", "COTS_PREFERRED_CONDITION",
+        "COTS_CONDITION_SATURATION", "COTS_CONDITION_MEMORY_YEARS")
     delete!(ENV, name)
 end
 
@@ -535,6 +560,9 @@ metadata = Dict(
         "control plus density-only and density-times-food at hazard_max=0.75 and 1.5; rho=0.5 threshold=1.5 COTS/ha width=0.5 COTS/ha coral threshold=0.15 fraction coral width=0.03 fraction" : "not tested",
     "structural_crash_factorial" => EXPERIMENT == "structural_crash" ?
         "control, preferred_starvation, senescence and both. preferred threshold=$(STRUCTURAL_THRESHOLD) fast-cover fraction of habitable area; memory=$(STRUCTURAL_MEMORY_YEARS) yr; senescence age=$(STRUCTURAL_SENESCENCE_AGE) yr; senescent mortality=$(STRUCTURAL_SENESCENCE_MORTALITY) annual fraction; ages 2-5 keep archived m3; initial adults on stable age profile; per-capita consumption off" : "not tested",
+    "switching_condition_factorial" => SWITCHING_CONDITION ?
+        "base = per_capita_structural (c=$(PER_CAPITA_M2_PER_ADULT_YEAR) m2/adult/yr; H1 threshold=$(STRUCTURAL_THRESHOLD) memory=$(STRUCTURAL_MEMORY_YEARS) yr; H2 age=$(STRUCTURAL_SENESCENCE_AGE) mortality=$(STRUCTURAL_SENESCENCE_MORTALITY)); prey switching midpoint=$(SWITCH_MIDPOINT) habitable fraction steepness=$(SWITCH_STEEPNESS); preferred condition saturation=$(CONDITION_SATURATION) memory=$(CONDITION_MEMORY_YEARS) yr" :
+        "not tested",
     "adria_rng_seed" => MIGRATION ? archived_rng_seed :
         "legacy: floor(sum(parameter values)) per scenario (archived control value $(archived_rng_seed))",
     "observation_model" => MIGRATION ? "fixed_q0015: simulated COTS/tow = 0.015 * adult COTS/ha on every reef" :

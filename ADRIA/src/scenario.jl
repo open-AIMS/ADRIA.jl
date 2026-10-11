@@ -1203,7 +1203,13 @@ function run_model(
         senescence_age = parse(Int, get(ENV, "COTS_SENESCENCE_AGE", "6")),
         senescence_mortality = parse(Float64, get(ENV, "COTS_SENESCENCE_MORTALITY", "0.8")),
         per_capita_consumption = lowercase(get(ENV, "COTS_PER_CAPITA_CONSUMPTION", "false")) == "true",
-        consumption_m2_per_adult_year = parse(Float64, get(ENV, "COTS_CONSUMPTION_M2_PER_ADULT_YEAR", "10.0"))
+        consumption_m2_per_adult_year = parse(Float64, get(ENV, "COTS_CONSUMPTION_M2_PER_ADULT_YEAR", "10.0")),
+        prey_switching = lowercase(get(ENV, "COTS_PREY_SWITCHING", "false")) == "true",
+        switch_midpoint = parse(Float64, get(ENV, "COTS_SWITCH_MIDPOINT", "0.10")),
+        switch_steepness = parse(Float64, get(ENV, "COTS_SWITCH_STEEPNESS", "70.0")),
+        preferred_condition = lowercase(get(ENV, "COTS_PREFERRED_CONDITION", "false")) == "true",
+        condition_saturation = parse(Float64, get(ENV, "COTS_CONDITION_SATURATION", "0.10")),
+        condition_memory_years = parse(Float64, get(ENV, "COTS_CONDITION_MEMORY_YEARS", "1.0"))
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1328,6 +1334,19 @@ function run_model(
     end
     cots_params.consumption_m2_per_adult_year >= 0.0 ||
         error("COTS_CONSUMPTION_M2_PER_ADULT_YEAR must be nonnegative")
+    if cots_params.prey_switching
+        cots_params.per_capita_consumption ||
+            error("COTS_PREY_SWITCHING requires COTS_PER_CAPITA_CONSUMPTION=true")
+        0.0 <= cots_params.switch_midpoint <= 1.0 ||
+            error("COTS_SWITCH_MIDPOINT must lie in [0, 1]")
+        cots_params.switch_steepness > 0.0 || error("COTS_SWITCH_STEEPNESS must be positive")
+    end
+    if cots_params.preferred_condition
+        0.0 < cots_params.condition_saturation <= 1.0 ||
+            error("COTS_CONDITION_SATURATION must lie in (0, 1]")
+        cots_params.condition_memory_years > 0.0 ||
+            error("COTS_CONDITION_MEMORY_YEARS must be positive")
+    end
     # Per-capita grazing converts adults per site hectare into habitable-cover
     # fractions; the legacy response is already a fraction and ignores this.
     cots_habitable_fraction = cots_params.per_capita_consumption ?
@@ -1385,8 +1404,9 @@ function run_model(
     # Burden (COTS ha^-1), one-year cumulative hazard, extra adult deaths (COTS ha^-1 yr^-1).
     Ycots_hazard = zeros(tf, 3, n_locs)
     # Remembered preferred cover (habitable fraction; NaN when off), realized food
-    # survival factor, senescent adults and excess senescent deaths (COTS ha^-1).
-    Ycots_mechanism = zeros(tf, 4, n_locs)
+    # survival factor, senescent adults and excess senescent deaths (COTS ha^-1),
+    # and the share of grazing demand aimed at preferred prey.
+    Ycots_mechanism = zeros(tf, 5, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
@@ -2208,6 +2228,7 @@ function run_model(
             Ycots_mechanism[tstep, 2, loc] = cots_mechanism.food_survival[loc]
             Ycots_mechanism[tstep, 3, loc] = cots_mechanism.senescent_adults[loc]
             Ycots_mechanism[tstep, 4, loc] = cots_mechanism.senescent_deaths_ha[loc]
+            Ycots_mechanism[tstep, 5, loc] = cots_mechanism.preferred_diet_share[loc]
         end
 
         # Calculate survival_rate due to env. disturbances

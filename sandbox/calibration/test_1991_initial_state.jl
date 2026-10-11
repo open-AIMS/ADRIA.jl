@@ -150,3 +150,21 @@ end
         habitable_fraction=[1.0, 0.25])
     @test 0.3 - cover[1, 1, 2] ≈ 4.0 * (0.3 - cover[1, 1, 1])
 end
+
+@testset "Opt-in prey switching and preferred-food condition adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    legacy = ADRIA._cots_runtime_params(base)
+    @test !legacy.prey_switching
+    @test !legacy.preferred_condition
+    treated = ADRIA._cots_runtime_params(merge(base, (prey_switching=true,
+        switch_midpoint=0.1, switch_steepness=70.0, preferred_condition=true,
+        condition_saturation=0.1, condition_memory_years=1.0,
+        per_capita_consumption=true)))
+    @test treated.prey_switching && treated.preferred_condition
+    @test (treated.switch_midpoint, treated.switch_steepness) == (0.1, 70.0)
+    @test (treated.condition_saturation, treated.condition_memory_years) == (0.1, 1.0)
+    models = [COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 0.0, 50.0), 0.8, treated)]
+    COTSMod.cots_timestep!(models[1], 0.02, 0.3)
+    @test ADRIA.cots_mechanism_diagnostics(models).preferred_diet_share[1] < 0.01
+end

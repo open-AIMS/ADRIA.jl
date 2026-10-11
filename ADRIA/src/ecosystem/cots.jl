@@ -254,7 +254,13 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         senescence_age=Int(get(params, :senescence_age, 6)),
         senescence_mortality=Float64(get(params, :senescence_mortality, 0.8)),
         per_capita_consumption=Bool(get(params, :per_capita_consumption, false)),
-        consumption_m2_per_adult_year=Float64(get(params, :consumption_m2_per_adult_year, 10.0))
+        consumption_m2_per_adult_year=Float64(get(params, :consumption_m2_per_adult_year, 10.0)),
+        prey_switching=Bool(get(params, :prey_switching, false)),
+        switch_midpoint=Float64(get(params, :switch_midpoint, 0.10)),
+        switch_steepness=Float64(get(params, :switch_steepness, 70.0)),
+        preferred_condition=Bool(get(params, :preferred_condition, false)),
+        condition_saturation=Float64(get(params, :condition_saturation, 0.10)),
+        condition_memory_years=Float64(get(params, :condition_memory_years, 1.0))
     )
 end
 
