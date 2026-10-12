@@ -22,26 +22,62 @@ relative to the locations' carrying capacity.
 - `rs` : ResultSet holding scenario outcomes
 
 # Returns
-DataFrames of mean and total deployment for each coral group
+DataFrames of mean, total and event-count deployment for each coral group
 """
-function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataFrame}
+function _iv_log_stats(
+    logs::YAXArray; prefix::String=""
+)::Tuple{DataFrame,DataFrame,DataFrame}
     deployed_corals = logs.coral_id
 
     n = length(deployed_corals)
     mean_deployment = Vector{Vector{Float64}}(undef, n)
     total_deployment = Vector{Vector{Float64}}(undef, n)
+    n_events = Vector{Vector{Float64}}(undef, n)
     for (i, c_id) in enumerate(deployed_corals)
-        ts = sum(logs[:, c_id, :, :]; dims=:timesteps)
+        group_log = logs[:, c_id, :, :]
+        ts = sum(group_log; dims=:timesteps)
         mean_deployment[i] = mean(ts; dims=:locations).data[:]
         total_deployment[i] = sum(ts; dims=:locations).data[:]
+        # A deployment event is a timestep where this group received a nonzero volume at
+        # any location -- counted straight off the log rather than derived from the
+        # CAq/LvM schedule levers, since a reactive strategy's event timing depends on
+        # simulated cover, not just the levers.
+        per_timestep_total = sum(group_log; dims=:locations)
+        n_events[i] = Float64.(sum(per_timestep_total .> 0; dims=:timesteps).data[:])
     end
 
     col_names = string.(ADRIA.functional_group_names())
     μ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
     T = DataFrame(hcat(total_deployment...), "$(prefix)volume_total_" .* col_names)
+    N = DataFrame(hcat(n_events...), "$(prefix)n_events_" .* col_names)
 
-    return μ, T
+    return μ, T, N
 end
+
+"""
+    _iv_event_count(logs::YAXArray)::Vector{Float64}
+
+Count deployment events per scenario: timesteps where ANY group received a nonzero
+deployment at any location. Used for larval methods, whose target (`iv_LvM_N_settlers`)
+is a single scalar spanning all groups rather than a per-group lever, so events must be
+counted across groups together rather than per-group as in `_iv_log_stats`.
+"""
+function _iv_event_count(logs::YAXArray)::Vector{Float64}
+    any_group_total = sum(logs; dims=(:coral_id, :locations))
+    return Float64.(sum(any_group_total .> 0; dims=:timesteps).data[:])
+end
+
+# Maps each coral aquaculture-deployable functional group (as named by
+# `ADRIA.functional_group_names()`) to its per-event deployment-target lever. Only 5 of
+# the 6 defined functional groups are currently deployable -- `arborescent_Acropora` has
+# no `iv_CAq_N_*` lever.
+const _CAQ_TARGET_LEVER = Dict(
+    "tabular_Acropora" => "iv_CAq_N_TA",
+    "corymbose_Acropora" => "iv_CAq_N_CA",
+    "corymbose_non_Acropora" => "iv_CAq_N_CNA",
+    "small_massives" => "iv_CAq_N_SM",
+    "large_massives" => "iv_CAq_N_LM"
+)
 
 """
     dhw_spatial_features(rs::ResultSet)::DataFrame
@@ -111,6 +147,12 @@ Scenarios whose `dhw_scenario` is a no-heat-stress counterfactual (`< 1`, e.g.
 a row sampled with `dhw_scenario = 0`) have no entry in the per-trajectory DHW
 statistics; their DHW-derived columns (`dhw_mean`, `dhw_stdev`,
 `dhw_complexity`, `dhw_site_cv`, `dhw_refugia_gap`) are set to `0.0`.
+
+Also adds a target-vs-realised comparison for each intervention: `CAq_total_target_coral_M`/
+`LvM_total_target_coral_M` (each group's per-event target lever times how many times it
+actually deployed, counted from the log) and `CAq_deployment_delta_M`/
+`LvM_deployment_delta_M` (realised minus target; negative means the plan under-delivered,
+whether from skipped revisits or a deployment throttled by site capacity).
 """
 function feature_set(rs::ResultSet)::DataFrame
     scens = copy(rs.inputs)
@@ -192,7 +234,9 @@ function feature_set(rs::ResultSet)::DataFrame
     scens = scens[:, Not(:depth_offset)]
 
     # Transform aggregate deployment totals into units of millions
-    CAq_volume_mean, CAq_volume_total = _iv_log_stats(rs.iv_CAq_log; prefix="CAq_")
+    CAq_volume_mean, CAq_volume_total, CAq_n_events = _iv_log_stats(
+        rs.iv_CAq_log; prefix="CAq_"
+    )
     CAq_volume_total_M = DataFrame(
         Matrix(CAq_volume_total) ./ 1e6,
         replace.(names(CAq_volume_total), "volume_total_" => "volume_total_M_")
@@ -223,7 +267,50 @@ function feature_set(rs::ResultSet)::DataFrame
         "Total coral aquaculture deployment (millions)"; style=:note
     )
 
-    LvM_volume_mean, LvM_volume_total = _iv_log_stats(rs.iv_LvM_log; prefix="LvM_")
+    # Target cumulative deployment: each group's per-event target (`iv_CAq_N_*`, still
+    # present in `scens` at this point) times how many times that group actually
+    # deployed (`CAq_n_events`, from the log -- not the schedule levers, so it reflects
+    # a reactive strategy's actual event count, not a periodic-schedule assumption).
+    # `CAq_deployment_delta_M` is realised minus target: negative means the plan
+    # under-delivered against what was intended (revisits skipped, or a deployment event
+    # throttled by site capacity), positive means it over-delivered.
+    CAq_groups = filter(
+        g -> haskey(_CAQ_TARGET_LEVER, g), string.(ADRIA.functional_group_names())
+    )
+    CAq_target_cols = [
+        Float64.(scens[!, _CAQ_TARGET_LEVER[g]]) .* CAq_n_events[!, "CAq_n_events_$(g)"] ./
+        1e6
+        for g in CAq_groups
+    ]
+    CAq_target_total_M = DataFrame(
+        hcat(CAq_target_cols...), "CAq_target_volume_total_M_" .* CAq_groups
+    )
+    DataFrames.hcat!(scens, CAq_target_total_M)
+    for col in names(CAq_target_total_M)
+        colmetadata!(scens, col, "ptype", "continuous"; style=:note)
+        colmetadata!(
+            scens, col, "label", "Target coral aquaculture deployment volume ($col)";
+            style=:note
+        )
+    end
+    scens.CAq_total_target_coral_M = vec(sum(Matrix(CAq_target_total_M); dims=2))
+    colmetadata!(scens, :CAq_total_target_coral_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :CAq_total_target_coral_M, "label",
+        "Total target coral aquaculture deployment (millions)"; style=:note
+    )
+    scens.CAq_deployment_delta_M =
+        scens.CAq_total_deployed_coral_M .- scens.CAq_total_target_coral_M
+    colmetadata!(scens, :CAq_deployment_delta_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :CAq_deployment_delta_M, "label",
+        "Realised minus target coral aquaculture deployment (millions)"; style=:note
+    )
+
+    # Per-group event counts aren't used for LvM's target (`iv_LvM_N_settlers` is a single
+    # scalar spanning all groups, not a per-group lever like CAq's `iv_CAq_N_*`) -- see
+    # `_iv_event_count` below.
+    LvM_volume_mean, LvM_volume_total, _ = _iv_log_stats(rs.iv_LvM_log; prefix="LvM_")
     LvM_volume_total_M = DataFrame(
         Matrix(LvM_volume_total) ./ 1e6,
         replace.(names(LvM_volume_total), "volume_total_" => "volume_total_M_")
@@ -248,6 +335,24 @@ function feature_set(rs::ResultSet)::DataFrame
     colmetadata!(
         scens, :LvM_total_deployed_coral_M, "label",
         "Total larval methods deployment (millions)"; style=:note
+    )
+
+    # Target cumulative deployment for LvM, mirroring CAq's above -- `iv_LvM_N_settlers`
+    # (a single target spanning all groups) times how many times LvM actually deployed.
+    LvM_n_events = _iv_event_count(rs.iv_LvM_log)
+    scens.LvM_total_target_coral_M =
+        Float64.(scens.iv_LvM_N_settlers) .* LvM_n_events ./ 1e6
+    colmetadata!(scens, :LvM_total_target_coral_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :LvM_total_target_coral_M, "label",
+        "Total target larval methods deployment (millions)"; style=:note
+    )
+    scens.LvM_deployment_delta_M =
+        scens.LvM_total_deployed_coral_M .- scens.LvM_total_target_coral_M
+    colmetadata!(scens, :LvM_deployment_delta_M, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :LvM_deployment_delta_M, "label",
+        "Realised minus target larval methods deployment (millions)"; style=:note
     )
 
     # Add normalized "actual effort" columns: min-max normalization of realized
