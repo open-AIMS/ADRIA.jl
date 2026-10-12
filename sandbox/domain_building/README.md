@@ -174,3 +174,24 @@ together, so it cannot attribute effects to connectivity alone.
 The Allee threshold remains fixed at its evidence-based value during these
 tests. Juvenile maturation and other biological parameters are not adjusted to
 compensate for unresolved domain or transport contracts.
+
+## V0.3: habitat and cyclones (2026-10-12)
+
+`Lizard_Historical_v0.3` is an additive package; v0.1 and v0.2 are unchanged. The project lead adopted it as the calibration working base. It changes three things relative to v0.2:
+
+- **Site habitable fraction `k`.** Taken from the GBR10 2025 benthic map (Rock + Coral/Algae). Benthic-unmapped cells are infilled with their GBR10 geomorphic zone's mapped habitable share (mean `0.58`). `k` is floored at `0.01` because ADRIA cannot run `k = 0` sites; the unfloored value is kept in `k_raw`.
+- **Initial cover.** Zero at the 20 sites whose raw `k` is 0.
+- **Cyclones.** `cyclones/cyclone_mortality.csv` holds site × year coral mortality `1 - exp(-0.00444·h)`, where `h` is the GBRMPA RRN `cyc_maxHrs4mw` hours of ≥4 m waves per summer. The coefficient is from the COTS-Coral-OutcomesV2 LTMP dose-response. The Lizard loader reads this only when `datapackage.json` declares `cyclone_mortality`.
+
+The sources are INTERNAL ONLY or licensed: the package and the intermediate tables stay in the git-ignored `sandbox/data`.
+
+```powershell
+# user Python (rasterio with GDAL >= 3.7 for FileGDB rasters)
+python sandbox/domain_building/build_site_habitable_fraction.py
+# base miniconda Python (openpyxl, scipy)
+C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/domain_building/build_cyclone_hours_rrn.py
+C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/domain_building/build_lizard_domain_v3.py
+```
+
+The compatibility check is the `initiation` experiment's `none_none` arm, which must replay the run-time `bgeo_none` arm of `20261012T_trough_mechanisms_1991_v1` exactly.
+

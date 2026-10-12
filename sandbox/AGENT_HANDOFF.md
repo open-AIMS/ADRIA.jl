@@ -1,6 +1,7 @@
 # ADRIA COTS Submodel & Lizard Island Calibration: Agent Handoff Document
 
 > [!IMPORTANT]
+> **Current state: see `sandbox/calibration/CURRENT_STATE.md`.**
 > **Historical handoff only.** This document describes the earlier pulse/LHS
 > workflow and is no longer the authoritative point of truth. Read the root
 > `AGENTS.md`, `sandbox/calibration/README.md`,

@@ -25,7 +25,10 @@ The reproducible control remains `Lizard_Historical_v0.1`. The additive
 `Lizard_Historical_v0.2` package contains the final V2 subreef polygons,
 `indexV2`-labelled interim site connectivity, corrected historical DHW, a legacy
 COTS-connectivity control, and an explicitly opt-in Owen 2018-2023 COTS option.
-See `domain_building/README.md` before comparing either domain.
+`Lizard_Historical_v0.3` (the current working base for COTS mechanism screens)
+adds a benthic/geomorphic site habitable fraction and historical RRN cyclone
+mortality; it is derived from internal/licensed sources and must not be
+published or committed. See `domain_building/README.md` before comparing domains.
 
 ## Directory Structure
 
@@ -123,7 +126,19 @@ None is promoted; see `calibration/MODEL_LOG.md` and
 | `COTS_LAGGED_ADULT_HAZARD` | Density/food-triggered adult hazard with lagged burden |
 | `COTS_PREFERRED_PREY_STARVATION` | Food survival driven by remembered **fast** cover (threshold `COTS_STARVATION_PREFERRED_THRESHOLD`, memory `COTS_STARVATION_MEMORY_YEARS`) |
 | `COTS_ADULT_SENESCENCE` | Adult age classes 2..`COTS_SENESCENCE_AGE`; the plus group dies at `COTS_SENESCENCE_MORTALITY` |
-| `COTS_PER_CAPITA_CONSUMPTION` | Fixed m² of coral per adult per year (`COTS_CONSUMPTION_M2_PER_ADULT_YEAR`), preferred prey first. Requires a resolved density unit; not yet run |
+| `COTS_PER_CAPITA_CONSUMPTION` | Fixed m² of coral per adult per year (`COTS_CONSUMPTION_M2_PER_ADULT_YEAR`), preferred prey first, divided by site habitable fraction `k` |
+| `COTS_PREFERRED_CONDITION` | Fecundity condition from remembered **fast** cover (`COTS_CONDITION_SATURATION`, `COTS_CONDITION_MEMORY_YEARS`) |
+| `COTS_PREY_SWITCHING` | MICE-style logistic switch to non-preferred prey (retired: stabilises a plateau) |
+| `COTS_DIET_LINKED_STARVATION`, `COTS_NONPREFERRED_FEEDING_EFFICIENCY` | Repairs to prey switching (also retired) |
+| `COTS_JUVENILE_PREDATION` | Saturating juvenile predator pit `Q·J/(J+Q)`, capacity `COTS_JUVENILE_PREDATION_CAPACITY` (COTS/ha/yr; tuned, not evidence-bounded) |
+| `COTS_PREFERRED_MATURATION` | Maturation fraction `sqrt(remembered fast cover)`; retained juveniles stay herbivorous |
+| `COTS_ALLEE_STRETCHED` | Fertilisation `exp(-(3/A)^COTS_ALLEE_EXPONENT)` instead of the Hill form; scale held at 3 COTS/ha |
+| `COTS_OUTBREAK_COLLAPSE` | ReefMod-style die-off: after `COTS_COLLAPSE_DURATION_YEARS` years with adults ≥ `COTS_COLLAPSE_THRESHOLD_HA` (67.5/ha), adults (and N2 with `COTS_COLLAPSE_JUVENILES`) reset to `COTS_COLLAPSE_BACKGROUND_HA` (0.25/ha). Tested 2026-10-12: counterproductive |
+
+The project lead's working configuration ("condition, no switching") turns on
+per-capita grazing, preferred-prey starvation, senescence and preferred
+condition, with `q = 0.015` COTS/tow per COTS/ha. See
+`calibration/CURRENT_STATE.md` for the current leading candidate.
 
 ### Prey Categories
 
@@ -206,9 +221,9 @@ loss = Σ_reef [ Σ_obs (sim_norm - emp_norm)²
 4. **Single DHW scenario** — The historical domain uses duplicated DHW
    columns (same values in both "scenarios"). No stochastic DHW sampling.
 
-5. **No cyclone forcing** — Cyclone tracks are zeroed in the historical
-   domain. Real cyclone damage (e.g., Cyclone Ita 2014) likely influenced
-   the COTS-coral dynamics.
+5. **Cyclone forcing only in v0.3** — v0.1/v0.2 have zero cyclone mortality.
+   v0.3 adds site × year mortality from RRN hours of ≥4 m waves (Ita 2014,
+   Nathan 2015); see `domain_building/README.md`.
 
 ---
 

@@ -37,6 +37,39 @@ mutable struct LizardDomain <: Domain
     cots_init_density::Union{Vector{Float64}, Nothing}
 end
 
+"""
+    load_lizard_cyclone_mortality(csv_path, loc_ids, timeframe, functional_groups)
+
+Read a site x calendar-year table of cyclone coral mortality fractions (columns
+`site_id` and one per year) into a `timesteps x locs x species x scenarios` cube.
+The same fraction is applied to every functional group.
+"""
+function load_lizard_cyclone_mortality(
+    csv_path::String,
+    loc_ids::AbstractVector{<:AbstractString},
+    timeframe::AbstractVector,
+    functional_groups
+)::YAXArray
+    isfile(csv_path) || error("Declared cyclone mortality file is missing: $csv_path")
+    table = CSV.read(csv_path, DataFrame; types=Dict(:site_id => String))
+    rows = Dict(String(id) => i for (i, id) in enumerate(table.site_id))
+    all(haskey(rows, String(id)) for id in loc_ids) ||
+        error("Cyclone mortality table does not cover every domain location")
+    year_columns = String[string(Int(year)) for year in collect(timeframe)]
+    all(in(names(table)), year_columns) ||
+        error("Cyclone mortality table does not cover every domain timestep")
+    values = Matrix{Float64}(table[Int[rows[String(id)] for id in loc_ids], year_columns])
+    all(isfinite, values) && all(0.0 .<= values .<= 1.0) ||
+        error("Cyclone mortality fractions must lie in [0, 1]")
+    n_groups = length(functional_groups)
+    mortality = zeros(Float64, length(timeframe), length(loc_ids), n_groups, 1)
+    for g in 1:n_groups
+        mortality[:, :, g, 1] .= permutedims(values)
+    end
+    return DataCube(mortality; timesteps=timeframe, locs=loc_ids,
+        species=functional_groups, scenarios=[1])
+end
+
 function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDomain
     isdir(path) || error("Path does not exist or is not a directory.")
 
@@ -180,10 +213,17 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
 
     # dhw already loaded above
     
-    # Wave and cyclone data are zeroes for now since we don't have them
+    # Wave data are zero. Cyclone mortality is zero unless the data package
+    # declares a site x year mortality table (opt-in; v0.1/v0.2 have none).
     functional_groups = ADRIA.functional_group_names()
     wave_scens = ZeroDataCube(; T=Float64, timesteps=timeframe, locs=loc_ids, scenarios=[1])
-    cyclone_mortality = ZeroDataCube(; T=Float64, timesteps=timeframe, locs=loc_ids, species=functional_groups, scenarios=[1])
+    cyclone_mortality = if haskey(dpkg_details, "cyclone_mortality")
+        load_lizard_cyclone_mortality(
+            joinpath(path, dpkg_details["cyclone_mortality"]), loc_ids, timeframe, functional_groups
+        )
+    else
+        ZeroDataCube(; T=Float64, timesteps=timeframe, locs=loc_ids, species=functional_groups, scenarios=[1])
+    end
 
     criteria_weights = [
         SeedCriteriaWeights(),

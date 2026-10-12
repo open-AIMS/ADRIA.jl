@@ -20,7 +20,9 @@ const EXPERIMENT = get(ENV, "OWEN_1991_EXPERIMENT", "initialization")
 EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "crash_factorial", "lagged_hazard", "cohort_audit", "structural_crash",
     "unit_migration_q015", "ulp_noise_floor", "unit_compat_k2",
-    "second_wave_audit", "switching_condition") ||
+    "second_wave_audit", "switching_condition", "switching_repair",
+    "habitat_disturbance", "benthic_cyclone", "trough_mechanisms", "initiation",
+    "predation_capacity", "outbreak_collapse") ||
     error("Unknown 1991 experiment")
 const RUN_ID = get(ENV, "OWEN_1991_RUN_ID",
     Dates.format(now(), "yyyymmddTHHMMSS") * "_owen_1991_" * EXPERIMENT)
@@ -74,9 +76,61 @@ length(fixed_scales) == length(TARGETS) || error("Missing frozen observation sca
 # threshold pairing). k converts the archived compressed density unit to COTS/ha
 # using Lizard's frozen scale; it is exact for Lizard only.
 const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "second_wave_audit",
-    "switching_condition")
+    "switching_condition", "switching_repair", "habitat_disturbance", "benthic_cyclone",
+    "trough_mechanisms", "initiation", "predation_capacity", "outbreak_collapse")
+# Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
+# external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
+const INITIATION = EXPERIMENT == "initiation"
+# Preregistered predator-pit capacity tuning grid (2026-10-12): External x5 (working
+# assumption) + gradual Allee, with P off or Q on a fixed log-spaced grid.
+const PIT = EXPERIMENT == "predation_capacity"
+const PIT_CAPACITIES = (20, 30, 45, 70, 100, 150, 220, 330, 500)
+# Preregistered post-outbreak collapse x fast-coral growth screen (2026-10-12):
+# leading candidate (Ext x5 + P(Q=30) + A) x ReefMod-style collapse x coral
+# calibration group (Lizard default 1 vs per-reef RME layer, +/- fast extension x1.2).
+const COLLAPSE = EXPERIMENT == "outbreak_collapse"
+const COLLAPSE_Q = 30.0
+const COLLAPSE_THRESHOLD_HA = 67.5   # ReefMod 2.7 per 400 m^2
+const COLLAPSE_BACKGROUND_HA = 0.25  # ReefMod 0.01 per 400 m^2
+const FAST_LINEAR_EXTENSION_MULTIPLIER = 1.2
+const RME_GBR_LAYER = joinpath(ROOT, "sandbox", "data", "rme_ml_2025_06_05", "data_files",
+    "region", "reefmod_gbr.gpkg")
+const V3RUN = INITIATION || PIT || COLLAPSE
+const V3 = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.3")
+const DOMAIN_PATH = V3RUN ? V3 : V2
+const EXTERNAL_MULTIPLIER = 5.0
+const JUVENILE_PRELOAD_MULTIPLIER = 5.0
+# Preregistered trough-mechanism screen (2026-10-12): predator pit (P), preferred-prey
+# maturation delay (D), gradual Allee (A) on k=0.5 and geomorphic-k + cyclone bases.
+const TROUGH = EXPERIMENT == "trough_mechanisms"
+const GEOMORPHIC_K_CSV = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.2", "derived",
+    "site_habitable_fraction_benthic_geomorphic2025.csv")
+const JUVENILE_PREDATION_CAPACITY = 20.0
+# Preregistered benthic habitable fraction x historical cyclone screen (2026-10-12).
+const BENTHIC_CYCLONE = EXPERIMENT == "benthic_cyclone"
+const DERIVED = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.2", "derived")
+const BENTHIC_K_CSV = joinpath(DERIVED, "site_habitable_fraction_benthic2025.csv")
+const CYCLONE_HOURS_CSV = joinpath(DERIVED, "cyclone_hours4m_rrn2025.csv")
+# Survival exp(b*H) per hour of >=4 m waves: posterior median of the LTMP
+# dose-response (COTS-Coral-OutcomesV2 q3_doseresponse_coefs.csv, -0.0444 / 10 h).
+const CYCLONE_LOG_SURVIVAL_PER_HOUR = -0.00444
+# ADRIA cannot run k = 0 sites (scenario.jl sizes habitable arrays with
+# length(habitable_locs) instead of count, and constrain_recruitment! mixes
+# all-site and habitable-site vectors). Benthic arms floor k at this value and
+# keep zero initial cover where the benthic map gives k = 0.
+const BENTHIC_K_FLOOR = 0.01
+# Preregistered habitat x bleaching screen on the condition model (2026-10-12):
+# RME habitable fraction (1 - sand proportion) versus the k=0.5 placeholder, and
+# a labelled no-bleaching counterfactual. Cyclone/wave forcing remains zero.
+const HABITAT = EXPERIMENT == "habitat_disturbance"
+const RME_ID_LIST = joinpath(ROOT, "sandbox", "data", "rme_ml_2025_06_05", "data_files",
+    "id", "id_list_2024_12_01.csv")
 # Preregistered 2x2 on the per-capita structural base (protocol, 2026-10-12).
 const SWITCHING_CONDITION = EXPERIMENT == "switching_condition"
+# Preregistered prey-switching repair (protocol, 2026-10-12): diet-linked
+# starvation x non-preferred feeding efficiency, all with preferred condition.
+const SWITCHING_REPAIR = EXPERIMENT == "switching_repair"
+const NONPREFERRED_EFFICIENCY = 0.2
 const SWITCH_MIDPOINT = 0.10
 const SWITCH_STEEPNESS = 70.0
 const CONDITION_SATURATION = 0.10
@@ -122,10 +176,45 @@ delete!(ENV, "COTS_INTERNAL_SETTLEMENT_BLACKOUT_START_YEAR")
 delete!(ENV, "COTS_INTERNAL_SETTLEMENT_BLACKOUT_END_YEAR")
 delete!(ENV, "COTS_INITIAL_STATE_CSV")
 
-domain = ADRIA.load_domain(ADRIA.LizardDomain, V2, "historical")
+domain = ADRIA.load_domain(ADRIA.LizardDomain, DOMAIN_PATH, "historical")
+baseline_k = Float64.(domain.loc_data.k)
+rme_k = if HABITAT
+    id_table = CSV.read(RME_ID_LIST, DataFrame; comment="#", header=false,
+        types=Dict(1 => String))
+    lookup = Dict(String(row[1]) => 1.0 - Float64(row[3]) for row in eachrow(id_table))
+    site_rme_k = [get(lookup, String(id), NaN) for id in domain.loc_data.GBRMPA_ID]
+    all(isfinite, site_rme_k) && all(0.0 .< site_rme_k .<= 1.0) ||
+        error("RME habitable fraction missing or invalid for a domain site")
+    site_rme_k
+else
+    baseline_k
+end
+geomorphic_k = if TROUGH
+    table = CSV.read(GEOMORPHIC_K_CSV, DataFrame; types=Dict(:site_id => String))
+    lookup = Dict(row.site_id => Float64(row.k_geomorphic_infill) for row in eachrow(table))
+    all(haskey(lookup, String(id)) for id in domain.loc_ids) ||
+        error("Geomorphic habitable fraction missing for a domain site")
+    raw_geo = [lookup[String(id)] for id in domain.loc_ids]
+    (k=max.(raw_geo, BENTHIC_K_FLOOR), zero=raw_geo .== 0.0)
+else
+    nothing
+end
+benthic = if BENTHIC_CYCLONE
+    table = CSV.read(BENTHIC_K_CSV, DataFrame; types=Dict(:site_id => String))
+    lookup = Dict(row.site_id => (Float64(row.k_benthic), Float64(row.k_benthic_mapped))
+        for row in eachrow(table))
+    all(haskey(lookup, String(id)) for id in domain.loc_ids) ||
+        error("Benthic habitable fraction missing for a domain site")
+    raw_total = [lookup[String(id)][1] for id in domain.loc_ids]
+    raw_mapped = [lookup[String(id)][2] for id in domain.loc_ids]
+    (total=max.(raw_total, BENTHIC_K_FLOOR), mapped=max.(raw_mapped, BENTHIC_K_FLOOR),
+     total_zero=raw_total .== 0.0, mapped_zero=raw_mapped .== 0.0)
+else
+    nothing
+end
 String.(surface.site_id) == String.(domain.loc_ids) ||
     error("1991 surface order does not match model site order")
-mapping = load_reef_area_weights(domain, V2, [t.model for t in TARGETS])
+mapping = load_reef_area_weights(domain, DOMAIN_PATH, [t.model for t in TARGETS])
 Random.seed!(SEED)
 scenario = ADRIA.sample(domain, 2)[1:1, :]
 defaults = ADRIA.param_table(domain)
@@ -146,9 +235,34 @@ domain.dhw_scens = ADRIA.DataCube(Float64.(Array(domain.dhw_scens)[keep, :, :]);
     timesteps=years, sites=domain.loc_ids, scenarios=1:size(domain.dhw_scens, 3))
 domain.wave_scens = ADRIA.ZeroDataCube(; T=Float64, timesteps=years,
     locs=domain.loc_ids, scenarios=[1])
+# Package-declared cyclone mortality (v0.3), sliced to the run window.
+domain_cyclones = ADRIA.DataCube(Float64.(Array(domain.cyclone_mortality_scens)[keep, :, :, :]);
+    timesteps=years, locs=domain.loc_ids,
+    species=ADRIA.functional_group_names(), scenarios=[1])
 domain.cyclone_mortality_scens = ADRIA.ZeroDataCube(; T=Float64,
     timesteps=years, locs=domain.loc_ids,
     species=ADRIA.functional_group_names(), scenarios=[1])
+zero_cyclones = domain.cyclone_mortality_scens
+V3RUN && maximum(Array(domain_cyclones)) > 0.0 ||
+    !V3RUN || error("v0.3 domain did not provide cyclone mortality")
+cyclone_cube = if BENTHIC_CYCLONE || TROUGH
+    hours_table = CSV.read(CYCLONE_HOURS_CSV, DataFrame; types=Dict(:reef_id => String))
+    hours = Dict(String(row.reef_id) => row for row in eachrow(hours_table))
+    reef_ids = String.(domain.loc_data.GBRMPA_ID)
+    all(haskey(hours, id) for id in reef_ids) || error("Cyclone hours missing for a domain reef")
+    n_groups = length(ADRIA.functional_group_names())
+    mortality = zeros(Float64, length(years), length(reef_ids), n_groups, 1)
+    for (yi, year) in enumerate(years), (si, id) in enumerate(reef_ids)
+        value = hours[id][Symbol(string(year))]
+        h = ismissing(value) || !isfinite(Float64(value)) ? 0.0 : Float64(value)
+        mortality[yi, si, :, 1] .= 1.0 - exp(CYCLONE_LOG_SURVIVAL_PER_HOUR * h)
+    end
+    all(0.0 .<= mortality .<= 1.0) || error("Cyclone mortality outside [0, 1]")
+    ADRIA.DataCube(mortality; timesteps=years, locs=domain.loc_ids,
+        species=ADRIA.functional_group_names(), scenarios=[1])
+else
+    zero_cyclones
+end
 md = domain.env_layer_md
 domain.env_layer_md = ADRIA.EnvLayer(md.dpkg_path, md.loc_data_fn, md.loc_id_col,
     md.cluster_id_col, md.init_coral_cov_fn, md.connectivity_fn, md.DHW_fn,
@@ -156,10 +270,15 @@ domain.env_layer_md = ADRIA.EnvLayer(md.dpkg_path, md.loc_data_fn, md.loc_id_col
 baseline_cover = Float64.(Array(domain.init_coral_cover))
 size(baseline_cover, 2) == nrow(surface) || error("Unexpected initial coral dimensions")
 baseline_total = vec(sum(baseline_cover; dims=1))
-all(>(0.0), baseline_total) || error("Cannot rescale zero initial coral cover")
+# v0.3 holds zero cover at non-habitable sites; the manta rescaling (used only by
+# the coral="manta_1989_1991" option) leaves those sites at zero.
+all(>=(0.0), baseline_total) || error("Negative initial coral cover")
+DOMAIN_PATH == V2 && !all(>(0.0), baseline_total) && error("Cannot rescale zero initial coral cover")
+covered = baseline_total .> 0.0
 interpolated_cover = Float64.(surface.coral_manta_9m_fraction_1989_1991_idw)
-new_cover = baseline_cover .* reshape(interpolated_cover ./ baseline_total, 1, :)
-all(isapprox.(vec(sum(new_cover; dims=1)), interpolated_cover; atol=1e-12)) ||
+new_cover = baseline_cover .* reshape(
+    ifelse.(covered, interpolated_cover ./ max.(baseline_total, eps()), 0.0), 1, :)
+all(isapprox.(vec(sum(new_cover; dims=1))[covered], interpolated_cover[covered]; atol=1e-12)) ||
     error("Interpolated coral totals not preserved")
 
 function set_initial_cover!(values)
@@ -210,6 +329,37 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : COLLAPSE ? [
+    (name="$(coral)_$(collapse)", alpha=0.015, coral="inherited_2023", initial="cohort_full")
+    for coral in ("g1", "grme", "grmefast") for collapse in ("none", "D2", "D2J", "D4")
+] : PIT ? [
+    (name="ext5_A", alpha=0.015, coral="inherited_2023", initial="cohort_full");
+    [(name="ext5_PA_q$(capacity)", alpha=0.015, coral="inherited_2023", initial="cohort_full")
+     for capacity in PIT_CAPACITIES]
+] : INITIATION ? [
+    (name=string(init, "_", mech), alpha=0.015, coral="inherited_2023", initial="cohort_full")
+    for init in ("none", "ext5", "juv5", "both") for mech in ("none", "A", "PA")
+] : TROUGH ? [
+    (name=string(base, "_", treatment), alpha=0.015, coral="inherited_2023", initial="cohort_full")
+    for base in ("b05", "bgeo") for treatment in ("none", "P", "D", "A", "PDA")
+] : BENTHIC_CYCLONE ? [
+    (name="k05_nocyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="k05_cyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="ktotal_nocyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="ktotal_cyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="kmapped_nocyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="kmapped_cyc", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : HABITAT ? [
+    (name="k05_bleaching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="krme_bleaching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="k05_no_bleaching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="krme_no_bleaching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : SWITCHING_REPAIR ? [
+    (name="condition_ref", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switching_ref", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switch_diet_starvation", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switch_low_efficiency", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+    (name="switch_diet_starvation_low_efficiency", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
 ] : SWITCHING_CONDITION ? [
     (name="base", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
     (name="switching", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
@@ -245,7 +395,16 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : MIGRATION ? let
+) : PIT || COLLAPSE ? let
+    state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
+    Dict(t.name => state_path for t in treatments)
+end : INITIATION ? let
+    state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
+    juvenile_path = make_initial_state(0.015, "alpha015_cohort_juvenile_x5";
+        cohort_multiplier=JUVENILE_PRELOAD_MULTIPLIER)
+    Dict(t.name => (startswith(t.name, "juv5") || startswith(t.name, "both") ?
+        juvenile_path : state_path) for t in treatments)
+end : MIGRATION ? let
     state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
     compat_path = make_initial_state(0.015, "alpha015_cohort_full_times_k";
         cohort_multiplier=1.0, density_multiplier=K_MIGRATION)
@@ -263,6 +422,57 @@ archived_density_params = Dict(name => Float64(scenario[1, name])
 # random stream. Migration screens pin the archived control's derived seed.
 archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
     for name in names(scenario) if name != "RCP"))
+# Coral calibration groups. The Lizard loader assigns group 1 to every site; the
+# GBR-wide RME layer assigns each reef a group. ADRIA keeps only the CB-group
+# factors present in the domain and indexes them by group number, so RME groups
+# are relabelled to contiguous IDs that carry each RME group's default factors.
+base_cb_groups = copy(domain.loc_data.CB_CALIB_GROUPS)
+rme_cb = if COLLAPSE
+    layer = ADRIA.GDF.read(RME_GBR_LAYER)
+    lookup = Dict(String(row.GBRMPA_ID) => Int(row.CB_CALIB_GROUPS) for row in eachrow(layer))
+    reef_ids = String.(domain.loc_data.GBRMPA_ID)
+    all(haskey(lookup, id) for id in reef_ids) || error("RME layer lacks a domain reef")
+    site_groups = [lookup[id] for id in reef_ids]
+    rme_ids = sort(unique(site_groups))
+    label_of = Dict(g => i for (i, g) in enumerate(rme_ids))
+    (rme_ids=rme_ids, site_groups=site_groups, labels=[label_of[g] for g in site_groups],
+     reef_groups=Dict(id => lookup[id] for id in unique(reef_ids)))
+else
+    nothing
+end
+function coral_group_scenario(base::DataFrame, fast_multiplier::Float64)::DataFrame
+    rng_state = copy(Random.default_rng())
+    domain.loc_data.CB_CALIB_GROUPS .= rme_cb.labels
+    grouped = ADRIA.sample(domain, 2)[1:1, :]
+    domain.loc_data.CB_CALIB_GROUPS .= base_cb_groups
+    copy!(Random.default_rng(), rng_state)
+    for name in names(grouped)
+        occursin("cb_group_", name) && continue
+        hasproperty(base, Symbol(name)) || error("Missing scenario factor $name")
+        grouped[!, name] .= base[1, name]
+    end
+    extension = ADRIA.linear_extension_group_scale_factors()
+    mortality = ADRIA.mb_rate_group_scale_factors()
+    acceleration = (steepness=ADRIA.growth_acceleration_steepness(),
+        midpoint=ADRIA.growth_acceleration_midpoint(),
+        height=ADRIA.growth_acceleration_height())
+    for (label, group) in enumerate(rme_cb.rme_ids)
+        for (index, fg) in enumerate(string.(ADRIA.functional_group_names()))
+            # Fast prey (COTS prey map) are functional groups 1-3.
+            multiplier = index <= 3 ? fast_multiplier : 1.0
+            grouped[!, "linear_extension_scale_cb_group_$(label)_$(fg)"] .=
+                extension[index, group] * multiplier
+            grouped[!, "mb_rate_scale_cb_group_$(label)_$(fg)"] .= mortality[index, group]
+        end
+        for parameter in (:steepness, :midpoint, :height)
+            grouped[!, "growth_acceleration_cb_group_$(label)_$(parameter)"] .=
+                getfield(acceleration, parameter)[group]
+        end
+    end
+    return grouped
+end
+scenario_rme = COLLAPSE ? coral_group_scenario(scenario, 1.0) : nothing
+scenario_rme_fast = COLLAPSE ? coral_group_scenario(scenario, FAST_LINEAR_EXTENSION_MULTIPLIER) : nothing
 raw_obs = CSV.read(OBS, DataFrame)
 scores = DataFrame(treatment=String[], reef_name=String[], observation_treatment=String[],
     loss=Float64[], sim_peak_count=Int[], sim_peak_years=String[],
@@ -292,7 +502,10 @@ mechanisms = DataFrame(treatment=String[], reef_name=String[], year=Int[],
     maturation_ha=Float64[], fast_coral=Float64[], total_coral=Float64[],
     preferred_food_memory=Float64[], food_survival=Float64[],
     senescent_adults_ha=Float64[], senescent_deaths_ha=Float64[],
-    preferred_diet_share=Float64[], body_condition=Float64[])
+    preferred_diet_share=Float64[], juvenile_predation_ha=Float64[],
+    maturation_fraction=Float64[], body_condition=Float64[],
+    total_coral_site_fraction=Float64[], fast_coral_site_fraction=Float64[],
+    outbreak_clock=Float64[], collapse_removed_ha=Float64[])
 site_audit = DataFrame(treatment=String[], reef_name=String[], site_index=Int[],
     reef_weight=Float64[], habitable_fraction=Float64[], year=Int[],
     recruits_ha=Float64[], subadults_ha=Float64[], adults_ha=Float64[],
@@ -317,7 +530,9 @@ for t in treatments
     structural = EXPERIMENT == "structural_crash"
     compat = MIGRATION && t.name == "compat_rescaled_exact"
     k = MIGRATION ? K_MIGRATION : 1.0
-    migration_structural = MIGRATION && (endswith(t.name, "_structural") || SWITCHING_CONDITION)
+    migration_structural = MIGRATION &&
+        (endswith(t.name, "_structural") || SWITCHING_CONDITION || SWITCHING_REPAIR || HABITAT ||
+         BENTHIC_CYCLONE || TROUGH || V3RUN)
     ENV["COTS_PREFERRED_PREY_STARVATION"] = (structural &&
         occursin("preferred_starvation", t.name)) || migration_structural ? "true" : "false"
     ENV["COTS_STARVATION_PREFERRED_THRESHOLD"] = string(STRUCTURAL_THRESHOLD)
@@ -327,13 +542,51 @@ for t in treatments
     ENV["COTS_SENESCENCE_AGE"] = string(STRUCTURAL_SENESCENCE_AGE)
     ENV["COTS_SENESCENCE_MORTALITY"] = string(STRUCTURAL_SENESCENCE_MORTALITY)
     ENV["COTS_PER_CAPITA_CONSUMPTION"] = MIGRATION &&
-        (startswith(t.name, "per_capita") || SWITCHING_CONDITION) ? "true" : "false"
-    ENV["COTS_PREY_SWITCHING"] = SWITCHING_CONDITION &&
-        startswith(t.name, "switching") ? "true" : "false"
+        (startswith(t.name, "per_capita") || SWITCHING_CONDITION || SWITCHING_REPAIR ||
+         HABITAT || BENTHIC_CYCLONE || TROUGH || V3RUN) ? "true" : "false"
+    ENV["COTS_PREY_SWITCHING"] = (SWITCHING_CONDITION && startswith(t.name, "switching")) ||
+        (SWITCHING_REPAIR && t.name != "condition_ref") ? "true" : "false"
+    ENV["COTS_DIET_LINKED_STARVATION"] = SWITCHING_REPAIR &&
+        occursin("diet_starvation", t.name) ? "true" : "false"
+    ENV["COTS_NONPREFERRED_FEEDING_EFFICIENCY"] = SWITCHING_REPAIR &&
+        occursin("low_efficiency", t.name) ? string(NONPREFERRED_EFFICIENCY) : "1.0"
     ENV["COTS_SWITCH_MIDPOINT"] = string(SWITCH_MIDPOINT)
     ENV["COTS_SWITCH_STEEPNESS"] = string(SWITCH_STEEPNESS)
-    ENV["COTS_PREFERRED_CONDITION"] = SWITCHING_CONDITION &&
-        endswith(t.name, "condition") ? "true" : "false"
+    ENV["COTS_PREFERRED_CONDITION"] = (SWITCHING_CONDITION &&
+        endswith(t.name, "condition")) || SWITCHING_REPAIR || HABITAT || BENTHIC_CYCLONE ||
+        TROUGH || V3RUN ? "true" : "false"
+    # Habitat screen: run-time habitable fraction and bleaching counterfactual.
+    domain.loc_data.k .= HABITAT && startswith(t.name, "krme") ? rme_k :
+        BENTHIC_CYCLONE && startswith(t.name, "ktotal") ? benthic.total :
+        BENTHIC_CYCLONE && startswith(t.name, "kmapped") ? benthic.mapped :
+        TROUGH && startswith(t.name, "bgeo") ? geomorphic_k.k : baseline_k
+    domain.cyclone_mortality_scens = V3RUN ? domain_cyclones :
+        (BENTHIC_CYCLONE && endswith(t.name, "_cyc")) ||
+        (TROUGH && startswith(t.name, "bgeo")) ? cyclone_cube : zero_cyclones
+    trough_treatment = COLLAPSE ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
+    external_multiplier = COLLAPSE ||
+        (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
+        EXTERNAL_MULTIPLIER : 1.0
+    predation_capacity = COLLAPSE ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
+        parse(Float64, split(t.name, "_q")[end]) : JUVENILE_PREDATION_CAPACITY
+    collapse_arm = COLLAPSE ? split(t.name, "_")[2] : "none"
+    ENV["COTS_OUTBREAK_COLLAPSE"] = collapse_arm == "none" ? "false" : "true"
+    ENV["COTS_COLLAPSE_THRESHOLD_HA"] = string(COLLAPSE_THRESHOLD_HA)
+    ENV["COTS_COLLAPSE_BACKGROUND_HA"] = string(COLLAPSE_BACKGROUND_HA)
+    ENV["COTS_COLLAPSE_DURATION_YEARS"] = startswith(collapse_arm, "D2") ? "2" : "4"
+    ENV["COTS_COLLAPSE_JUVENILES"] = collapse_arm == "D2J" ? "true" : "false"
+    domain.loc_data.CB_CALIB_GROUPS .= COLLAPSE && startswith(t.name, "grme") ?
+        rme_cb.labels : base_cb_groups
+    ENV["COTS_JUVENILE_PREDATION"] = occursin("P", trough_treatment) ? "true" : "false"
+    ENV["COTS_JUVENILE_PREDATION_CAPACITY"] = string(predation_capacity)
+    ENV["COTS_PREFERRED_MATURATION"] = occursin("D", trough_treatment) ? "true" : "false"
+    ENV["COTS_ALLEE_STRETCHED"] = occursin("A", trough_treatment) ? "true" : "false"
+    ENV["COTS_ALLEE_EXPONENT"] = "0.5"
+    if HABITAT
+        ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
+    else
+        delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
+    end
     ENV["COTS_CONDITION_SATURATION"] = string(CONDITION_SATURATION)
     ENV["COTS_CONDITION_MEMORY_YEARS"] = string(CONDITION_MEMORY_YEARS)
     ENV["COTS_CONSUMPTION_M2_PER_ADULT_YEAR"] = string(PER_CAPITA_M2_PER_ADULT_YEAR)
@@ -351,7 +604,16 @@ for t in treatments
     end
     scenario[!, :m3] .= EXPERIMENT == "crash_factorial" &&
         occursin("mortality030", t.name) ? 0.30 : archived_m3
-    set_initial_cover!(t.coral == "manta_1989_1991" ? new_cover : baseline_cover)
+    initial_cover = t.coral == "manta_1989_1991" ? new_cover : baseline_cover
+    if TROUGH && startswith(t.name, "bgeo")
+        initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
+    end
+    if BENTHIC_CYCLONE && (startswith(t.name, "ktotal") || startswith(t.name, "kmapped"))
+        # Sites the benthic map gives k = 0 (floored for ADRIA) start with no coral.
+        zero_mask = startswith(t.name, "ktotal") ? benthic.total_zero : benthic.mapped_zero
+        initial_cover = initial_cover .* reshape(Float64.(.!zero_mask), 1, :)
+    end
+    set_initial_cover!(initial_cover)
     if t.name == "inherited_grazing_off_2004_2012"
         ENV["COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR"] = "2004"
         ENV["COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR"] = "2012"
@@ -361,7 +623,8 @@ for t in treatments
     end
     ENV["ADRIA_COTS_ENABLED"] = t.initial == "no_cots" ? "false" : "true"
     ENV["COTS_LARVAL_FECUNDITY"] = t.initial == "no_cots" ? "0.0" : string(fecundity)
-    ENV["COTS_EXTERNAL_OUTBREAK_PRODUCTION"] = t.initial == "no_cots" ? "0.0" : string(boundary * k)
+    ENV["COTS_EXTERNAL_OUTBREAK_PRODUCTION"] = t.initial == "no_cots" ? "0.0" :
+        string(boundary * k * external_multiplier)
     ENV["COTS_IMMIGRATION_SCALAR"] = t.initial == "no_cots" ? "0.0" : "1.0"
     if t.initial in ("legacy", "no_cots")
         delete!(ENV, "COTS_INITIAL_STATE_CSV")
@@ -372,7 +635,14 @@ for t in treatments
     end
     Random.seed!(SEED)
     try
-        result = ADRIA.run_scenario(domain, scenario[1, :])
+        active_scenario = COLLAPSE && startswith(t.name, "grmefast") ? scenario_rme_fast :
+            COLLAPSE && startswith(t.name, "grme") ? scenario_rme : scenario
+        if active_scenario !== scenario
+            for name in (:a_F, :a_S, :b_ricker, :IMM, :m3, :allee_threshold)
+                active_scenario[!, name] .= scenario[1, name]
+            end
+        end
+        result = ADRIA.run_scenario(domain, active_scenario[1, :])
         Int.(result.cots_calendar_year) == years || error("1991 calendar alignment failed")
         if t.initial == "no_cots"
             maximum(abs, result.cots_log) == 0.0 ||
@@ -400,6 +670,9 @@ for t in treatments
             end
         end
         fast_coral = dropdims(sum(Array(result.raw)[:, 1:3, :, :]; dims=(2, 3)); dims=(2, 3))
+        site_k = reshape(Float64.(domain.loc_data.k), 1, :)
+        coral_site = Matrix(coral) .* site_k
+        fast_site = fast_coral .* site_k
         if EXPERIMENT == "lagged_hazard"
             size(result.cots_hazard_log) == (length(years), 3, length(domain.loc_ids)) ||
                 error("Unexpected site hazard log dimensions")
@@ -441,17 +714,24 @@ for t in treatments
                     for channel in 1:3] : Vector{Float64}[]
             reef_mechanisms = EXPERIMENT == "structural_crash" || MIGRATION ?
                 vcat([aggregate_reef_density(Matrix(result.cots_mechanism_log[:, channel, :]), m)
-                    for channel in 1:5],
+                    for channel in 1:7],
                     [aggregate_reef_density(Matrix(result.cots_condition_log), m)]) :
                 Vector{Float64}[]
+            reef_collapse = EXPERIMENT == "structural_crash" || MIGRATION ?
+                [aggregate_reef_density(Matrix(result.cots_mechanism_log[:, channel, :]), m)
+                    for channel in 8:9] : Vector{Float64}[]
             reef_fast_coral = aggregate_reef_density(fast_coral, m)
+            reef_coral_site = aggregate_reef_density(coral_site, m)
+            reef_fast_site = aggregate_reef_density(fast_site, m)
             scale = MIGRATION ? Q_FIXED : fixed_scales[reef]
             for (idx, year) in enumerate(years)
                 if EXPERIMENT == "structural_crash" || MIGRATION
                     push!(mechanisms, (t.name, reef, year,
                         reef_stages[1][idx], reef_stages[2][idx], reef_stages[3][idx],
                         reef_flows[5][idx], reef_fast_coral[idx], coral_reef[idx],
-                        (values[idx] for values in reef_mechanisms)...))
+                        (values[idx] for values in reef_mechanisms)...,
+                        reef_coral_site[idx], reef_fast_site[idx],
+                        (values[idx] for values in reef_collapse)...))
                 end
                 push!(trajectories, (t.name, reef, year,
                     Int(result.cots_forcing_year[idx]), adults[idx], adults[idx] * scale,
@@ -530,12 +810,21 @@ delete!(ENV, "COTS_LAGGED_ADULT_HAZARD")
 delete!(ENV, "COTS_HAZARD_FOOD_COUPLED")
 delete!(ENV, "COTS_HAZARD_MAX")
 delete!(ENV, "ADRIA_RNG_SEED")
+delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
+domain.loc_data.k .= baseline_k
+domain.cyclone_mortality_scens = zero_cyclones
+domain.loc_data.CB_CALIB_GROUPS .= base_cb_groups
 for name in ("COTS_PREFERRED_PREY_STARVATION", "COTS_STARVATION_PREFERRED_THRESHOLD",
         "COTS_STARVATION_MEMORY_YEARS", "COTS_ADULT_SENESCENCE", "COTS_SENESCENCE_AGE",
         "COTS_SENESCENCE_MORTALITY", "COTS_PER_CAPITA_CONSUMPTION",
         "COTS_CONSUMPTION_M2_PER_ADULT_YEAR", "COTS_PREY_SWITCHING",
         "COTS_SWITCH_MIDPOINT", "COTS_SWITCH_STEEPNESS", "COTS_PREFERRED_CONDITION",
-        "COTS_CONDITION_SATURATION", "COTS_CONDITION_MEMORY_YEARS")
+        "COTS_CONDITION_SATURATION", "COTS_CONDITION_MEMORY_YEARS",
+        "COTS_DIET_LINKED_STARVATION", "COTS_NONPREFERRED_FEEDING_EFFICIENCY",
+        "COTS_JUVENILE_PREDATION", "COTS_JUVENILE_PREDATION_CAPACITY",
+        "COTS_PREFERRED_MATURATION", "COTS_ALLEE_STRETCHED", "COTS_ALLEE_EXPONENT",
+        "COTS_OUTBREAK_COLLAPSE", "COTS_COLLAPSE_THRESHOLD_HA", "COTS_COLLAPSE_BACKGROUND_HA",
+        "COTS_COLLAPSE_DURATION_YEARS", "COTS_COLLAPSE_JUVENILES")
     delete!(ENV, name)
 end
 
@@ -560,6 +849,85 @@ metadata = Dict(
         "control plus density-only and density-times-food at hazard_max=0.75 and 1.5; rho=0.5 threshold=1.5 COTS/ha width=0.5 COTS/ha coral threshold=0.15 fraction coral width=0.03 fraction" : "not tested",
     "structural_crash_factorial" => EXPERIMENT == "structural_crash" ?
         "control, preferred_starvation, senescence and both. preferred threshold=$(STRUCTURAL_THRESHOLD) fast-cover fraction of habitable area; memory=$(STRUCTURAL_MEMORY_YEARS) yr; senescence age=$(STRUCTURAL_SENESCENCE_AGE) yr; senescent mortality=$(STRUCTURAL_SENESCENCE_MORTALITY) annual fraction; ages 2-5 keep archived m3; initial adults on stable age profile; per-capita consumption off" : "not tested",
+    "outbreak_collapse_screen" => COLLAPSE ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_datapackage_sha256" => file_sha256(joinpath(DOMAIN_PATH, "datapackage.json")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "domain_gpkg_sha256" => file_sha256(joinpath(DOMAIN_PATH, "spatial", "lizard_cluster.gpkg")),
+        "base_model" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, bleaching on, v0.3, Ext x$(EXTERNAL_MULTIPLIER), P Q=$(COLLAPSE_Q) (tuned), gradual Allee",
+        "collapse" => "after D consecutive years with post-transition adults >= $(COLLAPSE_THRESHOLD_HA) COTS/ha, adults (D2J: N2+adults) rescaled to $(COLLAPSE_BACKGROUND_HA) COTS/ha keeping proportions; D2: D=2, D2J: D=2 with N2, D4: D=4",
+        "rme_layer" => RME_GBR_LAYER, "rme_layer_sha256" => file_sha256(RME_GBR_LAYER),
+        "rme_groups_present" => rme_cb.rme_ids,
+        "rme_group_site_counts" => Dict(string(g) => count(==(g), rme_cb.site_groups) for g in rme_cb.rme_ids),
+        "rme_group_of_calibration_reefs" => Dict(t.model => rme_cb.reef_groups[String(domain.loc_data.GBRMPA_ID[first(mapping[t.model].indices)])] for t in TARGETS),
+        "coral_arms" => "g1: CB group 1 everywhere (Lizard loader default); grme: per-reef RME groups relabelled contiguously with each RME group's default factors; grmefast: grme with fast-group (1-3) linear-extension scale x$(FAST_LINEAR_EXTENSION_MULTIPLIER)",
+        "reference" => "g1_none must replay ext5_PA_q30 of 20261012T_predation_capacity_1991_v1",
+    ) : "not tested",
+    "predation_capacity_grid" => PIT ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_datapackage_sha256" => file_sha256(joinpath(DOMAIN_PATH, "datapackage.json")),
+        "domain_provenance_sha256" => file_sha256(joinpath(DOMAIN_PATH, "provenance.json")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "domain_gpkg_sha256" => file_sha256(joinpath(DOMAIN_PATH, "spatial", "lizard_cluster.gpkg")),
+        "base_model" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, bleaching on, v0.3 geomorphic k + RRN cyclones, gradual Allee exp(-(3/A)^0.5)",
+        "external_multiplier" => "x$(EXTERNAL_MULTIPLIER) on migrated external outbreak production, all arms (working assumption, project lead 2026-10-12)",
+        "capacities_cots_ha_yr" => collect(PIT_CAPACITIES),
+        "Q_status" => "tuned (calibrated) parameter; not evidence-bounded on the model's effective age-1 juvenile scale",
+        "selection" => "min summed fixed_q0015 smoothed_3y loss over 4 reefs, first peak required on every reef; ties to smaller Q",
+        "references" => "ext5_A and ext5_PA_q20 must replay ext5_A and ext5_PA of 20261012T_initiation_1991_v3",
+    ) : "not tested",
+    "initiation_factorial" => INITIATION ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_datapackage_sha256" => file_sha256(joinpath(DOMAIN_PATH, "datapackage.json")),
+        "domain_provenance_sha256" => file_sha256(joinpath(DOMAIN_PATH, "provenance.json")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "domain_gpkg_sha256" => file_sha256(joinpath(DOMAIN_PATH, "spatial", "lizard_cluster.gpkg")),
+        "base_model" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, bleaching on, v0.3 geomorphic k + RRN cyclones",
+        "external_multiplier" => "x$(EXTERNAL_MULTIPLIER) on migrated external outbreak production in *ext5*/*both* arms (all years)",
+        "juvenile_preload" => "x$(JUVENILE_PRELOAD_MULTIPLIER) on 6:3:1 juvenile/subadult preload in *juv5*/*both* arms; adults unchanged",
+        "P" => "juvenile predation Q=$(JUVENILE_PREDATION_CAPACITY)", "A" => "fertilisation exp(-(3/A)^0.5)",
+        "reference" => "none_none must replay bgeo_none of 20261012T_trough_mechanisms_1991_v1",
+    ) : "not tested",
+    "trough_mechanisms_factorial" => TROUGH ? Dict(
+        "base_model" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, bleaching on",
+        "b05" => "k=0.5, no cyclones (b05_none replays benthic v2 k05_nocyc)",
+        "bgeo" => "geomorphic-infilled k (floor $(BENTHIC_K_FLOOR); zero initial cover where k=0) + RRN cyclones",
+        "geomorphic_k_csv" => GEOMORPHIC_K_CSV, "geomorphic_k_sha256" => file_sha256(GEOMORPHIC_K_CSV),
+        "geomorphic_k_provenance_sha256" => file_sha256(replace(GEOMORPHIC_K_CSV, ".csv" => ".provenance.json")),
+        "geomorphic_k_mean" => sum(geomorphic_k.k) / length(geomorphic_k.k),
+        "geomorphic_k_zero_sites" => count(geomorphic_k.zero),
+        "cyclone_hours_csv" => CYCLONE_HOURS_CSV, "cyclone_hours_sha256" => file_sha256(CYCLONE_HOURS_CSV),
+        "cyclone_mortality" => "1 - exp($(CYCLONE_LOG_SURVIVAL_PER_HOUR) * hours)",
+        "P" => "juvenile predation Q*J/(J+Q), Q=$(JUVENILE_PREDATION_CAPACITY) COTS/ha/yr",
+        "D" => "maturation fraction sqrt(remembered fast cover); retained juveniles herbivorous (no coral starvation)",
+        "A" => "fertilisation exp(-(3/A)^0.5) (CoCoNet form, scale 3 COTS/ha)",
+    ) : "not tested",
+    "benthic_cyclone_factorial" => BENTHIC_CYCLONE ? Dict(
+        "base" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, bleaching on",
+        "benthic_k_csv" => BENTHIC_K_CSV, "benthic_k_sha256" => file_sha256(BENTHIC_K_CSV),
+        "benthic_k_provenance_sha256" => file_sha256(replace(BENTHIC_K_CSV, ".csv" => ".provenance.json")),
+        "k_total_mean" => sum(benthic.total) / length(benthic.total),
+        "k_mapped_mean" => sum(benthic.mapped) / length(benthic.mapped),
+        "k_zero_rule" => "benthic k floored at $(BENTHIC_K_FLOOR) (ADRIA cannot run k = 0 sites); initial cover zero where benthic k = 0",
+        "k_zero_sites_floored_total" => count(benthic.total_zero),
+        "k_zero_sites_floored_mapped" => count(benthic.mapped_zero),
+        "cyclone_hours_csv" => CYCLONE_HOURS_CSV, "cyclone_hours_sha256" => file_sha256(CYCLONE_HOURS_CSV),
+        "cyclone_hours_provenance_sha256" => file_sha256(replace(CYCLONE_HOURS_CSV, ".csv" => ".provenance.json")),
+        "cyclone_mortality" => "1 - exp($(CYCLONE_LOG_SURVIVAL_PER_HOUR) * hours of >=4 m waves), all groups and sizes",
+        "derived_inputs_access" => "internal/licensed sources; outputs in git-ignored sandbox/data",
+    ) : "not tested",
+    "habitat_disturbance_factorial" => HABITAT ? Dict(
+        "base" => "per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching",
+        "k_rme_source" => "1 - sand_proportion from RME id_list_2024_12_01.csv via GBRMPA_ID",
+        "k_rme_sha256" => file_sha256(RME_ID_LIST),
+        "k_rme_mean" => sum(rme_k) / length(rme_k),
+        "k_rme_min" => minimum(rme_k), "k_rme_max" => maximum(rme_k),
+        "bleaching_counterfactual" => "ADRIA_DEBUG_BLEACHING_SCALAR=0 in *no_bleaching* arms; diagnostic only",
+        "cyclones_waves" => "zero; no historical cyclone hindcast available locally",
+    ) : "not tested",
+    "switching_repair_factorial" => SWITCHING_REPAIR ?
+        "all arms: per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1 memory, H2 senescence, preferred condition saturation=$(CONDITION_SATURATION) memory=$(CONDITION_MEMORY_YEARS) yr; switching midpoint=$(SWITCH_MIDPOINT) steepness=$(SWITCH_STEEPNESS) except condition_ref; diet-linked starvation in *diet_starvation*; non-preferred efficiency=$(NONPREFERRED_EFFICIENCY) in *low_efficiency* (else 1)" :
+        "not tested",
     "switching_condition_factorial" => SWITCHING_CONDITION ?
         "base = per_capita_structural (c=$(PER_CAPITA_M2_PER_ADULT_YEAR) m2/adult/yr; H1 threshold=$(STRUCTURAL_THRESHOLD) memory=$(STRUCTURAL_MEMORY_YEARS) yr; H2 age=$(STRUCTURAL_SENESCENCE_AGE) mortality=$(STRUCTURAL_SENESCENCE_MORTALITY)); prey switching midpoint=$(SWITCH_MIDPOINT) habitable fraction steepness=$(SWITCH_STEEPNESS); preferred condition saturation=$(CONDITION_SATURATION) memory=$(CONDITION_MEMORY_YEARS) yr" :
         "not tested",

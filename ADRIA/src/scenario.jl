@@ -1209,7 +1209,21 @@ function run_model(
         switch_steepness = parse(Float64, get(ENV, "COTS_SWITCH_STEEPNESS", "70.0")),
         preferred_condition = lowercase(get(ENV, "COTS_PREFERRED_CONDITION", "false")) == "true",
         condition_saturation = parse(Float64, get(ENV, "COTS_CONDITION_SATURATION", "0.10")),
-        condition_memory_years = parse(Float64, get(ENV, "COTS_CONDITION_MEMORY_YEARS", "1.0"))
+        condition_memory_years = parse(Float64, get(ENV, "COTS_CONDITION_MEMORY_YEARS", "1.0")),
+        diet_linked_starvation = lowercase(get(ENV, "COTS_DIET_LINKED_STARVATION", "false")) == "true",
+        nonpreferred_feeding_efficiency = parse(Float64,
+            get(ENV, "COTS_NONPREFERRED_FEEDING_EFFICIENCY", "1.0")),
+        juvenile_predation = lowercase(get(ENV, "COTS_JUVENILE_PREDATION", "false")) == "true",
+        juvenile_predation_capacity = parse(Float64,
+            get(ENV, "COTS_JUVENILE_PREDATION_CAPACITY", "20.0")),
+        preferred_maturation = lowercase(get(ENV, "COTS_PREFERRED_MATURATION", "false")) == "true",
+        allee_stretched = lowercase(get(ENV, "COTS_ALLEE_STRETCHED", "false")) == "true",
+        allee_exponent = parse(Float64, get(ENV, "COTS_ALLEE_EXPONENT", "0.5")),
+        outbreak_collapse = lowercase(get(ENV, "COTS_OUTBREAK_COLLAPSE", "false")) == "true",
+        collapse_threshold_ha = parse(Float64, get(ENV, "COTS_COLLAPSE_THRESHOLD_HA", "67.5")),
+        collapse_duration_years = parse(Int, get(ENV, "COTS_COLLAPSE_DURATION_YEARS", "4")),
+        collapse_background_ha = parse(Float64, get(ENV, "COTS_COLLAPSE_BACKGROUND_HA", "0.25")),
+        collapse_juveniles = lowercase(get(ENV, "COTS_COLLAPSE_JUVENILES", "false")) == "true"
     )
 
     # Initialize COTS populations (zero if disabled)
@@ -1347,6 +1361,27 @@ function run_model(
         cots_params.condition_memory_years > 0.0 ||
             error("COTS_CONDITION_MEMORY_YEARS must be positive")
     end
+    if cots_params.diet_linked_starvation
+        cots_params.prey_switching && cots_params.preferred_prey_starvation || error(
+            "COTS_DIET_LINKED_STARVATION requires COTS_PREY_SWITCHING and COTS_PREFERRED_PREY_STARVATION")
+    end
+    0.0 <= cots_params.nonpreferred_feeding_efficiency <= 1.0 ||
+        error("COTS_NONPREFERRED_FEEDING_EFFICIENCY must lie in [0, 1]")
+    cots_params.juvenile_predation && !(cots_params.juvenile_predation_capacity > 0.0) &&
+        error("COTS_JUVENILE_PREDATION_CAPACITY must be positive")
+    cots_params.preferred_maturation && cots_params.juvenile_storage &&
+        error("COTS_PREFERRED_MATURATION and COTS_JUVENILE_STORAGE are exclusive")
+    cots_params.allee_stretched && !(cots_params.allee_exponent > 0.0) &&
+        error("COTS_ALLEE_EXPONENT must be positive")
+    if cots_params.outbreak_collapse
+        isfinite(cots_params.collapse_threshold_ha) && cots_params.collapse_threshold_ha > 0.0 ||
+            error("COTS_COLLAPSE_THRESHOLD_HA must be positive")
+        cots_params.collapse_duration_years >= 1 ||
+            error("COTS_COLLAPSE_DURATION_YEARS must be at least 1")
+        isfinite(cots_params.collapse_background_ha) &&
+            0.0 <= cots_params.collapse_background_ha < cots_params.collapse_threshold_ha ||
+            error("COTS_COLLAPSE_BACKGROUND_HA must lie in [0, COTS_COLLAPSE_THRESHOLD_HA)")
+    end
     # Per-capita grazing converts adults per site hectare into habitable-cover
     # fractions; the legacy response is already a fraction and ignores this.
     cots_habitable_fraction = cots_params.per_capita_consumption ?
@@ -1405,8 +1440,9 @@ function run_model(
     Ycots_hazard = zeros(tf, 3, n_locs)
     # Remembered preferred cover (habitable fraction; NaN when off), realized food
     # survival factor, senescent adults and excess senescent deaths (COTS ha^-1),
-    # and the share of grazing demand aimed at preferred prey.
-    Ycots_mechanism = zeros(tf, 5, n_locs)
+    # the share of grazing demand aimed at preferred prey, juvenile predation removals
+    # (COTS ha^-1 yr^-1) and the juvenile maturation fraction.
+    Ycots_mechanism = zeros(tf, 9, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
@@ -2229,6 +2265,10 @@ function run_model(
             Ycots_mechanism[tstep, 3, loc] = cots_mechanism.senescent_adults[loc]
             Ycots_mechanism[tstep, 4, loc] = cots_mechanism.senescent_deaths_ha[loc]
             Ycots_mechanism[tstep, 5, loc] = cots_mechanism.preferred_diet_share[loc]
+            Ycots_mechanism[tstep, 6, loc] = cots_mechanism.juvenile_predation_ha[loc]
+            Ycots_mechanism[tstep, 7, loc] = cots_mechanism.maturation_fraction[loc]
+            Ycots_mechanism[tstep, 8, loc] = cots_mechanism.outbreak_clock[loc]
+            Ycots_mechanism[tstep, 9, loc] = cots_mechanism.collapse_removed_ha[loc]
         end
 
         # Calculate survival_rate due to env. disturbances

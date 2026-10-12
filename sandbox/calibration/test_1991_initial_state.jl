@@ -168,3 +168,69 @@ end
     COTSMod.cots_timestep!(models[1], 0.02, 0.3)
     @test ADRIA.cots_mechanism_diagnostics(models).preferred_diet_share[1] < 0.01
 end
+
+@testset "Opt-in diet-linked starvation and non-preferred efficiency adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    legacy = ADRIA._cots_runtime_params(base)
+    @test !legacy.diet_linked_starvation
+    @test legacy.nonpreferred_feeding_efficiency == 1.0
+    treated = ADRIA._cots_runtime_params(merge(base, (diet_linked_starvation=true,
+        nonpreferred_feeding_efficiency=0.2, prey_switching=true,
+        preferred_prey_starvation=true, per_capita_consumption=true)))
+    @test treated.diet_linked_starvation
+    @test treated.nonpreferred_feeding_efficiency == 0.2
+end
+
+@testset "Opt-in predator pit, preferred maturation and gradual Allee adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    legacy = ADRIA._cots_runtime_params(base)
+    @test !legacy.juvenile_predation && !legacy.preferred_maturation && !legacy.allee_stretched
+    treated = ADRIA._cots_runtime_params(merge(base, (juvenile_predation=true,
+        juvenile_predation_capacity=20.0, preferred_maturation=true,
+        allee_stretched=true, allee_exponent=0.5)))
+    @test treated.juvenile_predation && treated.preferred_maturation && treated.allee_stretched
+    @test (treated.juvenile_predation_capacity, treated.allee_exponent) == (20.0, 0.5)
+    models = [COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 10.0, 2.0), 0.8, treated)]
+    COTSMod.cots_timestep!(models[1], 0.04, 0.3)
+    d = ADRIA.cots_mechanism_diagnostics(models)
+    @test d.juvenile_predation_ha[1] > 0.0
+    @test d.maturation_fraction[1] ≈ sqrt(0.04)
+end
+
+@testset "Opt-in post-outbreak collapse adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    legacy = ADRIA._cots_runtime_params(base)
+    @test !legacy.outbreak_collapse
+    @test (legacy.collapse_threshold_ha, legacy.collapse_duration_years,
+        legacy.collapse_background_ha, legacy.collapse_juveniles) == (67.5, 4, 0.25, false)
+    treated = ADRIA._cots_runtime_params(merge(base, (outbreak_collapse=true,
+        collapse_threshold_ha=67.5, collapse_duration_years=1,
+        collapse_background_ha=0.25, collapse_juveniles=true)))
+    @test treated.outbreak_collapse && treated.collapse_juveniles
+    @test treated.collapse_duration_years == 1
+    models = [COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 50.0, 300.0), 0.8, treated)]
+    COTSMod.cots_timestep!(models[1], 0.4, 0.1)
+    d = ADRIA.cots_mechanism_diagnostics(models)
+    @test d.collapse_removed_ha[1] > 0.0
+    @test d.outbreak_clock[1] == 0.0
+    @test models[1].N[2] + models[1].N[3] ≈ 0.25
+end
+
+@testset "Opt-in Lizard cyclone mortality table" begin
+    mktempdir() do directory
+        path = joinpath(directory, "cyclone_mortality.csv")
+        CSV.write(path, DataFrame(site_id=["b", "a"], var"1991"=[0.1, 0.0], var"1992"=[0.0, 0.25]))
+        groups = ADRIA.functional_group_names()
+        cube = ADRIA.load_lizard_cyclone_mortality(path, ["a", "b"], [1991, 1992], groups)
+        @test size(cube) == (2, 2, length(groups), 1)
+        @test Array(cube)[:, 1, 1, 1] == [0.0, 0.25]
+        @test Array(cube)[:, 2, end, 1] == [0.1, 0.0]
+        dim_years = ADRIA.DataCube(zeros(2); timesteps=[1991, 1992]).timesteps
+        @test Array(ADRIA.load_lizard_cyclone_mortality(path, ["a", "b"], collect(dim_years), groups)) == Array(cube)
+        @test_throws ErrorException ADRIA.load_lizard_cyclone_mortality(path, ["a", "c"], [1991, 1992], groups)
+        @test_throws ErrorException ADRIA.load_lizard_cyclone_mortality(path, ["a", "b"], [1991, 1993], groups)
+    end
+end

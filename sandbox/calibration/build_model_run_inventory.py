@@ -35,7 +35,7 @@ def failure_count(path: Path) -> str:
 
 
 def main() -> None:
-    reviewed = set(re.findall(r"runs/([A-Za-z0-9_.-]+)", LOG.read_text()))
+    reviewed = set(re.findall(r"runs/([A-Za-z0-9_.-]+)", LOG.read_text(encoding="utf-8")))
     rows = []
     for run in sorted(path for path in RUNS.iterdir()
                       if path.is_dir() and not path.name.startswith(".")):

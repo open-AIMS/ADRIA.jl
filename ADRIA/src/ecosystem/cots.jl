@@ -260,7 +260,19 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         switch_steepness=Float64(get(params, :switch_steepness, 70.0)),
         preferred_condition=Bool(get(params, :preferred_condition, false)),
         condition_saturation=Float64(get(params, :condition_saturation, 0.10)),
-        condition_memory_years=Float64(get(params, :condition_memory_years, 1.0))
+        condition_memory_years=Float64(get(params, :condition_memory_years, 1.0)),
+        diet_linked_starvation=Bool(get(params, :diet_linked_starvation, false)),
+        nonpreferred_feeding_efficiency=Float64(get(params, :nonpreferred_feeding_efficiency, 1.0)),
+        juvenile_predation=Bool(get(params, :juvenile_predation, false)),
+        juvenile_predation_capacity=Float64(get(params, :juvenile_predation_capacity, 20.0)),
+        preferred_maturation=Bool(get(params, :preferred_maturation, false)),
+        allee_stretched=Bool(get(params, :allee_stretched, false)),
+        allee_exponent=Float64(get(params, :allee_exponent, 0.5)),
+        outbreak_collapse=Bool(get(params, :outbreak_collapse, false)),
+        collapse_threshold_ha=Float64(get(params, :collapse_threshold_ha, 67.5)),
+        collapse_duration_years=Int(get(params, :collapse_duration_years, 4)),
+        collapse_background_ha=Float64(get(params, :collapse_background_ha, 0.25)),
+        collapse_juveniles=Bool(get(params, :collapse_juveniles, false))
     )
 end
 

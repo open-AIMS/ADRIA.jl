@@ -1,5 +1,7 @@
 # COTSMod Calibration Workflow
 
+**Start here:** [CURRENT_STATE.md](CURRENT_STATE.md) summarises the working model, fixed conventions, open decisions and how to add the next screen.
+
 The curated [model log](MODEL_LOG.md) tracks what has been tried, which runs are
 valid evidence, and the current decision. The [crash-mechanism protocol](crash_mechanism_protocol.md)
 freezes the next 1991 cohort-state factorial before interpretation; neither
@@ -2180,3 +2182,129 @@ python sandbox/calibration/audit_1991_unit_migration.py sandbox/calibration/runs
 ```
 
 The diagnostics `ulp_noise_floor` and `unit_compat_k2` (with `OWEN_1991_COMPAT_K`) reproduce the RNG isolation tests.
+
+### Prey switching × preferred-food condition (2026-10-12)
+
+Base: the per-capita + starvation + senescence model under `q=0.015`. See the [protocol](crash_mechanism_protocol.md), [audit](runs/20261012T_switching_condition_1991_v1/switching_condition_audit.json) and [plot](runs/20261012T_switching_condition_1991_v1/cots_coral_switching_condition.png).
+
+- **Preferred-food condition (`COTS_PREFERRED_CONDITION=true`, saturation `0.10`, memory `1` yr).** This is the best configuration so far: 5/7 peaks matched, two-wave reefs 2/3, and a Lizard trough of `0.103` with a 2014 second wave. Starving adults stop supplying larvae, and fast coral recovers sooner.
+- **Prey switching (`COTS_PREY_SWITCHING=true`).** Fails: COTS persist at high density on massives and strip slow coral. It stays off.
+
+Neither switch is promoted. Remaining failures:
+- small second waves where fast coral does not recover (MacGillivray, North Direction, Eyrie);
+- first peaks around 2001.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'switching_condition'
+$env:OWEN_1991_RUN_ID = '<unused_switching_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_switching_condition.py sandbox/calibration/runs/<unused_switching_run_id>
+```
+
+### Prey-switching repair (2026-10-12)
+
+This tested two fixes for prey switching: diet-linked starvation (`COTS_DIET_LINKED_STARVATION`) and reduced feeding on massives (`COTS_NONPREFERRED_FEEDING_EFFICIENCY=0.2`). See the [audit](runs/20261012T_switching_repair_1991_v1/switching_repair_audit.json) and [plot](runs/20261012T_switching_repair_1991_v1/cots_coral_switching_repair.png).
+
+The combined fix protects coral well. However, it turns boom–bust into a persistent 0.3–0.6 COTS/tow plateau: the switching refuge stabilises a partly starved but fertile population. **Prey switching is retired for this model.** The working candidate remains per-capita grazing, preferred-prey starvation, senescence and preferred-food condition, all opt-in and none promoted.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'switching_repair'
+$env:OWEN_1991_RUN_ID = '<unused_repair_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_switching_repair.py sandbox/calibration/runs/<unused_repair_run_id>
+```
+
+### Habitat fraction × bleaching (2026-10-12)
+
+The V2 domain hard-codes `k=0.5` while storing initial cover relative to each reef's RME habitable area (`1 - sand_proportion`, mean `0.715`). Neither RME-k nor a no-bleaching counterfactual improves second waves on the condition model. Both add coral, which grows larger first outbreaks and more trough adults, and those adults then suppress fast-coral recovery. Trough density (model 7–31 vs observed about 0–3 adults/ha) is now the binding constraint. See the [audit](runs/20261012T_habitat_disturbance_1991_v2/habitat_disturbance_audit.json) and [protocol](crash_mechanism_protocol.md). No historical cyclone hindcast exists locally, so cyclones and waves stay zero.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'habitat_disturbance'
+$env:OWEN_1991_RUN_ID = '<unused_habitat_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_habitat_disturbance.py sandbox/calibration/runs/<unused_habitat_run_id>
+```
+
+### Benthic habitat and historical cyclones (2026-10-12)
+
+New derived inputs, built by checked-in scripts; outputs are git-ignored because the sources are internal or licensed:
+
+- **`sandbox/domain_building/build_site_habitable_fraction.py`** builds site habitable fractions from the GBR10 2025 benthic map (Rock + Coral/Algae). It writes three versions: of all site cells, of mapped cells, and geomorphic-infilled (each benthic-unmapped cell takes the habitable share of its geomorphic zone). It needs `rasterio` with GDAL ≥3.7 for FileGDB rasters.
+- **`sandbox/domain_building/build_cyclone_hours_rrn.py`** extracts per-reef, per-summer hours of ≥4 m waves from the GBRMPA RRN 2025 workbook. It needs `openpyxl` (base miniconda Python). Mortality is `1-exp(-0.00444·h)`, from the COTS-Coral-OutcomesV2 LTMP dose-response.
+
+ADRIA cannot run sites with `k=0`: `scenario.jl` uses `length(habitable_locs)`, and `constrain_recruitment!` mixes all-site and habitable-site vectors. Runs therefore floor `k` at `0.01`. Results are in [audit](runs/20261012T_benthic_cyclone_1991_v2/benthic_cyclone_audit.json): realistic habitat improves coral but removes second waves, and cyclones improve post-2014 coral.
+
+### Trough mechanisms (2026-10-12)
+
+Three opt-in switches were tested on two bases: `COTS_JUVENILE_PREDATION` (saturating predator pit, CoCoNet form), `COTS_PREFERRED_MATURATION` (preferred-prey maturation delay; Deaker et al. 2020) and `COTS_ALLEE_STRETCHED` (CoCoNet `exp(-(3/A)^0.5)` fertilisation). See the [audit](runs/20261012T_trough_mechanisms_1991_v1/trough_mechanisms_audit.json) and [plot](runs/20261012T_trough_mechanisms_1991_v1/cots_coral_trough_mechanisms.png).
+
+All three act at low density, so they delay or flatten outbreak *initiation* as well as deepening troughs. Only the gradual Allee form preserves timing. The next test couples these with a stronger, evidence-based initiation supply. The geomorphic-habitat + cyclone base gives the best coral fit so far.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'trough_mechanisms'
+$env:OWEN_1991_RUN_ID = '<unused_trough_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_trough_mechanisms.py sandbox/calibration/runs/<unused_trough_run_id>
+```
+
+### v0.3 domain and first-wave initiation (2026-10-12)
+
+**Domain.** `Lizard_Historical_v0.3` (geomorphic-infilled site `k`, RRN cyclones) is the adopted working base; see `sandbox/domain_building/README.md`. The Lizard loader reads `cyclones/cyclone_mortality.csv` only when the datapackage declares it.
+
+**Result.** Multiplying the evidence-derived external outbreak production by 5 fixes first-wave timing (Lizard 1994 density matches observations; first peaks 1997–99). Adding the predator pit and gradual Allee yields correctly timed 2014 second waves on Lizard and Eyrie. Troughs remain too high, at 6–10 adults/ha. See the [audit](runs/20261012T_initiation_1991_v3/initiation_audit.json) and [plot](runs/20261012T_initiation_1991_v3/cots_coral_initiation.png).
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'initiation'
+$env:OWEN_1991_RUN_ID = '<unused_initiation_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_initiation.py sandbox/calibration/runs/<unused_initiation_run_id>
+```
+
+### Predator-pit capacity tuning (2026-10-12)
+
+**Decisions by the project lead.**
+- External ×5 is the working initiation assumption, labelled as such.
+- The juvenile predator-pit capacity `Q` is tuned, because field data (Wolfe et al. 2025 CCIP report; Desbiens et al. 2023) describe predation on settlers under 10 mm and do not bound `Q` on the model's effective juvenile scale.
+
+**Result.** The preregistered grid (`Q` 20–500) selects **`Q = 30` COTS/ha/yr** (plateau 30–70) by the frozen loss. That gives 5/7 matched and second waves on Lizard, Eyrie and North Direction. Troughs stay at 5–10 adults/ha. Only `Q ≥ 330` reaches observed trough depth, and it suppresses and delays the first wave. See the [audit](runs/20261012T_predation_capacity_1991_v1/predation_capacity_audit.json), [plot](runs/20261012T_predation_capacity_1991_v1/cots_coral_predation_capacity.png) and [loss curve](runs/20261012T_predation_capacity_1991_v1/predation_capacity_loss.png).
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'predation_capacity'
+$env:OWEN_1991_RUN_ID = '<unused_predation_capacity_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_predation_capacity.py sandbox/calibration/runs/<unused_predation_capacity_run_id>
+```
+
+### Post-outbreak collapse and fast-coral growth (2026-10-12)
+
+**New opt-in switch.** `COTS_OUTBREAK_COLLAPSE` (COTSMod `outbreak_collapse`) is a ReefMod 7.0-style die-off. After `COTS_COLLAPSE_DURATION_YEARS` consecutive years with adults ≥ `COTS_COLLAPSE_THRESHOLD_HA` (67.5 = 2.7 per 400 m²), adults are rescaled to `COTS_COLLAPSE_BACKGROUND_HA` (0.25). With `COTS_COLLAPSE_JUVENILES=true`, N2 is included. The mechanism log gains channels 8 (outbreak clock) and 9 (COTS removed).
+
+**Coral growth factors.**
+- **What is in use.** Lizard runs use CoralBlox calibration group 1 at every site: fast linear-extension scales 0.88 (tabular *Acropora*), 0.75 (corymbose *Acropora*) and 1.39 (corymbose non-*Acropora*). The RME GBR layer assigns all four calibration reefs to group 5: 1.01, 0.86 and 0.77.
+
+**Result.** No arm passes.
+- **Collapse.** It makes the first-wave drop abrupt but triggers rebounds and removes second waves, because the crash is no longer coupled to coral exhaustion.
+- **Fast linear extension ×1.2.** It produces second waves on all four reefs (6/7 matched) but overshoots in height and timing.
+- **Conclusion.** Fast-coral availability limits second-wave occurrence, but the growth scalar should be fitted to observed coral recovery rather than to COTS peaks. See the [audit](runs/20261012T_outbreak_collapse_1991_v1/outbreak_collapse_audit.json), [plot](runs/20261012T_outbreak_collapse_1991_v1/cots_coral_outbreak_collapse.png) and [fast coral](runs/20261012T_outbreak_collapse_1991_v1/fast_coral_outbreak_collapse.png).
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'outbreak_collapse'
+$env:OWEN_1991_RUN_ID = '<unused_outbreak_collapse_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_outbreak_collapse.py sandbox/calibration/runs/<unused_outbreak_collapse_run_id>
+```
+
