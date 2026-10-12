@@ -45,7 +45,7 @@ The qualitative screen requires a first and second modeled peak within the exist
 
 ## First-factorial decision and next gate
 
-The [completed 1991 cohort factorial](runs/20261008T_crash_factorial_1991_v1/metadata.toml) passed an exact archived state/flux control replay and invariant external-supply audit. None of the three treatments met the qualitative gate. Stage storage delayed Lizard's first peak ten years and worsened the worst trough ratio (`0.594→0.691`); `m3=0.30` delayed it eight years and cut its height by 56% while the worst trough remained `0.515`. The combination lost Lizard's first detected wave altogether. See [per-reef diagnostics](runs/20261008T_crash_factorial_1991_v1/crash_factorial_audit.csv) and [paired plot](runs/20261008T_crash_factorial_1991_v1/cots_coral_crash_factorial.png). **No arm is promotable.** The observed mechanism is compensation: storage retains immature COTS and raises later local/internal recruitment; constant mortality acts before as well as after the desired first peak. The model coral discrepancy persists, with the stated observation-support caveat.
+The [completed 1991 cohort factorial](runs/20261008T_07_crash_factorial_1991_v1/metadata.toml) passed an exact archived state/flux control replay and invariant external-supply audit. None of the three treatments met the qualitative gate. Stage storage delayed Lizard's first peak ten years and worsened the worst trough ratio (`0.594→0.691`); `m3=0.30` delayed it eight years and cut its height by 56% while the worst trough remained `0.515`. The combination lost Lizard's first detected wave altogether. See [per-reef diagnostics](runs/20261008T_07_crash_factorial_1991_v1/crash_factorial_audit.csv) and [paired plot](runs/20261008T_07_crash_factorial_1991_v1/cots_coral_crash_factorial.png). **No arm is promotable.** The observed mechanism is compensation: storage retains immature COTS and raises later local/internal recruitment; constant mortality acts before as well as after the desired first peak. The model coral discrepancy persists, with the stated observation-support caveat.
 
 For this **diagnostic capacity test**, hold `rho=0.5` (one-year memory weight), `B_crit=1.5 adult COTS/ha`, `w_B=0.5 adult COTS/ha`, `C_crit=0.15` coral fraction and `w_C=0.03` coral fraction. Cross density-only and density×food with `h_max` of `0.75` and `1.5` per annual step, plus a zero-hazard control: five arms, one recorded hydrodynamic seed, no optimizer. The higher hazard corresponds to at most `1-exp(-1.5)=0.777` extra loss of *background-and-food survivors* in one year, not 77.7% of all adults. These are **stress-test bounds, not field-estimated pathogen parameters**. They were selected before implementation: the archived 1991 site-level adult seed has median `0.363`, 95th percentile `0.993`, and 99th percentile `3.039 COTS/ha`; modeled control reef adult 90th percentiles over 1992–2024 are `2.410` at Lizard and `2.891` at MacGillivray. Thus `B_crit` is above most seed sites but within simulated wave densities, and is deliberately unrelated to the `3 COTS/ha` fertilization half-saturation. The new run must retain site-level burden/hazard/death summaries because archived site-level *dynamic* abundance was not saved; these settings cannot be called biological bounds.
 
@@ -53,7 +53,7 @@ Before implementing the lagged hazard, write pure core tests for (a) zero hazard
 
 ## Lagged-hazard decision and next structural question
 
-The [five-arm hazard run](runs/20261008T_lagged_hazard_1991_v1/metadata.toml) and [independent audit](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.json) replay the archived control COTS/coral and all 12 recruitment-flow channels exactly. All arms retain identical external immigration. The core unit tests passed `128/128`; the ADRIA focused tests passed `23/23`. The site-level audit checks `B_0=0`, the annual recurrence to `7.1e-15 COTS/ha`, nonnegative states, and that extra deaths do not exceed pre-transition adults. See [reef outcomes](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.csv), [site-year activation](runs/20261008T_lagged_hazard_1991_v1/site_hazard_summary.csv), and [COTS/coral plot](runs/20261008T_lagged_hazard_1991_v1/cots_coral_lagged_hazard.png).
+The [five-arm hazard run](runs/20261008T_08_lagged_hazard_1991_v1/metadata.toml) and [independent audit](runs/20261008T_08_lagged_hazard_1991_v1/lagged_hazard_audit.json) replay the archived control COTS/coral and all 12 recruitment-flow channels exactly. All arms retain identical external immigration. The core unit tests passed `128/128`; the ADRIA focused tests passed `23/23`. The site-level audit checks `B_0=0`, the annual recurrence to `7.1e-15 COTS/ha`, nonnegative states, and that extra deaths do not exceed pre-transition adults. See [reef outcomes](runs/20261008T_08_lagged_hazard_1991_v1/lagged_hazard_audit.csv), [site-year activation](runs/20261008T_08_lagged_hazard_1991_v1/site_hazard_summary.csv), and [COTS/coral plot](runs/20261008T_08_lagged_hazard_1991_v1/cots_coral_lagged_hazard.png).
 
 No arm passes. Control worst two-wave trough/smaller-peak ratio is `0.593935` with 6/7 observed peaks matched. Density-only `h_max=1.5` gives `0.600000` and 6/7, delaying Lizard's first detected peak from 1997 to 2001. Density×food at `1.5` gives `0.593493` and 6/7, also moving Lizard's first peak to 2001; the tiny trough change is not an improvement. At `0.75`, both mode variants lose Lizard's first detected wave and match only 5/7. Coral is spared slightly, but remains low relative to 9 m observations, with the acknowledged support difference.
 
@@ -61,7 +61,7 @@ This is a *phase failure*, not a silent implementation failure. In the strong de
 
 ## Cohort audit and ReefMod duration precedent (2026-10-09)
 
-The [readout-only 1991 replay](runs/20261009T_cohort_audit_1991_v1/metadata.toml) reproduces archived adult/coral trajectories and all 12 flux channels exactly. Its [annual area-weighted cohorts](runs/20261009T_cohort_audit_1991_v1/cohorts.csv) and [Lizard plot](runs/20261009T_cohort_audit_1991_v1/cohort_floor_diagnostics.png) show that the 1999–2007 sawtooth coincides with the realized food-survival factor alternating between about `0.27` and `1.0`. Food survival already multiplies N2-to-adult maturation and adult carryover, but does not multiply N1 recruits. In 2008–12, Lizard adult food survival averages `0.986`; adult abundance averages `0.805 COTS/ha`, of which `0.667` is carryover and `0.138` is newly matured. External settlement averages `0.542 COTS/ha/year` in those years. Thus maturation contributes to the floor but does not dominate it, and ongoing settlement maintains the future cohort pipeline. The fixed Lizard plotting scale is `0.2942 COTS/tow per adult COTS/ha`; `0.1 COTS/tow` corresponds to `0.340 adult COTS/ha` under that mapping. The provisional `q=0.015` used for 1991 initialization is distinct.
+The [readout-only 1991 replay](runs/20261009T_01_cohort_audit_1991_v1/metadata.toml) reproduces archived adult/coral trajectories and all 12 flux channels exactly. Its [annual area-weighted cohorts](runs/20261009T_01_cohort_audit_1991_v1/cohorts.csv) and [Lizard plot](runs/20261009T_01_cohort_audit_1991_v1/cohort_floor_diagnostics.png) show that the 1999–2007 sawtooth coincides with the realized food-survival factor alternating between about `0.27` and `1.0`. Food survival already multiplies N2-to-adult maturation and adult carryover, but does not multiply N1 recruits. In 2008–12, Lizard adult food survival averages `0.986`; adult abundance averages `0.805 COTS/ha`, of which `0.667` is carryover and `0.138` is newly matured. External settlement averages `0.542 COTS/ha/year` in those years. Thus maturation contributes to the floor but does not dominate it, and ongoing settlement maintains the future cohort pipeline. The fixed Lizard plotting scale is `0.2942 COTS/tow per adult COTS/ha`; `0.1 COTS/tow` corresponds to `0.340 adult COTS/ha` under that mapping. The provisional `q=0.015` used for 1991 initialization is distinct.
 
 The published [ReefMod 7.0 settings](https://github.com/ymbozec/REEFMOD.7.0_GBR/blob/main/settings/settings_COTS.m) specify a randomly checked `4–6` **year** outbreak duration and comment a fixed two-year Lizard calibration option. The [transition code](https://github.com/ymbozec/REEFMOD.7.0_GBR/blob/main/functions/f_runmodel.m) confirms that adult density must remain above the threshold over the checked duration; it redraws the candidate duration at a qualifying check, then resets older age classes to background while leaving younger recruits. A [regional report](https://www.barrierreef.org/uploads/CCIP-R-04-Final-Report-Regional-Modelling.pdf) describes a different-version `2–5`-year disease window, an eight-year maximum age, and a separate `5%` preferential-prey starvation trigger. These are version-specific modelling conventions, not field estimates of natural pathogen timing. ReefMod's densities and reset values are in COTS per `400 m²` grid, so numerical transfer to this model's `COTS/ha` state and provisional CPUE mapping needs explicit justification.
 
@@ -75,7 +75,7 @@ Status: **preregistered before implementation; no default or objective change.**
 
 ### Structural diagnosis motivating the test
 
-Values below are from the archived anchor (`a_F=1.18`, `a_S=0.165`, `C_max=0.498`, `m3=0.195`) and the [cohort audit](runs/20261009T_cohort_audit_1991_v1/cohorts.csv).
+Values below are from the archived anchor (`a_F=1.18`, `a_S=0.165`, `C_max=0.498`, `m3=0.195`) and the [cohort audit](runs/20261009T_01_cohort_audit_1991_v1/cohorts.csv).
 
 1. **Starvation responds to total cover.** Legacy food survival uses total prey cover `F+S` with a threshold at `0.15·C_max = 0.075`. Massive (`S`) cover is grazed at `a_S≪a_F`, so `F+S` stays above 0.075 after fast coral is depleted. Lizard adult food survival is `0.986` in 2008–12. ReefMod (5% preferred cover), CoCoNet (mortality ∝ `1/C^f`) and MICE (logistic in preferred cover relative to `K`) all trigger on *preferred* coral.
 2. **Adults never age out.** Adults are one class with constant `m3`. Without inflow, a decline to 10% of peak takes `ln 0.1 / ln 0.805 ≈ 10.6` years. The floor approximates `maturation/(1-s3·f)`, about `0.14/0.2 ≈ 0.7 COTS/ha`, matching the audited floor. CoCoNet applies `M=0.8` to ages 6+ (and zero natural mortality to ages 2–5); ReefMod has an eight-year maximum age.
@@ -165,7 +165,7 @@ A third opt-in switch, `per_capita_consumption`, is implemented and unit-tested 
 
 ### Decision (2026-10-09)
 
-[Run](runs/20261009T_structural_crash_1991_v1/metadata.toml) and [audit](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.json): the control replay is exact, and external immigration is identical in every arm. **No arm passes.**
+[Run](runs/20261009T_02_structural_crash_1991_v1/metadata.toml) and [audit](runs/20261009T_02_structural_crash_1991_v1/structural_crash_audit.json): the control replay is exact, and external immigration is identical in every arm. **No arm passes.**
 
 | Arm | Worst trough ratio | Matched peaks | Lizard first peak |
 | --- | --- | --- | --- |
@@ -265,7 +265,7 @@ A one-seed pass remains a candidate pending replicated seeds, `q` sensitivity (e
 
 **Deviation from preregistration (disclosed).** v1 failed its compatibility arm. The cause is ADRIA's parameter-derived coral RNG seed (`floor(sum(parameter values))`), not the migration. A one-ulp replay, a k=1 identity and a k=2 power-of-two rescale isolated it. v2 pins `ADRIA_RNG_SEED` to the archived control's derived value (`90972102`) for every migration arm. That keeps the archived control's random stream and makes the comparison fair. No other setting changed.
 
-[v2 run](runs/20261009T_unit_migration_q015_1991_v2/metadata.toml) and [audit](runs/20261009T_unit_migration_q015_1991_v2/unit_migration_audit.json): the compatibility replay is exact (max relative delta `3e-15`); external immigration is identical in every arm; simulated CPUE equals `q·A`. **No arm passes.**
+[v2 run](runs/20261009T_07_unit_migration_q015_1991_v2/metadata.toml) and [audit](runs/20261009T_07_unit_migration_q015_1991_v2/unit_migration_audit.json): the compatibility replay is exact (max relative delta `3e-15`); external immigration is identical in every arm; simulated CPUE equals `q·A`. **No arm passes.**
 
 | Arm | Two-wave reefs with 2 peaks | Worst trough | Matched | Lizard first peak |
 | --- | --- | --- | --- | --- |
@@ -288,7 +288,7 @@ None is promotable. The per-capita structural configuration is the first candida
 
 ## Preregistered second-wave factorial: prey switching × preferred-food condition (2026-10-12)
 
-Status: **preregistered before implementation; no default or objective change.** The base model is the project lead's preferred configuration, `per_capita_structural` from [unit migration v2](runs/20261009T_unit_migration_q015_1991_v2/metadata.toml):
+Status: **preregistered before implementation; no default or objective change.** The base model is the project lead's preferred configuration, `per_capita_structural` from [unit migration v2](runs/20261009T_07_unit_migration_q015_1991_v2/metadata.toml):
 - per-capita grazing at `10 m²/adult/yr`, preferred-first, habitable-area corrected;
 - H1 preferred-prey starvation (`θ=0.05`, memory `0.5` yr);
 - H2 senescence (`a_s=6`, `m_s=0.8`);
@@ -297,7 +297,7 @@ Status: **preregistered before implementation; no default or objective change.**
 
 ### Diagnosis motivating the test
 
-The [second-wave readout](runs/20261009T_second_wave_audit_1991_v1/metadata.toml) shows that settlement during the second build-up equals wave 1, so supply is not limiting. Two problems are:
+The [second-wave readout](runs/20261009T_08_second_wave_audit_1991_v1/metadata.toml) shows that settlement during the second build-up equals wave 1, so supply is not limiting. Two problems are:
 
 1. **Fast coral is driven almost extinct.** Exhaustive preferred-first grazing takes fast cover to `0.001–0.005`. It regrows at only about `+0.01/yr`, reaching about `0.035` before wave 2 against `0.13–0.14` before wave 1, so wave 2 starves early.
 2. **Starving adults stay fertile.** Body condition tracks *total* cover over `tau_condition=8.3` yr, so starving adults keep breeding. 63% of local larval production comes from sites with food survival `<0.5`. The fertile residual population keeps grazing fast coral.
@@ -371,7 +371,7 @@ Known confounders deferred to the next step:
 
 ### Switching × condition decision (2026-10-12)
 
-[Run](runs/20261012T_switching_condition_1991_v1/metadata.toml) and [audit](runs/20261012T_switching_condition_1991_v1/switching_condition_audit.json): base replays v2 `per_capita_structural` exactly, and external immigration is identical across arms. **No arm passes.**
+[Run](runs/20261012T_01_switching_condition_1991_v1/metadata.toml) and [audit](runs/20261012T_01_switching_condition_1991_v1/switching_condition_audit.json): base replays v2 `per_capita_structural` exactly, and external immigration is identical across arms. **No arm passes.**
 
 | Arm | Two-wave reefs | Worst trough | Matched | Mean 2010–17 max CPUE | Mean fast coral at onset | Mean gap adults/ha |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -401,7 +401,7 @@ The result is persistent high-density populations and recurrent outbreaks, not b
 
 ## Preregistered prey-switching repair: diet-linked starvation × non-preferred feeding efficiency (2026-10-12)
 
-Status: **preregistered before implementation; no default or objective change.** The [switching × condition screen](runs/20261012T_switching_condition_1991_v1/metadata.toml) failed for two identified reasons:
+Status: **preregistered before implementation; no default or objective change.** The [switching × condition screen](runs/20261012T_01_switching_condition_1991_v1/metadata.toml) failed for two identified reasons:
 1. Diet switching treated massives as full food at the full per-capita rate, so slow coral was eaten to near zero.
 2. The switch midpoint (`0.10`) sat above the starvation threshold (`0.05`), so the protected fast-coral band kept COTS fed.
 
@@ -469,7 +469,7 @@ Rollback: all switches default off, with `e = 1`.
 
 ### Prey-switching repair decision (2026-10-12)
 
-[Run](runs/20261012T_switching_repair_1991_v1/metadata.toml) and [audit](runs/20261012T_switching_repair_1991_v1/switching_repair_audit.json): both references replay the previous run exactly, and external supply is identical. **No arm passes.**
+[Run](runs/20261012T_02_switching_repair_1991_v1/metadata.toml) and [audit](runs/20261012T_02_switching_repair_1991_v1/switching_repair_audit.json): both references replay the previous run exactly, and external supply is identical. **No arm passes.**
 
 | Arm | Two-wave reefs | Worst trough | Matched | Gap adults/ha | Gap slow coral | 2012 coral |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -492,7 +492,7 @@ Against the predictions:
 
 Status: **preregistered before implementation; no default, domain-package or objective change.**
 
-The base is the working candidate: per-capita grazing (`c=10`), H1 starvation, H2 senescence and preferred-food condition, **without** prey switching. It runs at `q=0.015`, `k_unit=19.61`, Allee `3`, with `ADRIA_RNG_SEED=90972102`. The base must replay `condition_ref` in [switching repair](runs/20261012T_switching_repair_1991_v1/metadata.toml) exactly.
+The base is the working candidate: per-capita grazing (`c=10`), H1 starvation, H2 senescence and preferred-food condition, **without** prey switching. It runs at `q=0.015`, `k_unit=19.61`, Allee `3`, with `ADRIA_RNG_SEED=90972102`. The base must replay `condition_ref` in [switching repair](runs/20261012T_02_switching_repair_1991_v1/metadata.toml) exactly.
 
 ### Motivation
 
@@ -544,7 +544,7 @@ If `k_RME` improves second waves without degrading first waves, the next step is
 
 ### Habitat × bleaching decision (2026-10-12)
 
-[v2 run](runs/20261012T_habitat_disturbance_1991_v2/metadata.toml) and [audit](runs/20261012T_habitat_disturbance_1991_v2/habitat_disturbance_audit.json): the base replays `condition_ref` exactly and external supply is identical. [v1](runs/20261012T_habitat_disturbance_1991_v1) completed all arms, but the runner failed while writing metadata because a top-level variable named `values` shadowed `Base.values`. v1 is invalid and retained; v2 is the identical design after the rename. **No arm passes.**
+[v2 run](runs/20261012T_04_habitat_disturbance_1991_v2/metadata.toml) and [audit](runs/20261012T_04_habitat_disturbance_1991_v2/habitat_disturbance_audit.json): the base replays `condition_ref` exactly and external supply is identical. [v1](runs/20261012T_03_habitat_disturbance_1991_v1) completed all arms, but the runner failed while writing metadata because a top-level variable named `values` shadowed `Base.values`. v1 is invalid and retained; v2 is the identical design after the rename. **No arm passes.**
 
 | Arm | Two-wave reefs | Worst trough | Matched | Gap adults/ha | Fast coral at onset | Mean 2012 coral |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -567,7 +567,7 @@ Both expectations were wrong in direction:
 
 ## Preregistered benthic habitable fraction × historical cyclone screen (2026-10-12)
 
-Status: **preregistered before implementation; no default, domain-package or objective change.** The base is the working condition model (no switching), as in the habitat screen. The base arm must replay `k05_bleaching` in [habitat v2](runs/20261012T_habitat_disturbance_1991_v2/metadata.toml) exactly. Bleaching is on in all arms.
+Status: **preregistered before implementation; no default, domain-package or objective change.** The base is the working condition model (no switching), as in the habitat screen. The base arm must replay `k05_bleaching` in [habitat v2](runs/20261012T_04_habitat_disturbance_1991_v2/metadata.toml) exactly. Bleaching is on in all arms.
 
 ### New derived inputs
 
@@ -628,7 +628,7 @@ Rollback: `k=0.5` and cyclones off (the defaults).
 
 Adopting a benthic `k`, or cyclones, as the working model requires a separate checked-in domain-package rebuild and a decision by the project lead.
 
-**Disclosed deviation (benthic arms, before results).** [v1](runs/20261012T_benthic_cyclone_1991_v1) ran both `k=0.5` arms. All four benthic arms failed with `DimensionMismatch`.
+**Disclosed deviation (benthic arms, before results).** [v1](runs/20261012T_05_benthic_cyclone_1991_v1) ran both `k=0.5` arms. All four benthic arms failed with `DimensionMismatch`.
 
 The cause is an upstream ADRIA indexing limitation. `scenario.jl` reshapes the habitable-site areas to `length(habitable_locs)`, which is the length of the BitVector, not the count of habitable sites. `constrain_recruitment!` also divides all-site cover by habitable-site areas. ADRIA therefore cannot run any site with `k = 0`.
 
@@ -638,7 +638,7 @@ The upstream fix belongs in ADRIA core and is not made here.
 
 ### Benthic × cyclone decision (2026-10-12)
 
-[v2](runs/20261012T_benthic_cyclone_1991_v2/metadata.toml) and [audit](runs/20261012T_benthic_cyclone_1991_v2/benthic_cyclone_audit.json): base replay is exact. **No arm passes.**
+[v2](runs/20261012T_06_benthic_cyclone_1991_v2/metadata.toml) and [audit](runs/20261012T_06_benthic_cyclone_1991_v2/benthic_cyclone_audit.json): base replay is exact. **No arm passes.**
 
 - Benthic `k` (total or mapped) raises site-area coral towards LTMP 9 m values, but raises trough adults to 11–17/ha and removes all second waves.
 - Cyclones (Ita, Nathan) lower 2015–16 coral towards observations without changing COTS metrics.
@@ -690,7 +690,7 @@ This replaces the legacy total-cover storage path when on.
 
 | Base | Description | Reference |
 | --- | --- | --- |
-| `b05` | `k = 0.5`, no cyclones | `b05_none` must replay `k05_nocyc` in [benthic v2](runs/20261012T_benthic_cyclone_1991_v2/metadata.toml) exactly |
+| `b05` | `k = 0.5`, no cyclones | `b05_none` must replay `k05_nocyc` in [benthic v2](runs/20261012T_06_benthic_cyclone_1991_v2/metadata.toml) exactly |
 | `bgeo` | geomorphic-infilled `k` (floor 0.01, zero initial cover where benthic and geomorphic give `k = 0`), RRN cyclones on | none (new realistic base) |
 
 Treatments per base: `none`, `P`, `D`, `A`, `PDA` (10 arms).
@@ -719,7 +719,7 @@ Rollback: all switches default off.
 
 ### Trough-mechanism decision (2026-10-12)
 
-[Run](runs/20261012T_trough_mechanisms_1991_v1/metadata.toml) and [audit](runs/20261012T_trough_mechanisms_1991_v1/trough_mechanisms_audit.json): `b05_none` replays exactly and external supply is identical. **No arm passes.**
+[Run](runs/20261012T_07_trough_mechanisms_1991_v1/metadata.toml) and [audit](runs/20261012T_07_trough_mechanisms_1991_v1/trough_mechanisms_audit.json): `b05_none` replays exactly and external supply is identical. **No arm passes.**
 
 Against the predictions:
 - **P (predator pit)** removed 9–15 juveniles/ha/yr in the gap. It did not deepen troughs. Instead it suppressed the low-density build-up from 1991, so first peaks moved to 2004–07 and fell inside the "gap" window.
@@ -747,7 +747,7 @@ Status: **domain adoption approved by the project lead (2026-10-12); initiation 
 
 The Lizard loader reads cyclone mortality **only** when `datapackage.json` declares `cyclone_mortality`, so v0.1/v0.2 are unchanged. A loader unit test covers alignment and validation.
 
-**Compatibility test.** The v0.3 working-model arm must replay `bgeo_none` of the [trough run](runs/20261012T_trough_mechanisms_1991_v1/metadata.toml) exactly. That arm applied the same `k`, the same zero-cover rule and the same cyclone conversion at run time.
+**Compatibility test.** The v0.3 working-model arm must replay `bgeo_none` of the [trough run](runs/20261012T_07_trough_mechanisms_1991_v1/metadata.toml) exactly. That arm applied the same `k`, the same zero-cover rule and the same cyclone conversion at run time.
 
 ### Initiation hypothesis
 
@@ -789,7 +789,7 @@ Rollback: multiplier 1 and preload 6:3:1 (defaults). Neither the multiplier nor 
 
 ### Initiation decision (2026-10-12)
 
-[v3 run](runs/20261012T_initiation_1991_v3/metadata.toml) and [audit](runs/20261012T_initiation_1991_v3/initiation_audit.json).
+[v3 run](runs/20261012T_10_initiation_1991_v3/metadata.toml) and [audit](runs/20261012T_10_initiation_1991_v3/initiation_audit.json).
 
 **Disclosed operational failures, both before any simulation:**
 - v1: the new cyclone loader indexed a DataFrame with a DimensionalData year vector. Fixed; a test was added.
@@ -846,7 +846,7 @@ All arms use v0.3 with the working model (per-capita, H1, H2, condition), Extern
 
 | Arm | P | `Q` (COTS/ha/yr) | Role |
 | --- | --- | --- | --- |
-| `ext5_A` | off | – | Reference; must replay `ext5_A` of the [initiation run](runs/20261012T_initiation_1991_v3/metadata.toml) exactly |
+| `ext5_A` | off | – | Reference; must replay `ext5_A` of the [initiation run](runs/20261012T_10_initiation_1991_v3/metadata.toml) exactly |
 | `ext5_PA_q20` | on | 20 | Must replay `ext5_PA` of the initiation run exactly |
 | `ext5_PA_q30` … `ext5_PA_q500` | on | 30, 45, 70, 100, 150, 220, 330, 500 | Log-spaced, about ×1.5 per step |
 
@@ -882,7 +882,7 @@ Rollback: `COTS_JUVENILE_PREDATION=false` (the default).
 
 ### Predator-pit tuning decision (2026-10-12)
 
-[Run](runs/20261012T_predation_capacity_1991_v1/metadata.toml) and [audit](runs/20261012T_predation_capacity_1991_v1/predation_capacity_audit.json). Both reference arms replay the initiation run exactly (max delta `0.0`), and external supply is exactly Ext×5 in every arm. The audit's first attempt failed while serialising numpy integers to JSON; its partial outputs were removed and the audit rerun. **No arm passes the gate.**
+[Run](runs/20261012T_11_predation_capacity_1991_v1/metadata.toml) and [audit](runs/20261012T_11_predation_capacity_1991_v1/predation_capacity_audit.json). Both reference arms replay the initiation run exactly (max delta `0.0`), and external supply is exactly Ext×5 in every arm. The audit's first attempt failed while serialising numpy integers to JSON; its partial outputs were removed and the audit rerun. **No arm passes the gate.**
 
 | `Q` | Summed loss | Matched | Reefs with 2 peaks | Mean first peak | Mean trough min (adults/ha) | Mean 2010–17 max CPUE |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -992,7 +992,7 @@ Coral {`g1`, `grme`, `grme_fast120`} × collapse {`none`, `D2` (adults), `D2J` (
 
 `D2` follows ReefMod's commented Lizard option; `D4` is ReefMod's lower bound.
 
-**Reference.** `g1_none` must replay `ext5_PA_q30` of the [Q tuning run](runs/20261012T_predation_capacity_1991_v1/metadata.toml) exactly.
+**Reference.** `g1_none` must replay `ext5_PA_q30` of the [Q tuning run](runs/20261012T_11_predation_capacity_1991_v1/metadata.toml) exactly.
 
 ### Expected consequences
 
@@ -1029,7 +1029,7 @@ Rollback: `COTS_OUTBREAK_COLLAPSE=false` (the default) and calibration group 1 (
 
 ### Collapse × fast-coral decision (2026-10-12)
 
-[Run](runs/20261012T_outbreak_collapse_1991_v1/metadata.toml) and [audit](runs/20261012T_outbreak_collapse_1991_v1/outbreak_collapse_audit.json).
+[Run](runs/20261012T_12_outbreak_collapse_1991_v1/metadata.toml) and [audit](runs/20261012T_12_outbreak_collapse_1991_v1/outbreak_collapse_audit.json).
 - **Checks.** `g1_none` replays `ext5_PA_q30` exactly (max delta `0.0`). External supply equals Ext×5 in every arm. Collapse removals are zero with the switch off, and D2 triggers on all four reefs.
 - **Tests.** COTSMod 326/326 tests pass, including a new collapse testset: opt-in default, clock, reset arithmetic, age-class mass balance, N2 option and validation. The ADRIA adapter test passes.
 - **Result.** **No arm passes the gate.**
@@ -1067,3 +1067,215 @@ Rollback: `COTS_OUTBREAK_COLLAPSE=false` (the default) and calibration group 1 (
 1. **Fast-coral growth constrained by data.** A bounded fast linear-extension grid (e.g. ×1.0–1.2 on the chosen calibration group) scored against observed coral recovery, ideally with group-level (Acropora / fast) cover from LTMP photo transects or the COTS-Coral-OutcomesV2 data, not against COTS peaks. Then rerun the COTS screen with that fixed value.
 2. **A faster starvation crash.** A sharper or shorter-memory preferred-prey starvation response (memory below 0.5 yr), so the crash follows coral exhaustion within a year, as observed in 1999.
 
+
+## Preregistered fast-coral growth fit × faster starvation screen (2026-10-12)
+
+Status: **preregistered before implementation; no default, domain-package or objective change.**
+
+### Decisions by the project lead (2026-10-12)
+
+1. **Calibration groups.** Use **CoralBlox calibration group 5** for the calibration reefs. It is implemented as the per-reef RME assignment (`grme` from the [collapse screen](runs/20261012T_12_outbreak_collapse_1991_v1/metadata.toml)): all four calibration reefs are group 5, and the other domain reefs keep their RME groups (5: 58 reefs, 1: 44, 4: 11). Because ADRIA misindexes non-contiguous groups, the runner relabels them contiguously at run time. A v0.4 package with a `CB_CALIB_GROUPS` column must wait for an ADRIA indexing fix.
+2. **Fast-coral growth.** Fit the fast-coral linear-extension multiplier (×1.0–1.2) to observed fast-coral recovery, then rerun the COTS screen.
+3. **Starvation.** Test a faster starvation-coupled crash.
+
+### Observations for the coral fit
+
+**Source.** LTMP photo transects (`sandbox/data/reef_photo_transect.csv`): `purpose = COMPOSITION`, `variable = HARD CORAL`, 9 m, `median`, a fraction of benthos.
+
+**Model fast groups.** Tabular *Acropora*, corymbose *Acropora*, and corymbose non-*Acropora* ("and Pocillopora"). The observed equivalent is `reefpage_category` *Acropora* + Pocilloporidae. *Isopora* and *Montipora* are not reported separately on these reefs; they fall in "Other" and are excluded.
+
+**Reef matching:**
+- LTMP Lizard Isles → Lizard Island Reef;
+- Macgillivray Reef → MacGillivray Reef;
+- North Direction Island → North Direction Reef. This is a caveat: the LTMP site is on the island's fringing reef, not the separate North Direction Reef.
+
+Eyrie has no photo transects.
+
+| Observed fast cover | Low (year) | Recovery high (year) | 2017 → 2024 |
+| --- | --- | --- | --- |
+| Lizard Isles | 0.016 (2001) | 0.078 (2013) | 0.002 → 0.062 (peak 0.093 in 2023) |
+| Macgillivray Reef | 0.009 (1998) | 0.042 (2011) | 0.004 → 0.064 |
+| North Direction Island | 0.020 (1997) | 0.113 (2013) | 0.005 → 0.110 |
+
+**Frozen coral criterion.**
+- **Primary.** The least-squares slope of fast cover against year over **2017–2024**, observed (survey years) against modelled (annual values, model `fast_coral` as a fraction of habitable area). The window follows the 2016–17 bleaching and cyclone reset, when COTS were rare in both data and model, so it isolates coral recovery from COTS grazing as far as the data allow. Photo transects sit on hard substrate on the 9 m slope, so they are compared with fast cover per habitable area. The multiplier `m*` is the grid value minimising the summed squared slope error over the three reefs, using the reference starvation arm; ties go to the smaller `m`.
+- **Secondary, not used for selection:**
+  - the 2001–2013 recovery slope (COTS-confounded);
+  - full-series RMSE of fast cover against photo transects;
+  - total site-area coral RMSE against LTMP manta.
+
+### Starvation diagnosis (leading candidate, Lizard)
+
+The first-wave decline takes 2–3 years (adults 106 → 65 → 25 → 10/ha over 2002–05) for two reasons:
+- **Lag.** Preferred-food memory is updated with fast cover *before* that year's grazing. In 2000 memory was 0.090 while end-of-year fast cover was 0.023, so adults starve the year *after* the coral is exhausted.
+- **Refill.** A large juvenile pipeline (subadults 150/ha, recruits 240/ha in 2001) keeps maturing about 50 adults/ha/yr.
+
+The memory already weights the current year by `1 - exp(-1/0.5) = 0.865`, so shortening it alone should change little.
+
+### Starvation arms
+
+- **`ref`:** H1 on remembered pre-grazing fast cover, memory 0.5 yr (current).
+- **`M0`:** memory 0, so the current year has weight 1. This is the user's suggestion; the expected effect is small.
+- **`PG` — post-grazing preferred food** (new opt-in COTSMod switch `starvation_post_grazing`). H1 memory is updated with the preferred cover left after this year's per-capita demand of the current adults:
+
+  `F_food = max(F - N3·c / (10⁴·k), 0)`, in fractions of habitable area.
+
+  Here `c` = 10 m²/adult/yr and `k` is the site habitable fraction. This is parameter-free and requires per-capita consumption and H1. Body condition still uses cover `F`. Starvation is then coupled to coral exhaustion within the same year, and its strength scales with COTS density: 10 adults/ha remove 0.017 of habitable cover per year at `k = 0.6`, and 100/ha remove 0.17.
+
+### Factorial
+
+Fast multiplier `m ∈ {1.0, 1.05, 1.10, 1.15, 1.20}` × starvation {`ref`, `M0`, `PG`} gives **15 arms**. All use the leading candidate (v0.3, working model, Ext×5, `Q = 30`, gradual Allee), per-reef RME calibration groups, `q = 0.015`, `k_unit = 19.61`, Allee scale 3 and pinned seeds.
+
+**Reference.** `m100_ref` must replay `grme_none` of the collapse run exactly.
+
+**Two-stage reading:**
+1. Select `m*` from the `ref` arms with the coral criterion; COTS metrics are not used.
+2. Report the COTS gate, frozen summed loss, trough minima, crash speed and second waves for `ref`, `M0` and `PG` at `m*`. The full grid is shown as sensitivity.
+
+### Expected consequences
+
+- **`m`:** a higher `m` raises fast-coral recovery slopes. At ×1.2 the collapse screen gave second waves on all reefs but overshot. `m*` is expected near the lower end if the model's 2017–24 recovery already matches.
+- **`M0`:** about one year faster at most; small changes.
+- **`PG`:**
+  - the crash follows exhaustion within a year (steepest one-year drop ratio well below 0.3);
+  - lower peak heights;
+  - deeper troughs, because trough adults face post-grazing food below θ while fast cover is 0.03–0.06;
+  - faster fast-coral recovery in the gap.
+  - *Risk:* suppressed second-wave build-up if `F_food` stays below θ as COTS rebuild.
+
+### Failures and rollback
+
+Failures:
+- an inexact reference replay, or external supply other than Ext×5;
+- non-finite or negative states;
+- `m*` at a grid boundary (reported as unidentified within the bound);
+- losing all first waves;
+- an improvement only by extinguishing waves.
+
+Rollback: `COTS_STARVATION_POST_GRAZING=false` (default), memory 0.5, multiplier 1.0, and calibration group 1 (current loader default).
+
+### Growth × starvation decision (2026-10-12)
+
+[Run](runs/20261012T_13_growth_starvation_1991_v1/metadata.toml) and [audit](runs/20261012T_13_growth_starvation_1991_v1/growth_starvation_audit.json).
+- **Checks.** `m100_ref` replays `grme_none` of the collapse run exactly (max delta `0.0`), and external supply is exactly Ext×5.
+- **Tests.** COTSMod 333/333 pass, including a new post-grazing starvation testset. The ADRIA adapter test passes.
+- **Result.** **No arm passes the gate.**
+
+**Stage 1 — coral fit (`ref` arms).** The values are model / observed 2017–24 fast-cover slopes per year.
+
+| `m` | Criterion (×10⁻⁴) | Lizard | MacGillivray | North Direction |
+| --- | --- | --- | --- | --- |
+| 1.00 | 1.39 | 0.0083 / 0.0117 | 0.0042 / 0.0087 | 0.0040 / 0.0143 |
+| 1.05 | 1.22 | 0.0118 | 0.0050 | 0.0039 |
+| **1.10** | **1.21** | 0.0093 | 0.0056 | 0.0041 |
+| 1.15 | 1.80 | 0.0100 | 0.0217 | 0.0174 |
+| 1.20 | 2.61 | 0.0102 | 0.0242 | 0.0188 |
+
+- **Selection.** `m* = 1.10` is interior. The criterion is nearly flat from 1.00 to 1.10, so `m` is only weakly identified.
+- **Above 1.10.** MacGillivray and North Direction have COTS outbreaks inside the fit window (mean adults 20–33/ha in 2017–24), so the low-COTS assumption fails.
+- **North Direction.** Its recovery is underestimated at every `m ≤ 1.10`, which may partly reflect the island-versus-reef site mismatch.
+
+**Stage 2 — COTS at `m* = 1.10`.**
+
+| Arm | Summed loss | Matched | Two-wave reefs | Mean first peak (COTS/tow) | Steepest drop ratio | Trough min (adults/ha) | Mean 2010–17 max |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| m100_ref (group 5, `m` 1.0) | 14.61 | 5/7 | 2 | 1.97 | 0.32 | 7.2 | 0.91 |
+| **m110_ref** | 15.93 | 5/7 | 2 | 2.33 | 0.20 | 9.1 | 0.99 |
+| m110_M0 | 15.65 | 5/7 | 2 | 2.09 | 0.22 | 8.0 | 0.81 |
+| m110_PG | 17.73 | 3/7 | 0 | 0.91 | 0.31 | 7.0 | 0.32 |
+
+Against the predictions:
+- **`M0`.** Negligible, as predicted, because the 0.5-yr memory already weights the current year 0.865.
+- **`PG`.** The density-scaled starvation acts before the peak, so peaks are a third to a half of the reference and broad. It removes second waves, the stated risk, and does not steepen the crash.
+- **Crash speed.** The juvenile pipeline (subadults 150/ha, recruits 240/ha at Lizard's peak) keeps refilling adults, and neither arm addresses it.
+
+**Diagnostic finding (not preregistered, from the photo-transect comparison).**
+
+| 1993–95 | Observed fast cover / share of hard coral | Model fast cover / share |
+| --- | --- | --- |
+| Lizard | 0.023–0.039 / 0.18–0.24 | 0.18–0.21 / 0.48–0.52 |
+| MacGillivray | 0.022–0.036 / 0.10–0.14 | 0.15–0.17 / 0.36–0.39 |
+| North Direction | 0.036–0.064 / 0.19–0.31 | 0.17–0.18 / 0.47–0.51 |
+
+- **What the transects show.** Observed fast coral stayed at 0.01–0.03 through the first outbreak and rose steadily through the 2000s.
+- **What the model does.** It starts with 3–5× the fast coral, which fuels oversized first waves (2–3 COTS/tow). It then grazes fast coral to zero and rebounds to 0.11–0.16 by 2011.
+- **Source of the excess.** The fast-coral excess is in the initial state: inherited 2023 RME composition, rescaled to 1991 manta total cover.
+
+Caveat: photo transects are fixed 9 m slope sites, whereas the model value is an area-weighted reef aggregate.
+
+**Decision.** Nothing is promoted.
+- **Working values.** CoralBlox group 5 (project lead) and `m = 1.10` (fitted, weakly identified) become working values. The leading candidate is v0.3 + group 5 + `m` 1.10 + working model + Ext×5 + `Q = 30` + gradual Allee.
+- **Re-tuning.** `Q = 30` was tuned under group 1 and should be re-checked after the next change.
+- **Switches.** `COTS_STARVATION_POST_GRAZING` stays opt-in and is not recommended. Memory stays 0.5 yr.
+
+**Next gate (proposed).** A data-derived 1991 coral composition: set the initial fast/slow split per calibration reef from LTMP photo-transect composition (*Acropora* + Pocilloporidae share of hard coral, 1993–95 mean), keeping total cover from the 1991 manta surface. Other reefs use the domain-wide mean observed share. Rescale within groups so size structure is preserved. Compare with the inherited composition on the leading candidate; this is an input correction, not a tuned parameter. Then re-check `Q`.
+
+
+## Preregistered data-derived 1991 coral composition screen (2026-10-12)
+
+Status: **approved by the project lead (2026-10-12); preregistered before implementation.** No default, domain-package or objective change.
+
+### Correction to the previous decision text
+
+The recent arms (`coral = "inherited_2023"`) start from the domain's initial cover **as-is**. That cover is the ReefMod **2023** mean cover, divided by the ReefMod habitable fraction and split into 35 group-size bins (`sandbox/domain_building/README.md`). It is *not* rescaled to 1991 manta totals; that rescaling applies only to the `manta_1989_1991` arms. The 2023 composition is a post-recovery, *Acropora*-rich state, with a fast share of 0.36–0.52 on the calibration reefs. Inherited totals are roughly consistent with 1991 manta (site-area fraction: Lizard 0.16 vs 0.17; MacGillivray 0.30 vs 0.31).
+
+### Hypothesis
+
+The oversized first waves (2–3 COTS/tow) and the fast-coral crash-to-zero then rebound come from an initial fast-coral pool 3–5× the observed. Setting the 1991 fast share from observations should:
+- lower first-wave heights towards 1.4–1.9 COTS/tow;
+- keep fast coral above zero through the first outbreak, as observed;
+- slow its 2000s rebound, as observed.
+
+### Correction (input, not a tuned parameter)
+
+**Target fast share.** For each calibration reef, the target is the 1993–95 mean of the LTMP photo-transect fast share: *Acropora* + Pocilloporidae divided by the sum of all `HARD CORAL` composition categories (`purpose = COMPOSITION`, 9 m).
+
+| Reef | Years | Target fast share |
+| --- | --- | --- |
+| Lizard Island Reef (from Lizard Isles) | 1994–95 | about 0.21 |
+| MacGillivray Reef | 1993–95 | about 0.13 |
+| North Direction Reef (from North Direction Island) | 1994–95 | about 0.25 |
+| Eyrie Reef and every other domain reef | — | mean of the three, about 0.20 |
+
+The runner computes these from the CSV and records the values and the file hash.
+
+**Applying it at each site.** Total cover and the relative size/group structure within the fast block (groups 1–3) and the slow block (groups 4–5) are kept. Only the fast:slow split is set to the target share. Sites with zero total cover stay zero. A site whose inherited fast or slow block is zero cannot be rescaled; it is left unchanged and counted.
+
+**Caveats:**
+- Photo transects are fixed 9 m slope sites, while the model's reef is an area-weighted aggregate.
+- North Direction Island is a different reef from North Direction Reef.
+- **Starvation risk.** The observed fast cover (about 0.03–0.06 of habitable area) lies near the H1 starvation threshold of 0.05 (ReefMod's 5% preferred-cover convention). With the observed composition, the first wave may be starved or suppressed. **θ will not be tuned to compensate.**
+
+### Factorial (8 arms)
+
+All arms use v0.3, the working model, Ext×5, gradual Allee, CoralBlox group 5 (RME per reef), `q = 0.015`, `k_unit = 19.61`, Allee scale 3 and pinned seeds.
+
+| Arm | Composition | Fast-growth multiplier `m` | `Q` |
+| --- | --- | --- | --- |
+| `inh_m110_q30` | inherited 2023 | 1.10 | 30 |
+| `obs_m110_q20` … `obs_m110_q100` | observed 1993–95 share | 1.10 | 20, 30, 45, 70, 100 |
+| `obs_m100_q30`, `obs_m120_q30` | observed | 1.00, 1.20 | 30 |
+
+- **Reference.** `inh_m110_q30` must replay `m110_ref` of [run 13](runs/20261012T_13_growth_starvation_1991_v1/metadata.toml) exactly.
+- **Re-checking `Q`.** Under the observed composition, `Q` is re-selected with the frozen rule: summed `smoothed_3y` loss, first peak on every reef, ties to the smaller `Q`.
+- **The `m` arms.** These check whether the growth fit is sensitive to composition.
+
+### Report
+
+- the gate and summed loss;
+- first-peak year and height;
+- fast-cover RMSE against photo transects over 1993–2024;
+- whether fast cover stays above zero in 1998–2003;
+- trough minimum adults/ha;
+- second waves;
+- site-area coral RMSE against LTMP manta.
+
+### Failures and rollback
+
+Failures:
+- an inexact reference replay, or external supply other than Ext×5;
+- total cover not preserved at any site, or the target share not met at rescaled sites;
+- non-finite states;
+- losing all first waves (this would be reported as evidence of the starvation-threshold tension above, not "fixed" by retuning).
+
+Rollback: inherited composition (`coral = "inherited_2023"`).

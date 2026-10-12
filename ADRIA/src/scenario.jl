@@ -1219,6 +1219,7 @@ function run_model(
         preferred_maturation = lowercase(get(ENV, "COTS_PREFERRED_MATURATION", "false")) == "true",
         allee_stretched = lowercase(get(ENV, "COTS_ALLEE_STRETCHED", "false")) == "true",
         allee_exponent = parse(Float64, get(ENV, "COTS_ALLEE_EXPONENT", "0.5")),
+        starvation_post_grazing = lowercase(get(ENV, "COTS_STARVATION_POST_GRAZING", "false")) == "true",
         outbreak_collapse = lowercase(get(ENV, "COTS_OUTBREAK_COLLAPSE", "false")) == "true",
         collapse_threshold_ha = parse(Float64, get(ENV, "COTS_COLLAPSE_THRESHOLD_HA", "67.5")),
         collapse_duration_years = parse(Int, get(ENV, "COTS_COLLAPSE_DURATION_YEARS", "4")),
@@ -1373,6 +1374,10 @@ function run_model(
         error("COTS_PREFERRED_MATURATION and COTS_JUVENILE_STORAGE are exclusive")
     cots_params.allee_stretched && !(cots_params.allee_exponent > 0.0) &&
         error("COTS_ALLEE_EXPONENT must be positive")
+    cots_params.starvation_post_grazing && !(cots_params.per_capita_consumption &&
+        cots_params.preferred_prey_starvation && !cots_params.prey_switching) &&
+        error("COTS_STARVATION_POST_GRAZING requires COTS_PER_CAPITA_CONSUMPTION and " *
+              "COTS_PREFERRED_PREY_STARVATION without COTS_PREY_SWITCHING")
     if cots_params.outbreak_collapse
         isfinite(cots_params.collapse_threshold_ha) && cots_params.collapse_threshold_ha > 0.0 ||
             error("COTS_COLLAPSE_THRESHOLD_HA must be positive")

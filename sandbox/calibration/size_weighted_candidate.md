@@ -84,7 +84,7 @@ merging or branching; the ADRIA sandbox resolves its local `COTSMod.jl` path.
 ## First paired result and decision
 
 The first bounded screen is archived at
-`runs/20261008Tsize_weighted_pair020_v2/`. Its unweighted control exactly
+`runs/20261008T_06_size_weighted_pair020_v2/`. Its unweighted control exactly
 replayed the previous pair-20 adult, coral and hydrodynamic-year trajectories
 to the script's `1e-12` tolerance. All five arms completed and passed
 small+large=total adult accounting; the independent `size_audit.json` records

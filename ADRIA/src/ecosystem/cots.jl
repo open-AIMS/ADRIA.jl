@@ -268,6 +268,7 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         preferred_maturation=Bool(get(params, :preferred_maturation, false)),
         allee_stretched=Bool(get(params, :allee_stretched, false)),
         allee_exponent=Float64(get(params, :allee_exponent, 0.5)),
+        starvation_post_grazing=Bool(get(params, :starvation_post_grazing, false)),
         outbreak_collapse=Bool(get(params, :outbreak_collapse, false)),
         collapse_threshold_ha=Float64(get(params, :collapse_threshold_ha, 67.5)),
         collapse_duration_years=Int(get(params, :collapse_duration_years, 4)),

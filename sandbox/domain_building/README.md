@@ -193,5 +193,5 @@ C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/domain_building/bu
 C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/domain_building/build_lizard_domain_v3.py
 ```
 
-The compatibility check is the `initiation` experiment's `none_none` arm, which must replay the run-time `bgeo_none` arm of `20261012T_trough_mechanisms_1991_v1` exactly.
+The compatibility check is the `initiation` experiment's `none_none` arm, which must replay the run-time `bgeo_none` arm of `20261012T_07_trough_mechanisms_1991_v1` exactly.
 

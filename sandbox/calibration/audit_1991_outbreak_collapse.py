@@ -22,7 +22,7 @@ from audit_1991_initiation import exact_replay  # noqa: E402
 from audit_1991_switching_repair import REEFS, TWO_WAVE, sha256  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_predation_capacity_1991_v1"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_11_predation_capacity_1991_v1"
 REFERENCE, PRIOR_REFERENCE = "g1_none", "ext5_PA_q30"
 CORALS = ("g1", "grme", "grmefast")
 COLLAPSES = ("none", "D2", "D2J", "D4")

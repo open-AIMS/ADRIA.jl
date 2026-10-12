@@ -219,6 +219,19 @@ end
     @test models[1].N[2] + models[1].N[3] ≈ 0.25
 end
 
+@testset "Opt-in post-grazing starvation adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    @test !ADRIA._cots_runtime_params(base).starvation_post_grazing
+    treated = ADRIA._cots_runtime_params(merge(base, (starvation_post_grazing=true,
+        per_capita_consumption=true, preferred_prey_starvation=true,
+        starvation_memory_years=0.0)))
+    @test treated.starvation_post_grazing
+    model = COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 0.0, 30.0), 0.8, treated)
+    COTSMod.cots_timestep!(model, 0.08, 0.3; habitable_fraction=0.5)
+    @test model.preferred_food_memory ≈ 0.08 - 30.0 * 10.0 / 5_000.0
+end
+
 @testset "Opt-in Lizard cyclone mortality table" begin
     mktempdir() do directory
         path = joinpath(directory, "cyclone_mortality.csv")

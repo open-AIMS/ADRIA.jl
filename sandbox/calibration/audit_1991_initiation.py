@@ -39,7 +39,7 @@ def exact_replay(current: pd.DataFrame, old: pd.DataFrame, columns: list[str]) -
     return worst
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_trough_mechanisms_1991_v1"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_07_trough_mechanisms_1991_v1"
 BASE = "none_none"
 PRIOR_BASE = "bgeo_none"
 EXTERNAL_MULTIPLIER = 5.0

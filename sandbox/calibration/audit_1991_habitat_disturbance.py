@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from audit_1991_switching_repair import REEFS, TWO_WAVE, exact_replay, sha256  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_switching_repair_1991_v1"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_02_switching_repair_1991_v1"
 BASE = "k05_bleaching"
 ARMS = {
     BASE: ("k = 0.5, bleaching (base)", "#475569", "-"),

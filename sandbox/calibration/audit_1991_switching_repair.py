@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_switching_condition_1991_v1"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_01_switching_condition_1991_v1"
 REFERENCES = {"condition_ref": "condition", "switching_ref": "switching_condition"}
 ARMS = {
     "condition_ref": ("Condition, no switching (reference)", "#475569", "-"),

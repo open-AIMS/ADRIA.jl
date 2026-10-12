@@ -21,7 +21,7 @@ from audit_1991_initiation import exact_replay  # noqa: E402
 from audit_1991_switching_repair import REEFS, TWO_WAVE, sha256  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_initiation_1991_v3"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_10_initiation_1991_v3"
 CAPACITIES = (20, 30, 45, 70, 100, 150, 220, 330, 500)
 ARMS = ["ext5_A"] + [f"ext5_PA_q{q}" for q in CAPACITIES]
 REFERENCES = {"ext5_A": "ext5_A", "ext5_PA_q20": "ext5_PA"}

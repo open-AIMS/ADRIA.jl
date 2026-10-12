@@ -1680,12 +1680,12 @@ reef/year does not establish the same tow path or detection probability. The
 original [SALAD size audit](runs/20261007T199112_salad_stage_sizes/metadata.json)
 finds 991 individually recorded COTS in these 22 reef-years, all with sizes.
 Its >=250/260 mm counts are archival sensitivities, not the agreed adult
-definition. The [revised audit](runs/20261008Tsalad_adult150_sizes_checked/metadata.json)
+definition. The [revised audit](runs/20261008T_04_salad_adult150_sizes_checked/metadata.json)
 uses the agreed categories: 985 are adults >=150 mm, of which 56 are small
 adults 150-250 mm inclusive and 929 are larger adults >250 mm. Track-level and individual
 counts reconcile exactly in only 13 of 22 reef-years, and in only 6 of the 9
 near-date manta matches. Only 3 of those 6 have nonzero manta counts. The
-[revised size audit rows](runs/20261008Tsalad_adult150_sizes_checked/salad_stage_sizes.csv)
+[revised size audit rows](runs/20261008T_04_salad_adult150_sizes_checked/salad_stage_sizes.csv)
 therefore report >=150 mm adult COTS/ha only for exact reconciliations; they
 do not justify a fitted tow-to-density coefficient yet. The 250/260 mm
 cutoffs remain labelled archival comparators, not an adult definition.
@@ -1801,7 +1801,7 @@ julia --project=sandbox sandbox/calibration/screen_1991_cycle_capacity.jl
 python sandbox/calibration/audit_1991_cycle_capacity.py sandbox/calibration/runs/<unused_capacity_run_id>
 ```
 
-The [2026-10-08 attempted 24-pair run](runs/20261008Tcycle_capacity_24pairs/incomplete_provenance.json)
+The [2026-10-08 attempted 24-pair run](runs/20261008T_03_cycle_capacity_24pairs/incomplete_provenance.json)
 completed the control plus 23 design pairs (48 treatments). The final pair
 had `q=0.00849`, half the inherited immature preload, and low adult mortality;
 its `theta=3` run exceeded ten minutes of sustained CPU and was stopped before
@@ -1810,11 +1810,11 @@ either threshold produced a result. Both treatments for pair 24 are marked
 treatments have no logged exception and passed the independent finite-value,
 unique-year, and four-reef completeness checks. The control's `theta=3`
 adult, coral and selected hydrodynamic-year trajectories replayed the archived
-1991 cohort run to `1e-12`. See the [design](runs/20261008Tcycle_capacity_24pairs/design.csv),
-[per-reef audit](runs/20261008Tcycle_capacity_24pairs/capacity_audit.csv),
-[treatment summary](runs/20261008Tcycle_capacity_24pairs/capacity_treatment_summary.csv),
-and [audit metadata](runs/20261008Tcycle_capacity_24pairs/capacity_audit.json).
-The [paired COTS/coral trajectory figure](runs/20261008Tcycle_capacity_24pairs/cots_coral_capacity_pair_020.png)
+1991 cohort run to `1e-12`. See the [design](runs/20261008T_03_cycle_capacity_24pairs/design.csv),
+[per-reef audit](runs/20261008T_03_cycle_capacity_24pairs/capacity_audit.csv),
+[treatment summary](runs/20261008T_03_cycle_capacity_24pairs/capacity_treatment_summary.csv),
+and [audit metadata](runs/20261008T_03_cycle_capacity_24pairs/capacity_audit.json).
+The [paired COTS/coral trajectory figure](runs/20261008T_03_cycle_capacity_24pairs/cots_coral_capacity_pair_020.png)
 shows the lowest-loss supported-threshold completed treatment (`pair 20`),
 its `theta=1` counterfactual, and the archived-state control against raw and
 3-year-smoothed COTS/tow and LTMP manta coral. Its first modeled peaks are
@@ -1910,10 +1910,10 @@ every arm fails, retain the negative diagnostic and investigate an adult
 survival/grazing mechanism or shared internal/external recruitment floor
 without changing the supported Allee threshold.
 
-The [completed one-seed pair-20 run](runs/20261008Tsize_weighted_pair020_v2/metadata.toml)
+The [completed one-seed pair-20 run](runs/20261008T_06_size_weighted_pair020_v2/metadata.toml)
 passed the archived-control replay and completed all five arms without model
-exceptions. The [independent audit](runs/20261008Tsize_weighted_pair020_v2/size_audit.json)
-and [COTS/coral figure](runs/20261008Tsize_weighted_pair020_v2/cots_coral_size_weighted_pair020.png)
+exceptions. The [independent audit](runs/20261008T_06_size_weighted_pair020_v2/size_audit.json)
+and [COTS/coral figure](runs/20261008T_06_size_weighted_pair020_v2/cots_coral_size_weighted_pair020.png)
 show that **none** passes the qualitative cycle gate. Every arm matches at
 most six of seven frozen observed peaks; all have incorrect 2/2/2/1 peak
 counts, late first peaks, and inter-peak adult-density floors far above the
@@ -1967,17 +1967,17 @@ julia --compiled-modules=existing --project=sandbox sandbox/calibration/run_1991
 python sandbox/calibration/audit_1991_crash_factorial.py sandbox/calibration/runs/<unused_crash_factorial_run_id>
 ```
 
-The [completed four-arm run](runs/20261008T_crash_factorial_1991_v1/metadata.toml)
-and [independent audit](runs/20261008T_crash_factorial_1991_v1/crash_factorial_audit.json)
+The [completed four-arm run](runs/20261008T_07_crash_factorial_1991_v1/metadata.toml)
+and [independent audit](runs/20261008T_07_crash_factorial_1991_v1/crash_factorial_audit.json)
 replayed the archived cohort control and all its logged fluxes exactly
 (`max absolute difference = 0`) and held external immigration identical
 across arms. The Julia metadata recorded Git revisions as `unknown`; a
-[post-run provenance supplement](runs/20261008T_crash_factorial_1991_v1/provenance_supplement.json)
+[post-run provenance supplement](runs/20261008T_07_crash_factorial_1991_v1/provenance_supplement.json)
 records actual revisions, dirty flags and source/manifest hashes. This is a
 dirty-worktree diagnostic—both repositories contained uncommitted changes,
 not corrupted model files—so revision IDs alone cannot reconstruct it. See the
-[paired COTS/coral figure](runs/20261008T_crash_factorial_1991_v1/cots_coral_crash_factorial.png)
-and [per-reef readout](runs/20261008T_crash_factorial_1991_v1/crash_factorial_audit.csv).
+[paired COTS/coral figure](runs/20261008T_07_crash_factorial_1991_v1/cots_coral_crash_factorial.png)
+and [per-reef readout](runs/20261008T_07_crash_factorial_1991_v1/crash_factorial_audit.csv).
 
 | 1991 full-cohort arm | Worst available two-wave trough/smaller-peak | Observed peaks matched / 7 | Lizard first detected peak | Lizard first height, COTS/tow |
 | --- | ---: | ---: | ---: | ---: |
@@ -2018,15 +2018,15 @@ seed, provisional `q=0.015`, hydrodynamic seed, area-weighted reef mapping,
 and three-year-smoothed score fixed. Diagnostic strengths are `h_max=0.75`
 and `1.5`; these are **not** estimated pathogen-mortality rates.
 
-The [completed run](runs/20261008T_lagged_hazard_1991_v1/metadata.toml),
-[independent audit](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.json),
-[reef readout](runs/20261008T_lagged_hazard_1991_v1/lagged_hazard_audit.csv),
-[site-year hazard summary](runs/20261008T_lagged_hazard_1991_v1/site_hazard_summary.csv),
-and [paired COTS/coral plot](runs/20261008T_lagged_hazard_1991_v1/cots_coral_lagged_hazard.png)
+The [completed run](runs/20261008T_08_lagged_hazard_1991_v1/metadata.toml),
+[independent audit](runs/20261008T_08_lagged_hazard_1991_v1/lagged_hazard_audit.json),
+[reef readout](runs/20261008T_08_lagged_hazard_1991_v1/lagged_hazard_audit.csv),
+[site-year hazard summary](runs/20261008T_08_lagged_hazard_1991_v1/site_hazard_summary.csv),
+and [paired COTS/coral plot](runs/20261008T_08_lagged_hazard_1991_v1/cots_coral_lagged_hazard.png)
 show that **none passes the qualitative gate**. The archived control and all
 12 recruitment-flux channels replay exactly; external immigration is
 identical in every arm. The site-level burden recurrence and extra-adult-death
-mass bounds pass. A [provenance supplement](runs/20261008T_lagged_hazard_1991_v1/provenance_supplement.json)
+mass bounds pass. A [provenance supplement](runs/20261008T_08_lagged_hazard_1991_v1/provenance_supplement.json)
 records dirty-worktree/source hashes alongside the run metadata's revisions,
 seeds, Manifest hash, settings and output hashes.
 
@@ -2068,11 +2068,11 @@ python sandbox/calibration/audit_1991_lagged_hazard.py sandbox/calibration/runs/
 
 ### Readout-only cohort floor audit (2026-10-09)
 
-The [exact-control replay](runs/20261009T_cohort_audit_1991_v1/metadata.toml)
-adds [area-weighted annual N1/N2/adult and transition diagnostics](runs/20261009T_cohort_audit_1991_v1/cohorts.csv)
+The [exact-control replay](runs/20261009T_01_cohort_audit_1991_v1/metadata.toml)
+adds [area-weighted annual N1/N2/adult and transition diagnostics](runs/20261009T_01_cohort_audit_1991_v1/cohorts.csv)
 without changing COTS dynamics. Adults, coral, and all 12 recruitment-flow
 channels agree with the archived 1991 full-cohort control exactly (`max absolute
-difference = 0`). The [Lizard cohort plot](runs/20261009T_cohort_audit_1991_v1/cohort_floor_diagnostics.png)
+difference = 0`). The [Lizard cohort plot](runs/20261009T_01_cohort_audit_1991_v1/cohort_floor_diagnostics.png)
 shows why the adult series sawtooths after the first peak: food survival
 alternates sharply during 1999–2007, affecting both N2 maturation and
 established adults. It is not an adult-only mortality factor. N1 recruits are
@@ -2113,7 +2113,7 @@ opt-in COTSMod switches on the 1991 full-cohort anchor:
 - `preferred_prey_starvation`: food survival from remembered fast cover, threshold `0.05`, memory `0.5` yr;
 - `adult_senescence`: adult ages 2–5 at the archived `m3`, and a 6+ class at `0.8` annual mortality.
 
-Everything else was held fixed: seed, `q=0.015` preload, 3 COTS/ha Allee threshold, external outbreak production, connectivity, fecundity and consumption, frozen observation scales and score. `per_capita_consumption` is implemented but was **not run**, pending the units decision below. See [metadata](runs/20261009T_structural_crash_1991_v1/metadata.toml), [audit](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.json), [per-reef table](runs/20261009T_structural_crash_1991_v1/structural_crash_audit.csv) and [COTS/coral plot](runs/20261009T_structural_crash_1991_v1/cots_coral_structural_crash.png).
+Everything else was held fixed: seed, `q=0.015` preload, 3 COTS/ha Allee threshold, external outbreak production, connectivity, fecundity and consumption, frozen observation scales and score. `per_capita_consumption` is implemented but was **not run**, pending the units decision below. See [metadata](runs/20261009T_02_structural_crash_1991_v1/metadata.toml), [audit](runs/20261009T_02_structural_crash_1991_v1/structural_crash_audit.json), [per-reef table](runs/20261009T_02_structural_crash_1991_v1/structural_crash_audit.csv) and [COTS/coral plot](runs/20261009T_02_structural_crash_1991_v1/cots_coral_structural_crash.png).
 
 Integrity checks:
 - The control replays the archived trajectories and all 12 flux channels exactly (max delta `0`).
@@ -2166,7 +2166,7 @@ python sandbox/calibration/audit_1991_structural_crash.py sandbox/calibration/ru
 
 **Reproducibility finding.** ADRIA seeds the coral RNG with `floor(sum(parameter values))` unless `ADRIA_RNG_SEED` is set (`ADRIA/src/utils/setup.jl`). Any treatment or optimizer candidate that changes a parameter value therefore also changes the coral random stream. In this setup (cyclones and waves zeroed) the effect is small, at most 0.3% on adults, but it broke the v1 compatibility replay and violates the recorded-seed rule. **Pin `ADRIA_RNG_SEED` in calibration and comparison runs.** ADRIA's default was not changed, because that would alter every legacy replay.
 
-**Results** ([v2 audit](runs/20261009T_unit_migration_q015_1991_v2/unit_migration_audit.json), [plot](runs/20261009T_unit_migration_q015_1991_v2/cots_coral_unit_migration.png)):
+**Results** ([v2 audit](runs/20261009T_07_unit_migration_q015_1991_v2/unit_migration_audit.json), [plot](runs/20261009T_07_unit_migration_q015_1991_v2/cots_coral_unit_migration.png)):
 - The compatibility arm replays the archived control ×k exactly.
 - Under consistent units the legacy model produces a boom–bust: peaks of 1.0–1.4 COTS/tow around 2000, second waves around 2014, worst trough `0.381`. Coral never recovers.
 - Per-capita grazing (10 m²/adult/yr, preferred-first, habitable-area corrected) combined with preferred-prey starvation and senescence gives an outbreak, starvation crash and coral recovery close to the LTMP 9 m values. Lizard's trough ratio is `0.171`, but MacGillivray and North Direction show no second wave (3/7 matched), and first peaks fall around 2001.
@@ -2185,7 +2185,7 @@ The diagnostics `ulp_noise_floor` and `unit_compat_k2` (with `OWEN_1991_COMPAT_K
 
 ### Prey switching × preferred-food condition (2026-10-12)
 
-Base: the per-capita + starvation + senescence model under `q=0.015`. See the [protocol](crash_mechanism_protocol.md), [audit](runs/20261012T_switching_condition_1991_v1/switching_condition_audit.json) and [plot](runs/20261012T_switching_condition_1991_v1/cots_coral_switching_condition.png).
+Base: the per-capita + starvation + senescence model under `q=0.015`. See the [protocol](crash_mechanism_protocol.md), [audit](runs/20261012T_01_switching_condition_1991_v1/switching_condition_audit.json) and [plot](runs/20261012T_01_switching_condition_1991_v1/cots_coral_switching_condition.png).
 
 - **Preferred-food condition (`COTS_PREFERRED_CONDITION=true`, saturation `0.10`, memory `1` yr).** This is the best configuration so far: 5/7 peaks matched, two-wave reefs 2/3, and a Lizard trough of `0.103` with a 2014 second wave. Starving adults stop supplying larvae, and fast coral recovers sooner.
 - **Prey switching (`COTS_PREY_SWITCHING=true`).** Fails: COTS persist at high density on massives and strip slow coral. It stays off.
@@ -2205,7 +2205,7 @@ python sandbox/calibration/audit_1991_switching_condition.py sandbox/calibration
 
 ### Prey-switching repair (2026-10-12)
 
-This tested two fixes for prey switching: diet-linked starvation (`COTS_DIET_LINKED_STARVATION`) and reduced feeding on massives (`COTS_NONPREFERRED_FEEDING_EFFICIENCY=0.2`). See the [audit](runs/20261012T_switching_repair_1991_v1/switching_repair_audit.json) and [plot](runs/20261012T_switching_repair_1991_v1/cots_coral_switching_repair.png).
+This tested two fixes for prey switching: diet-linked starvation (`COTS_DIET_LINKED_STARVATION`) and reduced feeding on massives (`COTS_NONPREFERRED_FEEDING_EFFICIENCY=0.2`). See the [audit](runs/20261012T_02_switching_repair_1991_v1/switching_repair_audit.json) and [plot](runs/20261012T_02_switching_repair_1991_v1/cots_coral_switching_repair.png).
 
 The combined fix protects coral well. However, it turns boom–bust into a persistent 0.3–0.6 COTS/tow plateau: the switching refuge stabilises a partly starved but fertile population. **Prey switching is retired for this model.** The working candidate remains per-capita grazing, preferred-prey starvation, senescence and preferred-food condition, all opt-in and none promoted.
 
@@ -2220,7 +2220,7 @@ python sandbox/calibration/audit_1991_switching_repair.py sandbox/calibration/ru
 
 ### Habitat fraction × bleaching (2026-10-12)
 
-The V2 domain hard-codes `k=0.5` while storing initial cover relative to each reef's RME habitable area (`1 - sand_proportion`, mean `0.715`). Neither RME-k nor a no-bleaching counterfactual improves second waves on the condition model. Both add coral, which grows larger first outbreaks and more trough adults, and those adults then suppress fast-coral recovery. Trough density (model 7–31 vs observed about 0–3 adults/ha) is now the binding constraint. See the [audit](runs/20261012T_habitat_disturbance_1991_v2/habitat_disturbance_audit.json) and [protocol](crash_mechanism_protocol.md). No historical cyclone hindcast exists locally, so cyclones and waves stay zero.
+The V2 domain hard-codes `k=0.5` while storing initial cover relative to each reef's RME habitable area (`1 - sand_proportion`, mean `0.715`). Neither RME-k nor a no-bleaching counterfactual improves second waves on the condition model. Both add coral, which grows larger first outbreaks and more trough adults, and those adults then suppress fast-coral recovery. Trough density (model 7–31 vs observed about 0–3 adults/ha) is now the binding constraint. See the [audit](runs/20261012T_04_habitat_disturbance_1991_v2/habitat_disturbance_audit.json) and [protocol](crash_mechanism_protocol.md). No historical cyclone hindcast exists locally, so cyclones and waves stay zero.
 
 Reproduce:
 
@@ -2238,11 +2238,11 @@ New derived inputs, built by checked-in scripts; outputs are git-ignored because
 - **`sandbox/domain_building/build_site_habitable_fraction.py`** builds site habitable fractions from the GBR10 2025 benthic map (Rock + Coral/Algae). It writes three versions: of all site cells, of mapped cells, and geomorphic-infilled (each benthic-unmapped cell takes the habitable share of its geomorphic zone). It needs `rasterio` with GDAL ≥3.7 for FileGDB rasters.
 - **`sandbox/domain_building/build_cyclone_hours_rrn.py`** extracts per-reef, per-summer hours of ≥4 m waves from the GBRMPA RRN 2025 workbook. It needs `openpyxl` (base miniconda Python). Mortality is `1-exp(-0.00444·h)`, from the COTS-Coral-OutcomesV2 LTMP dose-response.
 
-ADRIA cannot run sites with `k=0`: `scenario.jl` uses `length(habitable_locs)`, and `constrain_recruitment!` mixes all-site and habitable-site vectors. Runs therefore floor `k` at `0.01`. Results are in [audit](runs/20261012T_benthic_cyclone_1991_v2/benthic_cyclone_audit.json): realistic habitat improves coral but removes second waves, and cyclones improve post-2014 coral.
+ADRIA cannot run sites with `k=0`: `scenario.jl` uses `length(habitable_locs)`, and `constrain_recruitment!` mixes all-site and habitable-site vectors. Runs therefore floor `k` at `0.01`. Results are in [audit](runs/20261012T_06_benthic_cyclone_1991_v2/benthic_cyclone_audit.json): realistic habitat improves coral but removes second waves, and cyclones improve post-2014 coral.
 
 ### Trough mechanisms (2026-10-12)
 
-Three opt-in switches were tested on two bases: `COTS_JUVENILE_PREDATION` (saturating predator pit, CoCoNet form), `COTS_PREFERRED_MATURATION` (preferred-prey maturation delay; Deaker et al. 2020) and `COTS_ALLEE_STRETCHED` (CoCoNet `exp(-(3/A)^0.5)` fertilisation). See the [audit](runs/20261012T_trough_mechanisms_1991_v1/trough_mechanisms_audit.json) and [plot](runs/20261012T_trough_mechanisms_1991_v1/cots_coral_trough_mechanisms.png).
+Three opt-in switches were tested on two bases: `COTS_JUVENILE_PREDATION` (saturating predator pit, CoCoNet form), `COTS_PREFERRED_MATURATION` (preferred-prey maturation delay; Deaker et al. 2020) and `COTS_ALLEE_STRETCHED` (CoCoNet `exp(-(3/A)^0.5)` fertilisation). See the [audit](runs/20261012T_07_trough_mechanisms_1991_v1/trough_mechanisms_audit.json) and [plot](runs/20261012T_07_trough_mechanisms_1991_v1/cots_coral_trough_mechanisms.png).
 
 All three act at low density, so they delay or flatten outbreak *initiation* as well as deepening troughs. Only the gradual Allee form preserves timing. The next test couples these with a stronger, evidence-based initiation supply. The geomorphic-habitat + cyclone base gives the best coral fit so far.
 
@@ -2259,7 +2259,7 @@ python sandbox/calibration/audit_1991_trough_mechanisms.py sandbox/calibration/r
 
 **Domain.** `Lizard_Historical_v0.3` (geomorphic-infilled site `k`, RRN cyclones) is the adopted working base; see `sandbox/domain_building/README.md`. The Lizard loader reads `cyclones/cyclone_mortality.csv` only when the datapackage declares it.
 
-**Result.** Multiplying the evidence-derived external outbreak production by 5 fixes first-wave timing (Lizard 1994 density matches observations; first peaks 1997–99). Adding the predator pit and gradual Allee yields correctly timed 2014 second waves on Lizard and Eyrie. Troughs remain too high, at 6–10 adults/ha. See the [audit](runs/20261012T_initiation_1991_v3/initiation_audit.json) and [plot](runs/20261012T_initiation_1991_v3/cots_coral_initiation.png).
+**Result.** Multiplying the evidence-derived external outbreak production by 5 fixes first-wave timing (Lizard 1994 density matches observations; first peaks 1997–99). Adding the predator pit and gradual Allee yields correctly timed 2014 second waves on Lizard and Eyrie. Troughs remain too high, at 6–10 adults/ha. See the [audit](runs/20261012T_10_initiation_1991_v3/initiation_audit.json) and [plot](runs/20261012T_10_initiation_1991_v3/cots_coral_initiation.png).
 
 Reproduce:
 
@@ -2276,7 +2276,7 @@ python sandbox/calibration/audit_1991_initiation.py sandbox/calibration/runs/<un
 - External ×5 is the working initiation assumption, labelled as such.
 - The juvenile predator-pit capacity `Q` is tuned, because field data (Wolfe et al. 2025 CCIP report; Desbiens et al. 2023) describe predation on settlers under 10 mm and do not bound `Q` on the model's effective juvenile scale.
 
-**Result.** The preregistered grid (`Q` 20–500) selects **`Q = 30` COTS/ha/yr** (plateau 30–70) by the frozen loss. That gives 5/7 matched and second waves on Lizard, Eyrie and North Direction. Troughs stay at 5–10 adults/ha. Only `Q ≥ 330` reaches observed trough depth, and it suppresses and delays the first wave. See the [audit](runs/20261012T_predation_capacity_1991_v1/predation_capacity_audit.json), [plot](runs/20261012T_predation_capacity_1991_v1/cots_coral_predation_capacity.png) and [loss curve](runs/20261012T_predation_capacity_1991_v1/predation_capacity_loss.png).
+**Result.** The preregistered grid (`Q` 20–500) selects **`Q = 30` COTS/ha/yr** (plateau 30–70) by the frozen loss. That gives 5/7 matched and second waves on Lizard, Eyrie and North Direction. Troughs stay at 5–10 adults/ha. Only `Q ≥ 330` reaches observed trough depth, and it suppresses and delays the first wave. See the [audit](runs/20261012T_11_predation_capacity_1991_v1/predation_capacity_audit.json), [plot](runs/20261012T_11_predation_capacity_1991_v1/cots_coral_predation_capacity.png) and [loss curve](runs/20261012T_11_predation_capacity_1991_v1/predation_capacity_loss.png).
 
 Reproduce:
 
@@ -2297,7 +2297,7 @@ python sandbox/calibration/audit_1991_predation_capacity.py sandbox/calibration/
 **Result.** No arm passes.
 - **Collapse.** It makes the first-wave drop abrupt but triggers rebounds and removes second waves, because the crash is no longer coupled to coral exhaustion.
 - **Fast linear extension ×1.2.** It produces second waves on all four reefs (6/7 matched) but overshoots in height and timing.
-- **Conclusion.** Fast-coral availability limits second-wave occurrence, but the growth scalar should be fitted to observed coral recovery rather than to COTS peaks. See the [audit](runs/20261012T_outbreak_collapse_1991_v1/outbreak_collapse_audit.json), [plot](runs/20261012T_outbreak_collapse_1991_v1/cots_coral_outbreak_collapse.png) and [fast coral](runs/20261012T_outbreak_collapse_1991_v1/fast_coral_outbreak_collapse.png).
+- **Conclusion.** Fast-coral availability limits second-wave occurrence, but the growth scalar should be fitted to observed coral recovery rather than to COTS peaks. See the [audit](runs/20261012T_12_outbreak_collapse_1991_v1/outbreak_collapse_audit.json), [plot](runs/20261012T_12_outbreak_collapse_1991_v1/cots_coral_outbreak_collapse.png) and [fast coral](runs/20261012T_12_outbreak_collapse_1991_v1/fast_coral_outbreak_collapse.png).
 
 Reproduce:
 
@@ -2306,5 +2306,28 @@ $env:OWEN_1991_EXPERIMENT = 'outbreak_collapse'
 $env:OWEN_1991_RUN_ID = '<unused_outbreak_collapse_run_id>'
 julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_outbreak_collapse.py sandbox/calibration/runs/<unused_outbreak_collapse_run_id>
+```
+
+### Fast-coral growth fit and faster starvation (2026-10-12)
+
+**Decision by the project lead.** CoralBlox calibration group 5 is used for the calibration reefs, through per-reef RME groups relabelled at run time.
+
+**Observations.** LTMP photo-transect composition (`sandbox/data/reef_photo_transect.csv`, `purpose = COMPOSITION`, `variable = HARD CORAL`, `reefpage_category` *Acropora* + Pocilloporidae) gives observed fast cover for Lizard Isles, Macgillivray Reef and North Direction Island. Eyrie has no transects.
+
+**Result.**
+- **Growth fit.** The 2017–24 recovery-slope fit selects a fast linear-extension multiplier of **×1.10**, weakly identified (×1.00–1.10 within 15%).
+- **Shorter memory** (`M0`) barely changes the crash.
+- **New opt-in `COTS_STARVATION_POST_GRAZING`.** It starves adults before the peak and removes second waves. Not recommended.
+- **Key finding.** The model's 1991–95 fast coral is 3–5× the observed photo-transect cover (fast share 0.36–0.52 vs 0.10–0.31). That initial excess drives the oversized first waves.
+
+See the [audit](runs/20261012T_13_growth_starvation_1991_v1/growth_starvation_audit.json), [coral fit](runs/20261012T_13_growth_starvation_1991_v1/fast_coral_growth_fit.png) and [COTS plot](runs/20261012T_13_growth_starvation_1991_v1/cots_coral_growth_starvation.png).
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'growth_starvation'
+$env:OWEN_1991_RUN_ID = '<unused_growth_starvation_run_id>'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_growth_starvation.py sandbox/calibration/runs/<unused_growth_starvation_run_id>
 ```
 

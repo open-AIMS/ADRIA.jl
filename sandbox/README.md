@@ -133,6 +133,7 @@ None is promoted; see `calibration/MODEL_LOG.md` and
 | `COTS_JUVENILE_PREDATION` | Saturating juvenile predator pit `Q·J/(J+Q)`, capacity `COTS_JUVENILE_PREDATION_CAPACITY` (COTS/ha/yr; tuned, not evidence-bounded) |
 | `COTS_PREFERRED_MATURATION` | Maturation fraction `sqrt(remembered fast cover)`; retained juveniles stay herbivorous |
 | `COTS_ALLEE_STRETCHED` | Fertilisation `exp(-(3/A)^COTS_ALLEE_EXPONENT)` instead of the Hill form; scale held at 3 COTS/ha |
+| `COTS_STARVATION_POST_GRAZING` | Preferred-prey starvation judged on preferred cover left after the adults' per-capita demand. Tested 2026-10-12: suppresses peaks; not recommended |
 | `COTS_OUTBREAK_COLLAPSE` | ReefMod-style die-off: after `COTS_COLLAPSE_DURATION_YEARS` years with adults ≥ `COTS_COLLAPSE_THRESHOLD_HA` (67.5/ha), adults (and N2 with `COTS_COLLAPSE_JUVENILES`) reset to `COTS_COLLAPSE_BACKGROUND_HA` (0.25/ha). Tested 2026-10-12: counterproductive |
 
 The project lead's working configuration ("condition, no switching") turns on

@@ -27,7 +27,7 @@ Python environments:
 
 ## Working model ("condition, no switching")
 
-This is the project lead's preferred configuration. Its reference arm is `k05_nocyc` in [`20261012T_benthic_cyclone_1991_v2`](runs/20261012T_benthic_cyclone_1991_v2/metadata.toml), identical to `k05_bleaching` in the habitat run and `condition_ref` in the switching-repair run.
+This is the project lead's preferred configuration. Its reference arm is `k05_nocyc` in [`20261012T_06_benthic_cyclone_1991_v2`](runs/20261012T_06_benthic_cyclone_1991_v2/metadata.toml), identical to `k05_bleaching` in the habitat run and `condition_ref` in the switching-repair run.
 
 - **Grazing:** `COTS_PER_CAPITA_CONSUMPTION=true`, 10 m² per adult per year, fast prey first, ÷ site `k`.
 - **Starvation:** `COTS_PREFERRED_PREY_STARVATION=true`, remembered fast cover, threshold `0.05`, memory `0.5` yr.
@@ -62,21 +62,18 @@ Within Eyrie, MacGillivray and North Direction, all sites follow identical traje
 8. **Trough decomposition.** Trough adults are mostly new each year, from settlement of 15–60/ha/yr (70–87% internal immigration) through a coral-independent recruit stage. The 3/ha Allee scale is weak at 4–10/ha.
 9. **First-wave timing.** The observed Lizard rise is about ×2.5/yr (0.23→1.92 COTS/tow over 1994–98); the model's is about ×1.5/yr. Early settlement is about 7 vs about 35+/ha/yr needed. Candidates: a weak 1990s external pulse, or low manta detectability of the 1991 initial stock.
 
-## Latest result: collapse × fast-coral growth (2026-10-12)
+## Latest result: fast-coral growth fit × starvation (2026-10-12)
 
-**Leading candidate (unchanged):** working model + **External ×5** (assumption) + predator pit **`Q = 30`** (tuned) + gradual Allee, on `Lizard_Historical_v0.3`, with CoralBlox calibration group 1. Runner arm: `predation_capacity` / `ext5_PA_q30`, also replayed as `outbreak_collapse` / `g1_none`.
+**Leading candidate:** working model + **External ×5** (assumption) + predator pit **`Q = 30`** (tuned under group 1; re-check) + gradual Allee + **CoralBlox group 5** (project lead) + **fast linear extension ×1.10** (fitted to 2017–24 photo-transect recovery; weakly identified), on `Lizard_Historical_v0.3`. Runner: `growth_starvation` / `m110_ref`.
 
-- **[Q tuning](runs/20261012T_predation_capacity_1991_v1/metadata.toml).** `Q = 30` gives 5/7 matched and second waves on Lizard, Eyrie and North Direction. Troughs stay at 5–10 adults/ha.
-- **[Collapse × coral](runs/20261012T_outbreak_collapse_1991_v1/metadata.toml):**
-  - **ReefMod-style die-off** (`COTS_OUTBREAK_COLLAPSE`): an abrupt drop, then a rebound. Second waves are lost because the crash no longer exhausts coral. Not recommended.
-  - **Coral calibration group.** Lizard runs use group 1, but the RME layer puts all four calibration reefs in group 5. Group 5 raises first peaks to observed levels but overpredicts coral.
-  - **Fast linear extension ×1.2** gives second waves on all four reefs (6/7 matched), including MacGillivray for the first time. They are too large and late (up to 2.5 COTS/tow, 2016–17).
-- **Still failing:** the trough floor; first peaks around 2000–01; second-wave amplitude and timing when fast growth is raised.
+- **[Growth × starvation run](runs/20261012T_13_growth_starvation_1991_v1/metadata.toml):**
+  - **Coral fit.** The model matches Lizard's fast-coral recovery and underestimates MacGillivray and North Direction.
+  - **COTS at ×1.10.** 5/7 matched, second waves on Lizard, Eyrie and North Direction, none on MacGillivray. First peaks are too high (mean 2.3 COTS/tow).
+  - **Starvation.** Memory 0 changes little. Post-grazing starvation (`COTS_STARVATION_POST_GRAZING`) suppresses peaks and second waves; not recommended.
+- **Key finding.** The model's 1991–95 fast coral is 3–5× the LTMP photo-transect values (fast share 0.36–0.52 vs 0.10–0.31). Observed fast coral never crashed to zero during the first outbreak. The inherited initial composition likely drives the oversized first waves and the fast-coral crash-and-rebound.
+- **Earlier the same day:** the ReefMod-style die-off is counterproductive ([collapse run](runs/20261012T_12_outbreak_collapse_1991_v1/metadata.toml)), and `Q = 30` was tuned ([Q run](runs/20261012T_11_predation_capacity_1991_v1/metadata.toml)).
 
-**Next (project lead to choose):**
-1. Fit fast-coral growth to observed coral recovery, ideally with group-level cover data, then rerun the COTS screen.
-2. A faster starvation-coupled crash (shorter preferred-food memory or a sharper response).
-3. Decide on the calibration group (group 1 vs RME group 5; a v0.4 rebuild).
+**Next (proposed, needs go-ahead).** Derive the 1991 initial fast/slow coral composition per reef from 1993–95 LTMP photo-transect composition, keeping total cover from the 1991 manta surface. Compare it with the inherited composition, then re-check `Q`.
 
 ## Known issues and open decisions
 

@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from audit_1991_switching_repair import REEFS, TWO_WAVE, exact_replay, sha256  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIOR = ROOT / "sandbox/calibration/runs/20261012T_benthic_cyclone_1991_v2"
+PRIOR = ROOT / "sandbox/calibration/runs/20261012T_06_benthic_cyclone_1991_v2"
 BASE = "b05_none"
 PRIOR_BASE = "k05_nocyc"
 COLORS = {"none": "#475569", "P": "#0d9488", "D": "#d97706", "A": "#2563eb", "PDA": "#dc2626"}
