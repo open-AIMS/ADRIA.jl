@@ -232,6 +232,35 @@ end
     @test model.preferred_food_memory ≈ 0.08 - 30.0 * 10.0 / 5_000.0
 end
 
+@testset "Opt-in starvation grace adapter" begin
+    base = (a=1.5, b=0.5, IMM=0.0, p_tilde=0.95, C_max=0.5,
+        m1=0.4, m2=0.2, m3=0.2, a_F=0.6, a_S=0.15)
+    @test ADRIA._cots_runtime_params(base).starvation_grace_years == 0
+    treated = ADRIA._cots_runtime_params(merge(base, (starvation_grace_years=1,
+        preferred_prey_starvation=true, starvation_memory_years=0.0)))
+    @test treated.starvation_grace_years == 1
+    models = [COTSMod.COTSHuman(COTSMod.MVector{3,Float64}(0.0, 0.0, 10.0), 0.8, treated)]
+    COTSMod.cots_timestep!(models[1], 0.01, 0.3)
+    @test models[1].last_food_survival == 1.0
+    @test ADRIA.cots_mechanism_diagnostics(models).low_food_years == [1.0]
+end
+
+@testset "Forced COTS adults table" begin
+    mktempdir() do directory
+        path = joinpath(directory, "forced.csv")
+        CSV.write(path, DataFrame(site_id=["b", "a"], var"1991"=[1.0, 2.0], var"1992"=[3.0, 4.0]))
+        adults = ADRIA.load_cots_forced_adults(path, ["a", "b"], [1991, 1992])
+        @test adults == [2.0 1.0; 4.0 3.0]
+        # scenario.jl passes calendar years as a dimension-wrapped vector.
+        wrapped = ADRIA.DataCube([1991, 1992]; timesteps=[1991, 1992])
+        @test ADRIA.load_cots_forced_adults(path, ["a", "b"], Int.(wrapped)) == adults
+        @test_throws ErrorException ADRIA.load_cots_forced_adults(path, ["a", "c"], [1991])
+        @test_throws ErrorException ADRIA.load_cots_forced_adults(path, ["a"], [1993])
+        CSV.write(path, DataFrame(site_id=["a"], var"1991"=[-1.0]))
+        @test_throws ErrorException ADRIA.load_cots_forced_adults(path, ["a"], [1991])
+    end
+end
+
 @testset "Opt-in Lizard cyclone mortality table" begin
     mktempdir() do directory
         path = joinpath(directory, "cyclone_mortality.csv")

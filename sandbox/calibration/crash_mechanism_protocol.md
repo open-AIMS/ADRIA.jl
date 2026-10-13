@@ -1279,3 +1279,551 @@ Failures:
 - losing all first waves (this would be reported as evidence of the starvation-threshold tension above, not "fixed" by retuning).
 
 Rollback: inherited composition (`coral = "inherited_2023"`).
+
+### Composition decision (2026-10-12)
+
+[Run](runs/20261012T_14_initial_composition_1991_v1/metadata.toml) and [audit](runs/20261012T_14_initial_composition_1991_v1/initial_composition_audit.json).
+- **Run ID.** Auto-sequenced as `20261012T_14_…`; earlier undated runs were renumbered (see `runs/RUN_RENAMES.csv`).
+- **Checks.** `inh_m110_q30` replays `m110_ref` exactly (`0.0`), and 1991 total cover is identical across compositions (`0.0`). External supply is Ext×5. No site needed to be left unchanged.
+- **Observed fast shares:** Lizard 0.2086, MacGillivray 0.125, North Direction 0.2502, others 0.1946.
+- **Result.** **No arm passes the gate.**
+
+| Arm | Summed loss | Matched | Two-wave reefs | Mean first peak (year / COTS/tow) | Trough min (adults/ha) | Mean 2010–17 max | Fast RMSE vs photo | Coral site RMSE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| inh_m110_q30 (ref) | 15.93 | 5/7 | 2 | 2001.5 / 2.33 | 9.1 | 0.99 | 0.063 | 0.124 |
+| obs_m110_q20 (selected `Q`) | 14.10 | 4/7 | 1 | 1998.5 / 0.79 | 2.8 | 0.38 | 0.034 | 0.196 |
+| obs_m110_q30 | 14.28 | 4/7 | 1 | 1999.0 / 0.80 | 2.8 | 0.37 | 0.035 | 0.195 |
+| obs_m110_q45 / q70 / q100 | 14.50 / 15.13 / 15.50 | 4/7 | 1 | 1999.8–2001.0 / 0.78–0.84 | 3.0–3.1 | 0.32–0.35 | 0.037–0.045 | 0.20 |
+| **obs_m100_q30** | **12.18** | 5/7 | 2 | 1998.3 / 0.66 | 2.9 | 0.35 | 0.032 | 0.202 |
+| obs_m120_q30 | 16.94 | 3/7 | 0 | 1999.8 / 1.11 | 4.2 | 0.45 | 0.037 | 0.187 |
+
+Against the predictions:
+- **First waves.** They were lowered as predicted, but too far on Lizard (0.49 vs observed 1.92) and MacGillivray (0.51 vs 0.86). North Direction (1.1) and Eyrie (1.06) remain above observed. Timing moved to 1997–99, matching the observed 1996–98.
+- **Fast coral through the first outbreak.** It stayed above zero only partly: the 1998–2003 minimum is 0.003–0.005 against observed 0.01–0.03. It then rebounded slowly, as predicted, and too slowly: Lizard about 0.04 in 2008–13 against observed 0.07–0.08, North Direction 0.035 against 0.10.
+- **Troughs.** Unexpectedly, troughs reached the observed range (2–3 adults/ha), because trough fast cover (about 0.03–0.04) stays below the starvation threshold.
+- **Starvation risk.** The preregistered risk materialised partly. First waves still occur, but COTS cannot build second waves on 0.03–0.04 fast cover, which is below θ = 0.05 and well below the condition saturation of 0.10.
+- **Growth fit.** Under the observed composition, the 2017–24 recovery-slope criterion (×10⁻⁴) is 1.92 / 1.79 / 1.49 for `m` 1.00 / 1.10 / 1.20, against 1.21 for the inherited composition at 1.10. The model slope is about 0.004/yr against observed 0.009–0.014. The run-13 fit of ×1.10 therefore depended on the inherited composition, and extension alone cannot reproduce observed recovery from an observed-size pool.
+
+**Decision.** Nothing is promoted.
+- **Composition.** The observed composition is recommended as the data-based initial state for the leading candidate, pending the project lead's decision. It is an input correction with no tuned parameter. `Q` is re-selected as 20, but the loss differences across `Q` are small.
+
+**Two linked gaps for the next gate:**
+1. **Fast-coral recovery rate** from an observed-size pool. Candidates are fast-coral recruitment (larval supply and settlement for groups 1–3, including the external/domain coral larval boundary) and the growth acceleration at low cover. These should be fitted to photo-transect recovery (2001–13 and 2017–24) with COTS-off and COTS-on checks.
+2. **Food scale.** Observed outbreaks reached 1.9 COTS/tow with transect fast cover at 0.02–0.04.
+   - **Data questions first:** does "Other" contain preferred prey (*Montipora*, *Isopora*), and are the 9 m slope transects representative of reef-wide food?
+   - **Then the model:** H1 θ (ReefMod's 5% convention) and the condition saturation are defined on model fast cover. Revisiting them needs evidence on the food scale, not a fit to COTS peaks.
+
+
+## Preregistered food-scale screen: plausible 1991 composition range × starvation grace year (2026-10-12)
+
+Status: **directed by the project lead (2026-10-12); preregistered before implementation.** No default, domain-package or objective change.
+
+### Decisions and reasoning by the project lead
+
+- **Composition.** The observed composition is an appropriate starting point, but the 1991 fast share is uncertain, for three reasons:
+  - photo transects start in 1993–94, 2–3 years after the simulation;
+  - "Other" may hide preferred *Montipora* and *Isopora*;
+  - many *Acropora* plates sit on the upper slope and crest, above the 9 m transects.
+  Plausible starting points should therefore be tested as a range.
+- **Food scale first.** COTS may need to survive about one year at low food before crashing, so that second peaks can build.
+
+### Evidence
+
+- **Starvation tolerance.**
+  - Kettle (1990, JCU thesis) found *A. planci* survives enforced starvation for about **six months**: large adults shrink and die quickly, while small ones keep growing, and gonad indices rose about fourfold after six months.
+  - Yang et al. (2022, *Front. Mar. Sci.* 9:1021377) found little change in stomach primary metabolism after four months' starvation.
+  - In an annual model, a one-year grace period is therefore the **generous end** of the evidence.
+- **Plausible fast share** (1993–95 photo transects, share of all hard coral):
+
+| Reef | *Acropora* + Pocilloporidae | + half of "Other" | + all of "Other" |
+| --- | --- | --- | --- |
+| Lizard | 0.209 | 0.249 | 0.290 |
+| MacGillivray | 0.125 | 0.201 | 0.277 |
+| North Direction | 0.250 | 0.383 | 0.516 |
+| Mean (Eyrie, other reefs) | 0.195 | 0.278 | 0.361 |
+
+"Other" is a residual category, so the upper bound is generous. It is nonetheless consistent with crest *Acropora* missing from 9 m transects, and it approaches the inherited 2023 share (0.34–0.46).
+
+### Mechanism (opt-in COTSMod switch `starvation_grace_years`, integer years, default 0)
+
+- **Counter.** H1 keeps a per-site count of consecutive annual steps in which remembered preferred food is at or below θ (0.05).
+- **Grace.** While that count is ≤ `starvation_grace_years`, the food factor is `f = 1`. After that, the usual cubic H1 factor applies. Food above θ resets the count.
+- **Default.** With grace 0 the result is identical to the current model.
+- **What still applies.** Body condition, and therefore fecundity, still follows food, so starving COTS breed less while surviving. The factor applies to maturing N2 and adults alike.
+- **Simplification.** Grace is a property of the site population, not of individual cohorts.
+- **Rules.** It requires H1 and is incompatible with diet-linked starvation (retired).
+
+### Factorial (6 arms)
+
+Composition {`acrpoc`, `halfother`, `other`} × grace {0, 1}, all on the run-14 best configuration:
+- v0.3, working model, Ext×5, gradual Allee, `Q = 30`;
+- CoralBlox group 5 (RME), fast extension ×1.0;
+- `q = 0.015`, `k_unit = 19.61`, Allee scale 3, pinned seeds.
+
+Composition is applied as in run 14 (totals and within-block structure preserved).
+
+**Reference.** `acrpoc_g0` must replay `obs_m100_q30` of [run 14](runs/20261012T_14_initial_composition_1991_v1/metadata.toml) exactly.
+
+### Expected consequences
+
+- **Grace 1:**
+  - trough COTS survive one extra low-food year, so troughs may be shallower (risk: back towards 4–10/ha);
+  - cohorts arriving as fast coral climbs from 0.03 to 0.05+ survive long enough to build second waves;
+  - crashes come about 1 year later;
+  - first peaks are higher.
+- **Higher fast share:**
+  - first peaks rise towards observed heights on Lizard and MacGillivray;
+  - risk: the inherited-style overshoot (2+ COTS/tow) and late peaks.
+- **Discrimination.** If grace raises second waves only together with deep troughs lost, the food-scale problem lies in the threshold scale, not in starvation timing.
+
+### Report
+
+- the gate and summed loss;
+- first-peak year and height;
+- trough minimum adults/ha;
+- second-wave heights;
+- fast RMSE against photo transects;
+- coral site RMSE;
+- the number of grace years used per reef.
+
+### Failures and rollback
+
+Failures:
+- an inexact reference replay, or external supply other than Ext×5;
+- totals not preserved;
+- non-finite states;
+- losing all first waves.
+
+Rollback: `COTS_STARVATION_GRACE_YEARS=0` (default) and the run-14 composition.
+
+### Food-scale decision (2026-10-12)
+
+[Run](runs/20261012T_15_food_grace_1991_v1/metadata.toml) and [audit](runs/20261012T_15_food_grace_1991_v1/food_grace_audit.json).
+- **Checks.** `acrpoc_g0` replays run 14 `obs_m100_q30` exactly (`0.0`). 1991 totals are identical across compositions, and external supply is Ext×5.
+- **Tests.** COTSMod 350/350 pass (new grace testset); the ADRIA adapter test passes.
+- **Operational failure.** The first audit attempt stopped on an unrenamed output key before writing anything.
+- **Result.** **No arm passes the gate.**
+
+| Arm | Summed loss | Matched | Two-wave reefs (of 3) | Mean first peak | Trough min (adults/ha) | Mean 2010–17 max | Fast RMSE vs photo | Coral site RMSE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| acrpoc_g0 (ref) | **12.18** | 5/7 | 2 | 1998.3 / 0.66 | 2.9 | 0.35 | 0.032 | 0.202 |
+| acrpoc_g1 | 16.67 | 3/7 | 0 | 1999.3 / 0.89 | 3.0 | 0.40 | 0.033 | 0.183 |
+| halfother_g0 | 17.75 | 3/7 | 0 | 1999.8 / 1.24 | 4.5 | 0.45 | 0.039 | 0.191 |
+| halfother_g1 | 18.92 | 4/7 | 1 | 2000.3 / 1.57 | 4.9 | 1.01 | 0.044 | 0.185 |
+| other_g0 | 15.96 | 4/7 | 1 | 2000.3 / 1.52 | 6.5 | 0.60 | 0.048 | 0.174 |
+| other_g1 | 19.66 | 4/7 | 1 | 2000.5 / 1.80 | 6.4 | 1.09 | 0.049 | 0.175 |
+
+**Against the predictions:**
+- **Grace.** It raised first peaks and let more cohorts build, but second waves appeared only where fast coral recovers above θ (North Direction, overshooting at 2–3 COTS/tow, and Eyrie). Lizard and MacGillivray were unchanged.
+- **Higher fast share.** It raised first peaks as expected, too far on North Direction, and raised troughs (the stated risk).
+
+**Diagnosis.** In every arm, Lizard and MacGillivray fast cover in 2000–13 stays ≤ 0.04 (observed Lizard 0.065–0.083 in 2007–13), regardless of starting share or grace. Slow corals grow unchecked:
+
+| Reef, observed `acrpoc` arm | Slow cover (habitable): 1991 → 2003 → 2012 | Total: 1991 → 2012 |
+| --- | --- | --- |
+| Lizard | 0.21 → 0.50 → 0.62 | 0.26 → 0.66 |
+| MacGillivray | 0.30 → 0.60 → 0.70 | 0.34 → 0.74 |
+
+Photo-transect total hard coral is about 0.2–0.3. Space limitation therefore caps fast-coral recovery. In the inherited-composition runs this was masked, because first waves of 100–190 adults/ha also consumed massives (per-capita demand spills over to slow prey) and cleared space. CoralBlox group 5 contributes: its large-massive linear-extension scale is 1.16, against 0.71 in group 1.
+
+**Decision.** Nothing is promoted.
+- **Grace switch.** `COTS_STARVATION_GRACE_YEARS` stays opt-in. One year exceeds the evidence (about 6 months) and does not fix the gap.
+- **Food scale.** On Lizard and MacGillivray the "food-scale" gap is a coral **space and massive-growth** problem, not a starvation-timing one.
+- **Working values.** The best configuration remains `obs_m100_q30` / `acrpoc_g0` (loss 12.18).
+
+**Next gate (proposed).** A coral-side calibration before further COTS mechanisms:
+- **Target.** Fit slow-coral (massive) growth and mortality, and check fast-coral recruitment, against LTMP photo-transect group cover (fast, slow, total; 1993–2024) and manta total cover. Work per calibration reef, under group 5.
+- **COTS forcing.** Run the coral fit with COTS predation **forced from observed CPUE** (adults = CPUE / q), so it is independent of the COTS model.
+- **Then.** Rerun the leading COTS configuration on the refitted coral.
+
+
+## Preregistered coral-side calibration with observed COTS forcing (2026-10-12)
+
+Status: **approved by the project lead (2026-10-12); preregistered before implementation.** No default, domain-package or objective change for COTS.
+
+### Motivation
+
+[Run 15](runs/20261012T_15_food_grace_1991_v1/metadata.toml) showed that on Lizard and MacGillivray modelled slow corals (massives) grow from about 0.2–0.3 to 0.6–0.7 of habitable area, while LTMP photo-transect total hard coral is about 0.2–0.3. Space limitation then caps fast coral at about 0.04, below the H1 threshold, so no second wave can build. CoralBlox group 5 (the project lead's choice) gives large massives a linear-extension scale of 1.16, against 0.71 in group 1. Coral dynamics must be constrained by coral data before further COTS mechanisms are judged, and **without depending on the COTS model**.
+
+### Forcing (new derived input and opt-in path)
+
+**Forcing table.** `sandbox/calibration/build_observed_cots_forcing.py` (checked in) builds `sandbox/data/derived/observed_cots_forcing_1991_2024/observed_adults_ha.csv`, a site × year table:
+- **Method.** For each year 1991–2024, LTMP manta COTS/tow (sum(COTS)/sum(tows) per reef-year) is interpolated with the same effort-aware IDW, crosswalk, 111 km radius and 3-donor rule as the 1991 surface.
+- **Gaps.** Site-years without enough donors (the biennial gaps 2012, 2014, 2016 and 2018) are filled by linear interpolation in time.
+- **Units.** Adults = CPUE / 0.015.
+- **Check.** It reproduces the observed calibration-reef CPUE closely (Lizard 1998: 1.73 vs 1.92; 2013: 0.71 vs 0.74).
+
+**Forced grazing.** New COTSMod `forced_grazing!` applies the per-capita, preferred-first grazing of the working model (10 m² per adult per year ÷ site `k`) for prescribed adults, with no population dynamics. A unit test shows it equals `cots_mortality!` when the dynamic adults equal the forcing.
+
+**ADRIA switch.** `COTS_FORCED_ADULTS_CSV` applies forced grazing each year at the point where COTS predation occurs, and requires `ADRIA_COTS_ENABLED=false`.
+
+### Calibrated quantities
+
+The linear-extension scale multipliers apply to every RME calibration group present (5, 1, 4):
+- **`s`, slow corals** (small and large massives): `s ∈ {0.40, 0.55, 0.70, 0.85, 1.00}`;
+- **`f`, fast corals** (groups 1–3): `f ∈ {1.0, 1.2, 1.4}`.
+
+Mortality scales, growth acceleration, recruitment, DHW, cyclones and the initial state are unchanged. The initial state is the observed 1993–95 photo-transect composition (*Acropora* + Pocilloporidae share) with inherited 2023 totals; this is the leading-candidate composition.
+
+### Frozen coral objective
+
+Observations:
+- LTMP photo transects (9 m, `COMPOSITION`): fast = *Acropora* + Pocilloporidae, slow = all other hard coral, as fractions of benthos. They are compared with model fast and slow cover as fractions of habitable area on Lizard, MacGillivray and North Direction.
+- LTMP manta 9 m hard coral, compared with model total site-area cover on all four reefs.
+
+All observed years 1992–2024 are used.
+
+`J = mean_reefs RMSE_fast + mean_reefs RMSE_slow + mean_reefs RMSE_manta_total`
+
+- **Selection.** `(s*, f*)` is the forced arm with minimum `J`. A selected value on the grid boundary is reported as unidentified within the bound. The plateau is the set of arms within 10% of the minimum.
+- **Secondary, not used for selection:**
+  - fast-cover recovery slopes 2017–24 and 2001–13 against observed;
+  - peak slow cover;
+  - fast cover in 2008–13.
+
+### Arms (16)
+
+- **`dynamic_ref`:** the leading COTS configuration (COTS dynamics on). It must replay `acrpoc_g0` of run 15 exactly, and is shown for contrast.
+- **`forced_s{040…100}_f{100,120,140}`:** forced observed COTS, COTS dynamics off.
+
+### Expected consequences
+
+- A lower `s` reduces slow overgrowth towards photo-transect totals and frees space, raising fast cover. A higher `f` speeds fast recovery.
+- `s*` is expected well below 1.0, and `f*` near 1.0–1.2 if space was the main limit.
+- *Risk:* fast-cover recovery stays too slow at any `s`. That would implicate fast-coral recruitment or larval supply, which is outside this grid.
+
+### Next step after selection
+
+Rerun the leading COTS configuration on the refitted coral (`s*`, `f*`), as a separate preregistered screen.
+
+### Failures and rollback
+
+Failures:
+- an inexact replay of `dynamic_ref`;
+- a forcing table that does not cover every site and year;
+- non-finite cover;
+- a forced arm whose grazing exceeds the available cover. The function caps it, but this would signal a units error.
+
+Rollback: unset `COTS_FORCED_ADULTS_CSV` (default) and multipliers 1.0.
+
+### Coral calibration decision (2026-10-13)
+
+[v2 run](runs/20261013T_01_coral_calibration_1991_v2/metadata.toml) and [audit](runs/20261013T_01_coral_calibration_1991_v2/coral_calibration_audit.json).
+- **Operational failure.** [v1](runs/20261012T_16_coral_calibration_1991_v1/metadata.toml) failed in all forced arms: `DimVector` year columns in the new forcing loader. It was fixed, a test was added, and the run was repeated as v2.
+- **Checks.** `dynamic_ref` replays run 15 `acrpoc_g0` exactly (`0.0`). COTS dynamics are zero in all forced arms. Cover stays finite and in range.
+- **Tests.** COTSMod 363/363 pass, including `forced_grazing!`'s equality with the dynamic per-capita path.
+
+| `s` \ `f` | 1.0 | 1.2 | 1.4 |
+| --- | --- | --- | --- |
+| 0.40 | **0.381** | 0.440 | 0.499 |
+| 0.55 | 0.406 | 0.459 | 0.516 |
+| 0.70 | 0.442 | 0.488 | 0.536 |
+| 0.85 | 0.486 | 0.524 | 0.563 |
+| 1.00 | 0.537 | 0.565 | 0.598 |
+
+The table shows `J`. For comparison, `dynamic_ref` has `J = 0.599`: fast RMSE 0.033, slow 0.364, manta 0.202.
+
+**Selection.** `s* = 0.40`, `f* = 1.0`. **Both are on the grid boundary, so `s` and `f` are not identified within the bounds**, as the frozen rule specifies.
+
+**Against the predictions.**
+- **Slow corals.** A lower `s` reduces slow overgrowth, as predicted: mean slow cover in 2012 falls from 0.50 to 0.25, with Lizard and North Direction near observed and MacGillivray still about 0.35 against 0.2.
+- **Fast corals.** The freed space lets fast coral overshoot. Even at defaults under observed COTS, fast coral 2008–13 is 0.14, against observed 0.035–0.105; at `s = 0.40` it is 0.29. Hence `f* = 1.0` sits at the lower bound.
+- **The preregistered risk** (fast recovery too slow at any `s`) did **not** materialise under observed COTS: the 2017–24 slope reaches the observed range at `s ≤ 0.55`.
+- **Disturbance response (not preregistered).** Observed manta cover stays at 0.07–0.10 from 2015 to 2019 after Nathan and the 2016–17 bleaching, while model cover rebounds within 1–2 years at every setting.
+
+**Decision.** Nothing is promoted, and coral parameters are unchanged.
+
+**Interpretation.** With observed COTS, the group-5 coral model on these reefs grows **both** coral types too fast, and loses too little to the 2015–17 disturbances. The low fast cover in the dynamic-COTS runs, which matched transects, came from massive crowding and trough grazing, not from realistic growth. A growth-only fit would let reduced growth stand in for missing disturbance mortality.
+
+**Next gate (project lead to choose):**
+- (a) extend the growth grid to `f` 0.6–1.0 and `s` 0.2–0.4;
+- (b) add a disturbance-mortality sensitivity (bleaching via the existing scalar, and cyclone), scored on the 2015–19 decline and recovery;
+- (c) a joint bounded fit of growth and disturbance mortality, holding out years, for example scoring 1992–2012 and validating 2013–24.
+
+
+## Calibration-group provenance check (2026-10-13)
+
+Requested by the project lead, because the domain has been updated in recent months.
+
+- **Source of the groups in use.** `sandbox/data/rme_ml_2025_06_05/data_files/region/reefmod_gbr.gpkg`, column `CB_CALIB_GROUPS` (runner `RME_GBR_LAYER`).
+- **Calibration-time canonical file.** CoralBlox calibration used `CoralBlox-params-calibration/datasets/spatial_data/rrap_canonical_2025-07-15-T10-48-29.gpkg`. Its `CB_CALIB_GROUPS` and `GBRMPA_BIOREGION` **agree with the RME layer on all 3,806 reefs** (100%).
+  - Domain reefs: 58 in group 5 (GBRMPA bioregion 26; all four calibration reefs), 44 in group 1 (bioregion 3) and 11 in group 4 (bioregion 23).
+  - There are 12 groups.
+- **Method.** `gbrrestoration/canonical-reefs` `src/14_add_cb_calib_groups.jl`:
+  - each reef takes the GBRMPA bioregion with the largest overlap, or the nearest;
+  - bioregions with fewer than 4 LTMP manta locations having ≥ 4 observations spanning ≥ 10 years since 2008 are merged into the nearest data-rich bioregion (10% quantile of reef distances);
+  - group 27 is split at Feather Reef's latitude;
+  - groups are renumbered 1..N.
+- **Upstream changes.** None to this script since 2025-07-15. Upstream `main` (`a258d69`, 2026-02-09) changed only the README. The local clone is at `56bd7e7` (2025-08-26); Zenodo 10.5281/zenodo.16945486 is a source snapshot from 2025-08-26.
+- **Locally regenerated outputs.** The files in `canonical-reefs/output/` lack `CB_CALIB_GROUPS`; they are earlier or partial pipeline runs and are not used.
+- **ADRIA parameter tables.** `linear_extension_group_scale_factors`, `mb_rate_group_scale_factors` and the growth-acceleration vectors were set in ADRIA commit `f931cfa42` (2025-10-08, P. Ribeiro de Almeida, "Update calibrated parameter base values"). The group factors were introduced in `b00df9ceb` (2025-07-01).
+- **Calibration context.** CoralBlox calibration was run over **2008–2022 with historical DHW and observed LTMP storm/COTS mortality forced** (`historical_disturbance_mortality_rates`, published 2025-11-05). "Unknown", disease and bleaching-only events were excluded.
+
+**Conclusion.** The group assignment is consistent and current. The group-5 parameters, however, were fitted with observed acute disturbance losses imposed, which are much larger than the RRN-hours dose-response used here. That is consistent with the coral overgrowth found in the [coral calibration](runs/20261013T_01_coral_calibration_1991_v2/metadata.toml).
+
+## Preregistered joint coral fit: growth × cyclone strength × background mortality (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13); preregistered before implementation.** No default, domain-package or COTS change.
+
+### Project lead's observations
+
+- Cyclone mortality is not strong enough: the post-2015 trough is not deep enough, while post-2016 recovery looks about right.
+- LTMP records other disturbances (disease, unknown and others). Mellin et al. (2019) used their incidence to derive a background mortality needed to contain coral over 2000–2010.
+
+### Evidence
+
+**Observed storm losses.** From the CoralBlox disturbance dataset (LTMP, per functional group), survival in the disturbance year was:
+
+| Reef, year | Survival by group |
+| --- | --- |
+| North Direction 2015 (Ita/Nathan) | 0.05 *Acropora*, 0.25 corymbose non-*Acropora*, 0.24 small massives, 0.50 large massives |
+| Lizard 2015 | non-*Acropora* 0.35–0.51 |
+
+The current dose-response gives total mortality of 0.20–0.25 for Nathan and 0.06 for Ita on these reefs. Scaling the dose-response coefficient by κ, so that mortality = `1 − (1 − m)^κ` (equivalent to multiplying the −0.00444 per hour coefficient), the observed losses imply **κ ≈ 2.5–5**.
+
+**Other-disturbance incidence.** `CoralBlox-params-calibration/datasets/ltmp_data/disturbances.nc` covers 204 LTMP reefs over 2008–2022:
+
+| Disturbance type | Reef-years flagged |
+| --- | --- |
+| Unknown | 51 (1.7%/yr) |
+| Disease | 1 |
+| Bleaching | 51 |
+| Storm | 98 |
+| COTS | 61 |
+| Multiple | 28 |
+
+North Direction has "Unknown" in 2008, 2010 and 2022, and MacGillivray in 2008. Multiplying an "Unknown/Disease" incidence of about 2–20% per reef-year by a plausible impact of 10–30% cover loss gives a chronic background loss of about **0.3–6% per year**.
+
+**Mellin et al. 2019** is the lead's reference for this approach. If it reports a specific rate, it should replace this bound.
+
+### Mechanism (runner only; no ADRIA code change)
+
+The domain's cyclone-mortality cube (site × year, all groups) is replaced per arm by
+
+`m'(site, year) = 1 − (1 − m)^κ · (1 − μ_bg)`
+
+- `κ` scales cyclone (RRN-hours) mortality.
+- `μ_bg` is a constant annual background mortality (fraction of cover), applied to all groups and sizes every year.
+
+Both enter ADRIA through the existing cyclone mortality step, before COTS grazing. With κ = 1 and μ_bg = 0 the original cube object is used, so the reference replays exactly.
+
+### Grid (54 forced arms)
+
+All arms force COTS grazing from observed CPUE / q (`COTS_FORCED_ADULTS_CSV`, COTS dynamics off) and use the observed 1993–95 composition with RME group 5.
+
+| Factor | Levels |
+| --- | --- |
+| Slow (massive) growth `s` | 0.55, 0.75, 1.00 |
+| Fast growth `f` | 0.8, 1.0 |
+| Cyclone strength κ | 1, 2.5, 5 |
+| Background mortality μ_bg | 0, 0.03, 0.06 per year |
+
+**Reference.** `forced_s100_f100_k100_b000` must replay `forced_s100_f100` of [coral calibration v2](runs/20261013T_01_coral_calibration_1991_v2/metadata.toml) exactly.
+
+### Frozen objective and checks
+
+- **Objective.** Unchanged `J` = mean RMSE fast + mean RMSE slow (photo transects, habitable fraction) + mean RMSE total (manta, site area), over 1992–2024.
+- **Selection.** Minimum `J`. Each parameter at a grid boundary is reported as unidentified within the bound. The plateau is the set within 10% of the minimum.
+- **Held-out reefs.** Re-select on each set of 3 of the 4 reefs and report the held-out reef's error.
+- **Secondary reports:**
+  - `J` split by period (1992–2012 and 2013–2024);
+  - 2017–19 trough depth (manta) against observed 0.07–0.10;
+  - post-2016 recovery slope;
+  - 2008–13 fast cover;
+  - peak slow cover.
+
+### Expected consequences
+
+- κ ≈ 2.5–5 deepens the 2015–17 trough to observed levels without changing pre-2014 years.
+- μ_bg > 0 lowers both coral types through 2000–2012, so slow overgrowth shrinks at a higher `s` than in the growth-only fit.
+- `f < 1` controls the fast overshoot.
+
+If the optimum still sits at `s` 0.55 or `f` 0.8, growth remains biased high even with disturbances added.
+
+### Failures and rollback
+
+Failures:
+- an inexact reference replay;
+- a combined mortality outside [0, 1];
+- non-finite cover;
+- COTS dynamics active in a forced arm.
+
+Rollback: κ = 1, μ_bg = 0 (the domain cube), and multipliers 1.
+
+**Clarifications by the project lead (2026-10-13, before results):**
+- **Cyclones are calibrated on modelled outputs, not forced with observed losses.** κ scales the modelled RRN-hours dose-response and is selected by the fit of modelled coral to LTMP. The observed LTMP storm survival values only motivated the preregistered κ range; they are never imposed.
+- **The Mellin et al. (2019) background mortality is a separate component from the CoralBlox storm/COTS disturbance dataset**, and is to be included as its own term (μ_bg). The grid value μ_bg is a placeholder bound from LTMP Unknown/Disease incidence; it should be replaced by, or checked against, the Mellin et al. derivation (disturbance incidence × impact) when that is available.
+
+## Preregistered Mellin background-mortality follow-up (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13); preregistered before the joint-fit results were seen.**
+
+### Source
+
+The lead's COTS_Model, `github.com/sammatthews990/COTS_Model`:
+- `COTSMod.R`, `COTSModel_COTSFunctions.R::doCoralDisturbance`;
+- parameters in `RData/COTSMod_bckp.RData`.
+
+Copies are kept in git-ignored `sandbox/data/external/COTS_Model/`. Hashes: RData `14a0628e…0631`, `COTSMod.R` `221bdad3…403c`.
+
+How disease and unknown events act:
+- **Effect.** Each event acts on log cover, `log(C) += B`, with B_disease −0.1681 (sd 0.0303) and B_unknown −0.2681 (sd 0.0331). That is 15.5% and 23.5% cover loss per event.
+- **Incidence.** Events are simulated at 1% per cell-year each (`sampling::srswor(round(n*0.01), n)`) and replaced by LTMP records where available. Observed LTMP incidence in the RData is lower: 0.32% (disease) and 0.53% (unknown) of 38,971–39,515 observed cell-years.
+
+### Derived input
+
+The table is built in two checked-in steps:
+1. `export_mellin_disturbance.R` exports the coefficients and LTMP reef-year records (1996–2017).
+2. `build_mellin_background_mortality.jl` writes `sandbox/data/derived/mellin_background_mortality_1991_2024/background_mortality.csv` (site × year).
+
+How each reef-year gets its value:
+- **Recorded reef-years.** `m = 1 − exp(B_d·disease + B_u·unknown)`. Sources are the CoralBlox `disturbances.nc` flags (2008–2022, preferred) and the COTS_Model LTMP tables (1996–2017).
+- **Unrecorded reef-years.** The expected loss at 1% incidence each: `m = 0.0039`/yr.
+- **Recorded events in the domain:** 17 reef-years. They include North Direction 2008, 2010 and 2022 (unknown) and MacGillivray 2008 (unknown). The COTS_Model table dates MacGillivray's event to 2009; the newer CoralBlox source is preferred.
+
+### Arms (18)
+
+| Factor | Levels |
+| --- | --- |
+| `s` | 0.55, 0.75, 1.00 |
+| `f` | 0.8, 1.0 |
+| κ | 1, 2.5, 5 |
+| Background | Mellin table |
+
+Combined mortality is `1 − (1 − m_cyc)^κ · (1 − m_bg[site, year])`. COTS are forced from observed CPUE / q.
+
+**Reading.** The arms are compared with the joint run's matching `μ = 0` arms (same s, f, κ) using the frozen `J`, and the full model is selected across both runs by `J`. There is no replay arm, because every arm adds the Mellin term. The `μ = 0` arms of the joint run serve as the paired controls.
+
+**Failures:**
+- a background table that does not cover every site and year;
+- mortality outside [0, 1);
+- COTS dynamics active.
+
+### Joint coral and Mellin decision (2026-10-13)
+
+**Runs:**
+- **Joint fit:** split across [part 1](runs/20261013T_02_joint_coral_1991_v1), [part 2](runs/20261013T_04_joint_coral_1991_v1_part2) and [part 3](runs/20261013T_05_joint_coral_1991_v1_part3), audited together; the audit lives in part 3.
+- **Mellin follow-up:** [run](runs/20261013T_03_mellin_coral_1991_v1).
+
+**Operational disclosures:**
+- **Slowdown.** Per-arm time grew within a long-running process. Parts 1 and 2 were stopped and the remaining arms completed in fresh processes via the new `OWEN_1991_ARM_FILTER`. The audit checks that every arm appears exactly once across directories.
+- **Metadata.** Parts 1 and 2 lack `metadata.toml`. Their arm definitions and code paths are identical to part 3's metadata. Part 1 ran a runner version without the `MELLIN`/filter additions, but those are gated and do not touch `joint_coral`.
+- **Audit bug.** The first audit attempt failed on a relative-path bug after writing its CSV and plots. Those partial outputs were deleted and the audit rerun.
+- **Replay.** The reference arm replays exactly.
+
+**Joint fit.** The best `J` is 0.240 at `s = 0.55`, `f = 0.8`, κ = 2.5, μ = 0.06, against 0.537 for the reference.
+
+| Profile | Best `J` by level |
+| --- | --- |
+| μ = 0 / 0.03 / 0.06 | 0.317 / 0.265 / **0.240** |
+| `f` = 0.8 / 1.0 | **0.240** / 0.281 |
+| κ = 1 / 2.5 / 5 | 0.246 / **0.240** / 0.243 |
+| `s` = 0.55 / 0.75 / 1.00 | **0.240** / 0.241 / 0.261 |
+
+- **Bounds.** μ and `f` are at their bounds; `s` is nearly flat; κ is weakly identified.
+- **Held-out reefs.** Leave-one-reef-out selections are nearby arms, and every held-out error is about half the reference's.
+- **Trough depth.** At κ = 5 the 2017–19 total is 0.10, against observed 0.071.
+
+**Mellin follow-up.** The Mellin background improves `J` against μ = 0 in all 18 pairs (ΔJ −0.02 to −0.05). The best is 0.298 (κ = 5), against 0.240 with the constant μ = 0.06.
+
+**Against the predictions:**
+- κ ≈ 2.5–5 deepens the post-2015 trough, as predicted, but κ is weakly identified.
+- μ > 0 shrinks slow overgrowth, so `s` can stay higher, as predicted.
+- `f < 1` is needed, as predicted.
+- **Not predicted:** a constant μ removes cover from all groups, and fast corals refill the space. Fast cover then overshoots photo transects 2–4× in 2005–13 even at `f = 0.8`.
+
+**Decision.** No coral parameters are promoted.
+
+**Interpretation.** On these reefs the model needs more coral loss than storms, COTS and the recorded disease/unknown events supply. That missing chronic loss is about 6% per year against the Mellin evidence of 0.4% per year, and it falls disproportionately on fast corals.
+
+**Next gate (project lead to choose):**
+- (a) DHW bleaching-response sensitivity: ADRIA's bleaching mortality, scored on the 1998, 2002, 2016, 2017 and 2020–24 years, with the group-specific susceptibility already in ADRIA;
+- (b) a fast-coral-specific chronic loss or recruitment limit, with evidence needed;
+- (c) an extended grid (`f` 0.5–0.8; μ fixed at the Mellin value) to test whether growth bias alone explains the fast excess.
+
+Constant μ = 0.06 should not be adopted without a mechanism, because it exceeds the incidence evidence.
+
+
+## Preregistered bleaching-response sensitivity (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13); preregistered before implementation.**
+
+### Lead's principles
+
+- **Leave CoralBlox's calibrated growth untouched as far as possible.** Those rates were calibrated to LTMP data (2008–2022, with observed storm/COTS losses imposed). Growth multipliers stay `s = f = 1`.
+- **Background loss.** The lead considers background loss and cyclone strength between the joint-fit best and the Mellin evidence "pretty good".
+
+### Evidence and expectation
+
+- **ADRIA bleaching.** Mortality is the fraction of each group/size class whose heat tolerance (truncated normal; lower bound `HEAT_LB = 1` DHW, or the previous bleaching DHW) falls below the depth-adjusted DHW. `ADRIA_DEBUG_BLEACHING_SCALAR` scales the resulting loss linearly (β).
+- **DHW history on the calibration reefs** (v0.3 historical; mean of sites, depth_med 5 m):
+  - 2016: about 8.6;
+  - 2017: about 8.9;
+  - 2020: 5.1–6.6;
+  - 2024: about 6;
+  - 2021/2022: about 4;
+  - 1994: about 3.6–4;
+  - 2002/2004/2010: 2–2.7;
+  - **1998 below 2.**
+- **Expectation.** Bleaching can deepen the 2016–17 trough and slow the 2020s recovery. It **cannot** explain the 2005–13 fast-coral overshoot, because there is no material heat stress there. If the fit still needs a large chronic loss, that loss is not bleaching.
+
+### Arms (12)
+
+COTS are forced from observed CPUE / q, with the observed composition and RME group 5. Growth is fixed at `s = f = 1`.
+
+| Factor | Levels |
+| --- | --- |
+| Background | `mel` (Mellin table), `mel3` (Mellin plus a constant 3% per year chronic loss, midway between Mellin's 0.4% and the joint best of 6%) |
+| Cyclone strength κ | 2.5, 5 |
+| Bleaching scalar β | 1.0, 1.5, 2.5 |
+
+Combined non-bleaching mortality is `1 − (1 − m_cyc)^κ · (1 − m_mellin) · (1 − μ)`.
+
+**Reference.** `bleach_mel_k250_b100` must replay `mellin_s100_f100_k250` of [run 03](runs/20261013T_03_mellin_coral_1991_v1/metadata.toml) exactly.
+
+**Objective and reports.**
+- **Objective.** The frozen `J`, with selection by minimum `J`; bounds are flagged.
+- **Secondary reports:**
+  - `J` by period (1992–2012, 2013–2024);
+  - 2017–19 total trough against manta (0.071);
+  - 2020–24 fast-recovery slope against photo transects;
+  - 2005–13 fast overshoot.
+
+**Failures.**
+- inexact reference replay;
+- mortality outside [0, 1];
+- COTS dynamics active.
+
+### Bleaching decision and runtime fix (2026-10-13)
+
+**Runtime fix.** The per-arm slowdown in long runner processes came from `set_initial_cover!`. Its use of `collect(cube.species)` nested DimensionalData lookups each arm, so DataCube rebuild time grew geometrically (diagnostic runs 06–08; standalone reproduction). It is fixed with plain label vectors captured once. Results were unaffected and replays are exact. Runner arm timing now prints `run_scenario`, setup (with checkpoints) and post-processing times.
+
+**Bleaching screen** ([run](runs/20261013T_09_bleaching_sensitivity_1991_v1/metadata.toml), [audit](runs/20261013T_09_bleaching_sensitivity_1991_v1/bleaching_audit.json)). The reference replays exactly. **No arm is identified.**
+
+| Arm | `J` | 2017–19 total (obs 0.071) | Fast 2005–13 (obs 0.065) | Fast slope 2020–24 (obs 0.015) |
+| --- | --- | --- | --- | --- |
+| Mellin, κ 2.5, β 1 (ref) | 0.456 | 0.284 | 0.140 | 0.007 |
+| Mellin, κ 5, β 1 | 0.427 | 0.219 | 0.141 | 0.013 |
+| Mellin + 3%, κ 5, β 1 | 0.341 | 0.157 | 0.155 | 0.018 |
+| Mellin + 3%, κ 5, β 1.5 | 0.316 | 0.126 | 0.152 | 0.007 |
+| **Mellin + 3%, κ 2.5, β 2.5 (min `J`)** | **0.284** | 0.130 | 0.143 | −0.001 |
+| Mellin + 3%, κ 5, β 2.5 | 0.286 | 0.086 | 0.144 | 0.000 |
+
+Against the predictions:
+- **Trough.** Bleaching deepens the 2016–17 trough, as expected.
+- **Pre-2015 overshoot.** It cannot fix the 2005–13 fast overshoot, as expected.
+- **Recovery.** At β 2.5 it removes fast coral after 2020 and in 1994, which contradicts observed recovery.
+
+**Decision.** Nothing is promoted.
+
+**Recommended working coral configuration** for returning to COTS dynamics (**project lead to confirm**), consistent with the lead's principle of keeping CoralBlox growth untouched:
+
+| Component | Setting |
+| --- | --- |
+| Growth | `s = f = 1` |
+| Background | Mellin + 3% per year (between Mellin's 0.4% and the joint best of 6%) |
+| Cyclone strength | κ 5 |
+| Bleaching | β 1–1.5 |
+
+**Known residual.** Fast coral overshoots observations about 2× in 2005–13 under observed COTS. Possible reasons: COTS undercounted by manta in troughs, fast-coral recruitment, or site representativeness. This matters for second-wave food supply.
+

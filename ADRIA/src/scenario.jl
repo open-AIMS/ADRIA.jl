@@ -1220,6 +1220,7 @@ function run_model(
         allee_stretched = lowercase(get(ENV, "COTS_ALLEE_STRETCHED", "false")) == "true",
         allee_exponent = parse(Float64, get(ENV, "COTS_ALLEE_EXPONENT", "0.5")),
         starvation_post_grazing = lowercase(get(ENV, "COTS_STARVATION_POST_GRAZING", "false")) == "true",
+        starvation_grace_years = parse(Int, get(ENV, "COTS_STARVATION_GRACE_YEARS", "0")),
         outbreak_collapse = lowercase(get(ENV, "COTS_OUTBREAK_COLLAPSE", "false")) == "true",
         collapse_threshold_ha = parse(Float64, get(ENV, "COTS_COLLAPSE_THRESHOLD_HA", "67.5")),
         collapse_duration_years = parse(Int, get(ENV, "COTS_COLLAPSE_DURATION_YEARS", "4")),
@@ -1374,6 +1375,12 @@ function run_model(
         error("COTS_PREFERRED_MATURATION and COTS_JUVENILE_STORAGE are exclusive")
     cots_params.allee_stretched && !(cots_params.allee_exponent > 0.0) &&
         error("COTS_ALLEE_EXPONENT must be positive")
+    cots_params.starvation_grace_years >= 0 ||
+        error("COTS_STARVATION_GRACE_YEARS must be nonnegative")
+    cots_params.starvation_grace_years > 0 && !(cots_params.preferred_prey_starvation &&
+        !cots_params.diet_linked_starvation) &&
+        error("COTS_STARVATION_GRACE_YEARS requires COTS_PREFERRED_PREY_STARVATION without " *
+              "COTS_DIET_LINKED_STARVATION")
     cots_params.starvation_post_grazing && !(cots_params.per_capita_consumption &&
         cots_params.preferred_prey_starvation && !cots_params.prey_switching) &&
         error("COTS_STARVATION_POST_GRAZING requires COTS_PER_CAPITA_CONSUMPTION and " *
@@ -1425,6 +1432,17 @@ function run_model(
     else
         raw_cots_timeframe
     end
+    # Opt-in forced grazing: prescribed adult density (e.g. observed CPUE / q) grazes
+    # coral with the per-capita preferred-first response; COTS dynamics must be off.
+    cots_forced_adults_csv = get(ENV, "COTS_FORCED_ADULTS_CSV", "")
+    cots_forced_adults = if isempty(cots_forced_adults_csv)
+        nothing
+    else
+        cots_enabled && error("COTS_FORCED_ADULTS_CSV requires ADRIA_COTS_ENABLED=false")
+        load_cots_forced_adults(cots_forced_adults_csv, domain.loc_ids, cots_calendar_years)
+    end
+    cots_forced_habitable = isnothing(cots_forced_adults) ? nothing :
+        Float64.(location_k(domain))
     cots_external_outbreak_production > 0.0 &&
         !any(in(cots_forcing.outbreak_years), cots_calendar_years) && error(
             "Evidence-derived outbreak supply has no calendar-year overlap; " *
@@ -1447,7 +1465,7 @@ function run_model(
     # survival factor, senescent adults and excess senescent deaths (COTS ha^-1),
     # the share of grazing demand aimed at preferred prey, juvenile predation removals
     # (COTS ha^-1 yr^-1) and the juvenile maturation fraction.
-    Ycots_mechanism = zeros(tf, 9, n_locs)
+    Ycots_mechanism = zeros(tf, 10, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
 
     for tstep::Int64 in 2:tf
@@ -2163,6 +2181,11 @@ function run_model(
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
+        if !isnothing(cots_forced_adults)
+            COTSMod.forced_grazing!(C_cover_t, @view(cots_forced_adults[tstep, :]),
+                cots_prey_map; habitable_fraction=cots_forced_habitable,
+                consumption_m2_per_adult_year=cots_params.consumption_m2_per_adult_year)
+        end
 
         # Disperse COTS larvae between locations via connectivity
         _cots_imm_scalar = cots_internal_settlement_scalar(
@@ -2274,6 +2297,7 @@ function run_model(
             Ycots_mechanism[tstep, 7, loc] = cots_mechanism.maturation_fraction[loc]
             Ycots_mechanism[tstep, 8, loc] = cots_mechanism.outbreak_clock[loc]
             Ycots_mechanism[tstep, 9, loc] = cots_mechanism.collapse_removed_ha[loc]
+            Ycots_mechanism[tstep, 10, loc] = cots_mechanism.low_food_years[loc]
         end
 
         # Calculate survival_rate due to env. disturbances

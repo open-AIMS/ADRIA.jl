@@ -269,6 +269,7 @@ function _cots_runtime_params(params::NamedTuple)::COTSMod.COTSParams
         allee_stretched=Bool(get(params, :allee_stretched, false)),
         allee_exponent=Float64(get(params, :allee_exponent, 0.5)),
         starvation_post_grazing=Bool(get(params, :starvation_post_grazing, false)),
+        starvation_grace_years=Int(get(params, :starvation_grace_years, 0)),
         outbreak_collapse=Bool(get(params, :outbreak_collapse, false)),
         collapse_threshold_ha=Float64(get(params, :collapse_threshold_ha, 67.5)),
         collapse_duration_years=Int(get(params, :collapse_duration_years, 4)),
@@ -327,6 +328,32 @@ function load_cots_initial_state_csv(path::AbstractString, loc_ids::AbstractVect
     all(isfinite, state) && all(>=(0.0), state) ||
         error("COTS initial-state densities must be finite and non-negative")
     return state
+end
+
+"""
+    load_cots_forced_adults(path, loc_ids, calendar_years)
+
+Read an opt-in site x calendar-year table of prescribed adult COTS density
+(COTS ha^-1 of site area; columns `site_id` and one per year) into a
+`timesteps x locations` matrix for forced-grazing coral calibration.
+"""
+function load_cots_forced_adults(path::AbstractString, loc_ids::AbstractVector{<:AbstractString},
+    calendar_years::AbstractVector{<:Integer})::Matrix{Float64}
+    isfile(path) || error("Missing forced COTS adults CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:site_id => String))
+    ids = String.(table.site_id)
+    length(unique(ids)) == length(ids) || error("Forced COTS CSV has duplicate site IDs")
+    lookup = Dict(id => row for (row, id) in enumerate(ids))
+    rows = [get(lookup, String(id), 0) for id in loc_ids]
+    any(iszero, rows) && error("Forced COTS CSV does not cover every domain site")
+    # Collect first: calendar years may be a DimensionalData vector, and a
+    # comprehension over it would keep the dimension wrapper.
+    year_columns = String[string(Int(year)) for year in collect(calendar_years)]
+    all(in(names(table)), year_columns) || error("Forced COTS CSV does not cover every timestep")
+    adults = permutedims(Matrix{Float64}(table[rows, year_columns]))
+    all(isfinite, adults) && all(>=(0.0), adults) ||
+        error("Forced COTS adult densities must be finite and non-negative")
+    return adults
 end
 
 function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Real})

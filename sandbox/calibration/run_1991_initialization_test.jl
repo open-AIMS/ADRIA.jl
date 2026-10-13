@@ -23,7 +23,8 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "second_wave_audit", "switching_condition", "switching_repair",
     "habitat_disturbance", "benthic_cyclone", "trough_mechanisms", "initiation",
     "predation_capacity", "outbreak_collapse", "growth_starvation",
-    "initial_composition") ||
+    "initial_composition", "food_grace", "coral_calibration", "joint_coral",
+    "mellin_coral", "bleaching_sensitivity") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -94,7 +95,8 @@ length(fixed_scales) == length(TARGETS) || error("Missing frozen observation sca
 const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "second_wave_audit",
     "switching_condition", "switching_repair", "habitat_disturbance", "benthic_cyclone",
     "trough_mechanisms", "initiation", "predation_capacity", "outbreak_collapse",
-    "growth_starvation", "initial_composition")
+    "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
+    "joint_coral", "mellin_coral", "bleaching_sensitivity")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -130,7 +132,49 @@ const PHOTO_FAST_TAXA = ("Acropora", "Pocilloporidae")
 const PHOTO_YEARS = 1993:1995
 const FAST_GROUP_NAMES = ("tabular_Acropora", "corymbose_Acropora", "corymbose_non_Acropora")
 composition_arm_q(name) = parse(Float64, split(name, "_q")[end])
-const V3RUN = INITIATION || PIT || COLLAPSE || GROWTH || COMPOSITION
+# Preregistered food-scale screen (2026-10-12): plausible 1991 fast share (photo
+# transect Acropora + Pocilloporidae + w * "Other", w = 0, 0.5, 1) x starvation grace
+# {0, 1} year, on the run-14 best configuration (fast extension x1.0, Q = 30).
+const GRACE = EXPERIMENT == "food_grace"
+const OTHER_WEIGHTS = Dict("acrpoc" => 0.0, "halfother" => 0.5, "other" => 1.0)
+# Preregistered coral-side calibration (2026-10-12): COTS grazing forced from observed
+# CPUE / q (COTS dynamics off); slow (massive) x fast linear-extension multipliers on
+# every RME calibration group; observed 1993-95 composition.
+const CORAL = EXPERIMENT == "coral_calibration"
+const SLOW_MULTIPLIERS = (0.40, 0.55, 0.70, 0.85, 1.00)
+const FAST_MULTIPLIERS = (1.0, 1.2, 1.4)
+const FORCED_ADULTS_CSV = joinpath(ROOT, "sandbox", "data", "derived",
+    "observed_cots_forcing_1991_2024", "observed_adults_ha.csv")
+coral_arm_name(slow, fast) =
+    "forced_s$(lpad(round(Int, 100 * slow), 3, '0'))_f$(round(Int, 100 * fast))"
+# Preregistered joint coral fit (2026-10-13): growth (s, f) x cyclone strength kappa x
+# background mortality mu, COTS forced from observed CPUE / q. Mortality per site-year:
+# m' = 1 - (1 - m)^kappa * (1 - mu) through the cyclone mortality step.
+const JOINT = EXPERIMENT == "joint_coral"
+const JOINT_SLOW = (0.55, 0.75, 1.00)
+const JOINT_FAST = (0.8, 1.0)
+const JOINT_KAPPA = (1.0, 2.5, 5.0)
+const JOINT_BACKGROUND = (0.0, 0.03, 0.06)
+pct3(x) = lpad(round(Int, 100 * x), 3, '0')
+joint_arm_name(slow, fast, kappa, mu) =
+    "forced_s$(pct3(slow))_f$(pct3(fast))_k$(pct3(kappa))_b$(pct3(mu))"
+joint_arm_values(name) = Tuple(parse(Int, part[2:end]) / 100 for part in split(name, "_")[2:5])
+# Preregistered Mellin follow-up (2026-10-13): as the joint fit, but the background
+# mortality is the Mellin et al. 2019 / COTS_Model site x year table.
+const MELLIN = EXPERIMENT == "mellin_coral"
+const MELLIN_BACKGROUND_CSV = joinpath(ROOT, "sandbox", "data", "derived",
+    "mellin_background_mortality_1991_2024", "background_mortality.csv")
+mellin_arm_name(slow, fast, kappa) = "mellin_s$(pct3(slow))_f$(pct3(fast))_k$(pct3(kappa))"
+# Preregistered bleaching-response sensitivity (2026-10-13): CoralBlox growth untouched
+# (s = f = 1), Mellin background with or without 3%/yr chronic loss, cyclone kappa, and
+# ADRIA_DEBUG_BLEACHING_SCALAR beta; COTS forced from observed CPUE / q.
+const BLEACH = EXPERIMENT == "bleaching_sensitivity"
+const BLEACH_BACKGROUND = ("mel" => 0.0, "mel3" => 0.03)
+const BLEACH_KAPPA = (2.5, 5.0)
+const BLEACH_BETA = (1.0, 1.5, 2.5)
+bleach_arm_name(level, kappa, beta) = "bleach_$(level)_k$(pct3(kappa))_b$(pct3(beta))"
+const V3RUN = INITIATION || PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT ||
+    MELLIN || BLEACH
 const V3 = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.3")
 const DOMAIN_PATH = V3RUN ? V3 : V2
 const EXTERNAL_MULTIPLIER = 5.0
@@ -278,6 +322,55 @@ domain.cyclone_mortality_scens = ADRIA.ZeroDataCube(; T=Float64,
     timesteps=years, locs=domain.loc_ids,
     species=ADRIA.functional_group_names(), scenarios=[1])
 zero_cyclones = domain.cyclone_mortality_scens
+# Joint coral fit: cyclone strength kappa and background mortality mu per arm; the
+# kappa = 1, mu = 0 arm reuses the domain cube so it replays earlier runs exactly.
+joint_cyclones = if JOINT
+    base_mortality = Array(domain_cyclones)
+    Dict((kappa, mu) => kappa == 1.0 && mu == 0.0 ? domain_cyclones :
+        ADRIA.DataCube(1.0 .- (1.0 .- base_mortality) .^ kappa .* (1.0 - mu);
+            timesteps=years, locs=domain.loc_ids,
+            species=ADRIA.functional_group_names(), scenarios=[1])
+        for kappa in JOINT_KAPPA for mu in JOINT_BACKGROUND)
+else
+    nothing
+end
+mellin_cyclones = if MELLIN || BLEACH
+    background_table = CSV.read(MELLIN_BACKGROUND_CSV, DataFrame; types=Dict(:site_id => String))
+    background_rows = Dict(String(id) => i for (i, id) in enumerate(background_table.site_id))
+    all(haskey(background_rows, String(id)) for id in domain.loc_ids) ||
+        error("Mellin background table does not cover every domain site")
+    background_columns = String[string(Int(year)) for year in collect(years)]
+    all(in(names(background_table)), background_columns) ||
+        error("Mellin background table does not cover every year")
+    background = permutedims(Matrix{Float64}(background_table[
+        Int[background_rows[String(id)] for id in domain.loc_ids], background_columns]))
+    all(0.0 .<= background .< 1.0) || error("Mellin background mortality outside [0, 1)")
+    base_mortality = Array(domain_cyclones)
+    Dict(kappa => ADRIA.DataCube(
+            1.0 .- (1.0 .- base_mortality) .^ kappa .* (1.0 .- reshape(background,
+                size(background, 1), size(background, 2), 1, 1));
+            timesteps=years, locs=domain.loc_ids,
+            species=ADRIA.functional_group_names(), scenarios=[1])
+        for kappa in (MELLIN ? JOINT_KAPPA : BLEACH_KAPPA))
+else
+    nothing
+end
+# Bleaching screen: kappa x background level (mel reuses the Mellin cube exactly).
+bleach_cyclones = if BLEACH
+    Dict((level, kappa) => mu == 0.0 ? mellin_cyclones[kappa] :
+        ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[kappa])) .* (1.0 - mu);
+            timesteps=years, locs=domain.loc_ids,
+            species=ADRIA.functional_group_names(), scenarios=[1])
+        for (level, mu) in BLEACH_BACKGROUND for kappa in BLEACH_KAPPA)
+else
+    nothing
+end
+BLEACH && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
+    error("Bleaching-screen mortality outside [0, 1]")
+MELLIN && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(mellin_cyclones)) &&
+    error("Mellin combined mortality outside [0, 1]")
+JOINT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(joint_cyclones)) &&
+    error("Joint mortality outside [0, 1]")
 V3RUN && maximum(Array(domain_cyclones)) > 0.0 ||
     !V3RUN || error("v0.3 domain did not provide cyclone mortality")
 cyclone_cube = if BENTHIC_CYCLONE || TROUGH
@@ -319,27 +412,13 @@ all(isapprox.(vec(sum(new_cover; dims=1))[covered], interpolated_cover[covered];
 # Observed 1993-95 fast share of hard coral per calibration reef (LTMP photo
 # transects); other reefs take the mean of the observed reefs. Total cover and the
 # structure within the fast (groups 1-3) and slow (4-5) blocks are preserved.
-composition = if COMPOSITION
-    photo = CSV.read(PHOTO_TRANSECT_CSV, DataFrame)
-    photo = photo[(photo.purpose .== "COMPOSITION") .& (photo.variable .== "HARD CORAL") .&
-        (photo.depth .== 9) .& in.(photo.report_year, Ref(PHOTO_YEARS)) .&
-        in.(photo.reef_name, Ref(Set(values(PHOTO_REEFS)))), :]
-    yearly = combine(groupby(photo, [:reef_name, :report_year]),
-        [:reefpage_category, :median] => ((c, v) -> sum(v[in.(c, Ref(PHOTO_FAST_TAXA))]) / sum(v)) => :share)
-    reef_share = Dict(reef => sum(yearly.share[yearly.reef_name .== obs]) /
-        count(==(obs), yearly.reef_name) for (reef, obs) in PHOTO_REEFS)
-    all(0.0 < v < 1.0 for v in values(reef_share)) || error("Invalid observed fast share")
-    default_share = sum(values(reef_share)) / length(reef_share)
-    site_share = fill(default_share, length(domain.loc_ids))
-    for (reef, share) in reef_share
-        site_share[mapping[reef].indices] .= share
-    end
+function observed_composition_cover(site_share::Vector{Float64})
     labels = String.(collect(domain.init_coral_cover.species))
     fast_rows = [any(startswith(label, g * "_") for g in FAST_GROUP_NAMES) for label in labels]
     count(fast_rows) == 21 || error("Unexpected fast-group rows in initial cover")
-    observed_cover = copy(baseline_cover)
+    cover = copy(baseline_cover)
     unchanged = 0
-    for site in axes(observed_cover, 2)
+    for site in axes(cover, 2)
         total = baseline_total[site]
         total > 0.0 || continue
         fast = sum(baseline_cover[fast_rows, site])
@@ -348,20 +427,52 @@ composition = if COMPOSITION
             unchanged += 1
             continue
         end
-        observed_cover[fast_rows, site] .*= site_share[site] * total / fast
-        observed_cover[.!fast_rows, site] .*= (1.0 - site_share[site]) * total / slow
+        cover[fast_rows, site] .*= site_share[site] * total / fast
+        cover[.!fast_rows, site] .*= (1.0 - site_share[site]) * total / slow
     end
-    all(isapprox.(vec(sum(observed_cover; dims=1)), baseline_total; atol=1e-12)) ||
+    all(isapprox.(vec(sum(cover; dims=1)), baseline_total; atol=1e-12)) ||
         error("Observed composition changed total cover")
-    (cover=observed_cover, reef_share=reef_share, default_share=default_share,
-     unchanged_sites=unchanged, years=collect(PHOTO_YEARS))
+    return cover, unchanged
+end
+composition = if COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH
+    photo = CSV.read(PHOTO_TRANSECT_CSV, DataFrame)
+    photo = photo[(photo.purpose .== "COMPOSITION") .& (photo.variable .== "HARD CORAL") .&
+        (photo.depth .== 9) .& in.(photo.report_year, Ref(PHOTO_YEARS)) .&
+        in.(photo.reef_name, Ref(Set(values(PHOTO_REEFS)))), :]
+    levels = GRACE ? OTHER_WEIGHTS : Dict("acrpoc" => 0.0)
+    out = Dict{String,Any}()
+    for (level, weight) in levels
+        yearly = combine(groupby(photo, [:reef_name, :report_year]),
+            [:reefpage_category, :median] => ((c, v) ->
+                (sum(v[in.(c, Ref(PHOTO_FAST_TAXA))]) + weight * sum(v[c .== "Other"])) / sum(v)) => :share)
+        reef_share = Dict(reef => sum(yearly.share[yearly.reef_name .== obs]) /
+            count(==(obs), yearly.reef_name) for (reef, obs) in PHOTO_REEFS)
+        all(0.0 < v < 1.0 for v in values(reef_share)) || error("Invalid observed fast share")
+        default_share = sum(values(reef_share)) / length(reef_share)
+        site_share = fill(default_share, length(domain.loc_ids))
+        for (reef, share) in reef_share
+            site_share[mapping[reef].indices] .= share
+        end
+        cover, unchanged = observed_composition_cover(site_share)
+        out[level] = (cover=cover, reef_share=reef_share, default_share=default_share,
+            unchanged_sites=unchanged, other_weight=weight)
+    end
+    (levels=out, cover=out["acrpoc"].cover, reef_share=out["acrpoc"].reef_share,
+     default_share=out["acrpoc"].default_share, unchanged_sites=out["acrpoc"].unchanged_sites,
+     years=collect(PHOTO_YEARS))
 else
     nothing
 end
 
+# Plain label vector captured once. Rebuilding from `collect(cube.species)` returns a
+# dimension-wrapped vector, so each rebuild nested the lookup one level deeper and the
+# DataCube construction time grew geometrically across arms (0.5 s -> >60 s after ~12
+# arms; diagnosed 2026-10-13, runs 20261013T_06-08).
+const COVER_SPECIES = String.(Array(ADRIA.YAXArrays.DD.lookup(domain.init_coral_cover, :species)))
+const COVER_LOCATIONS = String.(collect(domain.loc_ids))
 function set_initial_cover!(values)
     domain.init_coral_cover = ADRIA.DataCube(values;
-        species=collect(domain.init_coral_cover.species), locations=domain.loc_ids)
+        species=COVER_SPECIES, locations=COVER_LOCATIONS)
 end
 
 function make_initial_state(alpha::Float64, name::String; cohort_multiplier::Float64=0.0,
@@ -407,6 +518,25 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : BLEACH ? [
+    (name=bleach_arm_name(level, kappa, beta), alpha=0.015, coral="observed_composition",
+        initial="no_cots")
+    for (level, _) in BLEACH_BACKGROUND for kappa in BLEACH_KAPPA for beta in BLEACH_BETA
+] : MELLIN ? [
+    (name=mellin_arm_name(slow, fast, kappa), alpha=0.015, coral="observed_composition",
+        initial="no_cots")
+    for slow in JOINT_SLOW for fast in JOINT_FAST for kappa in JOINT_KAPPA
+] : JOINT ? [
+    (name=joint_arm_name(slow, fast, kappa, mu), alpha=0.015, coral="observed_composition",
+        initial="no_cots")
+    for slow in JOINT_SLOW for fast in JOINT_FAST for kappa in JOINT_KAPPA for mu in JOINT_BACKGROUND
+] : CORAL ? [
+    (name="dynamic_ref", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    [(name=coral_arm_name(slow, fast), alpha=0.015, coral="observed_composition", initial="no_cots")
+     for slow in SLOW_MULTIPLIERS for fast in FAST_MULTIPLIERS]
+] : GRACE ? [
+    (name="$(level)_g$(grace)", alpha=0.015, coral="observed_composition", initial="cohort_full")
+    for level in ("acrpoc", "halfother", "other") for grace in (0, 1)
 ] : COMPOSITION ? [
     (name="inh_m110_q30", alpha=0.015, coral="inherited_2023", initial="cohort_full");
     [(name="obs_m110_q$(q)", alpha=0.015, coral="observed_composition", initial="cohort_full")
@@ -483,7 +613,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : PIT || COLLAPSE || GROWTH || COMPOSITION ? let
+) : PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ? let
     state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
     Dict(t.name => state_path for t in treatments)
 end : INITIATION ? let
@@ -515,7 +645,7 @@ archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
 # factors present in the domain and indexes them by group number, so RME groups
 # are relabelled to contiguous IDs that carry each RME group's default factors.
 base_cb_groups = copy(domain.loc_data.CB_CALIB_GROUPS)
-rme_cb = if COLLAPSE || GROWTH || COMPOSITION
+rme_cb = if COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH
     layer = ADRIA.GDF.read(RME_GBR_LAYER)
     lookup = Dict(String(row.GBRMPA_ID) => Int(row.CB_CALIB_GROUPS) for row in eachrow(layer))
     reef_ids = String.(domain.loc_data.GBRMPA_ID)
@@ -528,7 +658,8 @@ rme_cb = if COLLAPSE || GROWTH || COMPOSITION
 else
     nothing
 end
-function coral_group_scenario(base::DataFrame, fast_multiplier::Float64)::DataFrame
+function coral_group_scenario(base::DataFrame, fast_multiplier::Float64;
+    slow_multiplier::Float64=1.0)::DataFrame
     rng_state = copy(Random.default_rng())
     domain.loc_data.CB_CALIB_GROUPS .= rme_cb.labels
     grouped = ADRIA.sample(domain, 2)[1:1, :]
@@ -547,7 +678,7 @@ function coral_group_scenario(base::DataFrame, fast_multiplier::Float64)::DataFr
     for (label, group) in enumerate(rme_cb.rme_ids)
         for (index, fg) in enumerate(string.(ADRIA.functional_group_names()))
             # Fast prey (COTS prey map) are functional groups 1-3.
-            multiplier = index <= 3 ? fast_multiplier : 1.0
+            multiplier = index <= 3 ? fast_multiplier : slow_multiplier
             grouped[!, "linear_extension_scale_cb_group_$(label)_$(fg)"] .=
                 extension[index, group] * multiplier
             grouped[!, "mb_rate_scale_cb_group_$(label)_$(fg)"] .= mortality[index, group]
@@ -564,6 +695,13 @@ scenario_rme_fast = COLLAPSE ? coral_group_scenario(scenario, FAST_LINEAR_EXTENS
 growth_scenarios = GROWTH ?
     Dict(m => coral_group_scenario(scenario, m) for m in GROWTH_MULTIPLIERS) :
     COMPOSITION ? Dict(m => coral_group_scenario(scenario, m) for m in COMPOSITION_MULTIPLIERS) :
+    GRACE ? Dict(1.0 => coral_group_scenario(scenario, 1.0)) :
+    BLEACH ? Dict("100_100" => coral_group_scenario(scenario, 1.0; slow_multiplier=1.0)) :
+    JOINT || MELLIN ? Dict("$(pct3(slow))_$(pct3(fast))" => coral_group_scenario(scenario, fast;
+        slow_multiplier=slow) for slow in JOINT_SLOW for fast in JOINT_FAST) :
+    CORAL ? merge(Dict("dynamic_ref" => coral_group_scenario(scenario, 1.0)),
+        Dict(coral_arm_name(slow, fast) => coral_group_scenario(scenario, fast;
+            slow_multiplier=slow) for slow in SLOW_MULTIPLIERS for fast in FAST_MULTIPLIERS)) :
     nothing
 raw_obs = CSV.read(OBS, DataFrame)
 scores = DataFrame(treatment=String[], reef_name=String[], observation_treatment=String[],
@@ -597,7 +735,7 @@ mechanisms = DataFrame(treatment=String[], reef_name=String[], year=Int[],
     preferred_diet_share=Float64[], juvenile_predation_ha=Float64[],
     maturation_fraction=Float64[], body_condition=Float64[],
     total_coral_site_fraction=Float64[], fast_coral_site_fraction=Float64[],
-    outbreak_clock=Float64[], collapse_removed_ha=Float64[])
+    outbreak_clock=Float64[], collapse_removed_ha=Float64[], low_food_years=Float64[])
 site_audit = DataFrame(treatment=String[], reef_name=String[], site_index=Int[],
     reef_weight=Float64[], habitable_fraction=Float64[], year=Int[],
     recruits_ha=Float64[], subadults_ha=Float64[], adults_ha=Float64[],
@@ -608,8 +746,15 @@ initial_reef = DataFrame(treatment=String[], reef_name=String[],
     seed_adults_ha=Float64[], seed_corals_fraction=Float64[],
     idw_cpue=Float64[], idw_manta_coral_fraction=Float64[])
 failures = DataFrame(treatment=String[], error=String[])
+# Optional arm filter (regex on treatment name) to complete an interrupted grid in a new
+# run directory; recorded in metadata. Empty runs every arm.
+const ARM_FILTER = get(ENV, "OWEN_1991_ARM_FILTER", "")
+run_treatments = isempty(ARM_FILTER) ? treatments :
+    filter(t -> occursin(Regex(ARM_FILTER), t.name), treatments)
+isempty(run_treatments) && error("OWEN_1991_ARM_FILTER matches no treatment")
 
-for t in treatments
+for t in run_treatments
+    arm_started = time()
     ENV["COTS_LAGGED_ADULT_HAZARD"] = EXPERIMENT == "lagged_hazard" &&
         t.name != "cohort_full_control" ? "true" : "false"
     ENV["COTS_HAZARD_FOOD_COUPLED"] = EXPERIMENT == "lagged_hazard" &&
@@ -631,6 +776,12 @@ for t in treatments
     ENV["COTS_STARVATION_MEMORY_YEARS"] = GROWTH && endswith(t.name, "_M0") ?
         "0.0" : string(STRUCTURAL_MEMORY_YEARS)
     ENV["COTS_STARVATION_POST_GRAZING"] = GROWTH && endswith(t.name, "_PG") ? "true" : "false"
+    ENV["COTS_STARVATION_GRACE_YEARS"] = GRACE ? split(t.name, "_g")[end] : "0"
+    if ((CORAL || JOINT) && startswith(t.name, "forced")) || MELLIN || BLEACH
+        ENV["COTS_FORCED_ADULTS_CSV"] = FORCED_ADULTS_CSV
+    else
+        delete!(ENV, "COTS_FORCED_ADULTS_CSV")
+    end
     ENV["COTS_ADULT_SENESCENCE"] = (structural &&
         occursin("senescence", t.name)) || migration_structural ? "true" : "false"
     ENV["COTS_SENESCENCE_AGE"] = string(STRUCTURAL_SENESCENCE_AGE)
@@ -649,6 +800,7 @@ for t in treatments
     ENV["COTS_PREFERRED_CONDITION"] = (SWITCHING_CONDITION &&
         endswith(t.name, "condition")) || SWITCHING_REPAIR || HABITAT || BENTHIC_CYCLONE ||
         TROUGH || V3RUN ? "true" : "false"
+    setup_marks = [("env", time())]
     # Habitat screen: run-time habitable fraction and bleaching counterfactual.
     domain.loc_data.k .= HABITAT && startswith(t.name, "krme") ? rme_k :
         BENTHIC_CYCLONE && startswith(t.name, "ktotal") ? benthic.total :
@@ -657,12 +809,24 @@ for t in treatments
     domain.cyclone_mortality_scens = V3RUN ? domain_cyclones :
         (BENTHIC_CYCLONE && endswith(t.name, "_cyc")) ||
         (TROUGH && startswith(t.name, "bgeo")) ? cyclone_cube : zero_cyclones
-    trough_treatment = COLLAPSE || GROWTH || COMPOSITION ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
-    external_multiplier = COLLAPSE || GROWTH || COMPOSITION ||
+    if JOINT
+        slow_value, fast_value, kappa_value, mu_value = joint_arm_values(t.name)
+        domain.cyclone_mortality_scens = joint_cyclones[(kappa_value, mu_value)]
+    elseif MELLIN
+        kappa_value = parse(Int, split(t.name, "_")[4][2:end]) / 100
+        domain.cyclone_mortality_scens = mellin_cyclones[kappa_value]
+    elseif BLEACH
+        bleach_parts = split(t.name, "_")
+        domain.cyclone_mortality_scens =
+            bleach_cyclones[(bleach_parts[2], parse(Int, bleach_parts[3][2:end]) / 100)]
+    end
+    push!(setup_marks, ("k_cyclone", time()))
+    trough_treatment = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
+    external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ||
         (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
         EXTERNAL_MULTIPLIER : 1.0
     predation_capacity = COMPOSITION ? composition_arm_q(t.name) :
-        COLLAPSE || GROWTH ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
+        COLLAPSE || GROWTH || GRACE || CORAL || JOINT || MELLIN || BLEACH ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
         parse(Float64, split(t.name, "_q")[end]) : JUVENILE_PREDATION_CAPACITY
     collapse_arm = COLLAPSE ? split(t.name, "_")[2] : "none"
     ENV["COTS_OUTBREAK_COLLAPSE"] = collapse_arm == "none" ? "false" : "true"
@@ -671,8 +835,9 @@ for t in treatments
     ENV["COTS_COLLAPSE_DURATION_YEARS"] = startswith(collapse_arm, "D2") ? "2" : "4"
     ENV["COTS_COLLAPSE_JUVENILES"] = collapse_arm == "D2J" ? "true" : "false"
     domain.loc_data.CB_CALIB_GROUPS .= (COLLAPSE && startswith(t.name, "grme")) ||
-        GROWTH || COMPOSITION ?
+        GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ?
         rme_cb.labels : base_cb_groups
+    push!(setup_marks, ("collapse_cbgroups", time()))
     ENV["COTS_JUVENILE_PREDATION"] = occursin("P", trough_treatment) ? "true" : "false"
     ENV["COTS_JUVENILE_PREDATION_CAPACITY"] = string(predation_capacity)
     ENV["COTS_PREFERRED_MATURATION"] = occursin("D", trough_treatment) ? "true" : "false"
@@ -680,6 +845,8 @@ for t in treatments
     ENV["COTS_ALLEE_EXPONENT"] = "0.5"
     if HABITAT
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
+    elseif BLEACH
+        ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(parse(Int, split(t.name, "_b")[end]) / 100)
     else
         delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
     end
@@ -700,8 +867,10 @@ for t in treatments
     end
     scenario[!, :m3] .= EXPERIMENT == "crash_factorial" &&
         occursin("mortality030", t.name) ? 0.30 : archived_m3
+    push!(setup_marks, ("env_scenario_cols", time()))
     initial_cover = t.coral == "manta_1989_1991" ? new_cover :
-        t.coral == "observed_composition" ? composition.cover : baseline_cover
+        t.coral == "observed_composition" ?
+        (GRACE ? composition.levels[split(t.name, "_")[1]].cover : composition.cover) : baseline_cover
     if TROUGH && startswith(t.name, "bgeo")
         initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
     end
@@ -711,6 +880,7 @@ for t in treatments
         initial_cover = initial_cover .* reshape(Float64.(.!zero_mask), 1, :)
     end
     set_initial_cover!(initial_cover)
+    push!(setup_marks, ("initial_cover", time()))
     if t.name == "inherited_grazing_off_2004_2012"
         ENV["COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR"] = "2004"
         ENV["COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR"] = "2012"
@@ -730,10 +900,17 @@ for t in treatments
             (t.alpha == 0.015 ? "idw_alpha015" : "idw_alpha150") : t.name
         ENV["COTS_INITIAL_STATE_CSV"] = initial_paths[key]
     end
+    push!(setup_marks, ("env_tail", time()))
+    setup_breakdown = join(["$(name) $(round(mark - (i == 1 ? arm_started : setup_marks[i - 1][2]); digits=1))"
+        for (i, (name, mark)) in enumerate(setup_marks)], ", ")
     Random.seed!(SEED)
     try
         active_scenario = GROWTH ? growth_scenarios[growth_arm_multiplier(t.name)] :
             COMPOSITION ? growth_scenarios[parse(Int, split(t.name, "_")[2][2:end]) / 100] :
+            GRACE ? growth_scenarios[1.0] :
+            CORAL ? growth_scenarios[t.name] :
+            BLEACH ? growth_scenarios["100_100"] :
+            JOINT || MELLIN ? growth_scenarios[join(split(t.name, "_")[2:3] .|> (x -> x[2:end]), "_")] :
             COLLAPSE && startswith(t.name, "grmefast") ? scenario_rme_fast :
             COLLAPSE && startswith(t.name, "grme") ? scenario_rme : scenario
         if active_scenario !== scenario
@@ -741,7 +918,10 @@ for t in treatments
                 active_scenario[!, name] .= scenario[1, name]
             end
         end
-        result = ADRIA.run_scenario(domain, active_scenario[1, :])
+        setup_seconds = time() - arm_started
+        scenario_timing = @timed ADRIA.run_scenario(domain, active_scenario[1, :])
+        post_started = time()
+        result = scenario_timing.value
         Int.(result.cots_calendar_year) == years || error("1991 calendar alignment failed")
         if t.initial == "no_cots"
             maximum(abs, result.cots_log) == 0.0 ||
@@ -818,7 +998,7 @@ for t in treatments
                 Vector{Float64}[]
             reef_collapse = EXPERIMENT == "structural_crash" || MIGRATION ?
                 [aggregate_reef_density(Matrix(result.cots_mechanism_log[:, channel, :]), m)
-                    for channel in 8:9] : Vector{Float64}[]
+                    for channel in 8:10] : Vector{Float64}[]
             reef_fast_coral = aggregate_reef_density(fast_coral, m)
             reef_coral_site = aggregate_reef_density(coral_site, m)
             reef_fast_site = aggregate_reef_density(fast_site, m)
@@ -884,7 +1064,11 @@ for t in treatments
                     score.n_matched_peaks))
             end
         end
-        println("Completed ", t.name)
+        println("Completed ", t.name, " in ", round(time() - arm_started; digits=1), " s (run_scenario ",
+            round(scenario_timing.time; digits=1), " s, gc ", round(scenario_timing.gctime; digits=1),
+            " s, alloc ", round(scenario_timing.bytes / 1e9; digits=2), " GB, setup ",
+            round(setup_seconds; digits=1), " s [", setup_breakdown, "], post ", round(time() - post_started; digits=1), " s, live heap ",
+            round(Base.gc_live_bytes() / 1e9; digits=2), " GB)")
     catch err
         push!(failures, (t.name, sprint(showerror, err, catch_backtrace())))
         println(stderr, "FAILED ", t.name, ": ", err)
@@ -924,13 +1108,14 @@ for name in ("COTS_PREFERRED_PREY_STARVATION", "COTS_STARVATION_PREFERRED_THRESH
         "COTS_PREFERRED_MATURATION", "COTS_ALLEE_STRETCHED", "COTS_ALLEE_EXPONENT",
         "COTS_OUTBREAK_COLLAPSE", "COTS_COLLAPSE_THRESHOLD_HA", "COTS_COLLAPSE_BACKGROUND_HA",
         "COTS_COLLAPSE_DURATION_YEARS", "COTS_COLLAPSE_JUVENILES",
-        "COTS_STARVATION_POST_GRAZING")
+        "COTS_STARVATION_POST_GRAZING", "COTS_STARVATION_GRACE_YEARS", "COTS_FORCED_ADULTS_CSV")
     delete!(ENV, name)
 end
 
 metadata = Dict(
     "status" => "bounded_1991_$(EXPERIMENT)_screen_not_promoted",
     "experiment" => EXPERIMENT,
+    "arm_filter" => ARM_FILTER, "arms_run" => [t.name for t in run_treatments],
     "grazing_off_years" => EXPERIMENT == "gap_grazing" ? [2004, 2012] : Int[],
     "year_window" => [1991, 2024], "score_start_year" => 1992,
     "seed" => SEED, "allee_threshold_adults_ha" => 3.0,
@@ -949,6 +1134,69 @@ metadata = Dict(
         "control plus density-only and density-times-food at hazard_max=0.75 and 1.5; rho=0.5 threshold=1.5 COTS/ha width=0.5 COTS/ha coral threshold=0.15 fraction coral width=0.03 fraction" : "not tested",
     "structural_crash_factorial" => EXPERIMENT == "structural_crash" ?
         "control, preferred_starvation, senescence and both. preferred threshold=$(STRUCTURAL_THRESHOLD) fast-cover fraction of habitable area; memory=$(STRUCTURAL_MEMORY_YEARS) yr; senescence age=$(STRUCTURAL_SENESCENCE_AGE) yr; senescent mortality=$(STRUCTURAL_SENESCENCE_MORTALITY) annual fraction; ages 2-5 keep archived m3; initial adults on stable age profile; per-capita consumption off" : "not tested",
+    "bleaching_sensitivity_screen" => BLEACH ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_dhw_sha256" => file_sha256(joinpath(DOMAIN_PATH, "DHWs", "dhw_RCPhistorical.nc")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "forced_adults_csv" => FORCED_ADULTS_CSV, "forced_adults_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "mellin_background_csv" => MELLIN_BACKGROUND_CSV,
+        "mellin_background_sha256" => file_sha256(MELLIN_BACKGROUND_CSV),
+        "growth" => "CoralBlox calibrated group factors untouched (s = f = 1), RME groups",
+        "background_levels" => Dict(BLEACH_BACKGROUND), "cyclone_kappa" => collect(BLEACH_KAPPA),
+        "bleaching_scalar" => collect(BLEACH_BETA),
+        "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin) * (1 - mu); bleaching loss scaled by ADRIA_DEBUG_BLEACHING_SCALAR",
+        "reference" => "bleach_mel_k250_b100 must replay mellin_s100_f100_k250 of 20261013T_03_mellin_coral_1991_v1",
+    ) : "not tested",
+    "mellin_coral_screen" => MELLIN ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "forced_adults_csv" => FORCED_ADULTS_CSV, "forced_adults_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "mellin_background_csv" => MELLIN_BACKGROUND_CSV,
+        "mellin_background_sha256" => file_sha256(MELLIN_BACKGROUND_CSV),
+        "mellin_metadata_sha256" => file_sha256(joinpath(dirname(MELLIN_BACKGROUND_CSV), "metadata.toml")),
+        "slow_multipliers" => collect(JOINT_SLOW), "fast_multipliers" => collect(JOINT_FAST),
+        "cyclone_kappa" => collect(JOINT_KAPPA),
+        "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin[site, year]), all groups and sizes",
+        "paired_controls" => "mu = 0 arms of 20261013T_02_joint_coral_1991_v1",
+    ) : "not tested",
+    "joint_coral_screen" => JOINT ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_initial_cover_sha256" => file_sha256(joinpath(DOMAIN_PATH, "initial_cover.nc")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "forced_adults_csv" => FORCED_ADULTS_CSV,
+        "forced_adults_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "composition" => "observed 1993-95 photo-transect Acropora+Pocilloporidae share, inherited 2023 totals",
+        "slow_multipliers" => collect(JOINT_SLOW), "fast_multipliers" => collect(JOINT_FAST),
+        "cyclone_kappa" => collect(JOINT_KAPPA), "background_mortality" => collect(JOINT_BACKGROUND),
+        "mortality" => "m' = 1 - (1 - m_cyclone)^kappa * (1 - mu) per site-year, all groups and sizes, via the cyclone mortality step before COTS grazing",
+        "rme_groups_present" => rme_cb.rme_ids,
+        "reference" => "forced_s100_f100_k100_b000 must replay forced_s100_f100 of 20261013T_01_coral_calibration_1991_v2",
+    ) : "not tested",
+    "coral_calibration_screen" => CORAL ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_initial_cover_sha256" => file_sha256(joinpath(DOMAIN_PATH, "initial_cover.nc")),
+        "forced_adults_csv" => FORCED_ADULTS_CSV,
+        "forced_adults_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "forced_metadata_sha256" => file_sha256(joinpath(dirname(FORCED_ADULTS_CSV), "metadata.json")),
+        "forcing" => "forced arms: ADRIA_COTS_ENABLED=false; COTS_FORCED_ADULTS_CSV per-capita preferred-first grazing c=$(PER_CAPITA_M2_PER_ADULT_YEAR) m2/adult/yr divided by site k",
+        "composition" => "observed 1993-95 photo-transect Acropora+Pocilloporidae share, inherited 2023 totals",
+        "observed_fast_share_by_reef" => composition.reef_share,
+        "slow_multipliers" => collect(SLOW_MULTIPLIERS), "fast_multipliers" => collect(FAST_MULTIPLIERS),
+        "multiplier_scope" => "linear_extension_scale of small_massives+large_massives (slow) and groups 1-3 (fast) for every RME CB group present",
+        "rme_groups_present" => rme_cb.rme_ids,
+        "reference" => "dynamic_ref (COTS dynamics, leading candidate) must replay acrpoc_g0 of 20261012T_15_food_grace_1991_v1",
+    ) : "not tested",
+    "food_grace_screen" => GRACE ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_initial_cover_sha256" => file_sha256(joinpath(DOMAIN_PATH, "initial_cover.nc")),
+        "base_model" => "run-14 obs_m100_q30: working model, v0.3, Ext x$(EXTERNAL_MULTIPLIER), P Q=$(COLLAPSE_Q), gradual Allee, RME CB groups (group 5), fast extension x1.0",
+        "photo_transect_csv" => PHOTO_TRANSECT_CSV, "photo_transect_sha256" => file_sha256(PHOTO_TRANSECT_CSV),
+        "composition" => "1991 fast share = (Acropora + Pocilloporidae + w * Other) / all hard coral, 1993-95 mean, 9 m; w: acrpoc 0, halfother 0.5, other 1; totals and within-block structure kept",
+        "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
+            "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
+        "grace" => "COTS_STARVATION_GRACE_YEARS: H1 starvation only after more than G consecutive years with remembered preferred food <= threshold; G = 0 or 1",
+        "reference" => "acrpoc_g0 must replay obs_m100_q30 of 20261012T_14_initial_composition_1991_v1",
+    ) : "not tested",
     "initial_composition_screen" => COMPOSITION ? Dict(
         "domain" => DOMAIN_PATH,
         "domain_gpkg_sha256" => file_sha256(joinpath(DOMAIN_PATH, "spatial", "lizard_cluster.gpkg")),

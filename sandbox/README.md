@@ -134,6 +134,8 @@ None is promoted; see `calibration/MODEL_LOG.md` and
 | `COTS_PREFERRED_MATURATION` | Maturation fraction `sqrt(remembered fast cover)`; retained juveniles stay herbivorous |
 | `COTS_ALLEE_STRETCHED` | Fertilisation `exp(-(3/A)^COTS_ALLEE_EXPONENT)` instead of the Hill form; scale held at 3 COTS/ha |
 | `COTS_STARVATION_POST_GRAZING` | Preferred-prey starvation judged on preferred cover left after the adults' per-capita demand. Tested 2026-10-12: suppresses peaks; not recommended |
+| `COTS_STARVATION_GRACE_YEARS` | H1 starvation only after more than G consecutive low-food years. Tested 2026-10-12 with G = 1: does not fix second waves; evidence supports about 6 months |
+| `COTS_FORCED_ADULTS_CSV` | Coral-calibration path: grazing by prescribed adults (site × year CSV, e.g. observed CPUE / q) via `forced_grazing!`; requires `ADRIA_COTS_ENABLED=false` |
 | `COTS_OUTBREAK_COLLAPSE` | ReefMod-style die-off: after `COTS_COLLAPSE_DURATION_YEARS` years with adults ≥ `COTS_COLLAPSE_THRESHOLD_HA` (67.5/ha), adults (and N2 with `COTS_COLLAPSE_JUVENILES`) reset to `COTS_COLLAPSE_BACKGROUND_HA` (0.25/ha). Tested 2026-10-12: counterproductive |
 
 The project lead's working configuration ("condition, no switching") turns on

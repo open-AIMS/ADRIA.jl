@@ -2331,3 +2331,93 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_growth_starvation.py sandbox/calibration/runs/<unused_growth_starvation_run_id>
 ```
 
+### Data-derived 1991 coral composition (2026-10-12)
+
+**What changed.** The domain's initial cover is the ReefMod 2023 mean (fast share 0.34–0.46). Replacing its fast:slow split with the observed 1993–95 LTMP photo-transect share (Lizard 0.21, MacGillivray 0.13, North Direction 0.25, others 0.19), with totals kept, gives:
+- **What it fixes.** First peaks move to 1997–99 (observed 1996–98), troughs fall to 2–3 adults/ha (observed about 0–3) and fast-coral RMSE against transects halves. The best summed loss to date is 12.18 (fast extension ×1.0, `Q = 30`).
+- **What it breaks.** First peaks on Lizard and MacGillivray become too low, second waves are small, and fast-coral recovery is too slow.
+
+See the [audit](runs/20261012T_14_initial_composition_1991_v1/initial_composition_audit.json) and [plot](runs/20261012T_14_initial_composition_1991_v1/cots_fast_coral_initial_composition.png).
+
+**Run naming.** Runs without a time-of-day stamp are now numbered per date, `YYYYMMDDT_NN_<name>`, in the order tried. `renumber_runs.py` renamed the earlier ones and logged them in `runs/RUN_RENAMES.csv`. The runner numbers new IDs given as `YYYYMMDDT_<name>` automatically.
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'initial_composition'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_initial_composition_1991_v1'   # numbered automatically
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_initial_composition.py sandbox/calibration/runs/<numbered_run_id>
+```
+
+### Food scale: composition range and starvation grace (2026-10-12)
+
+**New opt-in switch.** `COTS_STARVATION_GRACE_YEARS` (COTSMod `starvation_grace_years`) delays H1 starvation until preferred food has been low for more than `G` consecutive years. The mechanism log gains channel 10 (`low_food_years`).
+
+**Result.** No arm passes.
+- **Composition.** Plausible 1991 fast shares (photo-transect *Acropora* + Pocilloporidae + 0 / ½ / all of "Other") raise first peaks, but also troughs.
+- **Grace.** A one-year grace (the evidence supports about 6 months) inflates North Direction and only helps Eyrie.
+- **Lizard and MacGillivray.** They never get second waves, because modelled massives fill the habitable space (total coral 0.6–0.7 vs about 0.2–0.3 observed) and cap fast coral below the starvation threshold.
+- **Next.** A coral-side calibration of massive growth against photo transects, with COTS forced from observations.
+
+See the [audit](runs/20261012T_15_food_grace_1991_v1/food_grace_audit.json) and [plot](runs/20261012T_15_food_grace_1991_v1/cots_fast_coral_food_grace.png).
+
+Reproduce:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'food_grace'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_food_grace_1991_v1'   # numbered automatically
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_food_grace.py sandbox/calibration/runs/<numbered_run_id>
+```
+
+### Coral-side calibration with observed COTS forcing (2026-10-13)
+
+**New opt-in path.** `COTS_FORCED_ADULTS_CSV` (with `ADRIA_COTS_ENABLED=false`) grazes coral with prescribed adults through COTSMod `forced_grazing!`. The forcing table is built by `sandbox/calibration/build_observed_cots_forcing.py`: per-year IDW of LTMP manta CPUE ÷ 0.015, written to `sandbox/data/derived/observed_cots_forcing_1991_2024/`.
+
+**Result.** The grid of slow (massive) × fast linear-extension multipliers selects `s = 0.40`, `f = 1.0`, both at the grid edges.
+- With COTS fixed at observed levels, the coral model overgrows both fast and slow corals on these reefs.
+- It also recovers too fast after the 2015–17 disturbances.
+- Growth multipliers alone cannot fit both. Next comes a choice between an extended growth grid, a disturbance-mortality sensitivity, or a joint fit with held-out years.
+
+See the [audit](runs/20261013T_01_coral_calibration_1991_v2/coral_calibration_audit.json), [fit](runs/20261013T_01_coral_calibration_1991_v2/coral_calibration_fit.png) and [objective](runs/20261013T_01_coral_calibration_1991_v2/coral_calibration_objective.png).
+
+Reproduce:
+
+```powershell
+python sandbox/calibration/build_observed_cots_forcing.py --output sandbox/data/derived/observed_cots_forcing_1991_2024
+$env:OWEN_1991_EXPERIMENT = 'coral_calibration'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_coral_calibration_1991_v1'   # numbered automatically
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_coral_calibration.py sandbox/calibration/runs/<numbered_run_id>
+```
+
+### Joint coral fit and Mellin background (2026-10-13)
+
+**Setup.** COTS were forced from observed CPUE. Growth (`s`, `f`), modelled cyclone strength κ and background mortality were fitted jointly against LTMP photo transects and manta.
+
+**Result.**
+- **Best fit.** `J` falls from 0.54 to 0.24 at `s = 0.55`, `f = 0.8`, κ = 2.5 and a constant background of 6% per year.
+- **What fits.** Total and slow coral now track observations, including the post-2015 trough.
+- **What doesn't.** Fast coral still overshoots 2–4×, and the background and fast growth sit at grid bounds.
+- **Mellin background** (lead's COTS_Model: disease/unknown log-cover effects, 0.39% per year expected plus recorded LTMP events) improves every paired arm but is far smaller than the loss the fit wants.
+
+**Audits.** Joint [audit](runs/20261013T_05_joint_coral_1991_v1_part3/joint_coral_audit.json) and [fit](runs/20261013T_05_joint_coral_1991_v1_part3/joint_coral_fit.png); Mellin [audit](runs/20261013T_03_mellin_coral_1991_v1/mellin_coral_audit.json).
+
+**New tools:**
+- `export_mellin_disturbance.R`;
+- `build_mellin_background_mortality.jl`;
+- the runner arm filter `OWEN_1991_ARM_FILTER` (regex on arm names, recorded in metadata), for completing interrupted grids in a fresh process.
+
+Reproduce:
+
+```powershell
+Rscript sandbox/calibration/export_mellin_disturbance.R sandbox/data/external/COTS_Model/COTSMod_bckp.RData sandbox/data/derived/mellin_disturbance_export
+julia --project=sandbox sandbox/calibration/build_mellin_background_mortality.jl sandbox/data/derived/mellin_disturbance_export sandbox/data/derived/mellin_background_mortality_1991_2024
+$env:OWEN_1991_EXPERIMENT = 'joint_coral'   # or 'mellin_coral'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_joint_coral_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_joint_coral.py <run dirs...>
+python sandbox/calibration/audit_1991_mellin_coral.py <mellin run dir>
+```
+
