@@ -2485,3 +2485,31 @@ python sandbox/calibration/audit_1991_initial_state_rebaseline.py <run_dir> <res
 ```
 
 The runner reads the EB surface from `runs/20261013T_15_1991_initial_surfaces_eb` (`EB_SURFACE_DIR`).
+
+### Amended gate G2′, evidence for `A½`, and Lizard local retention (2026-10-13)
+
+**Gate G2′ (lead's direction).** It requires:
+- two waves on Lizard, MacGillivray and North Direction;
+- all observed peaks matched under both raw (7) and smoothed (6) counts;
+- distinct waves (trough ≤ 0.5 × the smaller peak);
+- an **absolute trough test**: the model's mean inter-wave CPUE must not exceed the upper 95% Poisson bound of the observed inter-wave mean.
+
+It removes the old gate's unattainable count and its dependence on peak height. Its trough test then shows that **North Direction's inter-wave population** is the remaining qualitative failure. Evaluate with `evaluate_gate_g2prime.py <out> <rescore dirs...>` (base miniconda Python).
+
+**`A½` evidence.** No study measures manta detectability against density. A fit to the 2026 SALAD regional means gives `A½` ≈ 6 ± 2 COTS/ha, but indirectly. Paired manta–SALAD surveys would identify it.
+
+**Local retention.** Source-conserving retention (`connectivity_retention.jl`, unit-tested) barely changes Lizard, even when Lizard keeps 90% of its surviving larvae. Lizard's first wave is limited by food (fast coral after the 1994 heat stress), not by larval supply.
+
+Audits: [G2′](runs/20261013T_19_gate_g2prime_evaluation_v1/gate_g2prime.json), [retention](runs/20261013T_20_local_retention_1991_v1/local_retention_audit.json).
+
+Reproduce:
+
+```powershell
+julia sandbox/calibration/test_connectivity_retention.jl
+$env:OWEN_1991_EXPERIMENT = 'local_retention'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_local_retention_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_local_retention.py <run_dir>
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl <rescore_dir> <run_dir>:<arms>
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/evaluate_gate_g2prime.py <gate_dir> <rescore_dir> [...]
+```

@@ -2318,3 +2318,224 @@ It also leaves the first-wave heights far too low (Lizard 0.25 vs 1.92) and the 
 - (i) Evidence for `A½`, and a decision on the gate's peak count. Together these decide whether `eb_h10` becomes the working configuration.
 - (ii) First-wave height and ranking: test supply, either local retention or self-recruitment in the Lizard–Cairns initiation region, or spatially structured external supply.
 - (iii) Items 3–4 on whichever configuration (i) settles.
+
+
+## Amended qualitative gate G2′ (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13): "use both [peak counts] but amend the gate so we're actually comparing what we need … maybe the gates are too strict".** Written before any arm was evaluated against it. It is a **post-hoc amendment**: the old gate's results for runs 11–18 had already been seen, and both the old and the new gate are reported for every arm.
+
+### Why the old gate compared the wrong things
+
+1. **Peak count.** "All 7 observed peaks matched" was audited on the smoothed score, which has only 6 observed peaks (smoothing removes North Direction 1995). It was unattainable as audited.
+2. **Trough ratio ≤ 0.10** divides the model trough by the **model's own** smaller peak. When peaks are too low (a peak-height failure, which belongs to promotion gate 3), a trough sitting at the observed level still fails. On Lizard, the observed smoothed peaks are 0.96 / 0.74 with an inter-wave mean of 0.040 COTS/tow. The model's peaks are 0.35 / 0.15 with a comparable trough, giving a ratio of 0.25.
+3. **No observational test of the trough.** The ratio never compared trough level with what manta tows actually recorded, or with their sampling uncertainty.
+
+### G2′: a mechanism produces the missing qualitative behaviour when all of the following hold
+
+1. **Two waves.** Two detected model peaks (frozen detector) on each of Lizard, MacGillivray and North Direction. *Unchanged.*
+2. **Peaks matched, like with like.**
+   - All observed peaks are matched under the **raw** observation treatment (7/7);
+   - **and** all are matched under the **`smoothed_3y`** treatment (6/6).
+3. **Distinct waves.** On each two-wave reef, the smoothed model minimum between its first two peaks is **≤ 0.5 × the smaller of those peaks**. This only excludes plateaus and shoulders, which the 0.12 normalised-prominence rule of the detector can still admit.
+4. **Trough level consistent with the observations.**
+   - **Trough years.** On each two-wave reef, these are the years strictly between the two observed raw peaks in which observed CPUE < 0.22 COTS/tow (the outbreak level). Surveyed years: Lizard 1999–2011, MacGillivray 1999–2011 (excluding the 2004 survey at 0.38, which is ≥ 0.22), North Direction 1996–2011. There are no 2012 surveys, which is why each window ends in 2011. *(Wording corrected after the evaluation output was read. The rule itself was not changed; only its description was wrong. The earlier text said the 2004 MacGillivray survey was included and that the windows ran to 2012.)*
+   - **Test.** The mean model CPUE over those years, under the observation model in use, must be **≤ the upper 95% Poisson bound** of the observed mean (Σ counts / Σ tows, Garwood interval).
+   - **Strictness.** Clustered COTS counts are over-dispersed, so the Poisson bound is narrower than the true sampling interval. The test therefore errs towards failing.
+
+The old trough ratio is still reported as a diagnostic. Peak heights, peak prominence and timing errors stay with **promotion gate 3** and are reported alongside every G2′ result.
+
+### Evaluation
+
+A checked-in script, `evaluate_gate_g2prime.py`, evaluates G2′ on the re-score outputs (raw and smoothed scores, plus detected-CPUE series at every `A½`). It covers runs 11 and 15 (re-score v2) and run 17 (re-score run 18). For each arm it reports the old gate, G2′ and each G2′ component.
+
+**Observation-model pairing.**
+- Under the frozen linear model, G2′ is read at `A½ = 0`.
+- The detection-consistent arms (`h10`) are read at `A½ = 10`.
+- A linear-seeded arm read at `A½ > 0` is a labelled sensitivity, not a consistent configuration.
+
+### G2′ evaluation and evidence for `A½` (2026-10-13)
+
+**G2′ evaluation** ([evaluation](runs/20261013T_19_gate_g2prime_evaluation_v1/gate_g2prime.json), `evaluate_gate_g2prime.py`, run on re-scores 14 and 18).
+
+**Observed inter-wave windows** (mean COTS/tow; upper 95% Poisson bound):
+
+| Reef | Years | Mean | Upper bound | Sample |
+| --- | --- | --- | --- | --- |
+| Lizard | 1999–2011 | 0.041 | 0.054 | 41 COTS in 1,029 tows |
+| MacGillivray | 1999–2011 | 0.021 | 0.054 | 2004 excluded |
+| North Direction | 1996–2011 | 0.054 | 0.089 | |
+
+| Arm | Read at `A½` | Peaks matched raw · smoothed | Separation (worst) | Model trough CPUE: Lizard / MacG / North Dir. | G2′ | Old gate (raw count) |
+| --- | --- | --- | --- | --- | --- | --- |
+| run 15 `acrpoc_g0` | 0 | 6/7 · 5/6 | — (North Dir. one wave) | 0.133 / 0.063 / 0.312 | no | no |
+| baseline `wc_b150_q20` | 0 | 7/7 · 6/6 | 0.25 | 0.105 / 0.092 / 0.206 | no (trough) | no |
+| baseline `wc_b150_q20` | 10 | 7/7 · 6/6 | 0.10 | 0.048 / 0.040 / 0.136 | no (North Dir. trough) | no |
+| `wc_b150_q20_eb_h10` | 10 | 7/7 · 6/6 | 0.088 | 0.041 / 0.040 / 0.134 | no (North Dir. trough) | yes |
+| `wc_b150_q30_idw_h10` | 10 | 7/7 · 6/6 | 0.081 | 0.045 / 0.038 / 0.065 | **yes** | yes |
+
+**How G2′ changes the picture.**
+- **Strictness removed.** The unattainable peak count and the peak-height confounding in the trough ratio no longer block a pass. Every working-coral arm now meets components 1–3.
+- **Strictness added.** The absolute trough test fails on every arm read with the linear observation model, on all three reefs.
+- **Under `A½ = 10`.** Lizard and MacGillivray pass the trough test, but **North Direction's modelled inter-wave population is 2.5× the observed level** (0.13 vs 0.054 COTS/tow).
+- **The only G2′ pass.** `wc_b150_q30_idw_h10` passes, because its large North Direction seed depletes North Direction's food early. The same arm loses peak timing elsewhere: mean first-peak year 1997.5.
+
+G2′ therefore turns the remaining qualitative failure into one specific, observable target: **the inter-wave population on North Direction** (item 4: the juvenile pipeline keeps refilling adults).
+
+**Evidence for `A½`** (lead's request; searched 2026-10-13):
+- **Fernandes et al. (1990), *Coral Reefs* 9.**
+  - **Sightability.** Manta tows saw 22.7% of the COTS counted on SCUBA on the same 10 m strips, falling with strip width (under 5% for routine tows).
+  - **Drivers.** Sightability was driven chiefly by the **proportion of cryptic starfish** and **reef complexity**.
+  - **Correction model.** A correction equation explained only 39% of the variation.
+  - **Density.** No density term is reported in the abstract. The companion paper (Fernandes 1990, *Coral Reefs* 9:161–165, on the distribution and density of targets) and De'ath (1992, *Coral Reefs* 11:119–121, comment) are paywalled and were not read.
+- **MacNeil et al. (2016), *PeerJ* 4:e2310.**
+  - **Diver detection** was 0.82 [0.77, 0.87]. The strongest covariate was **disc width** (above 0.8 for COTS over 30 cm; below 0.5 under 15 cm). There is no density term, and no manta-tow detectability.
+  - **Cull CPUE** is **hyperstable** (CPUE ∝ N^0.33). That is the opposite curvature to `A½ > 0`, but it concerns targeted culling dives, not manta tows.
+- **Pratchett & Caballes (2025), *Biology* 14:1391.**
+  - **Detectability.** About 0.74–0.78 by depletion sampling at Lizard Island (40 transects of 200 m², 0.2–7.2 COTS per 200 m², i.e. 10–360 per ha). Mark–recapture at Rib Reef gave 0.65 by day and 0.78 by night.
+  - **Covariates.** **Density did not explain variation among transects.** Detectability rose with size (0.50 at ≤ 20 cm; 0.89–0.91 above 30 cm) and was lower on the slope than the crest (0.70 vs 0.90).
+  - **Relevance.** These densities lie mostly above the range where `A½ ≈ 3–10` matters.
+- **Pratchett et al. (2026), *Coral Reefs*, doi 10.1007/s00338-026-02841-y (SALAD; Lizard, Cairns and Far Northern regions, 2021–25).**
+  - **Detectability.** Mean 0.51, varying by region with **COTS size and feeding**. Feeding starfish were 83% exposed from above, non-feeding 24%.
+  - **Implication for manta.** The authors stress that methods relying on detection from above (manta, towed camera) are significantly limited.
+  - **Regional means against inferred density:**
+
+| Region | Inferred density (COTS/ha) | Detectability |
+| --- | --- | --- |
+| Cairns | 4.1 | 0.30 |
+| Princess Charlotte Bay | 8.7 | 0.43 |
+| Cape Grenville | 17.1 | 0.59 |
+| Lizard | 20.3 | 0.55 |
+
+  - **Fitting our curve.** Fitting `d = d_max·A/(A + A½)` to these four points gives **`A½` = 6.0 ± 2.1 COTS/ha** (`d_max` 0.74).
+
+**Assessment.**
+- **No study measures manta-tow detectability as a function of density.**
+- The direct within-site test (Pratchett & Caballes 2025) found no density effect at 10–360 COTS/ha.
+- Across studies, detectability is governed by **size, crypsis and feeding (exposure)**, all of which shift towards cryptic, small and non-feeding animals at low density. This is the mechanism behind `A½`.
+- The only quantitative handle is the regional SALAD fit (`A½` ≈ 6 ± 2). It is indirect: four regional means, confounded with size and region, from diver surveys, not manta tows.
+- **Conclusion.** The evidence supports `A½` **in the range ~3–10 COTS/ha as plausible**, with the mechanism being size- and exposure-dependent detectability. It does not identify `A½`.
+- **Recommended route to identification:** paired manta–SALAD surveys on the same reefs and years (the Lizard region has both, 2021–25), or the paywalled Fernandes (1990) density analysis.
+
+
+## Preregistered Lizard Island local-retention screen (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13); preregistered before implementation.** Runner-level input treatment plus a checked-in, unit-tested transform; no ADRIA, COTSMod, default or objective change.
+
+**Decisions recorded with this screen:**
+- **Empirical-Bayes 1991 surface adopted** as the working starting state (`eb`, linear inversion; run 17 `wc_b150_q20_eb_lin`, loss 9.10). The lead's reason: it is better founded, and it is not the cause of Lizard's suppressed peaks.
+- **Gate:** G2′ as amended above, with both peak counts.
+
+### Hypothesis (project lead)
+
+Lizard Island holds a **remnant population** between waves; the observed trough CPUE is about 0.04, non-zero. It also has an **internal lagoon** that may retain larvae. The Owen reef-scale connectivity under-represents this retention, so Lizard's own production does not feed back into its population. That would keep both of Lizard's waves small, and the updated (finer) connectivity should eventually resolve it.
+
+### Evidence
+
+- **Owen matrices (2018–22).** Lizard is three domain reefs: 14-116b (North East), 14-116c (Coconut Bay) and 14-116d (**Lagoon**).
+  - **Self-retention.** The diagonal entries are 0.0001–0.0008 for 14-116b and 14-116c, and 0.0007–0.0049 for the Lagoon.
+  - **Within-complex supply.** All three sub-reefs send most of their within-complex supply to the Lagoon.
+  - **Survival.** Each row sums to about 0.06–0.08, so about 93% of production dies in the plankton.
+  - **Retained share.** The Lizard complex keeps 1–8% of its surviving larvae.
+- **Flushing.** The Lizard lagoon flushes in hours to 10 days, longer in low wind (Philipps & Bellwood 2024, *Coral Reefs*, doi 10.1007/s00338-024-02511-x). COTS larval duration is weeks, so lagoon retention alone is partial.
+- **Sticky water.** Dense reef clusters are poorly flushed and retain more larvae ("sticky water"; Andutta et al. 2012). Reef-scale residence times are 0.5–5.6 days.
+- **Self-seeding rates.** Large-scale GBR models give self-seeding under 2% for passive coral larvae and over 20% for fast-developing fish larvae.
+- **Fine-scale model.** A 30 m Lizard dispersal model exists (Gouezo et al. 2025, *Ecological Applications*).
+- **What is missing.** No study gives a COTS retention fraction for Lizard. The levels below therefore bracket "how much retention would be needed"; they are not estimates.
+
+### Mechanism (source-conserving redistribution)
+
+For each annual Owen matrix `M` (rows are sources, columns are sinks; entries are the fraction of source production arriving), and each source reef `s` in a retention group `G`:
+- `S = Σ_j M[s, j]` is the source's surviving fraction, and `c = Σ_{j∈G} M[s, j]` is the part already retained in `G`.
+- **Within the group:** `M'[s, j] = M[s, j] · ρS / c` for `j ∈ G`. This keeps Owen's within-group pattern, in which the Lagoon dominates.
+- **Exports:** `M'[s, j] = M[s, j] · (1 − ρ)S / (S − c)` for `j ∉ G`.
+- **Conservation.** Row sums, and so each source's total larval survival, are **preserved exactly**: more larvae stay home, but no extra larvae are created. The maximum possible retention is therefore `S` (about 7% of production).
+- **Implementation.** `connectivity_retention.jl` holds the transform, and `test_connectivity_retention.jl` tests row-sum preservation, orientation, the target share and the identity at the Owen share.
+- **Unchanged inputs:** external supply and source larval survival.
+
+### Arms (5)
+
+All arms run on the adopted baseline: working coral, β 1.5, `Q = 20`, `eb` seeds with linear inversion, Ext×5 and gradual Allee.
+
+| Arm | Treatment |
+| --- | --- |
+| `…_owen` | Owen matrices unchanged. **Must replay run 17 `wc_b150_q20_eb_lin` exactly.** |
+| `…_liz25` / `…_liz50` / `…_liz90` | Lizard complex `G` = {14-116b, 14-116c, 14-116d} retains ρ = 0.25 / 0.5 / 0.9 of its surviving larvae (Owen: 0.01–0.08). |
+| `…_all50` | Discriminating control. Every domain reef retains ρ = 0.5 of its survivors on itself (Lizard as one complex). This tests whether any benefit is Lizard-specific or a generic retention effect that would also inflate North Direction and Eyrie. |
+
+### Expected consequences
+
+**Lizard's own production.** At about 250 larvae/ha/yr at the peak, it supplies 0.06–0.25 × 250 × 0.07 ≈ 1–4 recruits/ha/yr even at ρ = 0.9. That is small against Ext×5 external supply (65–100 recruits/ha/yr). The feedback loop (more adults → more production → more retention) is weak, because only about 10% of settlers reach adulthood.
+
+**Prediction:**
+- **First wave.** A **modest** rise for Lizard (≤ +30% at ρ = 0.9) with no timing change.
+- **Remnant and second wave.** A larger inter-wave remnant population, and an earlier or larger second wave, because the trough population is then partly self-sustaining.
+- **Risk.** Higher troughs, which can fail the G2′ trough test.
+- **Control.** `all50` should raise every reef's troughs.
+
+**Discrimination.** If even ρ = 0.9 leaves Lizard's first wave far below observed, then retention within source-conserving bounds cannot explain it. Lizard's deficit would then need larval supply beyond the current external boundary (an initiation-region source), or higher larval survival near Lizard, not retention.
+
+### Report
+
+- **Gates.** G2′ (linear observation), with a sensitivity re-score at `A½ = 10`, and the old gate.
+- **Per reef:** first- and second-peak heights and years, inter-wave mean CPUE, and the trough population.
+- **Lizard fluxes:** local retention, internal immigration and external immigration, 1992–2015.
+- **Mass check:** maximum absolute row-sum change over all annual matrices.
+
+### Failures and rollback
+
+**Failures:**
+- an inexact reference replay;
+- a row-sum change above 1e-12;
+- a negative matrix entry;
+- a retention group not found in the matrix;
+- non-finite states.
+
+**Rollback:** Owen matrices unchanged.
+
+### Local-retention decision (2026-10-13)
+
+[Run](runs/20261013T_20_local_retention_1991_v1/metadata.toml), [audit](runs/20261013T_20_local_retention_1991_v1/local_retention_audit.json), [plot](runs/20261013T_20_local_retention_1991_v1/local_retention.png), [re-score](runs/20261013T_21_detectability_rescore_local_retention_1991_v1/metadata.toml) and [G2′](runs/20261013T_22_gate_g2prime_local_retention_v1/gate_g2prime.json).
+
+New checked-in tools: `connectivity_retention.jl`, `test_connectivity_retention.jl` (14/14 pass), and `audit_1991_local_retention.py`. The parse test now also covers `rescore_detectability.jl` and the two retention files (35/35 pass).
+
+**Checks.**
+- `…_owen` replays run 17 `wc_b150_q20_eb_lin` exactly (0.0).
+- The largest row-sum change over all annual matrices is ≤ 1e-12, recorded in metadata.
+- External immigration is identical in every arm.
+- The re-score control is exact.
+
+**Result.** Retention **does not change Lizard materially**, and no arm passes G2′.
+
+| Arm | Summed loss | Lizard first / second wave (obs 1.92 / 0.74) | Lizard inter-wave CPUE | North Dir. inter-wave CPUE (obs 0.054) | Lizard settlers from domain sources 1992–2015 |
+| --- | --- | --- | --- | --- | --- |
+| `owen` (ref) | 9.10 | 0.432 / 0.160 | 0.105 | 0.128 | 15% (local 4, internal 285, external 1,670 /ha) |
+| `liz25` | 9.10 | 0.435 / 0.158 | 0.105 | 0.127 | 16% |
+| `liz50` | 9.10 | 0.439 / 0.158 | 0.105 | 0.127 | 18% |
+| `liz90` | 9.09 | 0.446 / 0.158 | 0.105 | 0.126 | 20% (local 60) |
+| `all50` | 9.01 | 0.428 / 0.179 | 0.104 | 0.136 | 12% |
+
+**Against the predictions.** These were confirmed, and the effect was even smaller than predicted:
+- **Lizard.** The first wave rises by +3% at ρ = 0.9 against a predicted ceiling of +30%. The second wave and the inter-wave population are unchanged.
+- **Why so small.** Source-conserving retention can return at most the surviving ~7% of production, and Lizard's own production over 1992–2015 (1,217 /ha) is smaller than its external supply (1,670 /ha).
+- **Control.** `all50` hardly changes anything either (North Direction's trough up slightly).
+
+**Diagnosis: Lizard's first wave is limited by food, not supply.**
+- **Supply is high.** Lizard receives 65–140 settlers/ha/yr in 1994–99.
+- **Maturation is low.** Only 3–15 subadults/ha/yr mature, because Lizard's modelled fast coral falls from 0.07–0.09 (1992–93) to 0.04 after the 1994 heat stress and to 0.02 by 1997. Food survival then falls to 0.48, and body condition to 0.5, by 1998.
+- **North Direction contrast.** It keeps fast cover at 0.05–0.11 until 1996 and food survival at 1.0 through 1997, so the same settlement produces 61 adults/ha against Lizard's 29.
+- **The data puzzle.** Observed Lizard reached 1.92 COTS/tow (about 128 adults/ha) on photo-transect fast cover of about 0.02–0.04. This is the food-scale question first raised after run 14.
+- **Interpretation.** The threshold θ = 0.05 and the condition saturation of 0.10 are defined on 9 m *Acropora* + Pocilloporidae cover. They do not let Lizard's starfish feed at the scale observed. This is consistent with the run-12 finding that a higher starting composition helps Lizard only weakly, because the 1994 heat stress resets the fast cover.
+
+**Decision.**
+- Nothing is promoted, and the Owen matrices are unchanged.
+- Within source-conserving bounds, local retention is **closed** as an explanation for Lizard's suppressed peaks.
+- `connectivity_retention.jl` is kept for the updated connectivity, which should resolve sub-reef retention directly.
+- **Two ways retention could still matter:**
+  - higher survival for retained larvae (a non-conserving treatment, not tested);
+  - a Lizard-specific supply that the current Ext×5 boundary misses.
+  Neither changes the food limit identified here.
+
+**Next (lead to choose):**
+- (a) **Food scale for Lizard.** Gather evidence on what Lizard's COTS ate in 1995–98: the full prey breadth (*Montipora*, *Isopora*, crest *Acropora* above 9 m) and the reef-wide fast cover. Then decide whether θ and the condition saturation should be defined on a broader prey pool. This is a mechanism change on an independently set threshold, so it needs evidence, not a fit.
+- (b) **North Direction's inter-wave population** (the remaining G2′ failure; item 4): why 80–130 subadults/ha persist through 1999–2002 and refill adults.
+- (c) **Bleaching β.** β = 1.0 instead of 1.5 removes less of Lizard's pre-outbreak food in 1994 (run 11: Lizard first peak 0.41 vs 0.35). A small lever, already measured.

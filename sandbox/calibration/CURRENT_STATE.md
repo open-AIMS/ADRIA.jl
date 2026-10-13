@@ -1,4 +1,4 @@
-# COTS calibration: current state and handoff (updated 2026-10-13, after runs 11–18)
+# COTS calibration: current state and handoff (updated 2026-10-13, after runs 11–22)
 
 This is the single entry point for resuming work, in this chat or a new one. It records:
 - where the work stands;
@@ -74,7 +74,12 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 
 ### Leading COTS candidate (COTS dynamics), re-baselined 2026-10-13
 
-**Current baseline:** run `20261013T_11_cots_rebaseline_1991_v1` arm `wc_b150_q20` (replayed exactly as `wc_b150_q20_acrpoc` in run 12).
+**Current baseline (2026-10-13, after the lead adopted the empirical-Bayes 1991 surface):** run `20261013T_17_initial_state_rebaseline_1991_v1` arm `wc_b150_q20_eb_lin` (replayed exactly as `wc_b150_q20_eb_lin_owen` in run 20).
+- **Model.** The same model as `wc_b150_q20` below, but seeded from the EB surface.
+- **Score.** Loss 9.10, 7/7 raw · 6/6 smoothed peaks matched.
+- **Gate.** It fails G2′ only on the absolute trough test.
+
+**Previous baseline:** run `20261013T_11_cots_rebaseline_1991_v1` arm `wc_b150_q20` (replayed exactly as `wc_b150_q20_acrpoc` in run 12).
 - **Change from run 15.** The same COTS model now runs on the confirmed working coral configuration (below), with predator pit **`Q = 20`** (re-checked; interior of 10–70).
 - **Score.** Summed frozen loss **9.06** (run 15: 12.18). All three two-wave reefs have two peaks, but 6/7 match. **Gate fails** on matched peaks and the Lizard trough ratio (0.25 against ≤ 0.10).
 - **β.** β = 1.5 was chosen over 1.0 by coral `J` (0.364 vs 0.369, a negligible margin). β 1.0 at `Q = 20` scores 9.12.
@@ -187,19 +192,29 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
    - **The frozen observation model is unchanged.**
 6. **Promotion gates.**
    - **Audit finding (run 14).** The gate's "7 observed peaks" exist only on the **raw** series. Audits counted smoothed matches, where at most 6 are possible, so "7/7" was unattainable as audited.
-   - **Under the raw count.** The baseline already matches 7/7 and fails only the trough ratio. **The lead must decide the gate's peak count.**
+   - **Under the raw count.** The baseline already matches 7/7 and fails only the trough ratio.
+   - **Decided (2026-10-13).** The lead replaced the gate with **G2′**: both counts, distinct waves, and an absolute trough test (see the protocol). Under G2′ the remaining failure is North Direction's inter-wave level.
    - **Arms that pass the raw-count gate:**
      - the detection-consistent `eb_h10` at `Q = 20` (worst trough 0.088), read at `A½ = 10`;
      - several re-scored arms at `Q ≥ 30`.
    - **Not promotable.** These passes rest on an unidentified `A½`, and first-wave heights remain far too low.
    - **After a pass.** Replicated seeds, `q` sensitivity and held-out testing come only after an accepted pass.
 
+**Lead's decisions (2026-10-13):**
+- **Gate.** G2′ is in force: both peak counts, distinct waves, and an absolute trough test against observed inter-wave CPUE.
+- **Starting state.** The empirical-Bayes 1991 surface is adopted.
+- **Detectability evidence.** Sought: `A½` ≈ 3–10 is plausible but not identified (SALAD regional fit 6 ± 2).
+- **Local retention.** Tested and closed within source-conserving bounds (run 20).
+
+**Where it stands.**
+- **North Direction's trough.** The remaining qualitative (G2′) failure is North Direction's inter-wave population: model 0.13–0.24 COTS/tow against an observed 0.054 (upper bound 0.089). The model's North Direction population lingers through 1999–2011, because subadults keep maturing.
+- **Lizard's peaks.** Lizard's peak heights (gate 3) are limited by **food**: fast cover after the 1994 heat stress. They are not limited by supply, retention, starting state or composition.
+
 **Suggested next steps (lead to decide):**
-- (i) **Two decisions:**
-  - the gate's peak count: raw 7, or smoothed 6;
-  - whether to seek evidence for `A½`, so that the detection-consistent configuration (`eb` seeds inverted at `A½`, read at `A½`) can become the working model.
-- (ii) First-wave height and ranking: a supply mechanism (local retention or self-recruitment in the Lizard–Cairns initiation region, or spatially structured external supply), preregistered with evidence.
-- (iii) Items 3–4 (Lizard's second wave; Lizard's abrupt crash) on the configuration (i) settles.
+- (a) **Food-scale evidence for Lizard 1995–98.** Gather evidence on prey breadth and reef-wide fast cover. If it supports a broader prey pool, preregister θ and the condition saturation on that pool.
+- (b) **North Direction's inter-wave population (item 4).** Examine the subadult pipeline (80–130/ha in 1999–2002) and the juvenile predation pit on North Direction.
+- (c) **Paired manta–SALAD data** to identify `A½`, so that a detection-consistent configuration can be adopted.
+- (d) **Updated connectivity.** Rerun the retention transform on it when it arrives.
 
 ## Experiment chronology (runs in `runs/`)
 
@@ -237,6 +252,10 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 16 | starting-state screen: failed before any arm (exact float check; `FAILED.txt`) |
 | 17 | reef-differentiated starting state (first waves insensitive; `eb_h10` passes the raw-count gate at `A½ = 10`) |
 | 18 | detectability re-score of run 17 |
+| 19 | G2′ evaluation of runs 11, 15 and 17 (re-scores 14 and 18) |
+| 20 | Lizard local retention (negligible; Lizard food-limited) |
+| 21 | detectability re-score of run 20 |
+| 22 | G2′ evaluation of run 20 |
 
 ## Known issues
 

@@ -14,6 +14,7 @@ using ADRIA, CSV, DataFrames, Dates, Random, TOML
 include(joinpath(@__DIR__, "cots_cycle_metrics.jl"))
 include(joinpath(@__DIR__, "reef_observation_mapping.jl"))
 include(joinpath(@__DIR__, "calibration_run.jl"))
+include(joinpath(@__DIR__, "connectivity_retention.jl"))
 
 const SEED = 20260930
 const EXPERIMENT = get(ENV, "OWEN_1991_EXPERIMENT", "initialization")
@@ -25,7 +26,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "predation_capacity", "outbreak_collapse", "growth_starvation",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
-    "initial_state_rebaseline") ||
+    "initial_state_rebaseline", "local_retention") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -98,7 +99,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "trough_mechanisms", "initiation", "predation_capacity", "outbreak_collapse",
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
-    "composition_rebaseline", "initial_state_rebaseline")
+    "composition_rebaseline", "initial_state_rebaseline", "local_retention")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -188,7 +189,14 @@ const REBASE_COMPOSITION = EXPERIMENT == "composition_rebaseline"
 const REBASE_INITIAL = EXPERIMENT == "initial_state_rebaseline"
 const EB_SURFACE_DIR = joinpath(@__DIR__, "runs", "20261013T_15_1991_initial_surfaces_eb")
 const INITIAL_A_HALF = 10.0
-const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL
+# Local-retention screen (2026-10-13): adopted eb/lin starting state; Owen annual matrices
+# with source-conserving retention (connectivity_retention.jl) in the Lizard complex
+# (14-116b/c/d) at rho 0.25/0.5/0.9, or on every reef at 0.5; arms wc_b150_q20_eb_lin_<ret>.
+const REBASE_RETENTION = EXPERIMENT == "local_retention"
+const RETENTION_LEVELS = Dict("owen" => nothing, "liz25" => ("lizard", 0.25),
+    "liz50" => ("lizard", 0.5), "liz90" => ("lizard", 0.9), "all50" => ("all", 0.5))
+const LIZARD_COMPLEX_IDS = ("14-116b", "14-116c", "14-116d")
+const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL || REBASE_RETENTION
 const REBASE_KAPPA = 5.0
 const REBASE_CHRONIC = 0.03
 const REBASE_BETA = (1.0, 1.5)
@@ -314,7 +322,7 @@ end
 String.(surface.site_id) == String.(domain.loc_ids) ||
     error("1991 surface order does not match model site order")
 # Starting-state screen: empirical-Bayes surface (build_1991_eb_surface.py), same sites/order.
-eb_surface = if REBASE_INITIAL
+eb_surface = if REBASE_INITIAL || REBASE_RETENTION
     table = CSV.read(joinpath(EB_SURFACE_DIR, "surface.csv"), DataFrame)
     String.(table.site_id) == String.(domain.loc_ids) || error("EB surface order does not match model sites")
     # pandas' default float parser can differ from Julia's by one ulp on the copied column.
@@ -327,6 +335,30 @@ eb_surface = if REBASE_INITIAL
 else
     nothing
 end
+# Local-retention screen: original annual matrices (kept by reference so the owen arm
+# replays exactly) and source-conserving retention variants (rows sources, columns sinks).
+base_reef_connectivity = REBASE_RETENTION ? copy(domain.cots_forcing.reef_connectivity) : nothing
+retention = if REBASE_RETENTION
+    site_reef = domain.cots_forcing.site_to_reef
+    site_gbrmpa = String.(domain.loc_data.GBRMPA_ID)
+    lizard = sort(unique(site_reef[in.(site_gbrmpa, Ref(LIZARD_COMPLEX_IDS))]))
+    length(lizard) == length(LIZARD_COMPLEX_IDS) || error("Lizard complex reefs not found in COTS forcing")
+    n_reefs = size(first(base_reef_connectivity), 1)
+    group_sets = Dict("lizard" => [lizard],
+        "all" => vcat([lizard], [[r] for r in 1:n_reefs if !(r in lizard)]))
+    matrices = Dict(level => [retain_within_groups(m, group_sets[spec[1]], spec[2])
+                              for m in base_reef_connectivity]
+        for (level, spec) in RETENTION_LEVELS if !isnothing(spec))
+    row_delta = maximum(maximum(abs.(sum(new; dims=2) .- sum(old; dims=2)))
+        for mats in values(matrices) for (new, old) in zip(mats, base_reef_connectivity))
+    row_delta <= 1e-12 || error("Retention changed source survival: $row_delta")
+    all(all(>=(0.0), m) for mats in values(matrices) for m in mats) || error("Negative connectivity")
+    (matrices=matrices, lizard=lizard, row_delta=row_delta,
+     owen_lizard_share=[retained_share(m, lizard) for m in base_reef_connectivity])
+else
+    nothing
+end
+retention_matrices = REBASE_RETENTION ? retention.matrices : nothing
 mapping = load_reef_area_weights(domain, DOMAIN_PATH, [t.model for t in TARGETS])
 Random.seed!(SEED)
 scenario = ADRIA.sample(domain, 2)[1:1, :]
@@ -572,6 +604,10 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : REBASE_RETENTION ? [
+    (name="wc_b150_q20_eb_lin_$(level)", alpha=0.015, coral="observed_composition",
+        initial="cohort_full")
+    for level in ("owen", "liz25", "liz50", "liz90", "all50")
 ] : REBASE_INITIAL ? [
     (name="wc_b150_q$(q)_$(source)_$(inversion)", alpha=0.015, coral="observed_composition",
         initial="cohort_full")
@@ -681,7 +717,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : REBASE_INITIAL ? let
+) : REBASE_INITIAL || REBASE_RETENTION ? let
     sources = Dict("idw" => Float64.(surface.cots_cpue_1989_1991_idw), "eb" => eb_surface)
     halves = Dict("lin" => 0.0, "h10" => INITIAL_A_HALF)
     states = Dict((source, inversion) => make_initial_state(0.015,
@@ -898,6 +934,13 @@ for t in run_treatments
     elseif REBASE
         domain.cyclone_mortality_scens = rebase_cyclones[split(t.name, "_")[1]]
     end
+    if REBASE_RETENTION
+        level = split(t.name, "_")[6]
+        for i in eachindex(base_reef_connectivity)
+            domain.cots_forcing.reef_connectivity[i] = isnothing(RETENTION_LEVELS[level]) ?
+                base_reef_connectivity[i] : retention_matrices[level][i]
+        end
+    end
     push!(setup_marks, ("k_cyclone", time()))
     trough_treatment = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
     external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ||
@@ -1060,7 +1103,7 @@ for t in run_treatments
                 t.initial == "legacy" ?
                 0.1 .* [p > 0.1 ? min(p / 0.5, 1.0) : 0.0
                     for p in domain.cots_init_density] .* Float64(candidate.seed_mult) :
-                REBASE_INITIAL ? Float64.(CSV.read(initial_paths[t.name], DataFrame).adult_ha) :
+                REBASE_INITIAL || REBASE_RETENTION ? Float64.(CSV.read(initial_paths[t.name], DataFrame).adult_ha) :
                 Float64.(surface.cots_cpue_1989_1991_idw) ./ t.alpha .* (compat ? k : 1.0)
             push!(initial_reef, (t.name, reef,
                 sum(m.weights .* state_seed[m.indices]),
@@ -1181,6 +1224,11 @@ delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
 domain.loc_data.k .= baseline_k
 domain.cyclone_mortality_scens = zero_cyclones
 domain.loc_data.CB_CALIB_GROUPS .= base_cb_groups
+if REBASE_RETENTION
+    for i in eachindex(base_reef_connectivity)
+        domain.cots_forcing.reef_connectivity[i] = base_reef_connectivity[i]
+    end
+end
 for name in ("COTS_PREFERRED_PREY_STARVATION", "COTS_STARVATION_PREFERRED_THRESHOLD",
         "COTS_STARVATION_MEMORY_YEARS", "COTS_ADULT_SENESCENCE", "COTS_SENESCENCE_AGE",
         "COTS_SENESCENCE_MORTALITY", "COTS_PER_CAPITA_CONSUMPTION",
@@ -1230,28 +1278,44 @@ metadata = Dict(
         "observed_fast_share_by_reef" => composition.reef_share,
         "working_coral" => "kappa $(REBASE_KAPPA), Mellin table + $(REBASE_CHRONIC)/yr chronic, bleaching beta per arm, s = f = 1",
         "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin[site, year]) * (1 - mu); bleaching loss scaled by ADRIA_DEBUG_BLEACHING_SCALAR",
-        "initial_state" => REBASE_INITIAL ? Dict(
+        "local_retention" => REBASE_RETENTION ? Dict(
+            "transform" => "connectivity_retention.jl retain_within_groups: rows sources, columns sinks; source s in group G keeps rho of its surviving larvae (row sum) within G, Owen within-G pattern kept, exports scaled; row sums preserved",
+            "transform_sha256" => file_sha256(joinpath(@__DIR__, "connectivity_retention.jl")),
+            "levels" => Dict(k => isnothing(v) ? "owen (unchanged)" : "$(v[1]) rho=$(v[2])" for (k, v) in RETENTION_LEVELS),
+            "lizard_complex_gbrmpa_ids" => collect(LIZARD_COMPLEX_IDS),
+            "lizard_complex_reef_indices" => retention.lizard,
+            "owen_lizard_retained_share_by_year" => retention.owen_lizard_share,
+            "max_abs_row_sum_change" => retention.row_delta,
+            "connectivity_years" => domain.cots_forcing.years,
+        ) : "not tested",
+        "initial_state" => REBASE_INITIAL || REBASE_RETENTION ? Dict(
             "eb_surface_dir" => EB_SURFACE_DIR,
             "eb_surface_sha256" => file_sha256(joinpath(EB_SURFACE_DIR, "surface.csv")),
             "eb_metadata_sha256" => file_sha256(joinpath(EB_SURFACE_DIR, "metadata.json")),
             "inversion" => "lin: A = C / q; h10: A = (C/q + sqrt((C/q)^2 + 4 A_half C/q)) / 2, inverse of C = q A^2 / (A + A_half), A_half = $(INITIAL_A_HALF)",
             "preload" => "6:3:1 juvenile:subadult:adult on the inverted adults",
         ) : "idw surface, linear inversion",
-        "arms" => REBASE_INITIAL ?
+        "arms" => REBASE_RETENTION ?
+            "wc_b150_q20_eb_lin_{owen,liz25,liz50,liz90,all50}" :
+            REBASE_INITIAL ?
             "wc_b150_q{20,30}_{idw,eb}_{lin,h10}" :
             REBASE_COMPOSITION ?
             "wc_b{100,150}_q20_{acrpoc,halfother,other}: 1991 fast share (Acropora + Pocilloporidae + w * Other) / hard coral, w 0 / 0.5 / 1" :
             "ref_q30 (kappa 1, no background, beta unset); k500_q30 (kappa 5 only); mel3_q30 (Mellin + 3% only); wc_b{100,150}_q{$(join(REBASE_Q, ","))}",
         "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
             "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
-        "bleaching_scalar" => REBASE_INITIAL ? [1.5] : collect(REBASE_BETA),
-        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
-        "selection" => REBASE_INITIAL ?
+        "bleaching_scalar" => REBASE_INITIAL || REBASE_RETENTION ? [1.5] : collect(REBASE_BETA),
+        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION || REBASE_RETENTION ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
+        "selection" => REBASE_RETENTION ?
+            "none: diagnostic; gate G2' (evaluate_gate_g2prime.py) on the re-score; discrimination vs all50 control" :
+            REBASE_INITIAL ?
             "none: diagnostic of first-wave ranking and heights; h10 arms read primarily under the matching A_half = 10 observation re-score" :
             REBASE_COMPOSITION ?
             "adoption only if Lizard and MacGillivray first peaks rise, mean trough min <= 4 adults/ha, summed loss worsens <= 0.5, fast RMSE worsens <= 0.01; lead decides" :
             "Q per beta: min summed smoothed_3y loss over 4 reefs, first peak on every reef, ties to smaller Q; beta by lower frozen coral J at its selected Q",
-        "reference" => REBASE_INITIAL ?
+        "reference" => REBASE_RETENTION ?
+            "wc_b150_q20_eb_lin_owen must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
+            REBASE_INITIAL ?
             "wc_b150_q20_idw_lin must replay wc_b150_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
             REBASE_COMPOSITION ?
             "wc_b{100,150}_q20_acrpoc must replay wc_b{100,150}_q20 of 20261013T_11_cots_rebaseline_1991_v1" :

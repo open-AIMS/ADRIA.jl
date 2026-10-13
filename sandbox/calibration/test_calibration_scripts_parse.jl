@@ -33,6 +33,9 @@ using Test
         "screen_owen_source_condition_proxy.jl",
         "test_1991_initial_state.jl",
         "run_1991_initialization_test.jl",
+        "rescore_detectability.jl",
+        "connectivity_retention.jl",
+        "test_connectivity_retention.jl",
         "score_1985_reference_on_1991_window.jl",
     ]
         source = read(joinpath(@__DIR__, filename), String)
