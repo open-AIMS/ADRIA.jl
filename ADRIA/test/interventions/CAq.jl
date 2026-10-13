@@ -206,3 +206,13 @@ end
         @test all(log_2 .<= budget_2 .|| isapprox.(log_2, budget_2; rtol=fp32_rtol))
     end
 end
+
+@testset "Guided run with juvenile share criterion" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    ADRIA.fix_factor!(dom; iv_CAq_juvenile_share=1.0)
+    scens = ADRIA.sample_guided(dom, 4)
+    @test :iv_CAq_juvenile_share in propertynames(scens)
+
+    rs = ADRIA.run_scenarios(dom, scens, "45")
+    @test all(isfinite.(ADRIA.metrics.scenario_total_cover(rs)))
+end

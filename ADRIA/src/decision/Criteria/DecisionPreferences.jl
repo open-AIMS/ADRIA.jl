@@ -324,6 +324,51 @@ function geographic_separation(mean_distances::Vector{Float64})::Vector{Float64}
     return zeros(length(mean_distances))
 end
 
+"""
+Minimum total coral cover (relative to habitable area) for a location's juvenile share to
+be considered informative. Locations below this are given a neutral criteria value.
+"""
+const JUVENILE_SHARE_MIN_COVER = 0.05
+
+"""
+    juvenile_share(C_cover_t::AbstractArray{<:Real,3}; min_cover::Float64=JUVENILE_SHARE_MIN_COVER, n_juvenile_sizes::Int64=2)::Vector{Float64}
+
+Rank-transformed juvenile share, J / (J + A), for each location, where J is cover in the
+`n_juvenile_sizes` smallest size classes (as in `relative_juveniles`) and A is cover in
+the remaining size classes.
+
+Raw shares cluster near 0, so they are replaced by their rank among the given locations,
+scaled to (0, 1) with mean 0.5. Locations with total cover below `min_cover` carry no
+meaningful signal and are assigned the neutral value 0.5. Ranks are relative to the
+locations passed in, so pass only the candidate locations being assessed.
+
+# Arguments
+- `C_cover_t` : Coral cover relative to habitable area, of shape [groups ⋅ sizes ⋅ locations]
+- `min_cover` : Minimum total cover for a location's share to be ranked
+- `n_juvenile_sizes` : Number of smallest size classes considered juvenile
+
+# Returns
+Criteria values for each location, lower values indicating a smaller juvenile share.
+"""
+function juvenile_share(
+    C_cover_t::AbstractArray{<:Real,3};
+    min_cover::Float64=JUVENILE_SHARE_MIN_COVER,
+    n_juvenile_sizes::Int64=2
+)::Vector{Float64}
+    juv_cover = vec(sum(@view(C_cover_t[:, 1:n_juvenile_sizes, :]); dims=(1, 2)))
+    total_cover = vec(sum(C_cover_t; dims=(1, 2)))
+
+    scores = fill(0.5, length(total_cover))
+    eligible = (total_cover .>= min_cover) .& (total_cover .> 0.0)
+    n_eligible = count(eligible)
+    if n_eligible > 1
+        share = juv_cover[eligible] ./ total_cover[eligible]
+        scores[eligible] .= (tiedrank(share) .- 0.5) ./ n_eligible
+    end
+
+    return scores
+end
+
 # """
 #     _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
 

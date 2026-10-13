@@ -58,6 +58,15 @@ Base.@kwdef struct CAqCriteriaWeights <: DecisionWeights
         name="Coral Aquaculture Coral Cover",
         description="Preference locations with lower coral cover (higher available space) for coral aquaculture deployments."
     )
+    iv_CAq_juvenile_share::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=minimum,
+        name="Coral Aquaculture Juvenile Share",
+        description="Prefer locations where juveniles make up a small share of coral cover (adults present but recruitment failing). Rank-transformed among candidates; locations below a minimum total cover are given a neutral value."
+    )
     iv_CAq_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",

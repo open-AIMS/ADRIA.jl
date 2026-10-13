@@ -1758,6 +1758,9 @@ function run_model(
                             heat_stress=dhw_projection[share_candidate_loc_idx],
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
+                            juvenile_share=decision.juvenile_share(
+                                @view(C_cover_t[:, :, share_candidate_loc_idx])
+                            ),
                             in_connectivity=in_conn[share_candidate_loc_idx],
                             out_connectivity=out_conn[share_candidate_loc_idx]
                         )

@@ -331,7 +331,7 @@ const _CRITERIA_WEIGHT_GROUPS = Dict{Symbol,Vector{Symbol}}(
     :CAq_weights => [
         :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
         :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
-        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation
+        :iv_CAq_juvenile_share, :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation
     ],
     :Fog_weights => [
         :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
