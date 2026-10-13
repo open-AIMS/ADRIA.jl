@@ -1827,3 +1827,494 @@ Against the predictions:
 
 **Known residual.** Fast coral overshoots observations about 2× in 2005–13 under observed COTS. Possible reasons: COTS undercounted by manta in troughs, fast-coral recruitment, or site representativeness. This matters for second-wave food supply.
 
+
+## Preregistered COTS re-baseline on the working coral configuration (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13); preregistered before implementation.** Runner-only screen; no ADRIA, COTSMod, default, domain-package, objective or observation-model change.
+
+### Project lead's decisions
+
+- **Working coral configuration confirmed:**
+
+| Component | Setting |
+| --- | --- |
+| Growth | CoralBlox calibrated growth untouched (`s = f = 1`; RME groups, group 5 on the calibration reefs) |
+| Background | Mellin table + 3%/yr chronic loss |
+| Cyclone strength | κ = 5 |
+| Bleaching scalar | β = 1–1.5 (a bracket, not a point value) |
+
+- **Candidate to re-baseline:** run 15 `acrpoc_g0` (= run 14 `obs_m100_q30`). This is the working model ("condition, no switching"), Ext×5 and predator pit `Q = 30` (both labelled assumptions), gradual Allee, and the observed 1993–95 composition.
+- **`Q` must be re-checked**, because the coral configuration changes coral supply.
+- **Manta detectability (recorded for a later screen, not used here).** The lead states that manta tows under-detect COTS at low density. Evidence they supplied: manta tows detect about 20% of the COTS counted on SCUBA searches, and under 5% of the total population (Fernandes et al. 1990). Diver methods such as culling and SALAD reach about 50–82% for adults, falling markedly for small adults and juveniles (MacNeil et al. 2016a; Pratchett & Caballes 2025; Pratchett et al. 2026). The observation model stays frozen at `q = 0.015` in this screen, so that the re-baseline is comparable with run 15.
+
+### Hypothesis and mechanism
+
+**Hypothesis.** The run-15 candidate's small second waves on Lizard and MacGillivray come partly from slow-coral (massive) overgrowth. That overgrowth exists because the coral model loses too little coral to disturbance. With the working coral configuration:
+- slow cover is held down;
+- fast coral can recover above the starvation threshold θ = 0.05 between waves;
+- larger second waves become possible.
+
+**Change.** No equation changes. Each arm replaces the domain cyclone-mortality cube (site × year, all groups and sizes; applied before COTS grazing) with
+
+`m' = 1 − (1 − m_cyclone)^κ · (1 − m_mellin[site, year]) · (1 − μ)`
+
+and sets `ADRIA_DEBUG_BLEACHING_SCALAR = β`. This is the bleaching screen's construction, now with COTS dynamics on instead of forced COTS.
+
+### Arms (13)
+
+All arms use the run-15 candidate, `q = 0.015`, `k_unit = 19.61`, Allee scale 3, `ADRIA_RNG_SEED` 90972102 and Owen connectivity seed 20260930.
+
+| Arm | κ | Background | β | `Q` | Role |
+| --- | --- | --- | --- | --- | --- |
+| `ref_q30` | 1 | none | 1 (unset) | 30 | must replay run 15 `acrpoc_g0` exactly |
+| `k500_q30` | 5 | none | 1 | 30 | component attribution (cyclones only) |
+| `mel3_q30` | 1 | Mellin + 3% | 1 | 30 | component attribution (background only) |
+| `wc_b100_q{10,20,30,45,70}` | 5 | Mellin + 3% | 1.0 | grid | working coral, `Q` re-check |
+| `wc_b150_q{10,20,30,45,70}` | 5 | Mellin + 3% | 1.5 | grid | working coral, `Q` re-check |
+
+The `Q` grid extends one step below the previous lower bound of 20, because run 14 selected `Q = 20` at the bound for one growth setting.
+
+### Expected consequences
+
+Forced-COTS runs (run 09, working configuration) give directional expectations:
+- **First wave.** Pre-outbreak fast cover is about 10–20% lower at β 1 (3%/yr chronic loss). At β 1.5 it is about 30–40% lower, because the 1994 heat stress (DHW about 4) removes fast coral. First peaks on Lizard and MacGillivray therefore fall further below observed (risk: losing first peaks at β 1.5). Timing may move up to 1 year later.
+- **Between waves.** Slow cover stays at about 0.3–0.4 instead of 0.6–0.7, so fast coral on Lizard and MacGillivray recovers above θ = 0.05 in 2003–12. Second waves should be larger and more frequent.
+- **Troughs.** More inter-wave food raises trough adults (risk: back above 3–4 adults/ha). A higher `Q` may then be selected.
+- **κ 5.** Heavier 2014–15 cyclone losses truncate food after 2014. Second waves that peak before 2014 should be little affected, and post-2015 COTS should starve sooner.
+- **Components.** `mel3_q30` should carry most of the second-wave effect, and `k500_q30` should change only post-2014 years.
+
+### Selection rules (frozen before results)
+
+- **`Q` per β.** The minimum summed `smoothed_3y` loss (frozen `cots_cycle_score`, `q = 0.015`) over the 4 reefs, requiring a first peak on every reef; ties go to the smaller `Q`. A selected `Q` of 10 or 70 is reported as unidentified within the bounds.
+- **β for later screens.** β is a coral parameter, so it is **not** chosen by the COTS loss. The new baseline for screens 2–4 uses the β with the lower frozen coral `J` (fast + slow photo-transect RMSE + manta total RMSE, 1992–2024), computed in these dynamic-COTS runs at each β's selected `Q`. COTS metrics are reported at both β.
+- **Qualitative gate (unchanged).** Two peaks on each of Lizard, MacGillivray and North Direction; 7/7 observed peaks matched; worst trough-to-smaller-peak ratio ≤ 0.10.
+
+### Report
+
+- the gate, summed loss and matched peaks;
+- per reef: first-peak year and height (Lizard and MacGillivray against observed 1.92 / 0.86 COTS/tow), second-peak height, and 2010–17 maximum against observed;
+- trough minimum adults/ha;
+- fast cover 2000–13 against θ, and slow cover in 2003 and 2012;
+- coral `J` with its components;
+- juvenile predation removed;
+- component-arm attribution.
+
+### Failures and rollback
+
+**Failures:**
+- an inexact reference replay;
+- external supply other than Ext×5;
+- combined mortality outside [0, 1];
+- non-finite states;
+- failed arms (logged with their error).
+
+**Interpretation commitments.**
+- If no `Q` gives second peaks on Lizard and MacGillivray, the second-wave gap is not explained by coral disturbance alone. Screen 3 (second-wave food) then starts from this baseline.
+- If first peaks are lost on any calibration reef at a β, that β is reported as incompatible with the current first-wave mechanism. It is not hidden by retuning `Q`.
+
+**Rollback.** κ 1, no background, β unset (1.0), `Q = 30`: the run-15 configuration.
+
+### Re-baseline decision (2026-10-13)
+
+[Run](runs/20261013T_11_cots_rebaseline_1991_v1/metadata.toml), [audit](runs/20261013T_11_cots_rebaseline_1991_v1/cots_rebaseline_audit.json) and [plot](runs/20261013T_11_cots_rebaseline_1991_v1/cots_rebaseline.png).
+
+**Operational failure.** The first attempt, [`20261013T_10_cots_rebaseline_1991_v1`](runs/20261013T_10_cots_rebaseline_1991_v1/FAILED.txt), stopped before any arm ran: the runner's treatment list mixed `,` and `;` in one array literal. This is a Julia *lowering* error, so `test_calibration_scripts_parse.jl` (which only calls `Meta.parseall`) passed. The list was fixed and checked with `Meta.lower` on every top-level expression. The run was repeated as run 11; the empty directory is kept with a `FAILED.txt` note.
+
+**Checks.**
+- `ref_q30` replays run 15 `acrpoc_g0` exactly (`0.0` in trajectories, flows and mechanisms).
+- External immigration is identical to Ext×5 in all 13 arms (`0.0`).
+- States are finite and mortality stays in [0, 1].
+
+**Result.** **No arm passes the gate.** Every working-coral arm has two peaks on all three two-wave reefs, but matches 6/7 peaks and has a worst trough ratio of 0.24–0.30 (gate ≤ 0.10, failing on Lizard).
+
+| Arm | Summed loss | Matched | Two-wave reefs | Mean first peak (yr / COTS/tow) | Lizard / MacG first peak (obs 1.92 / 0.86) | Lizard / MacG 2010–17 max (obs 0.74 / 0.67) | Trough min (adults/ha) | Coral `J` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ref_q30 (run 15) | 12.18 | 5/7 | 2 | 1998.3 / 0.66 | 0.44 / 0.45 | 0.17 / 0.14 | 2.9 | 0.599 |
+| k500_q30 (κ 5 only) | 13.90 | 4/7 | 1 | 1998.3 / 0.66 | 0.43 / 0.45 | 0.17 / 0.15 | 2.9 | 0.510 |
+| mel3_q30 (Mellin + 3% only) | **8.75** | 6/7 | 3 | 1998.3 / 0.64 | 0.42 / 0.44 | 0.20 / 0.41 | 2.9 | 0.415 |
+| wc_b100_q10 / q20 / q30 / q45 / q70 | 9.23 / **9.12** / 9.53 / 9.89 / 10.42 | 6/7 | 3 | 1997.0–2000.0 / 0.60–0.64 | 0.41 / 0.37 (q20) | 0.16 / 0.38 (q20) | 2.8–3.0 | 0.365–0.371 |
+| wc_b150_q10 / q20 / q30 / q45 / q70 | 9.16 / **9.06** / 9.46 / 9.54 / 10.04 | 6/7 | 3 | 1997.0–1999.8 / 0.46–0.56 | 0.35 / 0.35 (q20) | 0.16 / 0.40 (q20) | 2.6–2.8 | 0.354–0.369 |
+
+**Selection (frozen rules).**
+- `Q` = 20 at both β, an interior value. The differences between `Q` values are small (about 0.4 in loss between 20 and 30).
+- β = 1.5 by coral `J` at `Q = 20`: 0.364 against 0.369. **The margin (0.005) is negligible.**
+- **New baseline for screens 2–4: `wc_b150_q20`** (summed loss 9.06, against 12.18 for run 15).
+
+**Against the predictions:**
+- **First wave.** Lower, as predicted, and more so at β 1.5 (the 1994 heat stress): Lizard 0.35 and MacGillivray 0.35 COTS/tow against observed 1.92 / 0.86. North Direction (0.62 vs 0.56) and Eyrie (0.75, against an observed peak of about 0.13) remain high. Timing is unchanged or earlier (1997; observed 1996–98).
+- **Slow coral.** Lower, as predicted: 2012 slow cover 0.43–0.48 against 0.62–0.70 in run 15. It remains 2–3× the photo transects (0.15–0.24).
+- **Second waves. Partly as predicted.**
+  - North Direction gains its 2012 wave (0.83 vs observed 0.71), worth −2.6 in loss.
+  - MacGillivray's 2013 wave rises from 0.14 to 0.40 (observed 0.67).
+  - **Lizard is unchanged** (0.16 vs 0.74).
+- **The predicted mechanism did not occur.** Freeing space did **not** raise inter-wave fast coral. Lizard and MacGillivray fast cover in 2000–13 stays at 0.026–0.029, against 0.026–0.030 in run 15 (observed 0.047 / 0.027); it never exceeds θ on Lizard. The larger MacGillivray and North Direction waves build on 0.04–0.05 fast cover, where the food-survival factor already reaches 0.9–1.0.
+- **Troughs.** Unchanged at 2.6–3.0 adults/ha, inside the observed range. COTS do not fall away between waves: adults stay at 2–12 adults/ha and subadults at 11–130/ha through 1999–2012.
+- **Components.** The background term (`mel3`) carries all the gain (−3.4). κ 5 alone is *worse* (+1.7), because the 2014–15 cyclones remove MacGillivray's late food and its second peak (MacGillivray loss 1.8 → 3.8). In combination the background effect dominates.
+
+**Diagnosis.** Under the same working coral configuration, inter-wave fast coral is:
+- about **2× too high** with COTS forced from manta CPUE (run 09: 0.14–0.16 in 2005–13);
+- **too low** with COTS dynamics (0.026–0.029 on Lizard and MacGillivray; North Direction 0.02 vs observed 0.075).
+
+The difference is the trough COTS density. The model keeps 2–12 adults/ha plus a large subadult pool, removing 0.3–1.0% of habitable cover per year from preferred prey, while manta tows read about zero. This places the manta-detectability question (item 5) at the centre of both the coral residual and the second-wave food. It does not change the frozen observation model: that needs the project lead's approval.
+
+**Decision.**
+- Nothing is promoted.
+- The working coral configuration is adopted for COTS screens as the lead directed: Mellin + 3%, κ 5, growth untouched, with β 1.5 and `Q = 20` as the new baseline.
+- `Q = 20` and the Ext×5 boundary remain labelled assumptions.
+
+**Next (order set by the lead):** (2) first-wave height across the plausible composition range on this baseline; (3) second-wave food; (4) the 1999 crash; (5) manta detectability, pending the lead's approval of an observation-model change.
+
+
+## Preregistered first-wave composition range on the re-baselined model (2026-10-13)
+
+Status: **item 2 of the order set by the project lead (2026-10-13); preregistered before implementation.** Runner-only; no ADRIA, COTSMod, default or objective change.
+
+### Question
+
+Can the plausible range of 1991 fast-coral shares raise first-wave peaks on Lizard and MacGillivray (0.35 / 0.35 COTS/tow at the new baseline, against observed 1.92 / 0.86) without losing the troughs?
+
+### Inputs
+
+The composition levels are those of run 15 (1993–95 photo-transect fast share = (*Acropora* + Pocilloporidae + w × "Other") / all hard coral; totals and within-block structure preserved):
+
+| Level | w | Lizard | MacGillivray | North Direction | Other reefs (mean) |
+| --- | --- | --- | --- | --- | --- |
+| `acrpoc` | 0 | 0.209 | 0.125 | 0.250 | 0.195 |
+| `halfother` | 0.5 | 0.249 | 0.201 | 0.383 | 0.278 |
+| `other` | 1 | 0.290 | 0.277 | 0.516 | 0.361 |
+
+### Arms (6)
+
+Composition {`acrpoc`, `halfother`, `other`} × β {1.0, 1.5}, all on the re-baselined model:
+- working coral (Mellin + 3%, κ 5, growth untouched);
+- `Q = 20`, Ext×5, gradual Allee;
+- the working COTS model.
+
+β is crossed because the 1994 heat stress directly lowers pre-outbreak food, which is this screen's subject, and the β choice in run 11 was decided by a negligible coral-`J` margin.
+
+**References.** `wc_b150_q20_acrpoc` and `wc_b100_q20_acrpoc` must replay `wc_b150_q20` and `wc_b100_q20` of [run 11](runs/20261013T_11_cots_rebaseline_1991_v1/metadata.toml) exactly.
+
+### Expected consequences
+
+- **MacGillivray.** The fast share can rise 2.2×, so its first peak should rise towards 0.86.
+- **Lizard.** The share rises only 1.4× (0.21 → 0.29). Composition alone is expected **not** to bring Lizard near 1.92. If confirmed, Lizard's first-wave deficit lies elsewhere: supply (connectivity or external), or the food scale.
+- **North Direction and Eyrie** (shares up to 0.52 and 0.36). Their first peaks are already at or above observed, and are expected to overshoot further. Troughs are expected to rise, as in run 15 (4.5–6.5 adults/ha at `halfother` / `other`).
+
+### Adoption rule (frozen)
+
+Composition is an uncertain **input**, so it is not chosen by the COTS loss alone. A level is recommended for adoption only if all of the following hold:
+1. it raises the Lizard **and** MacGillivray first peaks;
+2. the mean trough minimum stays ≤ 4 adults/ha;
+3. the summed loss does not worsen by more than 0.5;
+4. the mean fast-cover RMSE against the photo transects worsens by ≤ 0.01.
+
+Otherwise `acrpoc` (the direct observation) stays. The project lead decides adoption.
+
+### Report
+
+- per reef: first-peak year and height, second-wave height, and trough minimum;
+- summed loss and the gate;
+- coral `J` and fast RMSE;
+- pre-outbreak (1992–96) fast cover per reef.
+
+### Failures and rollback
+
+**Failures:**
+- an inexact replay;
+- 1991 totals not preserved;
+- external supply other than Ext×5;
+- non-finite states.
+
+**Rollback:** the `acrpoc` composition.
+
+### First-wave composition decision (2026-10-13)
+
+[Run](runs/20261013T_12_composition_rebaseline_1991_v1/metadata.toml), [audit](runs/20261013T_12_composition_rebaseline_1991_v1/composition_rebaseline_audit.json) and [plot](runs/20261013T_12_composition_rebaseline_1991_v1/composition_rebaseline.png).
+
+**Checks.**
+- Both `acrpoc` arms replay run 11 exactly (`0.0`).
+- 1991 totals are identical across compositions, and external supply is identical in all arms.
+
+**Result.** **No arm passes the gate, and no level meets the adoption rule**: every higher share raises the mean trough above 4 adults/ha.
+
+| Arm | Summed loss | Matched | First peak: Lizard / MacG / North Dir. / Eyrie (obs 1.92 / 0.86 / 0.56 / ~0.13) | Trough min (adults/ha) | Fast RMSE | Coral `J` |
+| --- | --- | --- | --- | --- | --- | --- |
+| b100 `acrpoc` (ref) | 9.12 | 6/7 | 0.41 / 0.37 / 0.76 / 0.91 | 3.0 | 0.028 | 0.369 |
+| b100 `halfother` | 9.24 | 6/7 | 0.50 / 0.58 / 2.23 / 1.12 | 4.6 | 0.034 | 0.351 |
+| b100 `other` | 16.34 | 4/7 | 0.62 / 0.87 / 3.24 / 1.42 | 5.2 | 0.043 | 0.333 |
+| **b150 `acrpoc` (baseline)** | **9.06** | 6/7 | 0.35 / 0.35 / 0.62 / 0.75 | 2.7 | 0.032 | 0.364 |
+| b150 `halfother` | 9.32 | 6/7 | 0.42 / 0.56 / 1.59 / 1.01 | 4.3 | 0.035 | 0.331 |
+| b150 `other` | 9.58 | 6/7 | 0.51 / 0.76 / 2.39 / 1.17 | 4.2 | 0.040 | 0.331 |
+
+**Against the predictions.** All three were confirmed:
+- MacGillivray reaches its observed first peak (0.76–0.87 at `other`).
+- Lizard does not: at most 0.62 against 1.92.
+- North Direction and Eyrie overshoot strongly (up to 3.2 and 1.4), and troughs rise to 4.2–5.2 adults/ha.
+
+**Diagnosis: the between-reef ranking of first waves is inverted.**
+- **Observed ranking:** Lizard 1.92 > MacGillivray 0.86 > North Direction 0.56 > Eyrie about 0.13. Early CPUE (1993–94) is already highest on MacGillivray (0.43) and Lizard (0.23), and low on North Direction (0.06).
+- **Model ranking** (baseline): Eyrie 0.75 > North Direction 0.62 > Lizard 0.35 ≈ MacGillivray 0.35.
+
+Two inputs drive this:
+1. **The 1991 initial state.** The 1989–91 IDW CPUE surface seeds North Direction at 3.3 adults/ha (0.049 COTS/tow), against 0.5 on Lizard and 0.2 on MacGillivray.
+2. **Near-uniform external supply.** First-wave recruitment on all three reefs is 70–95% Ext×5 boundary supply (about 65–100 recruits/ha/yr in 1994–98). Local retention is ≤ 1.4/ha/yr, and internal immigration is 6–50/ha/yr.
+
+No reef-level food or composition change can therefore make Lizard's wave about 3× North Direction's. Lizard lies in the Lizard–Cairns initiation region of the third outbreak wave, which suggests self-seeding and local retention there, but that is a hypothesis to test, not an established mechanism.
+
+**Decision.**
+- Nothing is promoted, and the baseline is unchanged: `wc_b150_q20`, `acrpoc`.
+- Composition is closed as a lever for Lizard's first wave. MacGillivray's observed peak lies inside the plausible composition range.
+
+**Candidate next tests for first-wave height (project lead to choose):**
+- (a) a reef-differentiated 1991 initial state (an IDW surface check against 1992–94 observations);
+- (b) local retention / self-recruitment at initiation-region reefs, preregistered with evidence;
+- (c) a spatially structured external supply (outbreak-source connectivity) instead of a uniform ×5.
+
+
+## Preregistered manta detectability: density-dependent observation sensitivity (2026-10-13)
+
+Status: **approved by the project lead (2026-10-13), who brought item 5 forward and chose the detection curve; preregistered before any re-scoring.** This is a *labelled observation-model sensitivity*. The frozen observation model (`q = 0.015`, linear) is **not** replaced, and nothing is promoted. No ADRIA, COTSMod or simulation change: existing trajectories are re-scored.
+
+### Evidence (supplied by the project lead)
+
+- **Manta tows** detect about 20% of the COTS counted on SCUBA searches, and under 5% of the total population present (Fernandes et al. 1990), because COTS are cryptic.
+- **Diver methods** (culling, SALAD) detect adults at about 50–82%, with detectability falling markedly for smaller adults and juveniles (MacNeil et al. 2016a; Pratchett & Caballes 2025; Pratchett et al. 2026).
+- **Interpretation.** At low density, the COTS present are disproportionately small, cryptic and dispersed, so the manta detection fraction falls. At outbreak density, large, exposed and aggregated animals are seen at close to the conventional rate.
+
+### Observation model (treatment)
+
+`CPUE = q · A · A / (A + A½)`
+
+- `A` is the model adult density (COTS ha⁻¹), and `q = 0.015` COTS/tow per adult/ha (unchanged).
+- The relative detection `d(A) = A / (A + A½)` rises from 0 towards 1, so `q` is kept at outbreak densities. At `A = A½`, detection is half the conventional rate.
+- **Control.** `A½ = 0` is the frozen linear model and must reproduce the stored scores exactly.
+- **Grid.** `A½ ∈ {1, 3, 10, 30}` adults/ha.
+  - 1–3 brackets the model trough densities (2–3 adults/ha);
+  - 10 sits below the 15 adults/ha outbreak threshold (0.22 COTS/tow);
+  - 30 is a deliberately strong upper bracket, which also lowers CPUE at the outbreak threshold to a third.
+- **Scale.** This is an observation property, so it applies to the reef-level mean trajectories already written by the runner. Sites within a reef follow near-identical trajectories, so applying it at site level would change little.
+
+### What is re-scored
+
+The frozen `cots_cycle_score` (`smoothed_3y`) and the gate metrics (matched peaks, two-wave reefs, trough-to-smaller-peak ratio) are recomputed on `CPUE(A)`. Arms:
+- all 13 arms of [run 11](runs/20261013T_11_cots_rebaseline_1991_v1/metadata.toml) (baseline `wc_b150_q20`, the `Q` grid and the component arms);
+- the run-15 candidate `acrpoc_g0` as the legacy reference.
+
+**Not in scope.** Under this observation model, a consistent treatment would also invert the 1991 initial state (`A` from observed CPUE) and the forced-COTS coral tables. Re-scoring holds the simulations fixed, so it tests the **observation side only**. Inverting the initial state is taken up in the reef-differentiated starting-state screen.
+
+### Expected consequences
+
+- **Troughs.** Simulated trough CPUE falls sharply. At `A = 3`, `A½ = 10` gives 0.010 COTS/tow against 0.045 linear, so the trough-to-peak ratio falls (towards the ≤ 0.10 gate) and normalised peak prominence rises.
+- **The 1999 drop looks more abrupt** (item 4). A decline from about 25 to 10 adults/ha becomes 0.27 → 0.08 COTS/tow at `A½ = 10`.
+- **Peak heights fall modestly** at `A½ ≤ 10` (Lizard 23 adults/ha: −30% at `A½ = 10`). This **worsens** the first-wave height deficit, so the re-score cannot by itself fix item 2.
+- **`Q`.** The selected `Q` may move, because trough misfit is penalised less.
+
+### Report
+
+Per `A½`: summed loss, matched peaks, two-wave reefs, worst trough ratio, the gate, first and second peak heights per reef, and the `Q` that would be selected under the run-11 rule.
+
+### Failures and rollback
+
+**Failures:**
+- the `A½ = 0` control does not reproduce stored losses exactly;
+- non-finite CPUE.
+
+**Rollback:** none needed, because the frozen observation model is untouched. Adopting `A½ > 0` as the observation model would be a separate decision for the lead, requiring:
+- independent evidence for `A½` (for example, paired manta–SCUBA or culling data);
+- a re-derived initial state and forcing tables;
+- re-validation of earlier conclusions.
+
+### Manta detectability decision (2026-10-13)
+
+[Re-score v2](runs/20261013T_14_detectability_rescore_1991_v2/metadata.toml), [audit](runs/20261013T_14_detectability_rescore_1991_v2/detectability_audit.json), [detection curve](runs/20261013T_14_detectability_rescore_1991_v2/manta_detection_curve.png) and [trajectories](runs/20261013T_14_detectability_rescore_1991_v2/detectability_trajectories.png). New checked-in tools:
+- `rescore_detectability.jl` (stored trajectories → both observation treatments);
+- `audit_1991_detectability.py`;
+- `plot_manta_detectability.py`.
+
+**v1 is superseded.** [v1](runs/20261013T_13_detectability_rescore_1991_v1/metadata.toml) scored the `smoothed_3y` treatment only. It was kept, and v2 (raw and smoothed) was run after the audit finding below.
+
+**Checks.** The `A½ = 0` control reproduces every stored loss exactly (0.0) for 14 arms × 4 reefs × 2 observation treatments. CPUE is finite.
+
+**Audit finding (pre-existing; affects every gate report since the gate was set).**
+- **Where the 7 comes from.** The gate requires "all seven observed peaks matched". Those 7 peaks exist on the **raw** LTMP series: Lizard 1998/2013, MacGillivray 1996/2015, North Direction 1995/2013 and Eyrie 2013.
+- **What the audits counted.** They count matched peaks from the **`smoothed_3y`** score. Smoothing removes North Direction's 1995 peak (0.56, between 0.06 and 0.12), leaving 6, so "7/7" could never be reached as audited.
+- **Effect on run 11.** Against the raw series, the run-11 baseline `wc_b150_q20` already matches **7/7**: since run 11 it has failed the gate **only** on the trough ratio (0.25). Run 15 `acrpoc_g0` matches 6/7 raw.
+- **Decision.** The gate definition is **not** changed here: the lead decides. Both counts are reported from now on.
+
+**Result.**
+
+| `wc_b150_q20` under | Summed loss | Matched raw / smoothed | Worst trough ratio (Lizard) | Mean first peak (COTS/tow) | Model mean 2000–10 CPUE (obs 0.08) |
+| --- | --- | --- | --- | --- | --- |
+| `A½ = 0` (frozen) | 9.06 | 7/7 · 6/6 | 0.252 | 0.52 | 0.118 |
+| `A½ = 1` | 9.14 | 7/7 · 6/6 | 0.198 | 0.50 | 0.105 |
+| `A½ = 3` | 9.32 | 7/7 · 6/6 | 0.150 | 0.48 | 0.089 |
+| `A½ = 10` | 9.81 | 7/7 · 6/6 | 0.102 | 0.40 | 0.062 |
+| `A½ = 30` | 13.00 | 6/7 · 5/6 (Lizard second peak lost) | — | 0.29 | 0.037 |
+
+**Gate passes with the raw count.** Five arms pass, all β 1.5 and all at a `Q` above the loss-selected 20:
+
+| Arm | `A½` | Worst trough ratio | Summed loss |
+| --- | --- | --- | --- |
+| `wc_b150_q30` | 10 | 0.092 | 10.20 |
+| `wc_b150_q45` | 10 | 0.096 | 10.34 |
+| `wc_b150_q30` | 30 | 0.069 | 10.98 |
+| `wc_b150_q45` | 30 | 0.071 | 11.13 |
+| `wc_b150_q70` | 30 | 0.082 | 11.62 |
+
+No arm passes with the gate as previously audited (smoothed count against 7).
+
+**Against the predictions:**
+- **Troughs.** They fall as predicted: the worst trough ratio goes from 0.25 to 0.10 at `A½ = 10`, and modelled 2000–10 CPUE reaches the observed level (0.06 vs 0.08).
+- **Peak heights.** They fall, as predicted (−22% mean first peak at `A½ = 10`), so the **first-wave deficit grows** (Lizard 0.24 vs 1.92). The frozen loss rises monotonically with `A½`, because its height terms dominate and its trough terms are weak.
+- **The 1999 drop does *not* become abrupt.** Lizard's 1998→1999 ratio is 0.61 → 0.50 at `A½ = 10`, against 0.03 observed. The model's decline is spread over 1998–2003, so detectability alone does not explain item 4.
+- **`Q`.** It stays at 20 under the run-11 rule for `A½ ≤ 3`, and moves to 30 at higher `A½` for one β.
+
+**Interpretation.**
+- **What this shows.** Within the range the evidence allows, density-dependent manta detection can reconcile the modelled troughs (2–3 adults/ha) with near-zero manta counts. It is the first route found to the trough criterion.
+- **What it does not show.** `A½` is **not identified by independent evidence**. The passing arms need `A½ ≥ 10` and `Q ≥ 30`, so choosing them because they pass would be tuning the observation model to the gate. The first-wave height deficit and the gradual 1999 decline are untouched.
+- **Consistency gap.** The simulations still start from a 1991 state inverted with the linear model.
+
+**Decision.**
+- Nothing is promoted, and the frozen observation model is unchanged.
+- The detectability curve is carried as a labelled sensitivity with `A½ = 10` as the working comparator.
+- **For adoption, the lead needs:** independent evidence for `A½` (paired manta–SCUBA or culling data, for example from the Fernandes et al. 1990 or MacNeil et al. 2016a datasets), a decision on the gate's peak count, and a detection-consistent initial state (next screen).
+
+
+## Preregistered reef-differentiated 1991 starting state (2026-10-13)
+
+Status: **directed by the project lead (2026-10-13), item 2 follow-up (a); preregistered before implementation.** Runner plus one new derived input; no ADRIA, COTSMod, default or objective change.
+
+### Diagnosis motivating the screen
+
+- **Each reef's seed comes from its own survey.** The 1989–91 IDW surface (tows/distance² weights, 1 km floor) is dominated by each calibration reef's own survey:
+
+| Reef | 1989–91 COTS / tows | CPUE |
+| --- | --- | --- |
+| Lizard | 2 / 255 | 0.0078 |
+| MacGillivray | 0 / 15 | 0 |
+| North Direction | 1 / 16 | 0.0625 |
+| Eyrie | 1 / 133 | 0.0075 |
+
+- **North Direction's seed is a one-animal survey.** Its 3.3 adults/ha (8× Lizard) rests on one COTS in 16 tows. This is sampling noise, and it inverts the first-wave ranking (run 12).
+- **The seed was inverted with the linear observation model.** The detectability sensitivity shows that true low-density populations may be several times larger than CPUE/q implies.
+
+### Treatments
+
+**Initial CPUE surface:**
+- **`idw`.** The current surface (reference).
+- **`eb`.** Each donor reef's 1989–91 rate is replaced by its empirical-Bayes (Poisson–gamma) posterior mean `(c + α) / (t + β)`, and the IDW is then re-run with unchanged weights, radius and minimum donors.
+  - The prior is fitted by negative-binomial marginal maximum likelihood to the **31 regional donors** (those within 111 km of any domain site), not to the GBR-wide set, which includes 1989–91 outbreak reefs: α 0.386, β 80.9, prior mean 0.0048 COTS/tow.
+  - Resulting donor rates: North Direction 0.0625 → 0.0143, Lizard 0.0078 → 0.0071, Eyrie 0.0075 → 0.0065, MacGillivray 0 → 0.0040.
+  - New checked-in builder: `build_1991_eb_surface.py`, with hashes and the prior recorded.
+
+**Inversion from CPUE to adults:**
+- **`lin`.** `A = C / q` (reference).
+- **`h10`.** The detection-consistent inverse of `C = q·A²/(A + A½)` at `A½ = 10`: `A = (C/q + sqrt((C/q)² + 4·A½·C/q)) / 2`.
+  - Example: CPUE 0.0071 → 2.5 adults/ha against 0.47 linear.
+  - `A½ = 10` is the detectability screen's working comparator. It is a labelled assumption, not identified.
+
+Juvenile and subadult preloads keep the 6:3:1 ratio to adults.
+
+### Arms (8)
+
+{`idw`, `eb`} × {`lin`, `h10`} × `Q` {20, 30}, on the baseline `wc_b150_q20` model (working coral, β 1.5, `acrpoc` composition, Ext×5, gradual Allee). `Q` 30 is included because the gate-passing detectability arms needed `Q ≥ 30`.
+
+**Reference.** `wc_b150_q20_idw_lin` must replay run 11 `wc_b150_q20` exactly.
+
+**Scoring.** The runner's frozen linear score is kept. All arms are also re-scored with `rescore_detectability.jl` (both observation treatments, all `A½`). The `h10` arms are read primarily under the matching `A½ = 10` observation model; this is the consistent pairing.
+
+### Expected consequences
+
+- **`eb`.** North Direction's seed falls from about 3.3 to under 1 adult/ha, so its first peak falls and comes later (currently 0.62 vs 0.56). Lizard is almost unchanged and MacGillivray rises slightly, so the first-wave ranking becomes less inverted. The summed loss may rise if North Direction loses its first-peak match.
+- **`h10`.** Every seed rises 3–5× (Lizard about 2.5, North Direction about 9 adults/ha), crossing the Allee scale (3/ha) sooner, so first waves come earlier and larger.
+  - Risk: peaks before the observed 1996–98.
+  - Under the matching observation model, the larger true peaks are partly offset by lower detection at the start.
+- **Lizard's first-wave deficit.** It is not expected to close, because the seed is not Lizard-specific enough. If confirmed, the deficit lies in supply (local retention or structured external supply), not in the starting state.
+
+### Report
+
+- per reef: 1991 seed adults/ha, first-peak year and height, second wave and trough ratio;
+- summed loss under both scorings, matched peaks (raw and smoothed) and the gate;
+- the observed and model first-wave rankings.
+
+### Failures and rollback
+
+**Failures:**
+- an inexact reference replay;
+- an EB surface that does not cover every site, or a non-finite surface;
+- non-finite states;
+- external supply other than Ext×5.
+
+**Rollback:** the `idw` surface with linear inversion.
+
+### Starting-state decision (2026-10-13)
+
+[Run](runs/20261013T_17_initial_state_rebaseline_1991_v1/metadata.toml), [EB surface](runs/20261013T_15_1991_initial_surfaces_eb/metadata.json), [re-score](runs/20261013T_18_detectability_rescore_initial_state_1991_v1/metadata.toml), [audit](runs/20261013T_17_initial_state_rebaseline_1991_v1/initial_state_audit.json) and [plot](runs/20261013T_17_initial_state_rebaseline_1991_v1/initial_state_rebaseline.png).
+
+New checked-in tools:
+- `build_1991_eb_surface.py`. It reproduces the stored IDW surface to 1e-12 before shrinking.
+- `audit_1991_initial_state_rebaseline.py`.
+
+**Operational failure.** The first attempt, [run 16](runs/20261013T_16_initial_state_rebaseline_1991_v1/FAILED.txt), stopped before any arm. The runner's EB-surface check demanded exact equality on a float column copied through pandas, which can differ by 1 ulp. The check was changed to `atol = 1e-12` and the run repeated as run 17. An empty re-score directory created by a call against the missing run was removed; it never held output.
+
+**Checks.**
+- `wc_b150_q20_idw_lin` replays run 11 `wc_b150_q20` exactly (0.0).
+- External supply is identical in all arms.
+- The re-score control reproduces all stored losses (0.0).
+
+**1991 seeds (adults/ha):**
+
+| Surface / inversion | Lizard | MacGillivray | North Direction | Eyrie |
+| --- | --- | --- | --- | --- |
+| `idw` / `lin` | 0.52 | 0.24 | 3.26 | 0.46 |
+| `eb` / `lin` | 0.47 | 0.35 | 0.82 | 0.41 |
+| `idw` / `h10` | 2.55 | 1.66 | 7.57 | 2.38 |
+| `eb` / `h10` | 2.41 | 2.06 | 3.30 | 2.23 |
+
+**Result.**
+
+| Arm (`Q` 20) | Read with | Summed loss | Matched raw / smoothed | Worst trough ratio | Gate (raw count) | First wave 1995–2000: Lizard / MacG / North Dir. / Eyrie | Rank corr. vs observed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `idw_lin` (ref) | `A½ = 0` | 9.06 | 7/7 · 6/6 | 0.252 | no | 0.43 / 0.54 / 0.93 / 0.84 | −0.8 |
+| `eb_lin` | `A½ = 0` | 9.10 | 7/7 · 6/6 | 0.253 | no | 0.43 / 0.54 / 0.92 / 0.84 | −0.8 |
+| `idw_h10` | `A½ = 10` | 8.56 | 6/7 · 6/6 | 0.087 (two-wave reefs 2) | no | 0.24 / 0.42 / 0.26 / 0.68 | −0.8 |
+| **`eb_h10`** | **`A½ = 10`** | 9.92 | 7/7 · 6/6 | **0.088** | **yes** | 0.25 / 0.42 / 0.84 / 0.69 | −0.8 |
+
+At `Q = 30`, `eb_h10` (0.081) and `idw_h10` (0.081) also pass under `A½ = 10`.
+
+**Against the predictions:**
+- **`eb` and North Direction.** `eb` cut North Direction's seed 4×, but **its first wave did not change** (0.93 → 0.92). This was not predicted. Lizard and MacGillivray did not change either.
+- **The starting state hardly shapes the first-wave size.** First waves are set by supply and local production during 1992–96, not by the 1991 seed. The predicted easing of the inverted ranking **did not occur**: the rank correlation stays −0.8 in every arm.
+- **Large seeds hurt.** As the risk stated, `idw_h10` (North Direction 7.6 adults/ha) grazes North Direction's food early: its first wave collapses to 0.26 and comes late (mean first-peak year 2001), losing a matched peak.
+- **Lizard's first-wave deficit is not closed, as predicted.** It is 0.25–0.43 against 1.92.
+
+**Not predicted: abrupt declines under the consistent pairing.** With the detection-consistent start read under the matching observation model (`eb_h10` at `A½ = 10`), the first-wave decline becomes abrupt on MacGillivray and North Direction:
+
+| Reef | Linear one-year drop after the 1997 peak | `eb_h10` one-year drop |
+| --- | --- | --- |
+| MacGillivray | 0.30 | **0.09** |
+| North Direction | 0.35 | **0.19** |
+| Lizard | 0.70 | 0.46 |
+
+Observed 1998→1999: Lizard 0.03, MacGillivray 0.00, North Direction 0.00. The modelled peaks fall in 1997, a year before the observed crash year.
+
+**First internally consistent gate pass.** `eb_h10` at the loss-selected `Q = 20` is the first internally consistent configuration to pass the qualitative gate (raw peak count):
+- the empirical-Bayes 1991 state;
+- inverted with the same detection curve used to observe it.
+
+It does so **only** under assumptions the lead has not adopted:
+- `A½ = 10`, which is not identified by independent evidence;
+- the raw-series reading of "7 observed peaks".
+
+It also leaves the first-wave heights far too low (Lizard 0.25 vs 1.92) and the between-reef ranking inverted. It is a **candidate for evidence gathering, not for promotion**.
+
+**Decision.**
+- Nothing is promoted, and the baseline stays `wc_b150_q20` (`idw`, `lin`) under the frozen observation model.
+- The starting state is closed as a lever for first-wave height and ranking.
+- The `eb` surface is recommended as the better-founded 1991 input (it treats single-animal surveys as noise), pending the lead's decision; it is neutral for the loss (9.06 → 9.10).
+- **`eb_h10` with `A½ = 10`** is recorded as the leading *detection-consistent* candidate.
+
+**Next (lead to choose):**
+- (i) Evidence for `A½`, and a decision on the gate's peak count. Together these decide whether `eb_h10` becomes the working configuration.
+- (ii) First-wave height and ranking: test supply, either local retention or self-recruitment in the Lizard–Cairns initiation region, or spatially structured external supply.
+- (iii) Items 3–4 on whichever configuration (i) settles.

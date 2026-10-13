@@ -24,7 +24,8 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "habitat_disturbance", "benthic_cyclone", "trough_mechanisms", "initiation",
     "predation_capacity", "outbreak_collapse", "growth_starvation",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
-    "mellin_coral", "bleaching_sensitivity") ||
+    "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
+    "initial_state_rebaseline") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -96,7 +97,8 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "switching_condition", "switching_repair", "habitat_disturbance", "benthic_cyclone",
     "trough_mechanisms", "initiation", "predation_capacity", "outbreak_collapse",
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
-    "joint_coral", "mellin_coral", "bleaching_sensitivity")
+    "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
+    "composition_rebaseline", "initial_state_rebaseline")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -173,8 +175,26 @@ const BLEACH_BACKGROUND = ("mel" => 0.0, "mel3" => 0.03)
 const BLEACH_KAPPA = (2.5, 5.0)
 const BLEACH_BETA = (1.0, 1.5, 2.5)
 bleach_arm_name(level, kappa, beta) = "bleach_$(level)_k$(pct3(kappa))_b$(pct3(beta))"
+# Preregistered COTS re-baseline (2026-10-13): run-15 leading candidate (COTS dynamics
+# on) on the lead's working coral configuration: growth untouched, Mellin + 3%/yr,
+# kappa 5, bleaching beta {1, 1.5}, with Q re-checked; ref and single-component arms.
+# The composition follow-up (2026-10-13) reuses this machinery: working coral, Q = 20,
+# 1991 fast share {acrpoc, halfother, other} (run-15 levels) x beta {1, 1.5}; arms are
+# named wc_b<beta>_q20_<level>.
+const REBASE_COMPOSITION = EXPERIMENT == "composition_rebaseline"
+# The starting-state follow-up (2026-10-13) also reuses it: 1991 CPUE surface {idw, eb
+# (empirical-Bayes shrunk donors)} x inversion {lin: C/q, h10: inverse of the
+# density-dependent manta model at A_half = 10} x Q {20, 30}; arms wc_b150_q<Q>_<surface>_<inv>.
+const REBASE_INITIAL = EXPERIMENT == "initial_state_rebaseline"
+const EB_SURFACE_DIR = joinpath(@__DIR__, "runs", "20261013T_15_1991_initial_surfaces_eb")
+const INITIAL_A_HALF = 10.0
+const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL
+const REBASE_KAPPA = 5.0
+const REBASE_CHRONIC = 0.03
+const REBASE_BETA = (1.0, 1.5)
+const REBASE_Q = (10, 20, 30, 45, 70)
 const V3RUN = INITIATION || PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT ||
-    MELLIN || BLEACH
+    MELLIN || BLEACH || REBASE
 const V3 = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.3")
 const DOMAIN_PATH = V3RUN ? V3 : V2
 const EXTERNAL_MULTIPLIER = 5.0
@@ -293,6 +313,20 @@ else
 end
 String.(surface.site_id) == String.(domain.loc_ids) ||
     error("1991 surface order does not match model site order")
+# Starting-state screen: empirical-Bayes surface (build_1991_eb_surface.py), same sites/order.
+eb_surface = if REBASE_INITIAL
+    table = CSV.read(joinpath(EB_SURFACE_DIR, "surface.csv"), DataFrame)
+    String.(table.site_id) == String.(domain.loc_ids) || error("EB surface order does not match model sites")
+    # pandas' default float parser can differ from Julia's by one ulp on the copied column.
+    all(isapprox.(Float64.(table.cots_cpue_1989_1991_idw_unshrunk),
+        Float64.(surface.cots_cpue_1989_1991_idw); rtol=0.0, atol=1e-12)) ||
+        error("EB surface was not built from the current IDW surface")
+    eb_cpue = Float64.(table.cots_cpue_1989_1991_idw)
+    all(isfinite, eb_cpue) && all(>=(0.0), eb_cpue) || error("Invalid EB surface")
+    eb_cpue
+else
+    nothing
+end
 mapping = load_reef_area_weights(domain, DOMAIN_PATH, [t.model for t in TARGETS])
 Random.seed!(SEED)
 scenario = ADRIA.sample(domain, 2)[1:1, :]
@@ -334,7 +368,7 @@ joint_cyclones = if JOINT
 else
     nothing
 end
-mellin_cyclones = if MELLIN || BLEACH
+mellin_cyclones = if MELLIN || BLEACH || REBASE
     background_table = CSV.read(MELLIN_BACKGROUND_CSV, DataFrame; types=Dict(:site_id => String))
     background_rows = Dict(String(id) => i for (i, id) in enumerate(background_table.site_id))
     all(haskey(background_rows, String(id)) for id in domain.loc_ids) ||
@@ -351,7 +385,7 @@ mellin_cyclones = if MELLIN || BLEACH
                 size(background, 1), size(background, 2), 1, 1));
             timesteps=years, locs=domain.loc_ids,
             species=ADRIA.functional_group_names(), scenarios=[1])
-        for kappa in (MELLIN ? JOINT_KAPPA : BLEACH_KAPPA))
+        for kappa in (MELLIN ? JOINT_KAPPA : REBASE ? (1.0, REBASE_KAPPA) : BLEACH_KAPPA))
 else
     nothing
 end
@@ -367,6 +401,20 @@ else
 end
 BLEACH && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
     error("Bleaching-screen mortality outside [0, 1]")
+# Re-baseline: ref reuses the domain cube so it replays run 15; k500 is cyclones only,
+# mel3 is Mellin + 3%/yr only (kappa 1), wc is the working coral configuration.
+rebase_cyclones = if REBASE
+    rebase_cube(mortality) = ADRIA.DataCube(mortality; timesteps=years, locs=domain.loc_ids,
+        species=ADRIA.functional_group_names(), scenarios=[1])
+    Dict("ref" => domain_cyclones,
+        "k500" => rebase_cube(1.0 .- (1.0 .- Array(domain_cyclones)) .^ REBASE_KAPPA),
+        "mel3" => rebase_cube(1.0 .- (1.0 .- Array(mellin_cyclones[1.0])) .* (1.0 - REBASE_CHRONIC)),
+        "wc" => rebase_cube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - REBASE_CHRONIC)))
+else
+    nothing
+end
+REBASE && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(rebase_cyclones)) &&
+    error("Re-baseline mortality outside [0, 1]")
 MELLIN && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(mellin_cyclones)) &&
     error("Mellin combined mortality outside [0, 1]")
 JOINT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(joint_cyclones)) &&
@@ -434,12 +482,12 @@ function observed_composition_cover(site_share::Vector{Float64})
         error("Observed composition changed total cover")
     return cover, unchanged
 end
-composition = if COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH
+composition = if COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE
     photo = CSV.read(PHOTO_TRANSECT_CSV, DataFrame)
     photo = photo[(photo.purpose .== "COMPOSITION") .& (photo.variable .== "HARD CORAL") .&
         (photo.depth .== 9) .& in.(photo.report_year, Ref(PHOTO_YEARS)) .&
         in.(photo.reef_name, Ref(Set(values(PHOTO_REEFS)))), :]
-    levels = GRACE ? OTHER_WEIGHTS : Dict("acrpoc" => 0.0)
+    levels = GRACE || REBASE_COMPOSITION ? OTHER_WEIGHTS : Dict("acrpoc" => 0.0)
     out = Dict{String,Any}()
     for (level, weight) in levels
         yearly = combine(groupby(photo, [:reef_name, :report_year]),
@@ -475,12 +523,18 @@ function set_initial_cover!(values)
         species=COVER_SPECIES, locations=COVER_LOCATIONS)
 end
 
+"""Adults/ha from CPUE: linear C / alpha when a_half = 0, otherwise the inverse of the
+density-dependent manta model C = alpha * A^2 / (A + a_half)."""
+invert_cpue(cpue, alpha, a_half) = a_half == 0.0 ? cpue ./ alpha :
+    (cpue ./ alpha .+ sqrt.((cpue ./ alpha) .^ 2 .+ 4.0 .* a_half .* cpue ./ alpha)) ./ 2.0
+
 function make_initial_state(alpha::Float64, name::String; cohort_multiplier::Float64=0.0,
-    density_multiplier::Float64=1.0)::String
+    density_multiplier::Float64=1.0, cpue::Vector{Float64}=Float64.(surface.cots_cpue_1989_1991_idw),
+    a_half::Float64=0.0)::String
     # alpha is an explicitly provisional COTS/tow per adult COTS/ha conversion.
     # density_multiplier is used only by the unit-migration compatibility arm.
-    cpue = Float64.(surface.cots_cpue_1989_1991_idw)
-    adults = density_multiplier .* cpue ./ alpha
+    adults = a_half == 0.0 ? density_multiplier .* cpue ./ alpha :
+        density_multiplier .* invert_cpue(cpue, alpha, a_half)
     state = DataFrame(site_id=String.(surface.site_id),
         juvenile_ha=6.0 .* cohort_multiplier .* adults,
         subadult_ha=3.0 .* cohort_multiplier .* adults,
@@ -518,6 +572,20 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : REBASE_INITIAL ? [
+    (name="wc_b150_q$(q)_$(source)_$(inversion)", alpha=0.015, coral="observed_composition",
+        initial="cohort_full")
+    for q in (20, 30) for source in ("idw", "eb") for inversion in ("lin", "h10")
+] : REBASE_COMPOSITION ? [
+    (name="wc_b$(pct3(beta))_q20_$(level)", alpha=0.015, coral="observed_composition",
+        initial="cohort_full")
+    for beta in REBASE_BETA for level in ("acrpoc", "halfother", "other")
+] : REBASE ? [
+    (name="ref_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    (name="k500_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    (name="mel3_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    [(name="wc_b$(pct3(beta))_q$(q)", alpha=0.015, coral="observed_composition", initial="cohort_full")
+     for beta in REBASE_BETA for q in REBASE_Q]
 ] : BLEACH ? [
     (name=bleach_arm_name(level, kappa, beta), alpha=0.015, coral="observed_composition",
         initial="no_cots")
@@ -613,7 +681,15 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ? let
+) : REBASE_INITIAL ? let
+    sources = Dict("idw" => Float64.(surface.cots_cpue_1989_1991_idw), "eb" => eb_surface)
+    halves = Dict("lin" => 0.0, "h10" => INITIAL_A_HALF)
+    states = Dict((source, inversion) => make_initial_state(0.015,
+            "alpha015_cohort_full_$(source)_$(inversion)"; cohort_multiplier=1.0,
+            cpue=sources[source], a_half=halves[inversion])
+        for source in keys(sources) for inversion in keys(halves))
+    Dict(t.name => states[(split(t.name, "_")[4], split(t.name, "_")[5])] for t in treatments)
+end : PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ? let
     state_path = make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
     Dict(t.name => state_path for t in treatments)
 end : INITIATION ? let
@@ -645,7 +721,7 @@ archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
 # factors present in the domain and indexes them by group number, so RME groups
 # are relabelled to contiguous IDs that carry each RME group's default factors.
 base_cb_groups = copy(domain.loc_data.CB_CALIB_GROUPS)
-rme_cb = if COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH
+rme_cb = if COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE
     layer = ADRIA.GDF.read(RME_GBR_LAYER)
     lookup = Dict(String(row.GBRMPA_ID) => Int(row.CB_CALIB_GROUPS) for row in eachrow(layer))
     reef_ids = String.(domain.loc_data.GBRMPA_ID)
@@ -695,7 +771,7 @@ scenario_rme_fast = COLLAPSE ? coral_group_scenario(scenario, FAST_LINEAR_EXTENS
 growth_scenarios = GROWTH ?
     Dict(m => coral_group_scenario(scenario, m) for m in GROWTH_MULTIPLIERS) :
     COMPOSITION ? Dict(m => coral_group_scenario(scenario, m) for m in COMPOSITION_MULTIPLIERS) :
-    GRACE ? Dict(1.0 => coral_group_scenario(scenario, 1.0)) :
+    GRACE || REBASE ? Dict(1.0 => coral_group_scenario(scenario, 1.0)) :
     BLEACH ? Dict("100_100" => coral_group_scenario(scenario, 1.0; slow_multiplier=1.0)) :
     JOINT || MELLIN ? Dict("$(pct3(slow))_$(pct3(fast))" => coral_group_scenario(scenario, fast;
         slow_multiplier=slow) for slow in JOINT_SLOW for fast in JOINT_FAST) :
@@ -819,13 +895,16 @@ for t in run_treatments
         bleach_parts = split(t.name, "_")
         domain.cyclone_mortality_scens =
             bleach_cyclones[(bleach_parts[2], parse(Int, bleach_parts[3][2:end]) / 100)]
+    elseif REBASE
+        domain.cyclone_mortality_scens = rebase_cyclones[split(t.name, "_")[1]]
     end
     push!(setup_marks, ("k_cyclone", time()))
-    trough_treatment = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
-    external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ||
+    trough_treatment = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ? "PA" : TROUGH || V3RUN ? split(t.name, "_")[2] : ""
+    external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ||
         (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
         EXTERNAL_MULTIPLIER : 1.0
     predation_capacity = COMPOSITION ? composition_arm_q(t.name) :
+        REBASE ? parse(Float64, match(r"_q(\d+)", t.name).captures[1]) :
         COLLAPSE || GROWTH || GRACE || CORAL || JOINT || MELLIN || BLEACH ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
         parse(Float64, split(t.name, "_q")[end]) : JUVENILE_PREDATION_CAPACITY
     collapse_arm = COLLAPSE ? split(t.name, "_")[2] : "none"
@@ -835,7 +914,7 @@ for t in run_treatments
     ENV["COTS_COLLAPSE_DURATION_YEARS"] = startswith(collapse_arm, "D2") ? "2" : "4"
     ENV["COTS_COLLAPSE_JUVENILES"] = collapse_arm == "D2J" ? "true" : "false"
     domain.loc_data.CB_CALIB_GROUPS .= (COLLAPSE && startswith(t.name, "grme")) ||
-        GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH ?
+        GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ?
         rme_cb.labels : base_cb_groups
     push!(setup_marks, ("collapse_cbgroups", time()))
     ENV["COTS_JUVENILE_PREDATION"] = occursin("P", trough_treatment) ? "true" : "false"
@@ -847,6 +926,8 @@ for t in run_treatments
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
     elseif BLEACH
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(parse(Int, split(t.name, "_b")[end]) / 100)
+    elseif REBASE && startswith(t.name, "wc_")
+        ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
     else
         delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
     end
@@ -870,7 +951,9 @@ for t in run_treatments
     push!(setup_marks, ("env_scenario_cols", time()))
     initial_cover = t.coral == "manta_1989_1991" ? new_cover :
         t.coral == "observed_composition" ?
-        (GRACE ? composition.levels[split(t.name, "_")[1]].cover : composition.cover) : baseline_cover
+        (GRACE ? composition.levels[split(t.name, "_")[1]].cover :
+         REBASE_COMPOSITION ? composition.levels[split(t.name, "_")[end]].cover :
+         composition.cover) : baseline_cover
     if TROUGH && startswith(t.name, "bgeo")
         initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
     end
@@ -907,7 +990,7 @@ for t in run_treatments
     try
         active_scenario = GROWTH ? growth_scenarios[growth_arm_multiplier(t.name)] :
             COMPOSITION ? growth_scenarios[parse(Int, split(t.name, "_")[2][2:end]) / 100] :
-            GRACE ? growth_scenarios[1.0] :
+            GRACE || REBASE ? growth_scenarios[1.0] :
             CORAL ? growth_scenarios[t.name] :
             BLEACH ? growth_scenarios["100_100"] :
             JOINT || MELLIN ? growth_scenarios[join(split(t.name, "_")[2:3] .|> (x -> x[2:end]), "_")] :
@@ -977,6 +1060,7 @@ for t in run_treatments
                 t.initial == "legacy" ?
                 0.1 .* [p > 0.1 ? min(p / 0.5, 1.0) : 0.0
                     for p in domain.cots_init_density] .* Float64(candidate.seed_mult) :
+                REBASE_INITIAL ? Float64.(CSV.read(initial_paths[t.name], DataFrame).adult_ha) :
                 Float64.(surface.cots_cpue_1989_1991_idw) ./ t.alpha .* (compat ? k : 1.0)
             push!(initial_reef, (t.name, reef,
                 sum(m.weights .* state_seed[m.indices]),
@@ -1134,6 +1218,45 @@ metadata = Dict(
         "control plus density-only and density-times-food at hazard_max=0.75 and 1.5; rho=0.5 threshold=1.5 COTS/ha width=0.5 COTS/ha coral threshold=0.15 fraction coral width=0.03 fraction" : "not tested",
     "structural_crash_factorial" => EXPERIMENT == "structural_crash" ?
         "control, preferred_starvation, senescence and both. preferred threshold=$(STRUCTURAL_THRESHOLD) fast-cover fraction of habitable area; memory=$(STRUCTURAL_MEMORY_YEARS) yr; senescence age=$(STRUCTURAL_SENESCENCE_AGE) yr; senescent mortality=$(STRUCTURAL_SENESCENCE_MORTALITY) annual fraction; ages 2-5 keep archived m3; initial adults on stable age profile; per-capita consumption off" : "not tested",
+    "cots_rebaseline_screen" => REBASE ? Dict(
+        "domain" => DOMAIN_PATH,
+        "domain_dhw_sha256" => file_sha256(joinpath(DOMAIN_PATH, "DHWs", "dhw_RCPhistorical.nc")),
+        "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),
+        "domain_initial_cover_sha256" => file_sha256(joinpath(DOMAIN_PATH, "initial_cover.nc")),
+        "mellin_background_csv" => MELLIN_BACKGROUND_CSV,
+        "mellin_background_sha256" => file_sha256(MELLIN_BACKGROUND_CSV),
+        "photo_transect_csv" => PHOTO_TRANSECT_CSV, "photo_transect_sha256" => file_sha256(PHOTO_TRANSECT_CSV),
+        "base_model" => "run-15 acrpoc_g0: per-capita c=$(PER_CAPITA_M2_PER_ADULT_YEAR), H1, H2, preferred condition, no switching, v0.3, Ext x$(EXTERNAL_MULTIPLIER), P (Q per arm), gradual Allee, RME CB groups (group 5), growth untouched, observed 1993-95 composition",
+        "observed_fast_share_by_reef" => composition.reef_share,
+        "working_coral" => "kappa $(REBASE_KAPPA), Mellin table + $(REBASE_CHRONIC)/yr chronic, bleaching beta per arm, s = f = 1",
+        "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin[site, year]) * (1 - mu); bleaching loss scaled by ADRIA_DEBUG_BLEACHING_SCALAR",
+        "initial_state" => REBASE_INITIAL ? Dict(
+            "eb_surface_dir" => EB_SURFACE_DIR,
+            "eb_surface_sha256" => file_sha256(joinpath(EB_SURFACE_DIR, "surface.csv")),
+            "eb_metadata_sha256" => file_sha256(joinpath(EB_SURFACE_DIR, "metadata.json")),
+            "inversion" => "lin: A = C / q; h10: A = (C/q + sqrt((C/q)^2 + 4 A_half C/q)) / 2, inverse of C = q A^2 / (A + A_half), A_half = $(INITIAL_A_HALF)",
+            "preload" => "6:3:1 juvenile:subadult:adult on the inverted adults",
+        ) : "idw surface, linear inversion",
+        "arms" => REBASE_INITIAL ?
+            "wc_b150_q{20,30}_{idw,eb}_{lin,h10}" :
+            REBASE_COMPOSITION ?
+            "wc_b{100,150}_q20_{acrpoc,halfother,other}: 1991 fast share (Acropora + Pocilloporidae + w * Other) / hard coral, w 0 / 0.5 / 1" :
+            "ref_q30 (kappa 1, no background, beta unset); k500_q30 (kappa 5 only); mel3_q30 (Mellin + 3% only); wc_b{100,150}_q{$(join(REBASE_Q, ","))}",
+        "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
+            "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
+        "bleaching_scalar" => REBASE_INITIAL ? [1.5] : collect(REBASE_BETA),
+        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
+        "selection" => REBASE_INITIAL ?
+            "none: diagnostic of first-wave ranking and heights; h10 arms read primarily under the matching A_half = 10 observation re-score" :
+            REBASE_COMPOSITION ?
+            "adoption only if Lizard and MacGillivray first peaks rise, mean trough min <= 4 adults/ha, summed loss worsens <= 0.5, fast RMSE worsens <= 0.01; lead decides" :
+            "Q per beta: min summed smoothed_3y loss over 4 reefs, first peak on every reef, ties to smaller Q; beta by lower frozen coral J at its selected Q",
+        "reference" => REBASE_INITIAL ?
+            "wc_b150_q20_idw_lin must replay wc_b150_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
+            REBASE_COMPOSITION ?
+            "wc_b{100,150}_q20_acrpoc must replay wc_b{100,150}_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
+            "ref_q30 must replay acrpoc_g0 of 20261012T_15_food_grace_1991_v1",
+    ) : "not tested",
     "bleaching_sensitivity_screen" => BLEACH ? Dict(
         "domain" => DOMAIN_PATH,
         "domain_dhw_sha256" => file_sha256(joinpath(DOMAIN_PATH, "DHWs", "dhw_RCPhistorical.nc")),

@@ -1,4 +1,4 @@
-# COTS calibration: current state and handoff (updated 2026-10-13)
+# COTS calibration: current state and handoff (updated 2026-10-13, after runs 11–18)
 
 This is the single entry point for resuming work, in this chat or a new one. It records:
 - where the work stands;
@@ -72,9 +72,32 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 
 ## Model state
 
-### Leading COTS candidate (COTS dynamics)
+### Leading COTS candidate (COTS dynamics), re-baselined 2026-10-13
 
-Run `20261012T_15_food_grace_1991_v1` arm `acrpoc_g0`, identical to run 14's `obs_m100_q30`.
+**Current baseline:** run `20261013T_11_cots_rebaseline_1991_v1` arm `wc_b150_q20` (replayed exactly as `wc_b150_q20_acrpoc` in run 12).
+- **Change from run 15.** The same COTS model now runs on the confirmed working coral configuration (below), with predator pit **`Q = 20`** (re-checked; interior of 10–70).
+- **Score.** Summed frozen loss **9.06** (run 15: 12.18). All three two-wave reefs have two peaks, but 6/7 match. **Gate fails** on matched peaks and the Lizard trough ratio (0.25 against ≤ 0.10).
+- **β.** β = 1.5 was chosen over 1.0 by coral `J` (0.364 vs 0.369, a negligible margin). β 1.0 at `Q = 20` scores 9.12.
+
+**Per reef** (COTS/tow at `q = 0.015`; observed in brackets):
+
+| Reef | First peak | Second wave |
+| --- | --- | --- |
+| Lizard | 0.35 (1.92) | 0.16 (0.74) |
+| MacGillivray | 0.35 (0.86) | 0.40 (0.67) |
+| North Direction | 0.62 (0.56) | 0.83 (0.71) |
+| Eyrie | 0.75 (about 0.13) | 0.75 (0.85) |
+
+Troughs are 2.7 adults/ha.
+
+**Detection-consistent candidate (labelled; not adopted):** run `20261013T_17_initial_state_rebaseline_1991_v1` arm `wc_b150_q20_eb_h10`, read at `A½ = 10` (run 18 re-score).
+- **How it differs.** It is the same model with empirical-Bayes 1991 seeds, inverted and observed through `CPUE = q·A²/(A + 10)`.
+- **Score.** It passes the qualitative gate under the raw peak count (7/7; worst trough 0.088), with a summed loss of 9.92 on its own observation model.
+- **Caveats.** It depends on an unidentified `A½` and the lead's gate-count decision. First-wave heights remain far too low.
+
+The previous candidate is described next for provenance.
+
+**Previous candidate:** run `20261012T_15_food_grace_1991_v1` arm `acrpoc_g0`, identical to run 14's `obs_m100_q30`.
 
 **Working COTS model** ("condition, no switching", the lead's preference):
 
@@ -123,7 +146,7 @@ These runs isolate coral dynamics from the COTS model.
   - a ×1–1.5 scalar is more plausible;
   - bleaching cannot fix the 2005–13 fast excess, because these reefs have no heat stress over 1995–2015.
 
-**Recommended working coral configuration (project lead to confirm):**
+**Working coral configuration (confirmed by the project lead, 2026-10-13):**
 
 | Component | Setting |
 | --- | --- |
@@ -138,24 +161,45 @@ In the forced runs this gives `J` about 0.32–0.34 and a 2017–19 trough of ab
 
 ## Where the COTS work got to: open problems
 
-1. **Re-baseline needed.** The leading COTS candidate has **not** been run with the recommended coral configuration (κ 5, Mellin + 3%, β 1–1.5, growth untouched). Coral supply, and so outbreak size and second waves, will change. Re-check `Q`.
-2. **First-wave height** is too low on Lizard and MacGillivray with the observed composition. The composition is uncertain:
-   - photo transects are at 9 m and miss crest *Acropora*;
-   - "Other" hides *Montipora* / *Isopora*;
-   - the plausible range runs up to Acropora + Pocilloporidae + Other, mean 0.36.
-3. **Second waves are small.** Fast coral on Lizard and MacGillivray stays at or below the starvation threshold θ 0.05 in the dynamic runs. Under observed COTS the coral model instead *overshoots* fast cover, so the dynamic model's trough grazing (2–3 adults/ha) and space competition interact.
-4. **Abrupt 1999 crash.** Not reproduced. The juvenile pipeline (about 150 subadults/ha at the peak) refills adults. Tested and failed or not recommended:
-   - ReefMod-style die-off (`COTS_OUTBREAK_COLLAPSE`);
-   - post-grazing starvation;
-   - shorter memory;
-   - one-year starvation grace (evidence supports about 6 months).
-5. **Manta detectability (untested).** Size- or density-dependent detectability, which could reconcile model trough adults with near-zero manta counts. Testing it changes the observation model and needs the lead's approval.
-6. **Promotion gates.** No arm has passed the qualitative gate: 2 peaks on Lizard, MacGillivray and North Direction; 7/7 matched; worst trough ratio ≤ 0.10. Replicated seeds, `q` sensitivity and held-out testing come only after a pass.
+Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height, (3) second-wave food, (4) the 1999 crash, (5) manta detectability. The lead then brought item 5 forward and chose the reef-differentiated starting state for item 2. Items 1, 5 (as a sensitivity) and 2a are done.
 
-**Suggested next steps:**
-- (i) confirm the working coral configuration, then re-baseline the leading COTS candidate on it (with a reference replay);
-- (ii) a composition-range sensitivity for first-wave height;
-- (iii) revisit second-wave food supply once (i) is known.
+1. **Re-baseline: done (run 11).** Loss 12.18 → 9.06 at `Q = 20`, β 1.5. The Mellin + 3% background carries the gain; κ 5 alone is worse.
+   - Slow overgrowth is reduced, but still 2–3× the photo transects.
+   - Inter-wave fast coral on Lizard and MacGillivray did **not** rise (about 0.027), because adults stay at 2–12/ha and subadults at 11–130/ha between waves.
+2. **First-wave height: composition closed (run 12).** The plausible composition range reaches MacGillivray's first peak, but not Lizard's (≤ 0.62 vs 1.92), and it raises troughs above 4 adults/ha.
+   - **The between-reef ranking of first waves is inverted:** observed Lizard > MacGillivray > North Direction > Eyrie; model Eyrie > North Direction > Lizard ≈ MacGillivray.
+   - **Causes:** the 1989–91 IDW initial state (North Direction 3.3 vs Lizard 0.5 adults/ha), and near-uniform Ext×5 boundary supply (70–95% of first-wave recruits; local retention ≤ 1.4/ha/yr).
+   - **Starting state: closed (run 17).**
+     - **Change tested.** An empirical-Bayes surface (`build_1991_eb_surface.py`) shrinks single-animal surveys; North Direction's seed falls from 3.3 to 0.8 adults/ha. Seeds were also inverted with the detection curve.
+     - **Result.** First waves barely change, because they are set by supply and local production in 1992–96. The ranking stays inverted (rank correlation −0.8).
+     - **Remaining levers (lead to choose):** local retention or self-recruitment at initiation-region reefs, or spatially structured external supply.
+3. **Second waves.** North Direction and MacGillivray now build them. Lizard's stays small (0.16 vs 0.74).
+   - The same coral model gives fast cover **about 2× too high** under manta-forced COTS and **too low** under COTS dynamics.
+   - The difference is trough COTS density, so this is tied to item 5.
+4. **Abrupt 1999 crash.** Not reproduced. The juvenile pipeline (80–130 subadults/ha in 1999–2002) refills adults.
+   - **Observed.** The drop is synchronous: Lizard 1.92 → 0.05, MacGillivray 0.40 → 0.00 and North Direction 0.17 → 0.00, all between 1998 and 1999.
+   - **Partial lead (run 17).** The detection-consistent pairing (`eb_h10` read at `A½ = 10`) makes the post-peak drop abrupt on MacGillivray (one-year ratio 0.09) and North Direction (0.19), but not Lizard (0.46). Modelled peaks fall in 1997, a year before the observed crash year.
+   - **Tested and failed or not recommended:** ReefMod-style die-off (`COTS_OUTBREAK_COLLAPSE`), post-grazing starvation, shorter memory, and one-year starvation grace (evidence supports about 6 months).
+5. **Manta detectability: tested as a labelled observation sensitivity (runs 13/14, 18).**
+   - **Curve.** The lead chose `CPUE = q·A·A/(A + A½)`. The [explanatory plot](runs/20261013T_14_detectability_rescore_1991_v2/manta_detection_curve.png) and the re-scoring tool (`rescore_detectability.jl`) are checked in.
+   - **At `A½ = 10`.** Troughs read like the near-zero manta counts (worst trough ratio 0.25 → 0.10), but peaks read about 22% lower, so the first-wave deficit grows. The frozen loss rises.
+   - **`A½` is not identified.** It needs independent evidence, such as paired manta–SCUBA or culling data.
+   - **The frozen observation model is unchanged.**
+6. **Promotion gates.**
+   - **Audit finding (run 14).** The gate's "7 observed peaks" exist only on the **raw** series. Audits counted smoothed matches, where at most 6 are possible, so "7/7" was unattainable as audited.
+   - **Under the raw count.** The baseline already matches 7/7 and fails only the trough ratio. **The lead must decide the gate's peak count.**
+   - **Arms that pass the raw-count gate:**
+     - the detection-consistent `eb_h10` at `Q = 20` (worst trough 0.088), read at `A½ = 10`;
+     - several re-scored arms at `Q ≥ 30`.
+   - **Not promotable.** These passes rest on an unidentified `A½`, and first-wave heights remain far too low.
+   - **After a pass.** Replicated seeds, `q` sensitivity and held-out testing come only after an accepted pass.
+
+**Suggested next steps (lead to decide):**
+- (i) **Two decisions:**
+  - the gate's peak count: raw 7, or smoothed 6;
+  - whether to seek evidence for `A½`, so that the detection-consistent configuration (`eb` seeds inverted at `A½`, read at `A½`) can become the working model.
+- (ii) First-wave height and ranking: a supply mechanism (local retention or self-recruitment in the Lizard–Cairns initiation region, or spatially structured external supply), preregistered with evidence.
+- (iii) Items 3–4 (Lizard's second wave; Lizard's abrupt crash) on the configuration (i) settles.
 
 ## Experiment chronology (runs in `runs/`)
 
@@ -184,6 +228,15 @@ In the forced runs this gives `J` about 0.32–0.34 and a 2017–19 trough of ab
 | 03 | Mellin background |
 | 06–08 | runtime diagnostics |
 | 09 | bleaching sensitivity |
+| 10 | COTS re-baseline: failed before any arm (runner lowering error; `FAILED.txt`) |
+| 11 | COTS re-baseline on the working coral (new baseline `wc_b150_q20`, loss 9.06) |
+| 12 | first-wave composition range (no level adopted; ranking of first waves inverted) |
+| 13 | detectability re-score v1 (smoothed only; superseded) |
+| 14 | detectability re-score v2 (raw + smoothed; gate-count audit finding) |
+| 15 | empirical-Bayes 1991 COTS surface (derived input) |
+| 16 | starting-state screen: failed before any arm (exact float check; `FAILED.txt`) |
+| 17 | reef-differentiated starting state (first waves insensitive; `eb_h10` passes the raw-count gate at `A½ = 10`) |
+| 18 | detectability re-score of run 17 |
 
 ## Known issues
 
@@ -192,6 +245,7 @@ In the forced runs this gives `J` about 0.32–0.34 and a 2017–19 trough of ab
 - **ADRIA cannot run `k = 0` sites.** Runs floor `k` at 0.01. The upstream fix is not made.
 - **ADRIA misindexes non-contiguous `CB_CALIB_GROUPS`.** The runner relabels them. The Lizard loader defaults every site to group 1; the RME layer gives groups 5/1/4.
 - **Missing metadata.** Joint-fit parts 02 and 04 lack `metadata.toml` (stopped processes). This is disclosed in the protocol.
+- **Parse test blind spot.** `test_calibration_scripts_parse.jl` only calls `Meta.parseall`, so lowering errors (for example, mixing `,` and `;` in an array literal) pass and then fail at run time (run 10). A `Meta.lower` check on each top-level expression catches them.
 - **Tracked caches.** `sandbox/calibration/__pycache__/*.pyc` files are tracked or showing in git. Consider adding them to `.gitignore`.
 
 ## How to add the next screen

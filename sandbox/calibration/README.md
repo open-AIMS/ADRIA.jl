@@ -2421,3 +2421,67 @@ python sandbox/calibration/audit_1991_joint_coral.py <run dirs...>
 python sandbox/calibration/audit_1991_mellin_coral.py <mellin run dir>
 ```
 
+### COTS re-baseline on the working coral configuration (2026-10-13)
+
+**Setup.** The run-15 leading candidate (COTS dynamics on) runs on the lead's working coral configuration: CoralBlox growth untouched, Mellin + 3%/yr, κ 5, bleaching β 1 or 1.5. `Q` is re-checked over 10–70, and component arms isolate κ 5 and the background term.
+
+**Result.** No arm passes the gate.
+- **Loss.** It falls from 12.18 to 9.06 (`wc_b150_q20`, the new baseline). All three two-wave reefs now have two peaks, but only 6/7 match and the Lizard trough ratio is 0.25.
+- **What helps.** The background term carries the improvement: North Direction gains its 2012 wave and MacGillivray's 2013 wave grows.
+- **What doesn't.** Lizard's second wave and the Lizard and MacGillivray first peaks stay low.
+- **Why.** Between waves, 2–12 adults/ha and a large subadult pool keep fast coral at about 0.027. Under manta-forced COTS the same coral model overshoots fast cover about 2×, which points to trough COTS density and manta detectability.
+
+See the [audit](runs/20261013T_11_cots_rebaseline_1991_v1/cots_rebaseline_audit.json) and [plot](runs/20261013T_11_cots_rebaseline_1991_v1/cots_rebaseline.png).
+
+### First-wave composition range on the re-baselined model (2026-10-13)
+
+**Setup.** The plausible 1991 fast shares from run 15 are crossed with β 1 / 1.5 at `Q = 20`.
+
+**Result.** No level meets the frozen adoption rule, because troughs rise above 4 adults/ha.
+- MacGillivray reaches its observed first peak inside the range; Lizard does not, and North Direction and Eyrie overshoot.
+- **Diagnosis.** The model's between-reef ranking of first waves is inverted. Two inputs drive this:
+  - the 1989–91 IDW initial state seeds North Direction about 6× Lizard;
+  - first-wave recruits are mostly near-uniform Ext×5 boundary supply.
+
+See the [audit](runs/20261013T_12_composition_rebaseline_1991_v1/composition_rebaseline_audit.json) and [plot](runs/20261013T_12_composition_rebaseline_1991_v1/composition_rebaseline.png).
+
+Reproduce both:
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'cots_rebaseline'   # then 'composition_rebaseline'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_cots_rebaseline_1991_v1'   # numbered automatically
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_cots_rebaseline.py sandbox/calibration/runs/<numbered_run_id>
+python sandbox/calibration/audit_1991_composition_rebaseline.py sandbox/calibration/runs/<numbered_run_id>
+```
+
+### Manta detectability and the reef-differentiated starting state (2026-10-13)
+
+**Detectability (observation sensitivity).** `CPUE = q·A·A/(A + A½)` keeps `q = 0.015` at outbreak densities and lowers detection at low density. The [detection-curve plot](runs/20261013T_14_detectability_rescore_1991_v2/manta_detection_curve.png) shows how it works.
+- **Method.** Stored trajectories are re-scored, with no re-simulation.
+- **Troughs.** At `A½ = 10` the modelled troughs read like the near-zero manta counts, and the Lizard trough ratio falls from 0.25 to 0.10.
+- **Peaks.** They read about 22% lower.
+- **Gate count.** The audit found that the gate's "7 observed peaks" exist only on the raw series, so earlier audits could not reach 7/7. Both counts are now reported.
+
+**Starting state.** An empirical-Bayes surface shrinks single-animal 1989–91 surveys (North Direction 1 COTS in 16 tows) towards the regional rate. Seeds were also inverted with the same detection curve.
+- **First waves.** The starting state barely changes first-wave sizes, and the between-reef ranking stays inverted.
+- **Consistent pairing.** The detection-consistent pairing (`eb` seeds, `A½ = 10`) passes the qualitative gate with the raw peak count and gives abrupt post-peak declines on MacGillivray and North Direction.
+- **Caveat.** It rests on an unidentified `A½`, and first-wave heights remain far too low.
+
+Audits: [detectability](runs/20261013T_14_detectability_rescore_1991_v2/detectability_audit.json), [starting state](runs/20261013T_17_initial_state_rebaseline_1991_v1/initial_state_audit.json).
+
+Reproduce:
+
+```powershell
+python sandbox/calibration/plot_manta_detectability.py <out.png>
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl <new_out_dir> <run_dir>:<arm,arm,...> [...]
+python sandbox/calibration/audit_1991_detectability.py <new_out_dir>
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_1991_eb_surface.py --source sandbox/calibration/runs/20261007T199104_1991_initial_surfaces --output <new_surface_dir>
+$env:OWEN_1991_EXPERIMENT = 'initial_state_rebaseline'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_initial_state_rebaseline_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl <rescore_dir> <run_dir>:<all 8 arms>
+python sandbox/calibration/audit_1991_initial_state_rebaseline.py <run_dir> <rescore_dir>
+```
+
+The runner reads the EB surface from `runs/20261013T_15_1991_initial_surfaces_eb` (`EB_SURFACE_DIR`).
