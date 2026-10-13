@@ -169,6 +169,38 @@ end
     @test dm.data == new_vals || "Failed to update criteria values by name"
 end
 
+@testset "Zero-weighted criteria are ignored" begin
+    using Random
+    dom = deepcopy(ADRIA_DOM_45)
+    n_locs = length(dom.loc_ids)
+    rng = Random.Xoshiro(42)
+    others = (
+        iv_CAq_heat_stress=rand(rng, n_locs), iv_CAq_in_connectivity=rand(rng, n_locs),
+        iv_CAq_out_connectivity=rand(rng, n_locs), iv_CAq_depth=rand(rng, n_locs)
+    )
+    cover = rand(rng, n_locs)
+
+    # Some methods (e.g. COCOSO) are not invariant to a zero-weighted criterion, so it
+    # must be dropped. Tests an exact zero, and the ~1e-17 that a fixed 0 becomes after
+    # `gamma_to_dirichlet`.
+    @testset "weight=$(w)" for w in (0.0, 1e-17)
+        ADRIA.fix_factor!(dom; iv_CAq_coral_cover=w)
+        sp = ADRIA.decision.CAqPreferences(dom)
+        dm_with = ADRIA.decision.decision_matrix(
+            dom.loc_ids, sp.names; others..., iv_CAq_coral_cover=cover
+        )
+        dm_without = ADRIA.decision.decision_matrix(dom.loc_ids, sp.names; others...)
+
+        @testset "$(method)" for method in ADRIA.mcda_methods()
+            @test ADRIA.decision.select_locations(
+                sp, dm_with, method, dom.loc_ids, n_locs
+            ) == ADRIA.decision.select_locations(
+                sp, dm_without, method, dom.loc_ids, n_locs
+            )
+        end
+    end
+end
+
 # selection_criteria_map is implemented in ADRIAvizMakieExt and requires ADRIAviz to be loaded.
 if hasmethod(
     ADRIA.viz.selection_criteria_map, (ADRIA.Domain, YAXArrays.YAXArray, Vector{Float64})

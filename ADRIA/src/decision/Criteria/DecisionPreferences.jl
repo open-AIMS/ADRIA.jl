@@ -146,6 +146,11 @@ function rank_by_index(
 end
 
 """
+Criteria weights below this are treated as zero and the criteria ignored.
+"""
+const ZERO_WEIGHT_TOL = 1e-9
+
+"""
     criteria_aggregated_scores(dp::T, dm::YAXArray, method::Function)::NamedTuple where {T<:DecisionPreference}
 
 Calculates raw aggreagted score for a set of locations, in order of the location indices.
@@ -163,8 +168,12 @@ Returns raw aggreagted score for a set of locations
 function criteria_aggregated_scores(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::NamedTuple where {T<:DecisionPreference}
-    # Identify valid, non-constant, columns for use in MCDA
+    # Identify valid, non-constant, columns for use in MCDA.
+    # Criteria with (near) zero weight are also excluded: some methods (e.g. COCOSO) are
+    # not invariant to a zero-weighted criterion, so it must be removed to be ignored.
+    # Sampled weights fixed to 0 arrive as ~1e-17 after `gamma_to_dirichlet`.
     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+    is_const .|= dp.weights .< ZERO_WEIGHT_TOL
 
     # YAXArrays will throw error for all false boolean masks
     if all(is_const)
