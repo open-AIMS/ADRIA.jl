@@ -329,6 +329,30 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
   - a diver-anchored 2020s score term;
   - the boom-bust dynamics;
   - 2025–26 forcing.
+- **Eighth round (lead):**
+  - interim fitted supply is acceptable, but prefer helping the initiation-region build-up or correcting the prediction layer with cull/SALAD;
+  - score the 2020s against divers;
+  - fix the post-2017 coral (unprecedented recovery; 2024 had little impact at Lizard/MacGillivray);
+  - extend to 2026 (DHW from DMS; ignore cyclones; a track → 4 m wave tool is needed later).
+- **Done:**
+  - **Score v3**, with the manta cut corrected to 2021 (run 57: W 15.66; ×10 2019–24 11.80).
+  - **DHW 2025–26** extracted and validated (`domain_building/extract_dhw_2025_2026.py`).
+  - **Coral diagnosis:** the model recovers too slowly after 2017 and over-predicts bleaching loss in 2020 and 2024.
+- **Ninth round (lead):**
+  - no bleaching multiplier; use existing tolerance terms;
+  - post-2017 background only with evidence;
+  - chl index as a reef wet-season anomaly plus p90, with a Niño 3.4 back-cast;
+  - 15/ha ≈ 0.22 per tow;
+  - 2026 predictions file provided.
+- **Done:**
+  - **Coral screen** (run 20261015T_01, with diagnostics 02–04): the 2024 loss is entirely bleaching. The mean-tolerance shift and heritability wash out (ADRIA ratchets the tolerance means towards about 7 DHW). The remaining levers are the tolerance spread and the existing low-DHW threshold and floor switches.
+  - **Disturbance evidence:** unknown-cause events halved after 2017; disease did not.
+  - **Chlorophyll:** MODIS 2003–24 extracted. The Niño 3.4 back-cast has no skill. There is no 2025–26 chlorophyll on DMS.
+- **Plan** (protocol, "Plan for the 2020s fifth-outbreak build-up"):
+  1. post-2017 coral screen;
+  2. domain v0.4 to 2026;
+  3. supply routes (interim multiplier; initiation-region larval index; corrected prediction layer) under v3;
+  4. gates.
 
 **Phase A: lock the scoring (before any more model changes).**
 - **A1. Frozen score v2.** Preregister and implement score v2 as a wrapper; `cots_cycle_metrics.jl` stays unchanged.
@@ -464,6 +488,8 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 48 | candidate set with C6 × 5 seed pairs |
 | 49 | external-supply counterfactual (2020s) |
 | 50–55 | re-scores and G2′ of runs 48–49 |
+| 56 | score v3 re-score with the 2019 cut (superseded) |
+| 57–58 | score v3 re-score (2021 cut) and G2′ of run 49 |
 
 ## Known issues
 

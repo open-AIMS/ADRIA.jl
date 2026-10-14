@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -101,7 +101,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -201,7 +201,21 @@ const REFIT_FLOORS = (1.0, 3.0, 4.0)
 const REFIT_MU = (0.03, 0.045, 0.06, 0.08)
 const REFIT_Q = (0.015, 0.030)
 const REFIT_KAPPA = 5.0
-const BLEACH = EXPERIMENT == "bleaching_sensitivity" || REFIT
+# Coral heat-tolerance recalibration (2026-10-15, ninth round): forced COTS (reporting-year table,
+# q 0.015); bleaching scalar removed (unset) except in the replay arm; every <coral_id>_dist_mean
+# shifted by Delta DHW x heritability x chronic mu x post-2017 mu multiplier; low-DHW x0.25.
+# Arms therm_b<beta>_d<Delta x100>_h<h x100>_m<mu x1000>_p<post x100>; therm_b150_d000_h030_m120_p100
+# replays coral re-fit v2 refit2_s025_mu120_rep (run 20).
+const THERMAL = EXPERIMENT == "coral_thermal"
+const THERMAL_DELTA = (0.0, 1.0, 2.0, 3.0)
+const THERMAL_H = (0.3, 0.5)
+const THERMAL_MU = (0.06, 0.09, 0.12)
+const THERMAL_POST = (1.0, 0.5)
+const THERMAL_POST_FROM = 2018
+thermal_parts(name) = (p = split(name, "_"); (beta=parse(Int, p[2][2:end]) / 100,
+    delta=parse(Int, p[3][2:end]) / 100, h=parse(Int, p[4][2:end]) / 100,
+    mu=parse(Int, p[5][2:end]) / 1000, post=parse(Int, p[6][2:end]) / 100))
+const BLEACH = EXPERIMENT == "bleaching_sensitivity" || REFIT || THERMAL
 refit_arm_name(floor, mu, q) = "refit_f$(pct3(floor))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_q$(lpad(round(Int, 1000 * q), 3, '0'))"
 const BLEACH_BACKGROUND = ("mel" => 0.0, "mel3" => 0.03)
 const BLEACH_KAPPA = (2.5, 5.0)
@@ -530,7 +544,7 @@ else
     nothing
 end
 # Bleaching screen: kappa x background level (mel reuses the Mellin cube exactly).
-bleach_cyclones = if BLEACH && !REFIT
+bleach_cyclones = if BLEACH && !REFIT && !THERMAL
     Dict((level, kappa) => mu == 0.0 ? mellin_cyclones[kappa] :
         ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[kappa])) .* (1.0 - mu);
             timesteps=years, locs=domain.loc_ids,
@@ -539,7 +553,7 @@ bleach_cyclones = if BLEACH && !REFIT
 else
     nothing
 end
-BLEACH && !REFIT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
+BLEACH && !REFIT && !THERMAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
     error("Bleaching-screen mortality outside [0, 1]")
 # Coral re-fit: same expression as the bleaching screen's mel3 cube, so mu = 0.03 replays it.
 refit_cyclones = if REFIT
@@ -552,6 +566,14 @@ else
 end
 REFIT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(refit_cyclones)) &&
     error("Re-fit mortality outside [0, 1]")
+# Heat-tolerance screen: cv2 expression with mu per year (mu x post from THERMAL_POST_FROM).
+thermal_cyclones = THERMAL ? Dict((mu, post) => let
+        mu_t = reshape([y >= THERMAL_POST_FROM ? mu * post : mu for y in years], :, 1, 1, 1)
+        ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REFIT_KAPPA])) .* (1.0 .- mu_t);
+            timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
+    end for mu in THERMAL_MU for post in THERMAL_POST) : nothing
+THERMAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(thermal_cyclones)) &&
+    error("Heat-tolerance screen mortality outside [0, 1]")
 # Forcing q = 0.030 (Pratchett 2005 pairs): the q = 0.015 adults table scaled by 0.015 / q.
 refit_forcing = if REFIT2
     Dict("rep" => FORCED_ADULTS_CSV, "srv" => FORCED_ADULTS_SURVEY_CSV)
@@ -859,6 +881,14 @@ treatments = EXPERIMENT == "initialization" ? [
     (name="mel3_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
     [(name="wc_b$(pct3(beta))_q$(q)", alpha=0.015, coral="observed_composition", initial="cohort_full")
      for beta in REBASE_BETA for q in REBASE_Q]
+] : THERMAL ? [
+    (name="therm_b150_d000_h030_m120_p100", alpha=0.015, coral="observed_composition", initial="no_cots");
+    # Diagnostic (2026-10-15): bleaching off, to attribute the 2020/2024 coral losses.
+    (name="therm_b000_d000_h030_m120_p100", alpha=0.015, coral="observed_composition", initial="no_cots");
+    (name="therm_b000_d300_h030_m120_p100", alpha=0.015, coral="observed_composition", initial="no_cots");
+    [(name="therm_b100_d$(lpad(round(Int, 100 * d), 3, '0'))_h$(lpad(round(Int, 100 * h), 3, '0'))_m$(lpad(round(Int, 1000 * mu), 3, '0'))_p$(lpad(round(Int, 100 * post), 3, '0'))",
+        alpha=0.015, coral="observed_composition", initial="no_cots")
+     for d in THERMAL_DELTA for h in THERMAL_H for mu in THERMAL_MU for post in THERMAL_POST]
 ] : REFIT2 ? [
     (name="refit2_s100_mu030_rep", alpha=0.015, coral="observed_composition", initial="no_cots");
     [(name="refit2_s$(pct3(s))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_$(align)", alpha=0.015,
@@ -1134,6 +1164,15 @@ failures = DataFrame(treatment=String[], error=String[])
 # Optional arm filter (regex on treatment name) to complete an interrupted grid in a new
 # run directory; recorded in metadata. Empty runs every arm.
 const ARM_FILTER = get(ENV, "OWEN_1991_ARM_FILTER", "")
+# Opt-in diagnostic (2026-10-15): reef-mean heat-tolerance means (DHW) by coral group and year
+# from ADRIA's coral_dhw_log, written to tolerance.csv.
+const TOLERANCE_LOG = get(ENV, "OWEN_1991_TOLERANCE_LOG", "false") == "true"
+if TOLERANCE_LOG
+    ADRIA.setup()  # runs once; later calls keep this flag
+    ENV["ADRIA_LOG_DHW_TOLS"] = "true"
+end
+tolerance_rows = DataFrame(treatment=String[], reef_name=String[], year=Int[], group=String[],
+    mean_tolerance_dhw=Float64[])
 run_treatments = isempty(ARM_FILTER) ? treatments :
     filter(t -> occursin(Regex(ARM_FILTER), t.name), treatments)
 isempty(run_treatments) && error("OWEN_1991_ARM_FILTER matches no treatment")
@@ -1203,6 +1242,8 @@ for t in run_treatments
         domain.cyclone_mortality_scens = mellin_cyclones[kappa_value]
     elseif REFIT
         domain.cyclone_mortality_scens = refit_cyclones[parse(Int, split(t.name, "_")[3][3:end]) / 1000]
+    elseif THERMAL
+        domain.cyclone_mortality_scens = thermal_cyclones[(thermal_parts(t.name).mu, thermal_parts(t.name).post)]
     elseif BLEACH
         bleach_parts = split(t.name, "_")
         domain.cyclone_mortality_scens =
@@ -1219,8 +1260,8 @@ for t in run_treatments
     if is_coralmix_arm(t.name)
         domain.cyclone_mortality_scens = coralmix_cyclones[coralmix_parts(t.name).mu]
     end
-    if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name))
-        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE ? string(CV2_LOW_DHW_SCALE) :
+    if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name)) || THERMAL
+        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE || THERMAL ? string(CV2_LOW_DHW_SCALE) :
             string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
         ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = "4.0"
     else
@@ -1276,6 +1317,9 @@ for t in run_treatments
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
     elseif REFIT
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = "1.5"
+    elseif THERMAL
+        thermal_parts(t.name).beta == 1.0 ? delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR") :
+            (ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(thermal_parts(t.name).beta))
     elseif BLEACH
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(parse(Int, split(t.name, "_b")[end]) / 100)
     elseif REBASE && startswith(t.name, "wc_")
@@ -1366,6 +1410,18 @@ for t in run_treatments
             JOINT || MELLIN ? growth_scenarios[join(split(t.name, "_")[2:3] .|> (x -> x[2:end]), "_")] :
             COLLAPSE && startswith(t.name, "grmefast") ? scenario_rme_fast :
             COLLAPSE && startswith(t.name, "grme") ? scenario_rme : scenario
+        if THERMAL
+            # Existing ADRIA scenario factors only: mean heat tolerance shift and heritability.
+            tp = thermal_parts(t.name)
+            active_scenario = copy(active_scenario)
+            tolerance_columns = filter(name -> endswith(name, "_dist_mean"), names(active_scenario))
+            length(tolerance_columns) == 35 || error("Expected 35 <coral_id>_dist_mean columns")
+            "heritability" in names(active_scenario) || error("Scenario lacks heritability")
+            for name in tolerance_columns
+                active_scenario[!, name] .= active_scenario[!, name] .+ tp.delta
+            end
+            active_scenario[!, "heritability"] .= tp.h
+        end
         if active_scenario !== scenario
             for name in (:a_F, :a_S, :b_ricker, :IMM, :m3, :allee_threshold)
                 active_scenario[!, name] .= scenario[1, name]
@@ -1414,6 +1470,17 @@ for t in run_treatments
                 push!(culls, (t.name, scope, year,
                     (sum(requested[idx, k, sites] .* a) for k in 1:4)...,
                     (sum(removed[idx, k, sites] .* a) for k in 1:4)...))
+            end
+        end
+        if TOLERANCE_LOG
+            tol = Array(result.coral_dhw_log)  # timesteps x coral classes (group-major) x sites
+            ids = collect(result.coral_dhw_log.species)
+            groups = unique(replace.(String.(ids), r"_\d+$" => ""))
+            for target in TARGETS, (idx, year) in enumerate(years), g in groups
+                m = mapping[target.model]
+                cols = findall(id -> replace(String(id), r"_\d+$" => "") == g, ids)
+                value = sum(m.weights .* vec(mean(tol[idx, cols, m.indices]; dims=1)))
+                push!(tolerance_rows, (t.name, target.model, year, g, value))
             end
         end
         fast_coral = dropdims(sum(Array(result.raw)[:, 1:3, :, :]; dims=(2, 3)); dims=(2, 3))
@@ -1554,6 +1621,7 @@ for t in run_treatments
         CSV.write(joinpath(OUT, "mechanisms.csv"), mechanisms)
     SECOND_WAVE_AUDIT && CSV.write(joinpath(OUT, "site_audit.csv"), site_audit)
     CULLING && CSV.write(joinpath(OUT, "culls.csv"), culls)
+    TOLERANCE_LOG && CSV.write(joinpath(OUT, "tolerance.csv"), tolerance_rows)
 end
 delete!(ENV, "COTS_CULL_REMOVALS_CSV")
 delete!(ENV, "COTS_EXTERNAL_SUPPLY_WINDOW")
@@ -1751,6 +1819,17 @@ metadata = Dict(
             REBASE_COMPOSITION ?
             "wc_b{100,150}_q20_acrpoc must replay wc_b{100,150}_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
             "ref_q30 must replay acrpoc_g0 of 20261012T_15_food_grace_1991_v1",
+    ) : "not tested",
+    "coral_thermal_screen" => THERMAL ? Dict(
+        "dist_mean_shift_dhw" => collect(THERMAL_DELTA), "heritability" => collect(THERMAL_H),
+        "chronic_mu" => collect(THERMAL_MU), "post_mu_multiplier" => collect(THERMAL_POST),
+        "post_from_year" => THERMAL_POST_FROM, "bleaching_scalar" => "unset (1.0) except replay arm 1.5",
+        "low_dhw_scale" => CV2_LOW_DHW_SCALE, "kappa" => REFIT_KAPPA,
+        "mortality" => "1 - (1 - m_cyclone)^5 * (1 - m_mellin) * (1 - mu_t), mu_t = mu x post from $(THERMAL_POST_FROM)",
+        "tolerance" => "every <coral_id>_dist_mean scenario value + Delta DHW; dist_std unchanged; heritability set",
+        "forcing" => FORCED_ADULTS_CSV, "forcing_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "arms" => "therm_b100_d{000,100,200,300}_h{030,050}_m{060,090,120}_p{100,050} + therm_b150_d000_h030_m120_p100",
+        "reference" => "therm_b150_d000_h030_m120_p100 must replay refit2_s025_mu120_rep of 20261014T_20_coral_refit_v2_1991_v1",
     ) : "not tested",
     "coral_refit_v2_screen" => REFIT2 ? Dict(
         "forced_tables" => Dict(k => Dict("path" => v, "sha256" => file_sha256(v)) for (k, v) in refit_forcing),

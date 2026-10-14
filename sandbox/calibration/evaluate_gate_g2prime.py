@@ -80,7 +80,10 @@ def main(output: Path, rescores: list[Path], trough_reefs: set[str] | None = Non
         primary = scores[scores.score_v2_primary.astype(str).str.lower() == "true"]
         if primary.groupby(key).size().ne(len(REEFS)).any():
             raise ValueError("Expected one score v2 primary row per reef")
+        v3_cols = {"summed_loss_v3": ("loss_v3", "sum"), "summed_diver_error": ("diver_error", "sum"),
+                   "summed_loss_v2_manta": ("loss_v2_manta", "sum")} if "loss_v3" in scores.columns else {}
         v2 = primary.groupby(key).agg(
+            **v3_cols,
             summed_loss_v2=("loss_v2", "sum"), matched_v2=("matched_peaks", "sum"),
             observed_v2=("obs_peak_years", lambda v: sum(len(str(x).split(";")) for x in v)))
     rows = []
@@ -92,7 +95,7 @@ def main(output: Path, rescores: list[Path], trough_reefs: set[str] | None = Non
                "matched_raw": int(raw_idx.loc[(run, arm, a_half)].matched_peaks.sum()),
                "observed_raw": int(sum(len(str(v).split(";")) for v in raw_idx.loc[(run, arm, a_half)].obs_peak_years))}
         if has_v2:
-            row |= {k: (float(v) if k == "summed_loss_v2" else int(v)) for k, v in v2.loc[(run, arm, a_half)].items()}
+            row |= {k: (int(v) if k in ("matched_v2", "observed_v2") else float(v)) for k, v in v2.loc[(run, arm, a_half)].items()}
         two_waves, distinct, trough_ok, old_ratio = True, True, True, []
         for s in group[group.reef_name.isin(TWO_WAVE)].itertuples(index=False):
             short = {"Lizard Island Reef": "liz", "MacGillivray Reef": "macg", "North Direction Reef": "nd"}[s.reef_name]
@@ -155,6 +158,7 @@ def main(output: Path, rescores: list[Path], trough_reefs: set[str] | None = Non
     shown = result[result.a_half.isin([0.0, 10.0])]
     print(json.dumps(troughs, indent=1))
     v2_cols = ["summed_loss_smoothed", "summed_loss_v2", "matched_v2"] if has_v2 else []
+    v2_cols += ["summed_loss_v3"] if "loss_v3" in scores.columns else []
     print(shown[key + v2_cols + ["matched_raw", "matched_smoothed", "worst_separation_ratio",
                        "liz_trough_model_mean_cpue", "macg_trough_model_mean_cpue", "nd_trough_model_mean_cpue",
                        "c1_two_waves", "c2_peaks_matched_raw_and_smoothed", "c3_distinct_waves",

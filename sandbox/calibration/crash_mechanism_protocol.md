@@ -3721,3 +3721,265 @@ Targets: Lizard about 3 → 9, North Direction about 3.5 → 11–13, Eyrie abou
 4. **The model ends in 2024.** The 2025–26 targets (Eyrie 34/ha and South Direction 23/ha in 2026) need extended forcing.
 
 **Decision.** Nothing is promoted. Rebuilding the 2020s supply from evidence, scoring the 2020s against diver data, and the boom-bust dynamics are for the lead.
+
+
+## Lead's decisions (2026-10-14, eighth round)
+
+1. **2020s supply.**
+   - An interim fitted 2019–2026 external-supply multiplier is acceptable as a labelled stand-in.
+   - The outbreak-prediction model cannot be re-run.
+   - **Preferred routes:**
+     - (a) **Initiation-region build-up.** The domain is in the initiation region, where several years of successful local recruitment, under favourable hydrodynamics and larval nutrition (upwelling), should raise densities. The lead would rather help this along than fiddle with the external supply.
+     - (b) **Correct the prediction layer.** Use the cull records and SALAD data to correct the outbreak-prediction layer by spatial interpolation.
+2. **2020s score.** A diver-anchored 2020s term is added (new score version). Manta stays only as a weak check after 2019.
+3. **Boom-bust dynamics.**
+   - The post-2017 coral recovery was unprecedented, and the model needs that fast-growing coral for COTS to thrive as they did.
+   - The 2024 bleaching had little impact on Lizard and MacGillivray; plenty of hard coral remained.
+4. **Extend to 2026.**
+   - **DHW:** extract from RIMREP DMS using the lead's BleachingMortality code.
+   - **Cyclones:** 2025–26 cyclones were not influential and can be ignored for now.
+   - **Future need:** a way to convert real or simulated cyclone tracks to the 4 m wave-height metric.
+
+## Coral 2012–2024: model against observations (2026-10-14)
+
+W at seed pair 1 (run 37) against LTMP manta hard coral (HC) and photo-transect fast coral (Acropora + Pocilloporidae):
+
+| Reef | Manta HC, 2019 → 2024 | Model total (site), 2019 → 2023 → 2024 | Photo fast coral, 2019 → 2023 → 2024 | Model fast coral |
+| --- | --- | --- | --- | --- |
+| Lizard | 0.07 → 0.21 | 0.07 → 0.135 → **0.077** | 0.009 → 0.093 → 0.062 | 0.032 → 0.109 → **0.024** |
+| MacGillivray | 0.07 → **0.47** | 0.10 → 0.165 → 0.11 | 0.011 → 0.053 → 0.064 | 0.045 → 0.079 → 0.023 |
+| North Direction | 0.09 → **0.58** | 0.09 → 0.108 → 0.09 | 0.014 → 0.068 → 0.110 | 0.031 → 0.041 → 0.024 |
+
+- **Domain DHW** (NOAA CRW annual maximum, reef mean) at these reefs: 2020 5.5–6.6; 2021–22 3.9–4.4; 2024 5.9–6.2.
+- **The model's coral is wrong in two ways after 2017:**
+  1. **Recovery is too slow,** especially at MacGillivray and North Direction.
+  2. **Bleaching losses are too large** in 2020 and 2024, where the observed coral kept rising.
+- **Consequence:** the model's fast coral, the COTS food supply, collapses in 2024 just as the build-up should be accelerating. Together with the low external supply, this explains the boom-bust in run 49.
+- **Candidate causes, to be diagnosed, not tuned yet:**
+  - the bleaching scalar β 1.5 applied uniformly in every year;
+  - full mortality at or above 4 DHW;
+  - no thermal acclimation after the 2016–17 events;
+  - the constant chronic μ 0.12/yr (identified on the 1992–2016 period), which drags on recovery;
+  - NOAA DHW bias at these reefs (local logger corrections exist in BleachingMortality: `build_local_first_dhw_correction.py`).
+
+## Plan for the 2020s fifth-outbreak build-up (2026-10-14)
+
+1. **Score v3** (preregistered below), so that the 2020s can be scored at all.
+2. **Forcing to 2026.**
+   - DHW 2025–26 from DMS (`domain_building/extract_dhw_2025_2026.py`, validated against the domain's 2016–24 DHW).
+   - Cyclones 2025–26 set to zero (lead).
+   - Also needed: the Mellin background table, the COTS connectivity-year sampling, and the external-supply outbreak years (predictions end in 2025).
+   - These would be assembled as a new domain version (v0.4); v0.3 is not modified.
+3. **Post-2017 coral diagnosis.** A forced-COTS coral screen for 2017–2024(26): the bleaching response (β, the low-DHW scale, a post-2017 acclimation or DHW-correction counterfactual) × chronic μ, against manta and photo data. The aim is the observed recovery and the small 2024 impact at Lizard and MacGillivray.
+4. **Supply routes, compared under score v3:**
+   - the interim fitted 2019–26 multiplier (labelled);
+   - (a) the initiation-region mechanism, i.e. year-varying larval survival or retention from an evidence index (e.g. chlorophyll-a / upwelling from DMS, `extract_sst_chla_features.py`);
+   - (b) the corrected prediction layer (outbreak probabilities adjusted by interpolated SALAD/cull residuals) feeding the external supply.
+5. **Then:** held-out and sensitivity gates on the simulation set; culling back on once the 2020s densities are plausible.
+
+## Preregistered frozen score v3 (2026-10-14)
+
+**Why.** Manta under-detects the 2020s build-up, so v2 penalises a model that matches diver densities (run 49).
+
+**Definition.** A wrapper; v1 and v2 are unchanged.
+1. **Manta part:** score v2 (North Direction raw; Eyrie's unobserved first wave), computed on 1992–2019 only (model and observations truncated at 2019).
+2. **Diver part:** per reef with diver-anchored targets (`build_2020s_density_targets.py`, reporting years 2020–2024; extended to 2026 when the forcing is):
+
+   `D_reef = mean over target years of |log((A_model + 0.5) / (T + 0.5))|`
+
+   where `A_model` is adults/ha and `T` is the target. The 0.5 adults/ha offset keeps near-zero years finite.
+3. **Combined:** `loss_v3_reef = v2_to2019_reef + 1.5 × D_reef`, and the summed v3 loss is the sum over the four scored reefs.
+   - A 2× error then costs about 1.0 per reef; the current 5× error costs about 2.4 (comparable to a missed peak).
+4. **Manta after 2019** is reported only, as the 2020–24 mean model CPUE against observed. It is not in v3.
+
+**Implementation.**
+- `score_v3.jl`: pure functions, with unit tests in `test_score_v3.jl`.
+- `rescore_detectability.jl` adds `loss_v2_to2019`, `diver_error` and `loss_v3`; the evaluator adds `summed_loss_v3`.
+- The targets file is licensed and git-ignored. Its hash is recorded, and if it is absent the v3 columns are missing (NaN).
+
+**Expected.**
+- W: v3 is about v2(to 2019) + 4 × 1.5 × about 1.6, i.e. about +9.
+- The ×10 2019–2024 supply arm improves by about 4 relative to W.
+
+**Control.** All existing v1 and v2 columns are unchanged, and the `A½ = 0` replay still holds.
+
+
+## Score v3: correction and first results (2026-10-14)
+
+**Correction to the preregistered definition** (made before any interpretation): the manta part is cut at **2021**, not 2019.
+- **Why:** Eyrie has no manta survey between 2015 and 2021. A 2019 cut ended its common scoring window in 2015, so its 2014 model peak became undetectable and its loss jumped from 2.68 to 5.38.
+- **Why 2021:** it is the first post-2019 survey year on every scored reef. With the 2021 cut the manta part equals the full-period values (7.76 summed before the Eyrie adjustment) and is identical across the supply arms, so manta no longer penalises the 2020s build-up.
+- **Diver term:** still scored from 2020.
+- **Superseded output:** run 56 used the 2019 cut and is marked SUPERSEDED. Run 57 is the corrected re-score; run 58 is its G2′.
+- **Implementation:** `score_v3.jl` (`SCORE_V3_LAST_MANTA_YEAR = 2021`, `SCORE_V3_FIRST_DIVER_YEAR = 2020`), with tests in `test_score_v3.jl` (8/8). Re-score columns: `loss_v2_manta`, `diver_error`, `loss_v3`. Evaluator columns: `summed_loss_v3`, `summed_diver_error`, `summed_loss_v2_manta`. All v1 and v2 columns are unchanged (difference 0.0).
+
+**Supply counterfactual under v3** (`A½ = 0`, seed pair 1):
+
+| Supply | v2 | **v3** |
+| --- | --- | --- |
+| ×1 (W) | 6.44 | 15.66 |
+| ×3, 2017–24 | 6.54 | 12.04 |
+| ×10, 2017–24 | 8.89 | 15.36 |
+| ×30, 2017–24 | 12.08 | 19.09 |
+| ×10, 2019–24 | 7.16 | **11.80** |
+
+- v3 rewards bringing the 2020s up to diver densities.
+- v3 penalises the 2023 boom and 2024 crash: ×10 from 2017 is no better than W.
+
+## 2025–2026 DHW extension (2026-10-14)
+
+**Builder:** `domain_building/extract_dhw_2025_2026.py`. NOAA CRW daily 5 km DHW, from the public DMS zarr, at the nearest cell to each domain reef centroid; calendar-year maximum. Output: git-ignored `sandbox/data/derived/dhw_2016_2026_lizard/`.
+
+**Validation against the domain DHW, 2016–2024** (1,017 reef-years):
+- correlation 0.9996;
+- mean absolute difference 0.018;
+- 94.5% within 0.1 DHW;
+- maximum difference 1.19.
+
+The method reproduces the domain forcing.
+
+**Extension** (domain reefs, annual maximum DHW):
+- 2025: mean 5.47 (range 3.0–8.6);
+- 2026: mean 4.37 (2.9–6.2; data to 12 October 2026).
+
+Both are moderate-to-high heat years. With the current bleaching response (which over-predicts the 2020 and 2024 losses at Lizard and MacGillivray), they would collapse the modelled fast coral, so the coral diagnosis (plan step 3) has to precede the 2025–26 runs.
+
+
+## Lead's decisions (2026-10-15, ninth round)
+
+1. **Coral heat sensitivity.**
+   - The bleaching multiplier (β, `ADRIA_DEBUG_BLEACHING_SCALAR` 1.5) should not exist.
+   - CoralBlox is suspected to be too sensitive to heat stress: there should be little mortality below 6–8 DHW.
+   - Calibrate with existing adaptation and tolerance terms in ADRIA/CoralBlox. No new parameters are to be added to those codebases.
+   - A post-2016/17 reduction in chronic background mortality needs evidence from the LTMP disturbance tables (fewer unknown-cause and disease events).
+2. **Chlorophyll index.**
+   - Reef-based wet-season chlorophyll-a anomaly, plus the wet-season 90th percentile as an indicator of the maximum.
+   - The lead's original COTS_Model survival function (`COTSModel_ChlorophyllModel.R`: logit-linear in log₂(chl), fitted to Fabricius et al. 2010) is too strict at low chlorophyll.
+   - Years before the satellite record are to be predicted from the Niño 3.4 – chl-a anomaly relationship, with a GAM per reef (the lead's earlier workflow).
+3. **Outbreak threshold:** 15 COTS/ha corresponds to about 0.22 COTS per manta tow.
+4. **2026 predictions:** `sandbox/data/gbrPreds2026Adj_20262408.csv`. The other 2025–26 inputs use the labelled stand-ins.
+
+## Evidence on post-2016/17 disturbance (2026-10-15)
+
+**Source:** AIMS LTMP disturbance records (`BleachingMortality/data/aims_ltmp/reef_disturbance_complete.csv`; manta and photo-point, 1987–2026).
+
+**Denominators:** LTMP reef-years surveyed (`reef_manta.csv`, `reef_photo_transect.csv`). North = sectors CL, CA, CG, CB.
+
+| Survey | Region | Period | Reef-years | Unknown-cause events | Disease events |
+| --- | --- | --- | --- | --- | --- |
+| Manta | GBR | 1992–2015 | 1,589 | 8.9% | 0.1% |
+| Manta | GBR | 2018–2025 | 711 | **5.1%** | 0.7% |
+| Manta | North | 1992–2015 | 682 | 9.2% | 0.1% |
+| Manta | North | 2018–2025 | 306 | **4.9%** | 1.6% |
+| Photo | GBR | 1992–2015 | 1,037 | 2.0% | 2.7% |
+| Photo | GBR | 2018–2025 | 485 | 1.4% | 2.7% |
+| Photo | North | 1992–2015 | 441 | 2.3% | 5.0% |
+| Photo | North | 2018–2025 | 195 | 1.0% | **6.7%** |
+
+**Reading.**
+- Unknown-cause losses roughly halved after 2017.
+- Disease did not decline: it was flat GBR-wide and slightly higher in the north.
+- This supports a partial reduction in chronic background mortality after 2017, not its removal. A test at half the pre-2017 μ is the upper bound the evidence allows.
+- **Caveat:** post-2017 losses may be attributed to bleaching more readily than before.
+
+## Preregistered coral heat-tolerance recalibration (2026-10-15)
+
+**Hypothesis.** CoralBlox bleaching mortality is too sensitive. The calibrated mean tolerances (`dist_mean`, `:calib`) are 3.0–4.1 DHW for Acropora and Pocillopora and 5.0–6.6 for massives, with sd 2.9–5.5. That produces substantial fast-coral loss at 4–6 DHW, against observations of little mortality below 6–8 DHW.
+- The extra 1.5× scalar compounds the problem.
+- The model's slow post-2017 recovery and its 2020/2024 losses at Lizard and MacGillivray follow from this.
+
+**Change.** No code change: existing scenario parameters only.
+- **β removed:** `ADRIA_DEBUG_BLEACHING_SCALAR` unset (1.0).
+- **Mean heat tolerance:** every `<coral_id>_dist_mean` scenario value is shifted by Δ ∈ {0, +1, +2, +3} DHW. The spreads (`dist_std`) are unchanged, and the tolerance ceiling moves with the mean (initial + `HEAT_UB`), as in ADRIA.
+- **Heritability** of tolerance (existing factor, default 0.3, ADRIA range 0.25–0.5): {0.3, 0.5}.
+- **Chronic background μ** (cv2 expression `1 − (1 − m_cyclone)^5 (1 − m_Mellin)(1 − μ)`): {0.06, 0.09, 0.12}.
+- **× post-2017 multiplier** on μ: {1, 0.5}. The upper bound is set by the disturbance evidence above. It applies only to the 2018–2024 rows of the mortality cube.
+- **Fixed:** bleaching below 4 DHW ×0.25 (the lead's evidence decision); growth untouched; κ 5.
+- **COTS:** forced from observed CPUE / 0.015 (the reporting-year table), as in coral re-fit v2, so the screen isolates coral.
+- **Arms:** `therm_b100_d<Δ>_h<h>_m<μ>_p<post>`, 4 × 2 × 3 × 2 = 48.
+- **Reference:** `therm_b150_d000_h030_m120_p100` must replay coral re-fit v2 `refit2_s025_mu120_rep` (run 20) exactly.
+
+**Read-out.**
+- coral `J` 1992–2024 (photo fast and slow, manta total; as before) and `J` 1992–2016;
+- **post-2017 recovery error:** RMSE 2018–2024 against manta HC and photo fast coral on Lizard, MacGillivray and North Direction;
+- the model's 2024 change at Lizard and MacGillivray (observed: no loss);
+- the 2016–17 losses (observed: large), so that heat tolerance does not erase the real mass bleaching.
+
+**Selection rule.**
+- Report the front of whole-period `J` against post-2017 recovery error.
+- A candidate must keep `J` 1992–2016 within 10% of the reference, and reproduce at least half of the observed 2016–17 fast-coral loss at the three reefs.
+- The lead chooses.
+- The chosen coral is then re-tested with dynamic COTS (W) under score v3.
+
+**Expected.**
+- Δ +2 to +3 removes most of the 2020, 2022 and 2024 losses while keeping the 2016–17 losses (DHW 8–9).
+- Heritability 0.5 adds acclimation after 2017.
+- A lower post-2017 μ speeds the recovery.
+
+**Failure criteria.** The reference does not replay, or no arm keeps the 2016–17 losses while removing the 2024 loss. In that case the tolerance structure itself is the issue, and it is reported.
+
+**Rollback.** Runner-only.
+
+## Plan update (2026-10-15)
+
+- **Chlorophyll index.** Reef-based wet-season (December–April) chl-a mean anomaly and 90th percentile, 2003–2026, from DMS IMOS OC3 (`extract_sst_chla_features.py` method), for domain and upstream reefs. Back-cast to 1991–2002 with a GAM per reef on wet-season Niño 3.4 (BleachingMortality `extract_enso_indices.py`).
+  - The larval-survival response would be preregistered separately, with a relaxed low-chlorophyll floor in place of the Fabricius logit's near-zero survival below about 0.4 µg/L.
+- **Prediction-layer correction.**
+  - **Threshold:** the outbreak indicator is diver-equivalent density ≥ 15 COTS/ha (lead), i.e. cull catch ≥ (15 / 7.9)^(1/0.55) ≈ 3.2 COTS per diver-hour under the SALAD anchor.
+  - **Residuals:** at reef-years with SALAD or cull data, 2018–2026, the residual is (indicator − predicted probability). Residuals are interpolated by inverse distance to all source reefs, and the corrected probability is clamped to [0, 1].
+  - **2026:** uses `gbrPreds2026Adj_20262408.csv`.
+- **Domain v0.4 (1991–2026).**
+  - DHW 2025–26 from DMS (validated);
+  - cyclones 2025–26 zero;
+  - Mellin background 2025–26 at its 2015–2024 mean (stand-in);
+  - outbreak predictions 2026 from the lead's file;
+  - v0.3 untouched.
+
+
+## Coral heat-tolerance recalibration results (2026-10-15)
+
+**Runs.**
+- Run `20261015T_01_coral_thermal_1991_v1`: 49 arms, no failures. The reference replays coral re-fit v2 exactly (0.0). Audit: `coral_thermal_audit.json`.
+- Diagnostics:
+  - run 02: bleaching off;
+  - run 03: failed, because `ADRIA_LOG_DHW_TOLS` is reset by `ADRIA.setup()` (FAILED.txt kept);
+  - run 04: tolerance log via the new opt-in runner output `OWEN_1991_TOLERANCE_LOG`.
+
+**Results** (forced COTS; μ 0.12 unless stated; Lizard + MacGillivray mean change in manta-equivalent HC from 2023 to 2024; observed +0.063):
+
+| Arm | `J` all | `J` 1992–2016 | Post-2017 recovery error | Change 2023→2024 | Model HC 2024 (observed 0.42) |
+| --- | --- | --- | --- | --- | --- |
+| β 1.5 (reference) | 0.259 | 0.235 | 0.136 | −0.094 | 0.11 |
+| β 1, Δ 0 | 0.258 | 0.236 | 0.143 | −0.071 | 0.18 |
+| β 1, Δ +3 | 0.260 | 0.238 | 0.145 | −0.067 | 0.18 |
+| β 1, μ 0.06 | 0.311 | 0.309 | **0.128** | −0.080 | 0.20 |
+| β 1, μ 0.12, post-2017 μ halved | 0.261 | 0.236 | 0.151 | −0.080 | 0.21 |
+| bleaching off (β 0) | – | – | – | **+0.001** (Lizard) | Lizard 0.23, MacGillivray 0.32 |
+
+**Findings.**
+1. **The 2024 loss is entirely bleaching.** No cyclone is recorded for 2016–2024 at these reefs (RRN wave-hours; Jasper is absent), and Mellin background is about 0. With bleaching off, Lizard's fast coral holds at 0.31 in 2024; with bleaching it falls from 0.27 to 0.17.
+2. **Removing β (1.5 → 1) halves nothing.** Coral `J` is unchanged (0.259 → 0.258); the 2024 loss is reduced by a quarter.
+3. **The mean-tolerance shift (Δ) and heritability are washed out by ADRIA's tolerance dynamics.**
+   - Run 04: Lizard Acropora mean tolerance rises from 3.9 (1992) to 6.9 DHW (2016) at Δ 0, and from 6.9 to 7.4 at Δ +3. The +3 shift shrinks to about +0.3–0.5 before the 2016–17 events.
+   - The cause: after any mortality, `bleaching_mortality!` resets each class mean to `truncated_normal_mean(μ, σ, HEAT_LB, ceiling)`, which lifts every mean towards a common attractor each heat year. The code comment says the truncation is at the current DHW, but the call uses `HEAT_LB`. That is reported, not changed (core ADRIA).
+   - **So the effective fast-coral tolerance in the 2020s is already about 6–7 DHW.** The lead's "little mortality until 6–8 DHW" is close to the evolved mean. What kills about 40% of fast coral at DHW 6 is the tolerance spread (`dist_std` about 2.9–3.5 DHW), not the mean.
+4. **Halving post-2017 μ helps manta HC** (0.144 → 0.133) **but worsens photo fast coral** (0.141 → 0.169): a mixed result, in line with the disturbance evidence (unknown-cause events halved, disease not).
+5. **Recovery is too slow even without bleaching.** With bleaching off, modelled 2024 HC is 0.23 at Lizard and 0.32 at MacGillivray, against manta 0.21 and 0.47 (North Direction 0.58). Growth or reef-scale cover representation also limits the recovery at MacGillivray and North Direction.
+
+**Existing levers that remain** (no new parameters):
+- the tolerance spread (`<coral_id>_dist_std` scenario values);
+- the existing opt-in switches `ADRIA_BLEACHING_LOW_DHW_THRESHOLD` (currently 4; mortality ×0.25 below it) and `ADRIA_BLEACHING_DHW_FLOOR` (minimum susceptibility).
+
+**Decision.** Nothing is adopted. The options go to the lead.
+
+## Chlorophyll index results (2026-10-15)
+
+**Satellite record.** `extract_chla_wet_season.py`: MODIS-Aqua OC3 wet seasons for 2003–2024 extracted for the 113 domain reefs (`sandbox/data/derived/chla_wet_season_lizard/`). The IMOS product ends on 2024-12-25 (Aqua retired), so 2025 and 2026 are missing.
+- **High anomaly seasons** (domain median log anomaly): 2011 +0.18, 2019 +0.13, 2024 +0.27. These are flood years (2010–11 La Niña; February 2019; Jasper December 2023).
+- Absolute OC3 values (about 0.8–1.2 mg m⁻³) are inflated over shallow reef water, so only reef-relative anomalies are used.
+
+**Niño 3.4 back-cast** (`build_chla_enso_backcast.R`, per-reef GAMs): **no skill.** Leave-one-season-out CV R² is −0.43 to −0.52 for the wet-season and preceding-spring Niño 3.4, for both mean and p90. The output is flagged NOT_FOR_USE. The flood-driven anomalies are not ENSO-predictable here; river discharge is a more plausible predictor.
+
+**Other DMS sources.** The eReefs biogeochemistry stores (gridded baseline, and the reef-level `cots-ereef-biogeochemistry`) both end in March 2019.
+
+**Outstanding:** a 2025–26 chlorophyll source and a pre-2003 predictor. These go to the lead.

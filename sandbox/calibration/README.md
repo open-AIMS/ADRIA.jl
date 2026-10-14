@@ -2664,3 +2664,13 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 # re-score at q 0.015, evaluate G2', then:
 python sandbox/calibration/audit_1991_supply_window.py <run> <rescore> <gate>
 ```
+
+### Score v3 and the 2025–26 DHW extension (2026-10-14, eighth round)
+
+- **Score v3** (`score_v3.jl`) is manta-based v2 on 1992–2021 plus 1.5 × the diver-anchored 2020s log error. `rescore_detectability.jl` writes the `loss_v3` columns when the licensed targets file is present.
+- **DHW 2025–26.** `domain_building/extract_dhw_2025_2026.py` pulls NOAA CRW DHW from the public DMS zarr. It reproduces the domain's 2016–24 DHW (r 0.9996).
+
+```powershell
+julia sandbox/calibration/test_score_v3.jl
+& C:/Users/smatthew/AppData/Local/miniconda3/python.exe sandbox/domain_building/extract_dhw_2025_2026.py
+```
