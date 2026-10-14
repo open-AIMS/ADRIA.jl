@@ -356,6 +356,54 @@ function load_cots_forced_adults(path::AbstractString, loc_ids::AbstractVector{<
     return adults
 end
 
+"""
+    load_cots_cull_removals(path, loc_ids, calendar_years) -> Array{Float64,3}
+
+Opt-in observed culling (`COTS_CULL_REMOVALS_CSV`; crash_mechanism_protocol.md,
+2026-10-14). Columns `site_id, report_year, phase, juveniles_ha, adults_ha` (COTS ha^-1
+of site area). Returns requests indexed `[timestep, k, location]` with k = 1 pre-spawning
+juveniles, 2 pre-spawning adults, 3 post-spawning juveniles, 4 post-spawning adults; a
+row applies at the timestep whose calendar year equals `report_year`. Rows outside the
+simulated years are ignored; unknown sites, phases or invalid densities are errors.
+"""
+function load_cots_cull_removals(path::AbstractString, loc_ids::AbstractVector{<:AbstractString},
+    calendar_years::AbstractVector{<:Integer})::Array{Float64,3}
+    isfile(path) || error("Missing COTS cull removals CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:site_id => String, :phase => String))
+    required = ["site_id", "report_year", "phase", "juveniles_ha", "adults_ha"]
+    all(in(names(table)), required) || error("COTS cull CSV needs columns $(required)")
+    sites = Dict(String(id) => loc for (loc, id) in enumerate(loc_ids))
+    years = Dict(Int(year) => t for (t, year) in enumerate(collect(calendar_years)))
+    requests = zeros(Float64, length(years), 4, length(loc_ids))
+    for row in eachrow(table)
+        loc = get(sites, row.site_id, 0)
+        loc == 0 && error("COTS cull CSV site $(row.site_id) is not a domain site")
+        row.phase in ("pre", "post") || error("COTS cull phase must be pre or post")
+        juveniles, adults = Float64(row.juveniles_ha), Float64(row.adults_ha)
+        isfinite(juveniles) && isfinite(adults) && juveniles >= 0.0 && adults >= 0.0 ||
+            error("COTS cull densities must be finite and non-negative")
+        t = get(years, Int(row.report_year), 0)
+        t == 0 && continue
+        offset = row.phase == "pre" ? 0 : 2
+        requests[t, offset + 1, loc] += juveniles
+        requests[t, offset + 2, loc] += adults
+    end
+    return requests
+end
+
+"""Apply one phase (`:pre` or `:post`) of the timestep's cull requests and log what was
+removed into `removed_log[tstep, k, :]` (same k layout as the requests)."""
+function apply_cots_cull!(cots_models::CotsState, requests::Array{Float64,3},
+    removed_log::Array{Float64,3}, tstep::Int, phase::Symbol)::Nothing
+    phase in (:pre, :post) || throw(ArgumentError("phase must be :pre or :post"))
+    k = phase == :pre ? 1 : 3
+    juveniles, adults = COTSMod.apply_removals!(cots_models,
+        @view(requests[tstep, k, :]), @view(requests[tstep, k + 1, :]))
+    removed_log[tstep, k, :] .= juveniles
+    removed_log[tstep, k + 1, :] .= adults
+    return nothing
+end
+
 function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Real})
     size(state) == (length(models), 3) || error("COTS initial-state dimensions differ")
     all(isfinite, state) && all(>=(0.0), state) ||

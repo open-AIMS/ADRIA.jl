@@ -3085,3 +3085,383 @@ Status: **directed by the project lead; preregistered before implementation.**
 - **Gap.** North Direction and MacGillivray first waves come 2–4 years late. The lag grows as coral and starting fast share rise.
 
 The plan to work through is recorded in `CURRENT_STATE.md` ("Close-out plan").
+
+
+## Preregistered frozen score v2 (2026-10-14), close-out step A1
+
+**Why.** This implements lead decision 3 of the fourth round.
+- **North Direction.** The `smoothed_3y` observed series has no 1995 peak, because 3-year calendar smoothing of 0.06 / 0.56 / 0.12 falls below the peak criteria. A North Direction first wave of any height or timing is therefore nearly unpenalised. The raw series has the 1995 (0.56) and 2013 (0.71) peaks.
+- **Eyrie.** Surveys ran every three years (1995, 1998 at 0.13, 2001 at 0.09). A 1999–2000 first wave would fall between surveys, so Eyrie's observed series has only the 2013 peak. Under v1, every arm that produces an Eyrie first wave pays the full peak-count penalty (1.25).
+
+**Definition.** Score v2 is a wrapper. `cots_cycle_metrics.jl` and its weights, peak rules and observation model are unchanged.
+1. **Per-reef observation treatment:**
+   - Lizard, MacGillivray and Eyrie: `smoothed_3y` (as v1);
+   - North Direction: `raw`.
+2. **Eyrie, unobserved first wave.** Model peaks earlier than (earliest observed peak − peak tolerance), i.e. before 2007, are dropped from the peak count. Then `peak_count_penalty_v2 = min(|n_sim_v2 − n_obs| / n_obs, 1)` and `loss_v2 = loss_v1 − 1.25 × (peak_count_penalty_v1 − peak_count_penalty_v2)`.
+   - Such peaks can never be matched under the 6-year tolerance, so no other term changes.
+   - The series terms (RMSE, bias and lag correlation against the 1998 and 2001 surveys) are kept.
+   - An early peak cannot stand in for a missing 2013 peak: with only an early peak, v2 is worse than v1.
+3. **Summed loss v2** = Lizard + MacGillivray + Eyrie (`smoothed_3y`, Eyrie adjusted) + North Direction (`raw`).
+4. **Reporting.** v1 (summed `smoothed_3y`) and v2 are reported side by side for every candidate. G2′ is unchanged; its v2 peak count (7 observed peaks: 2 + 2 + 2 + 1) is reported alongside.
+
+**Implementation.**
+- `score_v2.jl` holds the wrapper as pure functions; it is tested by `test_score_v2.jl`.
+- `rescore_detectability.jl` adds the columns `peak_count_penalty`, `loss_v2` and `score_v2_primary` to every row. Its `loss` column is unchanged, so the `A½ = 0` replay check still applies.
+- `evaluate_gate_g2prime.py` adds `summed_loss_v2` and the v2 matched-peak counts when those columns are present.
+
+**Control.** For Lizard and MacGillivray rows, and for Eyrie rows with no model peak before 2007, `loss_v2 == loss` exactly. Re-scoring run 25 must reproduce its stored v1 losses (`A½ = 0`, `q` 0.015).
+
+**Expected consequences**, computed from the stored run-26 per-reef scores before implementation:
+
+| Arm | v1 summed | v2 summed (expected) |
+| --- | --- | --- |
+| `ref` (run-17 baseline) | 9.10 | about 6.85 |
+| cv2 `acrpoc` | 8.58 | about 7.33 |
+| cv2 pick | 7.97 | about 8.30 |
+| cv2 q50 | 8.21 | about 8.61 |
+
+- **Eyrie.** All four arms lose the 1.25 penalty.
+- **North Direction.** The working configuration's overshoot (1.72 against 0.56) and lateness (1999) are now scored: 2.30 → 3.88.
+- **So v2 is expected to re-rank** the working configuration below `acrpoc` and the run-17 baseline. The North Direction share pick (q25), made under v1, should be revisited in B2.
+
+**Failure criteria.**
+- The implementation fails if the control does not replay exactly, or if any v2 value differs from the hand computation above beyond rounding.
+- A v2 ranking that differs from v1 is a finding, not a failure.
+
+**Rollback.** v2 lives in separate columns and files; v1 is untouched.
+
+
+## Score v2 results on stored runs (2026-10-14, close-out A1 / A2 re-score)
+
+**Runs.**
+- Run `20261014T_28_rescore_score_v2_initial_share` re-scores run 25 at `q` 0.015. Its control replays with a difference of exactly 0. The v2 sums match the preregistered hand computation: `ref` 6.847, cv2 `acrpoc` 7.326, cv2 pick 8.302, cv2 q50 8.608.
+- Run 29 is G2′ at `q` 0.015.
+- Run 30 is a score-only re-score at `q` 0.030. Its seeds were still inverted at 0.015, so it is not consistent. Run 31 is G2′ at `q` 0.030.
+
+**Summed loss** (`A½ = 0`; v1 = summed `smoothed_3y`):
+
+| Arm | v1 @ 0.015 | **v2 @ 0.015** | v2 @ 0.030 (score only) | North Direction v2 @ 0.015 [first, second peak] |
+| --- | --- | --- | --- | --- |
+| `ref` (run-17 baseline) | 9.10 | 6.85 | 6.48 | 1.85 [1997, 2012] |
+| cv2 `acrpoc` | 8.58 | 7.33 | 8.83 | 2.93 [1998, 2012] |
+| **cv2 min** (all reefs at minimum share) | 8.50 | **6.45** | 6.90 | 1.99 [1997, 2012] |
+| cv2 pick (working configuration) | **7.97** | 8.30 | 10.90 | 3.88 [1999, 2013] |
+| cv2 q50 | 8.21 | 8.61 | 10.04 | 4.32 [1999, 2013] |
+
+- **Re-ranking.** v2 re-ranks the arms, as expected. North Direction's first-wave overshoot and lateness under the q25 share dominate the working configuration's v2 loss.
+- **Per-reef v2 best** among the run-25 share levels:
+  - Lizard: min (1.47);
+  - MacGillivray: q50 (1.25);
+  - North Direction: min (1.99; first peak 1997).
+- **G2′.** At `A½ = 10`, only `ref` passes at `q` 0.015. cv2 min fails only on MacGillivray's trough (0.061 against 0.054; Lizard 0.054).
+
+## Late first waves: flux diagnosis (2026-10-14, close-out B1)
+
+Source: run 25 `flows.csv` and `mechanisms.csv`, North Direction and MacGillivray, 1991–2001.
+
+**Settlement is set externally.**
+- It is dominated by external supply (Ext×5), identical in every arm: North Direction 38, 47, 95, 104, 116, 131 per ha per year over 1992–97.
+- Local fecundity matters only from 1995. The 1991 seeds (North Direction 0.7 adults/ha) are negligible against it.
+
+**So the rise is set by settlement plus maturation**, and is the same in every share arm.
+- North Direction adults reach 15 per ha in 1995 and 37 in 1996.
+- The observed peak of 0.56/tow equals 37/ha at `q` 0.015. The model reaches it about a year late (observed report year 1995, i.e. the October 1994 survey).
+- MacGillivray reaches about 21–25 per ha in 1996, against its observed 1996 peak. Its model peak is 1997.
+
+**The peak year is set by food exhaustion.** Adults keep rising until fast coral runs out.
+
+| North Direction arm | Fast coral 1995 | Fast coral gone (≤ 0.002) | Peak adults/ha (year) |
+| --- | --- | --- | --- |
+| cv2 min | 0.086 | 1998 | 61 (1998; scored peak 1997) |
+| `ref` | 0.072 | 1998 | 61 (1997) |
+| cv2 pick (q25 share) | 0.119 | 1998–99 | **131 (1999)** |
+
+- The q25 share therefore gives both the overshoot (1.72/tow against 0.56) and the late peak.
+- The observed population instead fell within a year of its peak (0.56 → 0.12). With no crash mechanism (lead's decision), the remaining timing levers are:
+  - **less food**, i.e. a lower share (earlier exhaustion and a lower peak);
+  - **a faster rise:** a lower predator-pit `Q` (run 11: `Q` 10 brought the mean first peak about one year earlier than `Q` 30);
+  - **the observation `q`:** at 0.030, 0.56/tow is 19 adults/ha, reached in 1995.
+
+## Preregistered timing factorial (2026-10-14), close-out B2 with the A2 consistent-`q` arms
+
+**Hypothesis.** The late and high North Direction first wave comes from extra food (the q25 share) plus a slow rise. A lower `Q` and a lower North Direction share bring the first peaks earlier and lower. A consistent `q` 0.030 makes the rise visible earlier in CPUE terms (but, from run 30, doubles troughs).
+
+**Change.** No model change. New runner experiment `timing`: cv2 coral, `eb` seeds, Ext×5, gradual Allee. The factorial is 3 × 2 × 2 = 12 arms, named `wc_b150_q<Q>_eb_lin_obs<q>_cv2_<share>`:
+- **predator-pit `Q`** {10, 15, 20} COTS/ha/yr;
+- **share set**, with other reefs at q50:
+  - `pick`: Lizard min, MacGillivray q50, North Direction q25 (the working configuration);
+  - `pnd`: the same with North Direction at min;
+- **observation `q`** {0.015, 0.030}. The `eb` seeds are inverted with the arm's `q` (linear, 6:3:1 preload), as in `lizard_coral` `obs030`. The runner scores at 0.015, and `obs030` arms are read via `rescore_detectability.jl --q=0.030`.
+
+**Control.** `wc_b150_q20_eb_lin_obs015_cv2_pick` must replay run 25's `wc_b150_q20_eb_lin_cv2_pick` exactly (trajectories, flows and mechanisms). External immigration and 1991 total cover must be identical across arms.
+
+**Expected consequences.**
+- **Share `pnd`:**
+  - North Direction first peak in 1997 (against 1999), with a lower height (about 0.9 against 1.7/tow at `q` 0.015);
+  - North Direction v2 loss about 2.0 (against 3.9);
+  - other reefs nearly unchanged (they are connected, so not identical).
+- **`Q` 10:** first peaks on all reefs about 0–1 year earlier and higher, with higher troughs. A G2′ trough failure is the expected cost.
+- **`q` 0.030:**
+  - first-wave CPUE about double, so peak-height penalties rise where the model already overshoots;
+  - Lizard's height fits better (Pratchett 40–55/ha corresponds to 1.2–1.6/tow against the observed 1.92);
+  - trough failures.
+
+**Read-out.** Each arm at its own `q`:
+- summed v2 loss (primary) and v1, both at `A½ = 0`;
+- G2′ at `A½` 0 and 10 (troughs gated on Lizard and MacGillivray);
+- first-peak year per reef against the observed year, in both reporting-year and survey-year terms;
+- first- and second-wave heights;
+- Lizard peak adults/ha against Pratchett's 40–55;
+- coral `J`.
+
+**Selection rule for C4** (the timing fix):
+1. Take the arm with the lowest summed v2 loss among arms that match 7/7 v2 peaks and pass G2′ criteria 1–3.
+2. Arms within 0.10 of the minimum are ranked by the mean absolute first-peak year error over Lizard, MacGillivray and North Direction; then by the smaller trough.
+3. If no `q` 0.030 arm is selected, the best `q` 0.030 arm is still carried as C2 (Pratchett `q`).
+
+**Failure criteria.** The reference does not replay, or an arm fails to run. A screen in which no arm improves first-peak timing over `cv2_pick` is a finding: the timing then needs a mechanism (excluded by the lead for the crash), and is reported rather than tuned.
+
+**Bounds and evidence.**
+- `Q` 10–20 is within the run-11 grid. The Allee threshold is held at its evidence value.
+- The shares stay within each reef's healthy-year photo-transect range.
+- `q` 0.030 is the Poisson fit to the Pratchett 2005 pairs.
+
+**Rollback.** Runner-only experiment; nothing changes in the defaults.
+
+
+## Timing factorial results (2026-10-14), close-out B2 + A2
+
+**Runs.**
+- Run `20261014T_32_timing_1991_v1`: 12 arms, no failures.
+- Re-scores: run 33 (`q` 0.015) and run 34 (`--q=0.030`).
+- G2′: runs 35 and 36.
+- Audit: `runs/20261014T_32_timing_1991_v1/timing_audit.json` (`audit_1991_timing.py`).
+
+**Controls.**
+- `wc_b150_q20_eb_lin_obs015_cv2_pick` replays run 25's `cv2_pick` exactly (trajectories, flows and mechanisms: 0.0).
+- External immigration and 1991 total cover are identical across arms.
+- The run-33 `A½ = 0` control replays with a difference of 0.0.
+
+**Results** (each arm at its own `q`, `A½ = 0`; first peaks in reporting years; observed: Lizard 1997 smoothed, MacGillivray 1997 smoothed, North Direction 1995 raw):
+
+| Arm (`Q`, `q`, share set) | v1 | **v2** | coral `J` | First peaks (Lizard, MacGillivray, North Direction) | North Direction first wave (/tow) | Troughs at `A½ 10` (Lizard, MacGillivray) |
+| --- | --- | --- | --- | --- | --- | --- |
+| **20, 0.015, `pnd`** | 8.50 | **6.44** | **0.251** | 1997, 1997, **1997** | 0.93 | 0.056, 0.070 |
+| 15, 0.015, `pnd` | 8.97 | 6.89 | 0.253 | 1997, 1996, 1997 | 1.03 | 0.057, 0.074 |
+| 10, 0.015, `pnd` | 9.51 | 7.36 | 0.254 | 1996, 1996, 1997 | 1.16 | 0.056, 0.083 |
+| 20, 0.015, `pick` (reference) | 7.97 | 8.30 | 0.260 | 1997, 1997, 1999 | 1.96 | 0.056, 0.070 |
+| 20, 0.030, `pnd` | 9.26 | 8.57 | 0.250 | 1997, 1997, 1997 | 1.98 | 0.113, 0.139 |
+| 20, 0.030, `pick` | 10.73 | 10.56 | 0.261 | 1997, 1997, 1999 | 4.01 | 0.113, 0.139 |
+
+Remaining arms are in the audit.
+- Every arm matches 7/7 v2 peaks and passes G2′ criteria 1–3.
+- None passes G2′ criterion 4 (troughs) at `A½ 10`.
+
+**Findings.**
+1. **North Direction share is the timing lever.** At its minimum (0.19, against 0.31 at q25), the North Direction first wave peaks in 1997 at 0.93/tow (against 1999 at 1.96).
+   - North Direction v2 loss falls from 3.88 to 2.02, and the summed v2 loss from 8.30 to 6.44.
+   - Lizard and MacGillivray are essentially unchanged; coral `J` improves.
+   - It is still two reporting years late (observed 1995, i.e. the October 1994 survey) and 1.7× too high.
+2. **Lower `Q` brings Lizard and MacGillivray one year earlier** (1996), but raises v2 loss (Lizard loss 1.77 → 2.46 at `Q` 10) and troughs. Not selected. As in run 11, `Q` trades timing against trough and height.
+3. **The consistent `q` 0.030 is worse under v2** (8.57 against 6.44).
+   - It helps Lizard's height (Lizard loss 1.77 → 1.30). It overshoots MacGillivray and North Direction and doubles troughs.
+   - Halving the seeds barely changes adult dynamics: Lizard peak 29.7 against 29.5 adults/ha. External supply dominates, so the 1991 state is not the lever.
+4. **Lizard's first wave stays at about 29 adults/ha** in every arm, below Pratchett's 40–55. This needs the Lizard share (C3), not `Q` or `q`.
+
+**Selection (preregistered rule).**
+- **C4 (timing fix):** `wc_b150_q20_eb_lin_obs015_cv2_pnd`.
+- **C2 (best Pratchett-`q` arm):** `wc_b150_q20_eb_lin_obs030_cv2_pnd`.
+- Four arms improve first-peak timing over the reference: `pnd` at `Q` 20 and 15, at both `q` values.
+
+**Decision.** Nothing is promoted. C4 is recommended to replace C1 as the working configuration (lead to decide). It is C1 with North Direction's 1991 fast share at the minimum of its healthy-year range.
+
+
+## Lead's decisions (2026-10-14, fifth round)
+
+1. **Working configuration changed.** North Direction's 1991 starting fast-coral share is lowered to the minimum of its healthy-year range (0.191, from 0.307). Run 32 `wc_b150_q20_eb_lin_obs015_cv2_pnd` (loss v2 6.44, coral `J` 0.251) becomes the working configuration. The previous one (run 25 `cv2_pick`) is kept as a comparison candidate.
+2. **Larger Lizard first outbreak.** Test Lizard's starting fast share at the median of its healthy-year range (0.308, against 0.147) with both manta detectabilities: the current `q` 0.015, and Pratchett's `q` 0.030 with seeds inverted at the same `q`.
+3. **Culling.**
+   - (a) **Stages:** culled COTS under 15 cm (cohort 1) come off model juveniles; 15 cm and over (cohorts 2–4) come off adults.
+   - (b) **Location:** spatially explicit. Cull-site centroids are fuzzy-matched to model sites on the same reef, not spread across the reef in proportion to modelled COTS.
+   - (c) **Year:** LTMP reporting-year convention (September–December culls count toward the following year).
+   - (d) **Timing:** culls before January (September–December) are removed before spawning; then spawning occurs; then January–August culls are removed.
+4. **Replicates for promotion:** vary both the connectivity-sequence seed and ADRIA's RNG seed (at least 5 pairs).
+5. **Process:** decision requests to the lead are written in plain ecological terms, without internal labels.
+
+## Preregistered candidate set and replicate-seed run (2026-10-14), close-out B3 + B4 (replicates) + C3 of the plan
+
+**Candidates.** All use `eb` seeds, Ext×5 and gradual Allee. Other reefs keep the q50 share.
+
+| ID | Arm suffix | Coral | 1991 fast share (Lizard / MacGillivray / North Direction) | `Q` | Observation `q` (seeds inverted at it) |
+| --- | --- | --- | --- | --- | --- |
+| W (working, was C4) | `cv2_pnd` | cv2 | min / q50 / min | 20 | 0.015 |
+| C1 (previous working) | `cv2_pick` | cv2 | min / q50 / q25 | 20 | 0.015 |
+| C2 (Pratchett `q`) | `cv2_pnd` | cv2 | min / q50 / min | 20 | 0.030 |
+| C3a (Lizard median) | `cv2_pndl50` | cv2 | **q50** / q50 / min | 20 | 0.015 |
+| C3b (Pratchett-consistent Lizard) | `cv2_pndl50` | cv2 | **q50** / q50 / min | 20 | 0.030 |
+| C5 (structural control) | `ref` | run-17 coral (Mellin + 3%/yr, default bleaching) | `acrpoc` | 20 | 0.015 |
+
+**Seeds.**
+- **Pairs:** five (connectivity-sequence seed, ADRIA RNG seed) pairs. Pair `s1` is the archived pair (20260930, 90972102). Pairs `s2`–`s5` are (20261101, 11101), (20261102, 22202), (20261103, 33303) and (20261104, 44404).
+- **Per arm:** both seeds are set via `COTS_CONNECTIVITY_SEED` and `ADRIA_RNG_SEED`. The runner's Julia `Random.seed!` stays at 20260930 and is recorded.
+- **Arm names:** `wc_b150_q20_eb_lin_obs<q>_s<k>_<suffix>`. That is 6 × 5 = 30 arms; the runner experiment is `candidates`.
+
+**Controls (`s1`, exact replay).**
+- `obs015_s1_cv2_pick` replays run 25 `cv2_pick`.
+- `obs015_s1_cv2_pnd` replays run 32 `obs015_cv2_pnd`.
+- `obs030_s1_cv2_pnd` replays run 32 `obs030_cv2_pnd`.
+- `obs015_s1_ref` replays run 25 `ref`, i.e. run 17.
+
+**Expected.**
+- **C3a:** Lizard's first wave at about 50 adults/ha (Pratchett 40–55), peaking about 1999 with a higher loss at `q` 0.015. Its Lizard height penalty rises (0.75/tow against the observed 1.92 raw).
+- **C3b:** Lizard's first wave of about 1.5/tow against the observed 1.92, i.e. a better height. MacGillivray and North Direction overshoot, and troughs double, as in run 32.
+- **Replicates:** peak years shift by at most about 1 year between seeds. Single-seed rankings that differ by less than the between-seed sd are not distinguished.
+
+**Read-out.**
+- Per candidate at `s1`: v1 and v2 summed loss, G2′ at `A½` 0 and 10, first-peak years, first- and second-wave heights, Lizard peak adults/ha, and coral `J`.
+- Over the five seeds, per reef: mean ± sd of v2 loss; peak years, heights and prominences of the first two peaks; the inter-peak period; and the trough mean.
+- AGENTS gate 3 is assessed as "peak timing, height, prominence and period better than C1 in at least 4 of 5 seeds without worse coral `J`".
+
+**Failure criteria.** A control fails to replay, or any arm errors.
+
+**Not decided here.** Which candidates go forward is the lead's decision. The held-out tests and ±25% sensitivity (AGENTS gates 4–5) follow on the chosen set.
+
+## Preregistered observed-culling switch (2026-10-14), close-out C2
+
+**Hypothesis.** Culling (171,948 COTS on 72 domain reefs, mostly 2012–15 and 2021–26) lowered the second wave and post-2015 populations where it was intense, both directly and through reduced larval supply from heavily culled source reefs. The calibration so far has ignored it.
+
+**Change.** COTSMod gains a pure, opt-in removal step: `apply_removals!(model, juveniles_ha, adults_ha) -> (removed_juveniles_ha, removed_adults_ha)`.
+- Removals are capped at the COTS present: `min(request, N[2])` and `min(request, N[3])`.
+- Adult age classes and `large_adults` are scaled by the same surviving fraction.
+- Recruits (`N[1]`) are never culled.
+- Nothing runs unless it is called.
+
+**ADRIA adapter.**
+- A new env `COTS_CULL_REMOVALS_CSV` points to a table with columns `site_id, report_year, phase, juveniles_ha, adults_ha` (COTS per ha of model site area).
+- **Unset** gives the established path, unchanged.
+- **When set:**
+  - for each annual step whose calendar year Y equals `report_year`: `phase = pre` rows (September–December dives of Y − 1) are applied immediately before the COTS step (grazing, survival, spawning, maturation);
+  - `phase = post` rows (January–August dives of Y) are applied immediately after the COTS step and before larval dispersal;
+  - removed amounts per site-year are returned as `cots_culled` (juveniles and adults; additive output);
+  - unknown site IDs or negative values are errors.
+- Removal before the step reduces that year's spawning, grazing and maturation. Removal after it does not affect this year's spawning, but does lower the end-of-year (logged) population.
+
+**Derived table.** `build_cull_removals.py` v2 gains:
+- **fuzzy matching:** each cull-site centroid's counts are spread over model sites on the same reef with Gaussian weights `area × exp(−d² / 2σ²)` for sites within 3σ, falling back to the nearest site;
+- `σ` = 210 m, half the median nearest-neighbour spacing of cull sites (422 m; model-site spacing 274 m). Sensitivities are 0 m (nearest site only) and 420 m;
+- **adapter tables** (`removals_<σ>.csv`) with phase from the dive month, cohort 1 as juveniles and cohorts 2–4 as adults.
+- Mass balance is checked for every σ.
+
+**Tests.**
+- **COTSMod unit tests:**
+  - zero request is the identity;
+  - removals are capped at available;
+  - age classes and `large_adults` are scaled consistently;
+  - recruits are untouched;
+  - non-finite or negative requests are errors.
+- **ADRIA adapter tests:**
+  - table parsing and validation;
+  - an unset env gives an identical run;
+  - a pre / post ordering check on a two-site toy.
+
+**Experiment** (after the candidate run):
+- the working configuration (W) at `s1` × {no cull, observed cull at σ 210} for 1991–2024, plus σ 0 and 420 sensitivities;
+- C3 and C5 with and without culling, if the lead keeps them.
+- The no-cull arm must replay W exactly.
+
+**Expected consequences.**
+- North Direction's 2013 peak is lowered: 417 culled, about 20/ha reef-wide in 2013, concentrated at 2 model sites.
+- Eyrie's 2021–24 population is lowered (1–3/ha/yr).
+- Lizard and MacGillivray show only small direct effects.
+- Internal immigration is reduced in 2013–16 and 2022–26 through heavily culled sources (Startle, Irene, Eye, 14-133). This is damped because external supply dominates settlement.
+- Coral is slightly higher after 2013 on culled reefs.
+
+**Read-out.**
+- Per reef: second-wave height and timing; 2016–24 trough; v2 loss and G2′; coral `J`.
+- **Removal diagnostics:** requested vs removed (the unmet share where the model has fewer COTS than were culled), and internal immigration changes.
+
+**Failure criteria.**
+- The replay or a test fails, or mass balance fails.
+- If more than 25% of requested removals are unmet on any calibration reef, the spatial matching or the modelled density is inconsistent with the cull data. That is reported to the lead before any interpretation.
+
+**Bounds.** The removals are observed data; no parameter is tuned.
+
+**Rollback.** The env is unset by default.
+
+
+## Candidate set and replicate-seed results (2026-10-14), close-out B3 + B4 (replicates) + C3
+
+**Runs.**
+- Run `20261014T_37_candidates_1991_v1`: 30 arms, no failures.
+- Re-scores: run 38 (`q` 0.015) and run 39 (`--q=0.030`).
+- G2′: runs 40 and 41.
+- Audit: `candidates_audit.json` (`audit_1991_candidates.py`).
+
+**Controls.** All four seed-pair-1 arms replay their prior arms exactly (0.0): C1 → run 25, W and C2 → run 32, C5 → run 25 `ref`.
+
+**Over 5 seed pairs** (each candidate at its own `q`; mean ± sd):
+
+| Candidate | Loss v2 | Loss v1 | Coral `J` | Mean first-peak error (yr) | Lizard peak adults/ha | Lizard trough at `A½ 10` | MacGillivray trough at `A½ 10` | Seeds passing G2′ at `A½ 10` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **W** (working) | **6.79 ± 0.79** | 8.98 ± 0.83 | 0.250 | **0.67 ± 0** | 29 ± 2 | 0.056 | 0.075 | 0 |
+| C1 (previous working) | 9.81 ± 1.44 | 10.22 ± 1.85 | 0.256 | 1.33 ± 0 | 29 ± 2 | 0.056 | 0.075 | 0 |
+| C2 (W at `q` 0.030) | 7.75 ± 0.87 | 8.58 ± 0.64 | 0.250 | 0.67 ± 0 | 29 ± 2 | 0.112 | 0.145 | 0 |
+| C3a (Lizard median share) | **6.72 ± 0.70** | 8.92 ± 0.77 | **0.228** | 1.33 ± 0 | **56 ± 7** | **0.191** | 0.075 | 0 |
+| C3b (C3a at `q` 0.030) | 7.78 ± 1.05 | 8.64 ± 0.86 | 0.228 | 1.33 ± 0 | 57 ± 7 | 0.391 | 0.146 | 0 |
+| C5 (run-17 coral, structural control) | 6.84 ± 0.49 | 9.22 ± 0.55 | **0.363** | 0.60 ± 0.15 | 28 ± 3 | **0.047** | **0.037** | **4 of 5** |
+
+Observed trough bound: 0.054. Per-reef replicate statistics (peak years, heights, prominence, period, trough) are in `candidates_replicates.csv`.
+
+**Findings.**
+1. **Seeds.** Seed variation in loss v2 is 0.5–1.4 (sd). W, C3a and C5 are not distinguishable on loss (6.72–6.84). Peak timing is robust: first-peak years vary by ≤ 1 year, and W's first-peak error is identical in all 5 seeds.
+2. **W against C1.** W is better than C1 on loss, timing and coral in 4 of 5 seeds, so it meets the preregistered replicate criterion (AGENTS gate 3). C3a (5/5) and C3b (4/5) also meet it.
+3. **The Lizard median share (C3a)**:
+   - gives Pratchett's density (56 adults/ha);
+   - gives the best coral fit (`J` 0.228);
+   - but the Lizard first peak moves to 1999 (observed 1997/98);
+   - and Lizard's inter-wave trough is 3.5× the observed bound (0.191 against 0.054).
+
+   A larger Lizard outbreak leaves too many COTS between waves.
+4. **Pratchett's `q` (C2, C3b)** doubles troughs and raises loss in every seed. It does not help.
+5. **The old coral (C5)** is the only configuration that keeps the troughs within the observed bound (4 of 5 seeds pass G2′). Its coral fit is much worse (`J` 0.363 against 0.250).
+   - The cv2 coral changes (more chronic background mortality, less low-DHW bleaching) leave more food after the first wave, and so more COTS between waves.
+   - This trade-off between coral fit and COTS troughs is the main unresolved tension.
+
+**Decision.** Nothing is promoted. The candidate set for the lead to choose from is W, C3a and C5. C1, C2 and C3b are dominated.
+
+
+## Observed-culling screen results (2026-10-14), close-out C2
+
+**Implementation.**
+- **COTSMod:** `apply_removals!` (opt-in, capped, scales adult age classes and large adults). The COTSMod test suite passes: 380/380, including the new removal tests.
+- **ADRIA:** `load_cots_cull_removals` and `apply_cots_cull!` in `ecosystem/cots.jl`; hooks in `scenario.jl` (pre-spawning before the COTS step, post-spawning after it); output `cots_culled_log`. Adapter test `test_cull_removals.jl`: 16/16.
+- **Derived tables:** `build_cull_removals.py` v2 (`sandbox/data/derived/cots_cull_removals_lizard_v0_3_v2/`, git-ignored) with fuzzy matching at σ 0 / 210 / 420 m. Mass balance is preserved at every σ.
+
+**Run.**
+- Run `20261014T_42_culling_1991_v1`: the working configuration at seed pair 1 × {no cull, σ 0, 210, 420}, no failures.
+- The no-cull arm replays run 32 exactly (0.0).
+- Re-score: run 43. G2′: run 44. Audit: `culling_audit.json`.
+
+**Removals requested vs applied** (COTS counts, σ 210):
+
+| Scope | 2012–16 requested | Unmet | 2021–24 requested | Unmet |
+| --- | --- | --- | --- | --- |
+| Lizard | 631 | 4% | 573 | 51% |
+| MacGillivray | 35 | 0% | 12 | 7% |
+| North Direction | 429 | 0% | 29 | 50% |
+| Eyrie | 141 | 0% | **3,770** | **88%** |
+| Whole domain | 106,118 | **57%** | 16,714 | **70%** |
+
+**Preregistered failure criterion triggered.** More than 25% of requested removals are unmet on calibration reefs, for all σ on Eyrie and Lizard. Interpretation is therefore limited to the following facts, and the matter goes to the lead.
+1. **2012–16, on the calibration reefs:** removals are almost fully applied. The model's second-wave densities there are consistent with the culls.
+2. **2012–16, domain-wide:** 57% unmet. Heavily culled reefs outside the calibration set (Startle, Irene, Eye, U/N 14-133) had more COTS at cull sites than the model holds there.
+3. **2021–24:** most removals cannot be applied. The cull programme removed 16,700 COTS in the domain (Eyrie 3,770, about 7/ha), but the model has no outbreak in the 2020s.
+   - LTMP manta recorded little at Eyrie in these years (0.00 in 2021, 0.09 in 2024).
+   - So either a 2020s outbreak was under-detected by manta (consistent with the hyperdepletion found in the paired diver/manta data), or culling concentrates on local aggregations far denser than the reef average.
+
+**Effects where removals apply** (σ 210 against no cull):
+- North Direction's 2013 peak falls from 0.82 to 0.55/tow (observed 0.71), and its v2 loss rises from 2.02 to 2.16.
+- Internal immigration falls 2–4% on the calibration reefs over 2012–24. It is damped because external supply dominates settlement.
+- Other reefs, coral `J` and G2′ are essentially unchanged. Summed v2 goes from 6.44 to 6.57.
+
+**Decision.** Nothing is promoted. The switch works and is opt-in. Whether to include culling in the candidate simulations, and how to read the 2020s cull numbers, is for the lead.

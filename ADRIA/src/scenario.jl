@@ -1454,6 +1454,15 @@ function run_model(
     end
     cots_forced_habitable = isnothing(cots_forced_adults) ? nothing :
         Float64.(location_k(domain))
+    # Opt-in observed culling: pre-spawning removals before the COTS step, post-spawning
+    # removals after it (before dispersal). Unset = established path.
+    cots_cull_csv = get(ENV, "COTS_CULL_REMOVALS_CSV", "")
+    cots_cull = if isempty(cots_cull_csv)
+        nothing
+    else
+        cots_enabled || error("COTS_CULL_REMOVALS_CSV requires ADRIA_COTS_ENABLED=true")
+        load_cots_cull_removals(cots_cull_csv, domain.loc_ids, cots_calendar_years)
+    end
     cots_external_outbreak_production > 0.0 &&
         !any(in(cots_forcing.outbreak_years), cots_calendar_years) && error(
             "Evidence-derived outbreak supply has no calendar-year overlap; " *
@@ -1478,6 +1487,9 @@ function run_model(
     # (COTS ha^-1 yr^-1) and the juvenile maturation fraction.
     Ycots_mechanism = zeros(tf, 10, n_locs)
     Ycots_forcing_year = zeros(Int, tf)
+    # Observed cull removals actually applied (COTS ha^-1): pre juveniles, pre adults,
+    # post juveniles, post adults. Zero unless COTS_CULL_REMOVALS_CSV is set.
+    Ycots_culled = zeros(Float64, tf, 4, n_locs)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -2192,9 +2204,11 @@ function run_model(
         end
 
         # COTS predation mortality (operates on relative cover)
+        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :pre)
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
+        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post)
         if !isnothing(cots_forced_adults)
             COTSMod.forced_grazing!(C_cover_t, @view(cots_forced_adults[tstep, :]),
                 cots_prey_map; habitable_fraction=cots_forced_habitable,
@@ -2395,6 +2409,7 @@ function run_model(
         cots_hazard_log=Ycots_hazard,
         cots_mechanism_log=Ycots_mechanism,
         cots_forcing_year=Ycots_forcing_year,
-        cots_calendar_year=cots_calendar_years
+        cots_calendar_year=cots_calendar_years,
+        cots_culled_log=Ycots_culled
     )
 end

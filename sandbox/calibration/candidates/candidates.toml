@@ -1,0 +1,89 @@
+# Calibration candidates for simulation (close-out B3, 2026-10-14). NOT the ADRIA default.
+# Each entry is reproduced by the runner arm named in `arm` (run_1991_initialization_test.jl,
+# experiment `candidates`, run 20261014T_37_candidates_1991_v1); `s<k>` selects the seed pair.
+# Evidence and decisions: crash_mechanism_protocol.md ("Candidate set and replicate-seed results").
+
+[common]
+domain = "sandbox/data/Lizard_Historical_v0.3"
+years = [1991, 2024]
+cotsmod_revision = "0a45f58fa0f499b48fb2ed68c9de54a98b1dbe18"
+adria_revision = "27c105b4b53f8b96f8b84547621564f53ec88cba (plus uncommitted sandbox changes at the time of run 37)"
+cots_model = "per-capita grazing (10 m2/adult/yr), H1 starvation, H2 senescence, preferred condition, no prey switching"
+external_supply_multiplier = 5.0
+allee = "gradual exp(-(3/A)^0.5), threshold 3 adults/ha (evidence value, fixed)"
+predator_pit_Q_cots_ha_yr = 20.0
+connectivity = "owen_global_2018_2023, annual matrices sampled with COTS_CONNECTIVITY_SEED"
+initial_cots = "empirical-Bayes 1991 CPUE surface / q (linear), 6:3:1 juvenile:subadult:adult"
+eb_surface = "sandbox/calibration/runs/20261013T_15_1991_initial_surfaces_eb/surface.csv"
+eb_surface_sha256 = "349767f0396253a0c837f2e12f6437d2bc78e4e31ae85b8b38b06eefee32cdc5"
+share_levels = "sandbox/data/derived/initial_fast_share_range/share_levels.json"
+share_levels_sha256 = "7e265e05b8aff6393ea8f6925e6bafdf54c58e815895ecf8b81b18b63a6f63ef"
+other_reefs_fast_share = "q50 default (0.255)"
+seed_pairs_connectivity_adria_rng = [[20260930, 90972102], [20261101, 11101], [20261102, 22202], [20261103, 33303], [20261104, 44404]]
+scoring = "frozen score v2 (score_v2.jl) at the candidate's observation q"
+
+[coral.cv2]
+description = "CoralBlox growth untouched; Mellin background + 12%/yr chronic; cyclone kappa 5; bleaching scalar 1.5; bleaching mortality x0.25 below 4 DHW"
+ADRIA_BLEACHING_LOW_DHW_SCALE = 0.25
+ADRIA_BLEACHING_LOW_DHW_THRESHOLD = 4.0
+ADRIA_DEBUG_BLEACHING_SCALAR = 1.5
+chronic_mu = 0.12
+cyclone_kappa = 5.0
+
+[coral.run17]
+description = "CoralBlox growth untouched; Mellin background + 3%/yr chronic; cyclone kappa 5; bleaching scalar 1.5; default bleaching below 4 DHW"
+ADRIA_DEBUG_BLEACHING_SCALAR = 1.5
+chronic_mu = 0.03
+cyclone_kappa = 5.0
+
+[candidates.W]
+status = "working configuration (lead, 2026-10-14 fifth round); recommended"
+arm = "wc_b150_q20_eb_lin_obs015_s<k>_cv2_pnd"
+coral = "cv2"
+fast_share_1991 = { lizard = 0.147, macgillivray = 0.129, north_direction = 0.191 }
+observation_q = 0.015
+loss_v2_mean_sd = [6.79, 0.79]
+coral_J = 0.250
+g2prime_ahalf10_seeds_passing = 0
+limitations = "inter-wave troughs above the observed bound on Lizard/MacGillivray; North Direction first peak ~2 years late; Lizard first wave ~29 adults/ha vs Pratchett 40-55"
+
+[candidates.C3a]
+status = "candidate: Lizard at Pratchett's density"
+arm = "wc_b150_q20_eb_lin_obs015_s<k>_cv2_pndl50"
+coral = "cv2"
+fast_share_1991 = { lizard = 0.308, macgillivray = 0.129, north_direction = 0.191 }
+observation_q = 0.015
+loss_v2_mean_sd = [6.72, 0.70]
+coral_J = 0.228
+g2prime_ahalf10_seeds_passing = 0
+limitations = "Lizard inter-wave trough 3.5x the observed bound; Lizard first peak 1999 vs observed 1997/98"
+
+[candidates.C5]
+status = "structural control (run-17 coral)"
+arm = "wc_b150_q20_eb_lin_obs015_s<k>_ref"
+coral = "run17"
+fast_share_1991 = "acrpoc (observed 1993-95 Acropora + Pocilloporidae share)"
+observation_q = 0.015
+loss_v2_mean_sd = [6.84, 0.49]
+coral_J = 0.363
+g2prime_ahalf10_seeds_passing = 4
+limitations = "coral fit much worse (J 0.363); bleaching mortality below 4 DHW retained"
+
+[candidates.C1]
+status = "dominated (previous working configuration)"
+arm = "wc_b150_q20_eb_lin_obs015_s<k>_cv2_pick"
+fast_share_1991 = { lizard = 0.147, macgillivray = 0.129, north_direction = 0.307 }
+observation_q = 0.015
+loss_v2_mean_sd = [9.81, 1.44]
+
+[candidates.C2]
+status = "dominated (Pratchett q doubles troughs)"
+arm = "wc_b150_q20_eb_lin_obs030_s<k>_cv2_pnd"
+observation_q = 0.030
+loss_v2_mean_sd = [7.75, 0.87]
+
+[candidates.C3b]
+status = "dominated (Pratchett q doubles troughs)"
+arm = "wc_b150_q20_eb_lin_obs030_s<k>_cv2_pndl50"
+observation_q = 0.030
+loss_v2_mean_sd = [7.78, 1.05]

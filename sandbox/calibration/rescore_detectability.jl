@@ -12,6 +12,11 @@ Usage: julia --project=sandbox rescore_detectability.jl [--q=<q>] <output_dir> <
 
 `--q` replaces the frozen q = 0.015 (e.g. the Pratchett 2005 paired fits, 2026-10-14); the
 exact-replay check of the A_half = 0 control then does not apply and is recorded as such.
+
+Every row also carries frozen score v2 (score_v2.jl, protocol 2026-10-14): `loss_v2` (Eyrie's
+unobservable first wave dropped from the peak count; other reefs identical to `loss`) and
+`score_v2_primary` (the row is the v2 treatment for its reef: raw for North Direction,
+smoothed_3y otherwise). Summed v2 loss = sum of `loss_v2` over primary rows.
 """
 
 using Pkg
@@ -21,6 +26,7 @@ Pkg.activate(joinpath(ROOT, "sandbox"))
 using CSV, DataFrames, Dates, TOML
 include(joinpath(@__DIR__, "cots_cycle_metrics.jl"))
 include(joinpath(@__DIR__, "calibration_run.jl"))
+include(joinpath(@__DIR__, "score_v2.jl"))
 
 const Q_FROZEN = 0.015
 const Q = let flag = filter(a -> startswith(a, "--q="), ARGS)
@@ -47,7 +53,8 @@ function main(args)
     scores = DataFrame(run=String[], treatment=String[], reef_name=String[],
         observation_treatment=String[], a_half=Float64[],
         loss=Float64[], stored_frozen_loss=Float64[], sim_peak_years=String[],
-        sim_peak_heights_cpue=String[], matched_peaks=Int[], obs_peak_years=String[])
+        sim_peak_heights_cpue=String[], matched_peaks=Int[], obs_peak_years=String[],
+        peak_count_penalty=Float64[], loss_v2=Float64[], score_v2_primary=Bool[])
     series = DataFrame(run=String[], treatment=String[], reef_name=String[], a_half=Float64[],
         year=Int[], adults_ha=Float64[], detected_cpue=Float64[])
     inputs = Dict{String,String}()
@@ -85,7 +92,10 @@ function main(args)
                 peaks = detect_cots_peaks(years[window], (sim .* scale)[window]; smooth_window_years=3)
                 push!(scores, (basename(run_dir), arm, reef, treatment, a_half, score.total_loss, only(frozen),
                     join(score.sim_peak_years, ';'), join(round.([p.value for p in peaks]; digits=5), ';'),
-                    score.n_matched_peaks, join(score.obs_peak_years, ';')))
+                    score.n_matched_peaks, join(score.obs_peak_years, ';'), score.peak_count_penalty,
+                    score_v2_loss(reef, score.total_loss, score.peak_count_penalty,
+                        score.sim_peak_years, score.obs_peak_years),
+                    score_v2_primary(reef, treatment)))
                 treatment == "raw" || continue
                 for (year, adult, value) in zip(years, adults, sim .* scale)
                     push!(series, (basename(run_dir), arm, reef, a_half, year, adult, value))
@@ -102,6 +112,7 @@ function main(args)
     metadata = Dict(
         "status" => "observation_sensitivity_not_promoted",
         "observation_model" => "CPUE = q * A * A / (A + A_half); A_half = 0 is the frozen linear model",
+        "score_v2" => "loss_v2 / score_v2_primary columns (crash_mechanism_protocol.md, frozen score v2, 2026-10-14)",
         "q_cots_tow_per_adult_ha" => Q, "a_half_adults_ha" => collect(A_HALF),
         "control_max_abs_loss_delta" => Q == Q_FROZEN ? replay : "not applicable (q override $(Q))",
         "runs_and_arms" => collect(args[2:end]),
@@ -111,6 +122,7 @@ function main(args)
         "inputs" => merge(inputs, Dict(
             "observations" => file_sha256(OBS),
             "score_definition" => file_sha256(joinpath(@__DIR__, "cots_cycle_metrics.jl")),
+            "score_v2_definition" => file_sha256(joinpath(@__DIR__, "score_v2.jl")),
             "script" => file_sha256(@__FILE__))),
         "outputs" => Dict(name => file_sha256(joinpath(out, name)) for name in
             ("detectability_scores.csv", "detectability_series.csv")),

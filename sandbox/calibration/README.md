@@ -2583,3 +2583,56 @@ $env:OWEN_INITIAL_SHARE_PICKS = 'Lizard Island Reef=min;MacGillivray Reef=q50;No
 julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_initial_share.py <run_dir> <gate_dir>
 ```
+
+### Frozen score v2 and the timing factorial (2026-10-14, close-out A1–B2)
+
+- **Score v2** (`score_v2.jl`, tested by `test_score_v2.jl`). North Direction is scored against the raw series. Eyrie's unobservable first wave is dropped from its peak count. v1 is unchanged and reported alongside.
+- **Timing factorial.** North Direction's 1991 fast share at its minimum (`pnd`) fixes most of the late, high first wave: loss v2 falls from 8.30 to 6.44.
+
+Reproduce:
+
+```powershell
+julia --project=sandbox sandbox/calibration/test_score_v2.jl
+cd sandbox/calibration
+julia --project=.. rescore_detectability.jl runs/<out> runs/20261014T_25_initial_share_1991_v2:<arms>
+$env:OWEN_1991_EXPERIMENT = 'timing'
+julia --project=.. run_1991_initialization_test.jl
+julia --project=.. rescore_detectability.jl runs/<rescore_q015> runs/<timing_run>:<obs015 arms>
+julia --project=.. rescore_detectability.jl --q=0.030 runs/<rescore_q030> runs/<timing_run>:<obs030 arms>
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe evaluate_gate_g2prime.py runs/<gate_q015> runs/<rescore_q015> --trough-reefs "Lizard Island Reef" "MacGillivray Reef"
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe evaluate_gate_g2prime.py runs/<gate_q030> runs/<rescore_q030> --trough-reefs "Lizard Island Reef" "MacGillivray Reef"
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe audit_1991_timing.py runs/<timing_run> runs/<rescore_q015> runs/<rescore_q030> runs/<gate_q015> runs/<gate_q030>
+```
+
+### Observed cull removals (2026-10-14, close-out C1)
+
+`build_cull_removals.py` reads the CSIRO workbook's `Cull` sheet (data licence: outputs stay in the git-ignored `sandbox/data/derived/cots_cull_removals_lizard_v0_3/`). It writes:
+- **removals** per model site × year, in COTS per ha by size cohort, under both the calendar and the LTMP reporting year;
+- **reef × year totals**, with dive effort;
+- **the cull-site → model-site map.**
+
+Mass balance is checked. In the domain: 171,948 COTS from 3,849 dives on 72 reefs, about 106,000 of them in 2012–15 and about 65,000 in 2018–26.
+
+```powershell
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_cull_removals.py
+```
+
+### Candidate set, replicate seeds and observed culling (2026-10-14, close-out B3, B4 replicates, C2)
+
+- **Candidate definitions:** `candidates/candidates.toml`. The working configuration, Lizard at its median share, and the run-17 coral structural control are not distinguishable on loss across 5 seed pairs.
+- **Culling** is an opt-in switch.
+  - COTSMod: `apply_removals!`. ADRIA: the `COTS_CULL_REMOVALS_CSV` env, with `load_cots_cull_removals` and `apply_cots_cull!`.
+  - Removals are fully applied on the calibration reefs in 2012–16. In 2021–24 the model has no outbreak to cull.
+
+Reproduce:
+
+```powershell
+cd ..\COTSMod.jl; julia --project=. -e 'using Pkg; Pkg.test()'; cd ..\ADRIA.jl
+julia --project=sandbox sandbox/calibration/test_cull_removals.jl
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_cull_removals.py
+$env:OWEN_1991_EXPERIMENT = 'candidates'   # then 'culling'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+# re-score each run at q 0.015 (and --q=0.030 for obs030 arms), evaluate G2', then:
+python sandbox/calibration/audit_1991_candidates.py <run> <rescore_q015> <rescore_q030> <gate_q015> <gate_q030>
+python sandbox/calibration/audit_1991_culling.py <run> <rescore_q015> <gate_q015>
+```

@@ -8,7 +8,7 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here:** the section **"Close-out plan (2026-10-14)"** below, starting at step A1.
+**Resume here:** the section **"Close-out plan (2026-10-14)"** below. Done: A1, A2, B1, B2, B3 (`candidates/candidates.toml`), B4 replicates, C1 and C2 (switch plus screen). Next: the lead's decisions, listed under "Open for the lead" in Progress.
 
 **Read in this order:**
 1. this page;
@@ -270,6 +270,38 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 
 **Method rules still apply.** Every step: preregister → opt-in switch with a default replay → exact-replay reference arm → audit → log. Never overwrite runs. The lead commits.
 
+**Progress (2026-10-14).**
+- **A1 done.** Score v2 is implemented (`score_v2.jl`, `test_score_v2.jl` 18/18; `loss_v2` and `score_v2_primary` columns in `rescore_detectability.jl`; `summed_loss_v2` in the evaluator).
+  - Run 28 re-scores run 25 under v2: cv2 min 6.45, `ref` 6.85, `acrpoc` 7.33, working configuration 8.30.
+  - Run 29 is G2′.
+- **A2 done.** Score-only `q` 0.030 (runs 30–31), and consistent `q` 0.030 arms in the timing run. `q` 0.030 is worse under v2 and doubles troughs.
+- **B1 done.** The rise is about a year late everywhere (external settlement plus maturation). The peak year is set by fast-coral exhaustion, so North Direction's q25 share delays and inflates its wave.
+- **B2 done** (run 32; re-scores 33–34; G2′ 35–36; `timing_audit.json`).
+  - **C4 = `wc_b150_q20_eb_lin_obs015_cv2_pnd`** (C1 with North Direction share at min, 0.191): v2 **6.44**, coral `J` 0.251, North Direction first peak 1997 at 0.93/tow.
+  - **C2 = the same at `q` 0.030** (v2 8.57).
+  - Lower `Q` is not selected. No arm passes the G2′ troughs (0.056 / 0.070 against 0.054).
+- **C1 done.** `build_cull_removals.py` produces `sandbox/data/derived/cots_cull_removals_lizard_v0_3/` (git-ignored). 171,948 COTS culled on 72 domain reefs.
+  - Calibration reefs: North Direction 2013 had 417 culled (about 20/ha, at its observed second peak); Eyrie 2021–24 had 1–3/ha a year; Lizard and MacGillivray had little.
+  - The heaviest culling was on other reefs (Startle, Irene, Eye, U/N 14-133), mostly 2012–15.
+- **Fifth-round decisions (lead):**
+  - the working configuration is now **W** = North Direction share at min (run 32 `obs015_cv2_pnd`);
+  - Lizard median share tested with both detectabilities;
+  - cull design fixed (protocol);
+  - replicates vary both seeds.
+- **B3 / B4 replicates done** (run 37; re-scores 38–39; G2′ 40–41; `candidates_audit.json`).
+  - Loss v2 over 5 seeds: W 6.79 ± 0.79, C3a (Lizard median) 6.72 ± 0.70, C5 (run-17 coral) 6.84 ± 0.49. They are indistinguishable.
+  - C3a matches Pratchett's density but triples the Lizard trough.
+  - C5 alone passes the troughs, but its coral fit is much worse.
+  - Pratchett `q` is dominated.
+- **C2 done** (COTSMod `apply_removals!`; ADRIA `COTS_CULL_REMOVALS_CSV`; run 42; re-score 43; G2′ 44; `culling_audit.json`).
+  - The failure flag fired: in 2021–24 the model has no outbreak to cull (Eyrie 88% of culls unmet).
+  - Where culls apply, the effects are small (North Direction 2013 peak 0.82 → 0.55).
+- **Open for the lead** (see the latest protocol entries):
+  - which candidates go forward;
+  - how to treat the coral-fit vs trough trade-off;
+  - whether culling goes into the simulations, and how to read the 2020s cull numbers (a missed 2020s outbreak?).
+- **Remaining AGENTS gates:** held-out years and leave-one-reef-out (gate 4), ±25% sensitivity (gate 5).
+
 **Phase A: lock the scoring (before any more model changes).**
 - **A1. Frozen score v2.** Preregister and implement score v2 as a wrapper; `cots_cycle_metrics.jl` stays unchanged.
   - **North Direction:** use the raw observed series for peaks and loss (1995 and 2013 peaks).
@@ -391,6 +423,14 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 23–24 | re-score and G2′ of run 22 |
 | 25 | starting fast-share confirmation with per-reef picks (stage 2b; loss 7.97) |
 | 26–27 | re-score and G2′ of run 25 |
+| 28–29 | score v2 re-score and G2′ of run 25 |
+| 30–31 | score-only `q` 0.030 re-score and G2′ of run 25 |
+| 32 | timing factorial (`Q` × North Direction share × consistent `q`) |
+| 33–36 | re-scores (`q` 0.015 / 0.030) and G2′ of run 32 |
+| 37 | candidate set × 5 seed pairs |
+| 38–41 | re-scores and G2′ of run 37 |
+| 42 | observed-culling screen |
+| 43–44 | re-score and G2′ of run 42 |
 
 ## Known issues
 

@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -101,7 +101,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -247,12 +247,42 @@ const LIZCORAL_SCALES = (1.0, 1.5, 2.0)
 # q75, max} of each reef's healthy-year photo-transect range (build_initial_share_range.py);
 # arms wc_b150_q20_eb_lin_ref (old coral, replays run 17), ..._cv2_acrpoc, ..._cv2_<level>,
 # and ..._cv2_pick when OWEN_INITIAL_SHARE_PICKS="Lizard Island Reef=q75;..." is set.
-const REBASE_SHARE = EXPERIMENT == "initial_share"
+# Timing factorial (2026-10-14, close-out B2): cv2 x predator-pit Q {10, 15, 20} x share set
+# {pick: Lizard min, MacGillivray q50, North Direction q25; pnd: North Direction min} x observation
+# q {0.015, 0.030} (eb seeds inverted with the arm's q); arms wc_b150_q<Q>_eb_lin_obs<q>_cv2_<set>.
+# Reuses the initial_share paths; wc_b150_q20_eb_lin_obs015_cv2_pick replays run 25's cv2_pick.
+const TIMING = EXPERIMENT == "timing"
+const TIMING_Q = (10, 15, 20)
+const TIMING_OBS_Q = (0.015, 0.030)
+const TIMING_SHARE_SETS = Dict(
+    "pick" => Dict("Lizard Island Reef" => "min", "MacGillivray Reef" => "q50", "North Direction Reef" => "q25"),
+    "pnd" => Dict("Lizard Island Reef" => "min", "MacGillivray Reef" => "q50", "North Direction Reef" => "min"),
+    "pndl50" => Dict("Lizard Island Reef" => "q50", "MacGillivray Reef" => "q50", "North Direction Reef" => "min"))
+timing_obs_q(name) = parse(Int, match(r"_obs(\d+)_", name).captures[1]) / 1000
+# Candidate set x replicate seeds (2026-10-14, close-out B3/B4): candidates (suffix, observation q)
+# x five (COTS_CONNECTIVITY_SEED, ADRIA_RNG_SEED) pairs; pair 1 is the archived pair, so s1 arms
+# replay runs 25 / 32. Arms wc_b150_q20_eb_lin_obs<q>_s<k>_<suffix>.
+const CANDIDATES = EXPERIMENT == "candidates"
+const CANDIDATE_ARMS = (("cv2_pnd", 0.015), ("cv2_pick", 0.015), ("cv2_pnd", 0.030),
+    ("cv2_pndl50", 0.015), ("cv2_pndl50", 0.030), ("ref", 0.015))
+const CANDIDATE_SEEDS = ((20260930, 90972102), (20261101, 11101), (20261102, 22202),
+    (20261103, 33303), (20261104, 44404))
+candidate_seed_pair(name) = CANDIDATE_SEEDS[parse(Int, match(r"_s(\d+)_", name).captures[1])]
+# Observed culling (2026-10-14, close-out C2): working configuration (cv2_pnd, q 0.015, seed
+# pair 1) x {no cull, observed cull with fuzzy site matching sigma 0 / 210 / 420 m}; arms
+# wc_b150_q20_eb_lin_obs015_s1_<cull>_cv2_pnd. The nocull arm replays the candidate W arm.
+const CULLING = EXPERIMENT == "culling"
+const CULL_DIR = joinpath(ROOT, "sandbox", "data", "derived", "cots_cull_removals_lizard_v0_3_v2")
+const CULL_ARMS = ("nocull", "cull000", "cull210", "cull420")
+cull_table(name) = (m = match(r"_cull(\d{3})_", name); isnothing(m) ? nothing :
+    joinpath(CULL_DIR, "removals_sigma$(m.captures[1]).csv"))
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
 const CV2_LOW_DHW_SCALE = 0.25
 const SHARE_PICKS = get(ENV, "OWEN_INITIAL_SHARE_PICKS", "")
+TIMING && !isempty(SHARE_PICKS) && error("OWEN_INITIAL_SHARE_PICKS is not used by the timing experiment")
 const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL || REBASE_RETENTION ||
     REBASE_FLOOR || REBASE_LIZCORAL || REBASE_SHARE
 lizcoral_parts(name) = (q=parse(Int, split(name, "_")[6][4:end]) / 1000,
@@ -678,6 +708,12 @@ share_levels = REBASE_SHARE ? let raw = parse_share_levels(SHARE_LEVELS_JSON)
     covers = Dict{String,Matrix{Float64}}(level => observed_composition_cover(level_share(uniform(level)))[1]
         for level in SHARE_LEVEL_NAMES)
     isempty(picks) || (covers["pick"] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), picks)))[1])
+    if TIMING || CANDIDATES || CULLING
+        for (set, set_picks) in TIMING_SHARE_SETS
+            covers[set] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), set_picks)))[1]
+        end
+        picks = TIMING_SHARE_SETS["pick"]
+    end
     (raw=raw, covers=covers, picks=picks)
 end : nothing
 share_scaled = REBASE_FLOOR ? Dict(m => observed_composition_cover(
@@ -744,6 +780,18 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : CULLING ? [
+    (name="wc_b150_q20_eb_lin_obs015_s1_$(cull)_cv2_pnd", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for cull in CULL_ARMS
+] : CANDIDATES ? [
+    (name="wc_b150_q20_eb_lin_obs$(lpad(round(Int, 1000 * q), 3, '0'))_s$(k)_$(suffix)", alpha=q,
+        coral="observed_composition", initial="cohort_full")
+    for (suffix, q) in CANDIDATE_ARMS for k in eachindex(CANDIDATE_SEEDS)
+] : TIMING ? [
+    (name="wc_b150_q$(Q)_eb_lin_obs$(lpad(round(Int, 1000 * q), 3, '0'))_cv2_$(set)", alpha=q,
+        coral="observed_composition", initial="cohort_full")
+    for q in TIMING_OBS_Q for Q in TIMING_Q for set in ("pick", "pnd")
 ] : REBASE_SHARE ? [
     (name="wc_b150_q20_eb_lin_ref", alpha=0.015, coral="observed_composition", initial="cohort_full");
     (name="wc_b150_q20_eb_lin_cv2_acrpoc", alpha=0.015, coral="observed_composition", initial="cohort_full");
@@ -880,7 +928,11 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : REBASE_SHARE ? let
+) : TIMING || CANDIDATES || CULLING ? let
+    states = Dict(q => make_initial_state(q, "alpha$(lpad(round(Int, 1000 * q), 3, '0'))_cohort_full_eb_lin";
+            cohort_multiplier=1.0, cpue=eb_surface) for q in TIMING_OBS_Q)
+    Dict(t.name => states[timing_obs_q(t.name)] for t in treatments)
+end : REBASE_SHARE ? let
     state = make_initial_state(0.015, "alpha015_cohort_full_eb_lin"; cohort_multiplier=1.0, cpue=eb_surface)
     Dict(t.name => state for t in treatments)
 end : REBASE_LIZCORAL ? let
@@ -923,6 +975,8 @@ archived_density_params = Dict(name => Float64(scenario[1, name])
 # random stream. Migration screens pin the archived control's derived seed.
 archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
     for name in names(scenario) if name != "RCP"))
+(CANDIDATES || CULLING) && CANDIDATE_SEEDS[1] != (SEED, archived_rng_seed) &&
+    error("Candidate seed pair 1 must be the archived pair ($(SEED), $(archived_rng_seed))")
 # Coral calibration groups. The Lizard loader assigns group 1 to every site; the
 # GBR-wide RME layer assigns each reef a group. ADRIA keeps only the CB-group
 # factors present in the domain and indexes them by group number, so RME groups
@@ -993,6 +1047,20 @@ scores = DataFrame(treatment=String[], reef_name=String[], observation_treatment
 trajectories = DataFrame(treatment=String[], reef_name=String[], year=Int[],
     forcing_year=Int[], adults_ha=Float64[], simulated_cpue=Float64[], coral_cover=Float64[])
 flows = DataFrame(treatment=String[], reef_name=String[], year=Int[])
+# Observed culling: requested and applied removals (COTS counts = density x site area) per
+# calibration reef and for the whole domain, by phase and stage.
+culls = DataFrame(treatment=String[], scope=String[], year=Int[],
+    requested_pre_juveniles=Float64[], requested_pre_adults=Float64[],
+    requested_post_juveniles=Float64[], requested_post_adults=Float64[],
+    removed_pre_juveniles=Float64[], removed_pre_adults=Float64[],
+    removed_post_juveniles=Float64[], removed_post_adults=Float64[])
+cull_site_area_ha = if CULLING
+    site_table = CSV.read(joinpath(V3, "site_to_reef.csv"), DataFrame; types=Dict(:site_id => String))
+    area = Dict(r.site_id => r.area_m2 / 1e4 for r in eachrow(site_table))
+    Float64[area[String(id)] for id in domain.loc_ids]
+else
+    Float64[]
+end
 for name in FLOW_NAMES
     flows[!, name] = Float64[]
 end
@@ -1186,6 +1254,16 @@ for t in run_treatments
     else
         delete!(ENV, "ADRIA_RNG_SEED")
     end
+    if CANDIDATES || CULLING
+        connectivity_seed, rng_seed = candidate_seed_pair(t.name)
+        ENV["COTS_CONNECTIVITY_SEED"] = string(connectivity_seed)
+        ENV["ADRIA_RNG_SEED"] = string(rng_seed)
+    end
+    if CULLING && !isnothing(cull_table(t.name))
+        ENV["COTS_CULL_REMOVALS_CSV"] = cull_table(t.name)
+    else
+        delete!(ENV, "COTS_CULL_REMOVALS_CSV")
+    end
     scenario[!, :m3] .= EXPERIMENT == "crash_factorial" &&
         occursin("mortality030", t.name) ? 0.30 : archived_m3
     push!(setup_marks, ("env_scenario_cols", time()))
@@ -1272,6 +1350,21 @@ for t in run_treatments
                         result.cots_flow_log[idx, 1, site],
                         result.cots_flow_log[idx, 10, site]))
                 end
+            end
+        end
+        if CULLING
+            removed = Array(result.cots_culled_log)
+            requested = isnothing(cull_table(t.name)) ? zeros(size(removed)) :
+                ADRIA.load_cots_cull_removals(cull_table(t.name), domain.loc_ids, years)
+            size(requested) == size(removed) || error("Cull request and log dimensions differ")
+            all(removed .<= requested .+ 1e-9) || error("Applied removals exceed requests")
+            scopes = [("domain", collect(eachindex(domain.loc_ids)));
+                      [(target.model, mapping[target.model].indices) for target in TARGETS]]
+            for (scope, sites) in scopes, (idx, year) in enumerate(years)
+                a = cull_site_area_ha[sites]
+                push!(culls, (t.name, scope, year,
+                    (sum(requested[idx, k, sites] .* a) for k in 1:4)...,
+                    (sum(removed[idx, k, sites] .* a) for k in 1:4)...))
             end
         end
         fast_coral = dropdims(sum(Array(result.raw)[:, 1:3, :, :]; dims=(2, 3)); dims=(2, 3))
@@ -1411,7 +1504,9 @@ for t in run_treatments
     (EXPERIMENT == "structural_crash" || MIGRATION) &&
         CSV.write(joinpath(OUT, "mechanisms.csv"), mechanisms)
     SECOND_WAVE_AUDIT && CSV.write(joinpath(OUT, "site_audit.csv"), site_audit)
+    CULLING && CSV.write(joinpath(OUT, "culls.csv"), culls)
 end
+delete!(ENV, "COTS_CULL_REMOVALS_CSV")
 delete!(ENV, "COTS_INITIAL_STATE_CSV")
 delete!(ENV, "ADRIA_COTS_ENABLED")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR")
@@ -1487,6 +1582,29 @@ metadata = Dict(
             "coral_v2" => "ADRIA_BLEACHING_LOW_DHW_SCALE $(CV2_LOW_DHW_SCALE) below 4 DHW; Mellin + $(CV2_MU)/yr; kappa 5; beta 1.5 (re-fit v2 selection)",
             "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
         ) : "not tested",
+        "culling" => CULLING ? Dict(
+            "switch" => "COTS_CULL_REMOVALS_CSV (unset = established path)",
+            "tables" => Dict(c => Dict("path" => cull_table("_$(c)_"), "sha256" => file_sha256(cull_table("_$(c)_")))
+                for c in CULL_ARMS if c != "nocull"),
+            "builder_metadata_sha256" => file_sha256(joinpath(CULL_DIR, "metadata.json")),
+            "timing" => "pre (Sep-Dec dives) before the COTS step; post (Jan-Aug dives) after it, before dispersal",
+            "stages" => "juveniles = cohort 1 (<15 cm) from N[2]; adults = cohorts 2-4 from N[3]; capped at present",
+            "cots_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
+            "scenario_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),
+        ) : "not tested",
+        "candidates" => CANDIDATES ? Dict(
+            "arms" => [Dict("suffix" => s, "observation_q" => q) for (s, q) in CANDIDATE_ARMS],
+            "seed_pairs_connectivity_adria_rng" => [collect(s) for s in CANDIDATE_SEEDS],
+            "archived_pair" => [SEED, archived_rng_seed], "julia_random_seed" => SEED,
+            "share_sets" => TIMING_SHARE_SETS, "other_reefs" => "q50",
+            "scoring" => "runner scores at q = 0.015; obs030 arms are read via rescore_detectability.jl --q=0.030; primary score v2",
+        ) : "not tested",
+        "timing" => TIMING ? Dict(
+            "predation_capacity_q_cots_ha_yr" => collect(TIMING_Q), "observation_q" => collect(TIMING_OBS_Q),
+            "share_sets" => TIMING_SHARE_SETS, "other_reefs" => "q50",
+            "seeds" => "eb surface CPUE / q (linear, arm's q), 6:3:1 preload",
+            "scoring" => "runner scores at q = 0.015; obs030 arms are read via rescore_detectability.jl --q=0.030; primary score v2 (score_v2.jl)",
+        ) : "not tested",
         "lizard_coral" => REBASE_LIZCORAL ? Dict(
             "lizard_scale" => collect(LIZCORAL_SCALES), "observation_q" => collect(LIZCORAL_Q), "chronic_mu" => collect(LIZCORAL_MU),
             "lizard_sites" => length(mapping["Lizard Island Reef"].indices),
@@ -1519,7 +1637,10 @@ metadata = Dict(
             "inversion" => "lin: A = C / q; h10: A = (C/q + sqrt((C/q)^2 + 4 A_half C/q)) / 2, inverse of C = q A^2 / (A + A_half), A_half = $(INITIAL_A_HALF)",
             "preload" => "6:3:1 juvenile:subadult:adult on the inverted adults",
         ) : "idw surface, linear inversion",
-        "arms" => REBASE_SHARE ? "wc_b150_q20_eb_lin_{ref, cv2_acrpoc, cv2_min..cv2_max, cv2_pick}" :
+        "arms" => CULLING ? "wc_b150_q20_eb_lin_obs015_s1_{nocull,cull000,cull210,cull420}_cv2_pnd" :
+            CANDIDATES ? "wc_b150_q20_eb_lin_obs{015,030}_s{1..5}_{cv2_pnd,cv2_pick,cv2_pndl50,ref} (see candidates)" :
+            TIMING ? "wc_b150_q{10,15,20}_eb_lin_obs{015,030}_cv2_{pick,pnd}" :
+            REBASE_SHARE ? "wc_b150_q20_eb_lin_{ref, cv2_acrpoc, cv2_min..cv2_max, cv2_pick}" :
             REBASE_LIZCORAL ?
             "wc_b150_q20_eb_lin_obs{015,030}_mu{030,080}_c{100,150,200}" :
             REBASE_FLOOR ?
@@ -1534,7 +1655,7 @@ metadata = Dict(
         "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
             "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
         "bleaching_scalar" => REBASE_INITIAL || REBASE_RETENTION || REBASE_LIZCORAL ? [1.5] : collect(REBASE_BETA),
-        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
+        "predation_capacity_q_cots_ha_yr" => CANDIDATES || CULLING ? [20] : TIMING ? collect(TIMING_Q) : REBASE_COMPOSITION || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
         "selection" => REBASE_FLOOR ?
             "m: min summed loss among arms with G2' Lizard/MacGillivray trough no worse than ref and manta total RMSE <= 1.1 x ref; floor 4 by evidence if manta coral J not worse; beta by coral J" :
             REBASE_RETENTION ?
@@ -1544,7 +1665,13 @@ metadata = Dict(
             REBASE_COMPOSITION ?
             "adoption only if Lizard and MacGillivray first peaks rise, mean trough min <= 4 adults/ha, summed loss worsens <= 0.5, fast RMSE worsens <= 0.01; lead decides" :
             "Q per beta: min summed smoothed_3y loss over 4 reefs, first peak on every reef, ties to smaller Q; beta by lower frozen coral J at its selected Q",
-        "reference" => REBASE_SHARE ?
+        "reference" => CULLING ?
+            "wc_b150_q20_eb_lin_obs015_s1_nocull_cv2_pnd must replay run 32 wc_b150_q20_eb_lin_obs015_cv2_pnd" :
+            CANDIDATES ?
+            "s1 arms replay: obs015_s1_cv2_pick -> run 25 cv2_pick; obs015_s1_cv2_pnd / obs030_s1_cv2_pnd -> run 32 obs015 / obs030 cv2_pnd; obs015_s1_ref -> run 25 ref" :
+            TIMING ?
+            "wc_b150_q20_eb_lin_obs015_cv2_pick must replay wc_b150_q20_eb_lin_cv2_pick of 20261014T_25_initial_share_1991_v2" :
+            REBASE_SHARE ?
             "wc_b150_q20_eb_lin_ref must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
             REBASE_LIZCORAL ?
             "wc_b150_q20_eb_lin_obs015_mu030_c100 must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :

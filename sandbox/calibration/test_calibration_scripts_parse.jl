@@ -37,6 +37,9 @@ using Test
         "connectivity_retention.jl",
         "test_connectivity_retention.jl",
         "test_bleaching_floor.jl",
+        "score_v2.jl",
+        "test_score_v2.jl",
+        "test_cull_removals.jl",
         "score_1985_reference_on_1991_window.jl",
     ]
         source = read(joinpath(@__DIR__, filename), String)
