@@ -3465,3 +3465,139 @@ Observed trough bound: 0.054. Per-reef replicate statistics (peak years, heights
 - Other reefs, coral `J` and G2′ are essentially unchanged. Summed v2 goes from 6.44 to 6.57.
 
 **Decision.** Nothing is promoted. The switch works and is opt-in. Whether to include culling in the candidate simulations, and how to read the 2020s cull numbers, is for the lead.
+
+
+## Lead's decisions (2026-10-14, sixth round)
+
+1. **Simulations:** carry three configurations into simulation:
+   - the working configuration (W);
+   - W with Lizard at its median starting fast share (C3a);
+   - the run-17 coral structural control (C5).
+2. **Coral-fit vs between-outbreak trade-off:** run a small test of intermediate coral settings before any formal sensitivity analysis.
+3. **2020s cull numbers:** compare cull catch with manta tows at the same reefs and times.
+   - The lead regards the 2020s culls, against near-zero manta counts, as further evidence that manta tows detect COTS poorly at low densities.
+   - So more modelled COTS between outbreaks is acceptable.
+   - Between-outbreak (trough) results are therefore also reported under the stronger low-density under-detection setting (`A½ = 30`). The G2′ definition is not changed.
+4. **Culling is off** in calibration comparisons until item 3 is resolved.
+
+## Preregistered intermediate coral settings (2026-10-14)
+
+**Hypothesis.** The cv2 coral settings fit coral better than the run-17 settings, but leave more food after the first wave, and so more COTS between waves. Intermediate settings may give a better compromise.
+
+**Change.** No model change. New runner experiment `coral_mix`:
+- the working configuration (1991 shares: Lizard min, MacGillivray q50, North Direction min; Q 20; `q` 0.015; seed pair 1);
+- chronic background coral mortality μ {0.03, 0.06, 0.09, 0.12} per year, with the same expression as cv2 and run 17: `1 − (1 − m_cyclone)^5 · (1 − m_Mellin) · (1 − μ)`;
+- × bleaching mortality multiplier below 4 DHW {1, 0.5, 0.25};
+- = 12 arms, plus the run-17 coral control arm (C5);
+- arm names `wc_b150_q20_eb_lin_obs015_s1_m<μ>_l<scale>_cv2_pnd`, and `wc_b150_q20_eb_lin_obs015_s1_ref`.
+
+**Controls.**
+- (μ 0.12, ×0.25) must replay W exactly (run 37 `obs015_s1_cv2_pnd`).
+- The `ref` arm must replay C5 (run 37 `obs015_s1_ref`).
+- (μ 0.03, ×1) is the run-17 coral with W's starting shares. Its difference from C5 isolates the share effect.
+
+**Expected.** Lower μ and a larger low-DHW multiplier lower coral cover after 1998 and so lower between-wave COTS. Coral `J` worsens toward 0.36.
+
+**Read-out.** Per arm:
+- loss v2;
+- coral `J`;
+- G2′, with between-wave levels for Lizard and MacGillivray at `A½` 10 and 30;
+- first-peak timing and heights.
+
+**Selection rule.** Report the trade-off front (coral `J` against the worse of the Lizard and MacGillivray troughs at `A½ 10`). An arm is a candidate replacement for W only if:
+- coral `J` ≤ 0.30;
+- loss v2 ≤ W + 0.5;
+- and its troughs pass at `A½ 10`, or (as a weaker standard, given decision 3) at `A½ 30`.
+
+The lead decides.
+
+**Failure criteria.** A control does not replay, or an arm errors.
+
+**Rollback.** Runner-only.
+
+## Preregistered cull-catch vs manta comparison (2026-10-14)
+
+**Question.** Are cull-dive catches consistent with manta tows that strongly under-detect at low density, as hyperdepletion predicts?
+
+**Data.** CSIRO workbook, data licence, local only; only summaries go into the protocol.
+- **Pairs:** `Cull` dives (count, bottom time) and `Manta` tows (count per tow) on the same domain reef within the same voyage. LTMP manta reef-years (`reef_cots.csv`) are a secondary pairing by reporting year.
+
+**Measures.**
+- cull catch per unit effort (COTS per diver-hour);
+- manta COTS per tow;
+- the share of reef-visits with positive cull catch but zero manta COTS;
+- fits of manta CPUE against cull CPUE, linear vs hyperdepleted (`m = a · C² / (C + C½)`), compared by AIC on the visit means (Poisson likelihood on manta counts given tows).
+
+**Expectation under hyperdepletion:**
+- many reef-visits with cull catch but zero manta COTS;
+- the hyperdepleted fit preferred, with `C½` well above the low-density cull rates.
+
+**Caveats.** Cull divers target aggregations. Cull CPUE also saturates at high density (handling time), which biases toward a linear or concave shape. A hyperdepleted result is therefore conservative.
+
+**Output.** `analyse_cull_vs_manta.py` writes derived tables to the git-ignored `sandbox/data/derived/cull_vs_manta_lizard/`. Only summary statistics are recorded here.
+
+
+## Intermediate coral settings results (2026-10-14)
+
+**Runs.**
+- Run `20261014T_45_coral_mix_1991_v1`: 13 arms, no failures.
+- Re-score: run 46. G2′: run 47. Audit: `coral_mix_audit.json`.
+
+**Controls.**
+- μ 0.12 / ×0.25 replays W exactly.
+- `ref` replays C5 exactly.
+- The runner checks that the μ 0.12 and μ 0.03 mortality cubes reproduce cv2 and run 17 bit for bit.
+
+**Results** (seed pair 1; trough ratio = worse of Lizard and MacGillivray between-wave CPUE divided by the observed bound of 0.054):
+
+| μ | Bleaching multiplier below 4 DHW | Loss v2 | Coral `J` | Trough ratio at `A½ 10` | Trough ratio at `A½ 30` | G2′ at `A½ 10` | Lizard peak adults/ha |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.12 | ×0.25 (**W**) | 6.44 | 0.251 | 1.29 | 0.67 | fail (passes at `A½ 30`) | 29 |
+| 0.12 | ×1 | 5.93 | 0.238 | 1.35 | 0.72 | fail | 22 |
+| **0.09** | **×0.25** | **6.94** | **0.279** | **0.96** | 0.48 | **pass** | 30 |
+| 0.09 | ×1 | 6.32 | 0.262 | 1.11 | 0.57 | fail | 23 |
+| 0.06 | ×0.25 | 7.54 | 0.326 | 0.85 | 0.41 | pass | 31 |
+| 0.03 | ×1 | 6.51 | 0.371 | 0.74 | 0.36 | pass | 23 |
+| C5 (run-17 coral and shares) | – | 6.85 | 0.363 | 0.88 | 0.44 | pass | 29 |
+
+**Findings.**
+1. **Chronic background mortality μ is the lever for the trade-off.** Each step down from 0.12 lowers between-wave COTS by about 10–15% and worsens coral `J` by about 0.03–0.05. Peak timing is unaffected.
+2. **μ 0.09 with ×0.25 is the compromise.** It passes all G2′ criteria at `A½ 10` (Lizard 0.050, MacGillivray 0.052) with coral `J` 0.279, much better than C5's 0.363.
+   - Its loss v2 (6.939) misses the preregistered cut-off (W + 0.5 = 6.938) by 0.001, far inside the seed sd (0.79). It is therefore reported, not selected.
+   - It has not yet been replicated across seeds.
+3. **The bleaching multiplier below 4 DHW.** Full mortality (×1) gives a slightly better coral fit and loss than ×0.25 at every μ, but a smaller Lizard first wave (22–23 adults/ha).
+   - This conflicts with the lead's evidence-based decision (no bleaching mortality evidence below 4 DHW).
+   - Per AGENTS, an evidence-based setting is not changed to improve the fit. It is reported only.
+4. **Under the stronger low-density under-detection (`A½ 30`), W passes G2′.** This is relevant to the lead's sixth-round decision 3.
+
+## Cull-catch vs manta results (2026-10-14)
+
+**Run.** `analyse_cull_vs_manta.py` → `sandbox/data/derived/cull_vs_manta_lizard/` (git-ignored; licensed data). Summary statistics only:
+
+**Pairing.**
+- 1,073 cull visits are paired with 3,231 manta tows over the same cull site within ±30 days.
+- 752 visits are paired within ±14 days.
+- Domain reefs, 2013–2026.
+
+**Detection at the visit level.**
+- Of the visits whose cull caught COTS, **81–82% had zero manta COTS** over the same site.
+- By sextile of cull catch (median 0, 0.5, 1.4, 2.7, 4.5 and 9.3 COTS per diver-hour), pooled manta was 0.018, 0.060, 0.076, 0.064, 0.108 and 0.173 COTS per tow (±30 days). The share of visits with zero manta COTS was 95%, 88%, 85%, 83%, 79% and 70%.
+
+**Fit.**
+- Poisson fits of manta counts give a linear relation with a small background (`0.0146 · C + 0.035` per tow, ±30 days).
+- A power law adds nothing (`k` 1.14 at ±30 days, 0.96 at ±14 days; ΔAIC +1.8 and +2.0 against the linear-with-background fit).
+- So, relative to cull catch, manta is a weak, roughly linear signal with no extra low-density curvature.
+
+**Against LTMP manta (by reef and reporting year).**
+- Lizard's cull catch in 2024–26 was 1.6–2.3 per diver-hour (2013 outbreak year: 3.7) while LTMP manta read 0.00–0.05 (2013: 0.74).
+- Eyrie in 2024: cull 2.2 per diver-hour against manta 0.09 (2013: 10.1 against 0.85).
+- North Direction in 2024–25: cull 1.2 against manta 0.00.
+
+**Interpretation.**
+- Cull divers kept finding COTS at roughly a third to two-thirds of 2013 catch rates in the 2020s, while manta read near zero.
+- Either manta under-detects strongly at low density, or cull catch per hour stays high as density falls (divers target aggregations).
+- Both readings imply that reef populations in the 2020s and between waves are larger than manta suggests. This supports the lead's view that more modelled COTS between outbreaks is acceptable.
+- The data cannot separate the two mechanisms without an absolute density anchor (the SALAD diver surveys are the candidate anchor).
+- The model's 2020s Lizard population (about 2 adults/ha) is likely too low.
+
+**Decision.** Nothing is promoted. Culling stays off pending the lead.

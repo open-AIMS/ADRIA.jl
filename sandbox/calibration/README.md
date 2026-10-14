@@ -2636,3 +2636,16 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_candidates.py <run> <rescore_q015> <rescore_q030> <gate_q015> <gate_q030>
 python sandbox/calibration/audit_1991_culling.py <run> <rescore_q015> <gate_q015>
 ```
+
+### Intermediate coral settings and cull-catch vs manta (2026-10-14, sixth round)
+
+- **Coral.** Chronic background coral mortality μ trades coral fit against between-wave COTS. μ 0.09, with bleaching ×0.25 below 4 DHW, passes the between-wave test with coral `J` 0.279.
+- **Cull catch vs manta.** 82% of cull visits that culled COTS had zero manta COTS over the same site. In the 2020s, cull catch stays at a third to two-thirds of 2013 rates while manta reads near zero.
+
+```powershell
+$env:OWEN_1991_EXPERIMENT = 'coral_mix'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+# re-score at q 0.015, evaluate G2' (trough reefs Lizard, MacGillivray), then:
+python sandbox/calibration/audit_1991_coral_mix.py <run> <rescore> <gate>
+& C:/Users/smatthew/AppData/Local/miniconda3/python.exe sandbox/calibration/analyse_cull_vs_manta.py
+```

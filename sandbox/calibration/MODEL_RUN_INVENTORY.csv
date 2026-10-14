@@ -149,6 +149,9 @@ run_id,decision_log_linked,metadata_file,metadata_sha256,metadata_status,metadat
 20261014T_42_culling_1991_v1,true,metadata.toml,5fdb8874a8c9fce7e23219360bc79a27bc7cbab48bf3101e7ef29fa24375b05d,bounded_1991_culling_screen_not_promoted,,true,true,0,14
 20261014T_43_rescore_culling,false,metadata.toml,680120be07f0cd3945ea8585f3982697daed8558e71a3f0a12343908fc529762,observation_sensitivity_not_promoted,,false,false,,3
 20261014T_44_gate_culling,false,,,missing_metadata,,false,false,,2
+20261014T_45_coral_mix_1991_v1,true,metadata.toml,852db756eac4b628df77099bfdad3492aad8b3c52c0bfcd4070799c2008e7ca5,bounded_1991_coral_mix_screen_not_promoted,,true,true,0,12
+20261014T_46_rescore_coral_mix,false,metadata.toml,b6e12395e0d5a3f59db207287c3603dc3b874d77fcd9261d24b89f1872d005e3,observation_sensitivity_not_promoted,,false,false,,3
+20261014T_47_gate_coral_mix,false,,,missing_metadata,,false,false,,2
 expanded_cotsconn_pilot_seed20260930,false,,,missing_metadata,,false,false,,13
 expanded_peak_pilot_seed20260930,false,,,missing_metadata,,false,false,,4
 expanded_pulse_peak_pilot_seed20261001,false,,,missing_metadata,,false,false,,4

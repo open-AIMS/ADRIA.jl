@@ -301,6 +301,18 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
   - how to treat the coral-fit vs trough trade-off;
   - whether culling goes into the simulations, and how to read the 2020s cull numbers (a missed 2020s outbreak?).
 - **Remaining AGENTS gates:** held-out years and leave-one-reef-out (gate 4), ±25% sensitivity (gate 5).
+- **Sixth-round decisions (lead):**
+  - simulate W, C3a and C5;
+  - test intermediate coral first;
+  - compare cull catch with manta (taken as more evidence of low-density under-detection, so more modelled COTS between outbreaks is acceptable);
+  - culling off for now.
+- **Done:**
+  - **Intermediate coral** (run 45; re-score 46; G2′ 47): μ 0.09 with ×0.25 passes G2′ at `A½ 10` with coral `J` 0.279. W passes at `A½ 30`. Full low-DHW bleaching fits slightly better, but is against the evidence decision.
+  - **Cull vs manta** (`analyse_cull_vs_manta.py`): 82% of culling visits saw zero manta COTS. 2020s cull catch is a third to two-thirds of 2013 rates while manta is near zero.
+- **Next (lead to decide):**
+  - whether μ 0.09 replaces C5 as the trough-respecting member (replicate across seeds first);
+  - whether the trough test formally moves to the stronger under-detection setting;
+  - then held-out and sensitivity gates on the final set.
 
 **Phase A: lock the scoring (before any more model changes).**
 - **A1. Frozen score v2.** Preregister and implement score v2 as a wrapper; `cots_cycle_metrics.jl` stays unchanged.
@@ -431,6 +443,8 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 38–41 | re-scores and G2′ of run 37 |
 | 42 | observed-culling screen |
 | 43–44 | re-score and G2′ of run 42 |
+| 45 | intermediate coral settings (μ × low-DHW bleaching) |
+| 46–47 | re-score and G2′ of run 45 |
 
 ## Known issues
 

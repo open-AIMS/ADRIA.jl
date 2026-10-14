@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -101,7 +101,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -276,7 +276,16 @@ const CULL_DIR = joinpath(ROOT, "sandbox", "data", "derived", "cots_cull_removal
 const CULL_ARMS = ("nocull", "cull000", "cull210", "cull420")
 cull_table(name) = (m = match(r"_cull(\d{3})_", name); isnothing(m) ? nothing :
     joinpath(CULL_DIR, "removals_sigma$(m.captures[1]).csv"))
-const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling")
+# Intermediate coral settings (2026-10-14, sixth round): working configuration (cv2_pnd, q 0.015,
+# seed pair 1) x chronic mu {0.03, 0.06, 0.09, 0.12} x bleaching multiplier below 4 DHW
+# {1, 0.5, 0.25}, plus the run-17 coral control; arms wc_b150_q20_eb_lin_obs015_s1_m<mu>_l<scale>_cv2_pnd
+# and wc_b150_q20_eb_lin_obs015_s1_ref. (0.12, 0.25) replays W; ref replays C5.
+const CORALMIX = EXPERIMENT == "coral_mix"
+const CORALMIX_MU = (0.03, 0.06, 0.09, 0.12)
+const CORALMIX_LOW = (1.0, 0.5, 0.25)
+coralmix_parts(name) = (m = match(r"_m(\d{3})_l(\d{3})_", name);
+    (mu=parse(Int, m.captures[1]) / 1000, low=parse(Int, m.captures[2]) / 100))
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
@@ -578,6 +587,12 @@ REBASE_LIZCORAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(lizcora
 cv2_cyclones = REBASE_SHARE ? ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - CV2_MU);
     timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1]) : nothing
 REBASE_SHARE && !all(0.0 .<= Array(cv2_cyclones) .<= 1.0) && error("cv2 mortality outside [0, 1]")
+# Same expression as cv2 / run 17 ("wc"), with mu varied.
+coralmix_cyclones = CORALMIX ? Dict(mu => ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - mu);
+    timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
+    for mu in CORALMIX_MU) : nothing
+CORALMIX && Array(coralmix_cyclones[CV2_MU]) != Array(cv2_cyclones) && error("mu 0.12 does not reproduce cv2")
+CORALMIX && Array(coralmix_cyclones[REBASE_CHRONIC]) != Array(rebase_cyclones["wc"]) && error("mu 0.03 does not reproduce run 17")
 MELLIN && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(mellin_cyclones)) &&
     error("Mellin combined mortality outside [0, 1]")
 JOINT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(joint_cyclones)) &&
@@ -708,7 +723,7 @@ share_levels = REBASE_SHARE ? let raw = parse_share_levels(SHARE_LEVELS_JSON)
     covers = Dict{String,Matrix{Float64}}(level => observed_composition_cover(level_share(uniform(level)))[1]
         for level in SHARE_LEVEL_NAMES)
     isempty(picks) || (covers["pick"] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), picks)))[1])
-    if TIMING || CANDIDATES || CULLING
+    if TIMING || CANDIDATES || CULLING || CORALMIX
         for (set, set_picks) in TIMING_SHARE_SETS
             covers[set] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), set_picks)))[1]
         end
@@ -780,6 +795,11 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : CORALMIX ? [
+    [(name="wc_b150_q20_eb_lin_obs015_s1_m$(lpad(round(Int, 1000 * mu), 3, '0'))_l$(pct3(low))_cv2_pnd",
+        alpha=0.015, coral="observed_composition", initial="cohort_full")
+     for mu in CORALMIX_MU for low in CORALMIX_LOW];
+    [(name="wc_b150_q20_eb_lin_obs015_s1_ref", alpha=0.015, coral="observed_composition", initial="cohort_full")]
 ] : CULLING ? [
     (name="wc_b150_q20_eb_lin_obs015_s1_$(cull)_cv2_pnd", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
@@ -928,7 +948,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : TIMING || CANDIDATES || CULLING ? let
+) : TIMING || CANDIDATES || CULLING || CORALMIX ? let
     states = Dict(q => make_initial_state(q, "alpha$(lpad(round(Int, 1000 * q), 3, '0'))_cohort_full_eb_lin";
             cohort_multiplier=1.0, cpue=eb_surface) for q in TIMING_OBS_Q)
     Dict(t.name => states[timing_obs_q(t.name)] for t in treatments)
@@ -975,7 +995,7 @@ archived_density_params = Dict(name => Float64(scenario[1, name])
 # random stream. Migration screens pin the archived control's derived seed.
 archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
     for name in names(scenario) if name != "RCP"))
-(CANDIDATES || CULLING) && CANDIDATE_SEEDS[1] != (SEED, archived_rng_seed) &&
+(CANDIDATES || CULLING || CORALMIX) && CANDIDATE_SEEDS[1] != (SEED, archived_rng_seed) &&
     error("Candidate seed pair 1 must be the archived pair ($(SEED), $(archived_rng_seed))")
 # Coral calibration groups. The Lizard loader assigns group 1 to every site; the
 # GBR-wide RME layer assigns each reef a group. ADRIA keeps only the CB-group
@@ -1182,6 +1202,9 @@ for t in run_treatments
     if REBASE_SHARE && occursin("_cv2_", t.name)
         domain.cyclone_mortality_scens = cv2_cyclones
     end
+    if CORALMIX && occursin("_cv2_", t.name)
+        domain.cyclone_mortality_scens = coralmix_cyclones[coralmix_parts(t.name).mu]
+    end
     if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name))
         ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE ? string(CV2_LOW_DHW_SCALE) :
             string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
@@ -1189,6 +1212,13 @@ for t in run_treatments
     else
         delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE")
         delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD")
+    end
+    if CORALMIX && occursin("_cv2_", t.name) && coralmix_parts(t.name).low == 1.0
+        delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE")
+        delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD")
+    elseif CORALMIX && occursin("_cv2_", t.name)
+        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = string(coralmix_parts(t.name).low)
+        ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = "4.0"
     end
     if REBASE_FLOOR && split(t.name, "_")[6] != "f100"
         ENV["ADRIA_BLEACHING_DHW_FLOOR"] = string(parse(Int, split(t.name, "_")[6][2:end]) / 100)
@@ -1254,7 +1284,7 @@ for t in run_treatments
     else
         delete!(ENV, "ADRIA_RNG_SEED")
     end
-    if CANDIDATES || CULLING
+    if CANDIDATES || CULLING || CORALMIX
         connectivity_seed, rng_seed = candidate_seed_pair(t.name)
         ENV["COTS_CONNECTIVITY_SEED"] = string(connectivity_seed)
         ENV["ADRIA_RNG_SEED"] = string(rng_seed)
@@ -1582,6 +1612,11 @@ metadata = Dict(
             "coral_v2" => "ADRIA_BLEACHING_LOW_DHW_SCALE $(CV2_LOW_DHW_SCALE) below 4 DHW; Mellin + $(CV2_MU)/yr; kappa 5; beta 1.5 (re-fit v2 selection)",
             "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
         ) : "not tested",
+        "coral_mix" => CORALMIX ? Dict(
+            "chronic_mu" => collect(CORALMIX_MU), "low_dhw_scale" => collect(CORALMIX_LOW),
+            "mortality" => "1 - (1 - m_cyclone)^5 * (1 - m_mellin) * (1 - mu); bleaching scalar 1.5; low-DHW threshold 4",
+            "shares" => TIMING_SHARE_SETS["pnd"], "seed_pair" => collect(CANDIDATE_SEEDS[1]),
+        ) : "not tested",
         "culling" => CULLING ? Dict(
             "switch" => "COTS_CULL_REMOVALS_CSV (unset = established path)",
             "tables" => Dict(c => Dict("path" => cull_table("_$(c)_"), "sha256" => file_sha256(cull_table("_$(c)_")))
@@ -1637,7 +1672,8 @@ metadata = Dict(
             "inversion" => "lin: A = C / q; h10: A = (C/q + sqrt((C/q)^2 + 4 A_half C/q)) / 2, inverse of C = q A^2 / (A + A_half), A_half = $(INITIAL_A_HALF)",
             "preload" => "6:3:1 juvenile:subadult:adult on the inverted adults",
         ) : "idw surface, linear inversion",
-        "arms" => CULLING ? "wc_b150_q20_eb_lin_obs015_s1_{nocull,cull000,cull210,cull420}_cv2_pnd" :
+        "arms" => CORALMIX ? "wc_b150_q20_eb_lin_obs015_s1_m{030,060,090,120}_l{100,050,025}_cv2_pnd + wc_b150_q20_eb_lin_obs015_s1_ref" :
+            CULLING ? "wc_b150_q20_eb_lin_obs015_s1_{nocull,cull000,cull210,cull420}_cv2_pnd" :
             CANDIDATES ? "wc_b150_q20_eb_lin_obs{015,030}_s{1..5}_{cv2_pnd,cv2_pick,cv2_pndl50,ref} (see candidates)" :
             TIMING ? "wc_b150_q{10,15,20}_eb_lin_obs{015,030}_cv2_{pick,pnd}" :
             REBASE_SHARE ? "wc_b150_q20_eb_lin_{ref, cv2_acrpoc, cv2_min..cv2_max, cv2_pick}" :
@@ -1655,7 +1691,7 @@ metadata = Dict(
         "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
             "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
         "bleaching_scalar" => REBASE_INITIAL || REBASE_RETENTION || REBASE_LIZCORAL ? [1.5] : collect(REBASE_BETA),
-        "predation_capacity_q_cots_ha_yr" => CANDIDATES || CULLING ? [20] : TIMING ? collect(TIMING_Q) : REBASE_COMPOSITION || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
+        "predation_capacity_q_cots_ha_yr" => CANDIDATES || CULLING || CORALMIX ? [20] : TIMING ? collect(TIMING_Q) : REBASE_COMPOSITION || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
         "selection" => REBASE_FLOOR ?
             "m: min summed loss among arms with G2' Lizard/MacGillivray trough no worse than ref and manta total RMSE <= 1.1 x ref; floor 4 by evidence if manta coral J not worse; beta by coral J" :
             REBASE_RETENTION ?
@@ -1665,7 +1701,9 @@ metadata = Dict(
             REBASE_COMPOSITION ?
             "adoption only if Lizard and MacGillivray first peaks rise, mean trough min <= 4 adults/ha, summed loss worsens <= 0.5, fast RMSE worsens <= 0.01; lead decides" :
             "Q per beta: min summed smoothed_3y loss over 4 reefs, first peak on every reef, ties to smaller Q; beta by lower frozen coral J at its selected Q",
-        "reference" => CULLING ?
+        "reference" => CORALMIX ?
+            "m120_l025 must replay run 37 wc_b150_q20_eb_lin_obs015_s1_cv2_pnd; ref must replay run 37 wc_b150_q20_eb_lin_obs015_s1_ref" :
+            CULLING ?
             "wc_b150_q20_eb_lin_obs015_s1_nocull_cv2_pnd must replay run 32 wc_b150_q20_eb_lin_obs015_cv2_pnd" :
             CANDIDATES ?
             "s1 arms replay: obs015_s1_cv2_pick -> run 25 cv2_pick; obs015_s1_cv2_pnd / obs030_s1_cv2_pnd -> run 32 obs015 / obs030 cv2_pnd; obs015_s1_ref -> run 25 ref" :
