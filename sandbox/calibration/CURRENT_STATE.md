@@ -1,4 +1,4 @@
-# COTS calibration: current state and handoff (updated 2026-10-13, after runs 11–22)
+# COTS calibration: current state and handoff (updated 2026-10-14)
 
 This is the single entry point for resuming work, in this chat or a new one. It records:
 - where the work stands;
@@ -7,6 +7,8 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 - what to do next.
 
 Nothing here is promoted to the ADRIA default model.
+
+**Resume here:** the section **"Close-out plan (2026-10-14)"** below, starting at step A1.
 
 **Read in this order:**
 1. this page;
@@ -53,6 +55,17 @@ Nothing here is promoted to the ADRIA default model.
 | `build_lizard_domain_v3.py` | the v0.3 domain |
 | `sandbox/calibration/build_observed_cots_forcing.py` | observed COTS forcing |
 | `export_mellin_disturbance.R` + `build_mellin_background_mortality.jl` | Mellin background |
+| `build_observed_cots_forcing.py --year-basis survey` | survey-year COTS forcing (`observed_cots_forcing_1991_2024_survey_year/`) |
+| `build_1991_eb_surface.py` | empirical-Bayes 1991 COTS surface (`runs/20261013T_15_1991_initial_surfaces_eb`) |
+| `build_initial_share_range.py` | healthy-year 1991 fast-share levels (`derived/initial_fast_share_range/`) |
+| `build_survey_timing.py` | LTMP survey timing vs bleaching (`derived/ltmp_survey_timing/`) |
+| `analyse_manta_detectability.py` | paired diver–manta detectability (`derived/manta_detectability_pairs_lizard/`) |
+
+**Scoring and evaluation tools (2026-10-13/14):**
+- `rescore_detectability.jl [--q=<q>]`: re-scores stored trajectories under `CPUE = q·A·A/(A + A½)` for `A½` in {0, 1, 3, 10, 30}, both observation treatments. `A½ = 0` at `q` 0.015 replays exactly.
+- `evaluate_gate_g2prime.py <out> <rescore dirs> [--trough-reefs …]`: gate G2′ (base miniconda Python).
+- `connectivity_retention.jl` with `test_connectivity_retention.jl`: source-conserving larval retention.
+- `test_bleaching_floor.jl`: tests the ADRIA switches `ADRIA_BLEACHING_DHW_FLOOR`, `ADRIA_BLEACHING_LOW_DHW_SCALE` and `ADRIA_BLEACHING_LOW_DHW_THRESHOLD` (opt-in; unset = default path). These switches are **uncommitted ADRIA core changes** in `growth.jl` and `scenario.jl`.
 
 **Tools:**
 - **Julia:** `julia --project=sandbox`.
@@ -72,7 +85,26 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 
 ## Model state
 
-### Leading COTS candidate (COTS dynamics), re-baselined 2026-10-13
+### Confirmed working configuration (project lead, 2026-10-14)
+
+**Run** `20261014T_25_initial_share_1991_v2`, arm `wc_b150_q20_eb_lin_cv2_pick` (runner experiment `initial_share`, with `OWEN_INITIAL_SHARE_PICKS="Lizard Island Reef=min;MacGillivray Reef=q50;North Direction Reef=q25"`).
+
+| Component | Setting |
+| --- | --- |
+| Coral, "cv2" | CoralBlox growth untouched; Mellin + **12%/yr** chronic background (identified in re-fit v2, run 20); cyclone κ 5; bleaching scalar β 1.5; bleaching mortality **×0.25 below 4 DHW** (`ADRIA_BLEACHING_LOW_DHW_SCALE=0.25`) |
+| 1991 fast share (partially calibrated within healthy-year photo-transect ranges) | Lizard 0.147 (min), MacGillivray 0.129 (q50), North Direction 0.307 (q25), other reefs 0.255 (q50 default); totals preserved |
+| COTS | working model (per-capita grazing, H1 starvation, H2 senescence, preferred condition); predator pit `Q = 20`; Ext×5; gradual Allee |
+| 1991 COTS seeds | empirical-Bayes surface ÷ `q` (linear), 6:3:1 preload |
+| Observation model | frozen `q = 0.015` (a Pratchett re-anchor to 0.030 is the next step) |
+| Score | summed frozen loss **7.97**; coral `J` **0.260**; 7/7 raw peaks matched |
+| Gate G2′ (trough gated on Lizard and MacGillivray) | fails at `A½ = 10` (troughs 0.056 / 0.070 against ≤ 0.054) |
+
+**Known weaknesses:**
+- **Late first waves.** In survey-date terms: North Direction 1999 against October 1994; MacGillivray 1997 against October 1995.
+- **North Direction's first wave** (1.96 COTS/tow) far exceeds the observed 0.56.
+- **Lizard's first wave** (29 adults/ha) is below Pratchett's diver-observed 40–55/ha.
+
+### Earlier candidates (superseded by the confirmed working configuration; kept for provenance)
 
 **Current baseline (2026-10-13, after the lead adopted the empirical-Bayes 1991 surface):** run `20261013T_17_initial_state_rebaseline_1991_v1` arm `wc_b150_q20_eb_lin` (replayed exactly as `wc_b150_q20_eb_lin_owen` in run 20).
 - **Model.** The same model as `wc_b150_q20` below, but seeded from the EB surface.
@@ -200,21 +232,101 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
    - **Not promotable.** These passes rest on an unidentified `A½`, and first-wave heights remain far too low.
    - **After a pass.** Replicated seeds, `q` sensitivity and held-out testing come only after an accepted pass.
 
-**Lead's decisions (2026-10-13):**
-- **Gate.** G2′ is in force: both peak counts, distinct waves, and an absolute trough test against observed inter-wave CPUE.
+**Lead's decisions (2026-10-13 and 2026-10-14):**
+- **Gate.** G2′, with the trough test gated on Lizard and MacGillivray.
 - **Starting state.** The empirical-Bayes 1991 surface is adopted.
-- **Detectability evidence.** Sought: `A½` ≈ 3–10 is plausible but not identified (SALAD regional fit 6 ± 2).
-- **Local retention.** Tested and closed within source-conserving bounds (run 20).
+- **Local retention.** Closed.
+- **Time convention.** Keep the LTMP reporting year for scoring, but **track survey timing** (`build_survey_timing.py`; most surveys are made in Sep–Dec, before the scored year's bleaching summer).
+- **Observation model.** Try a Pratchett-anchored `q`.
+- **Coral.** Re-fit chronic loss under floors 3 and 4.
+- **Lizard initialisation.** Test more hard coral (with RHIS for relative levels).
 
-**Where it stands.**
-- **North Direction's trough.** The remaining qualitative (G2′) failure is North Direction's inter-wave population: model 0.13–0.24 COTS/tow against an observed 0.054 (upper bound 0.089). The model's North Direction population lingers through 1999–2011, because subadults keep maturing.
-- **Lizard's peaks.** Lizard's peak heights (gate 3) are limited by **food**: fast cover after the 1994 heat stress. They are not limited by supply, retention, starting state or composition.
+**Lead's decisions (2026-10-14, third round):**
+- No crash mechanism.
+- Identify the chronic background μ.
+- A strong reduction, not a floor, for bleaching below 4 DHW: the 1993–94 transect loss was early-outbreak COTS (corrected).
+- Partially calibrate the 1991 fast share within each reef's manta-limited photo-transect range.
 
-**Suggested next steps (lead to decide):**
-- (a) **Food-scale evidence for Lizard 1995–98.** Gather evidence on prey breadth and reef-wide fast cover. If it supports a broader prey pool, preregister θ and the condition saturation on that pool.
-- (b) **North Direction's inter-wave population (item 4).** Examine the subadult pipeline (80–130/ha in 1999–2002) and the juvenile predation pit on North Direction.
-- (c) **Paired manta–SALAD data** to identify `A½`, so that a detection-consistent configuration can be adopted.
-- (d) **Updated connectivity.** Rerun the retention transform on it when it arrives.
+**Where it stands (2026-10-14, after runs 20–27).**
+- **Recommended working configuration (lead to confirm):**
+  - **Coral "cv2":** low-DHW bleaching ×0.25 below 4 DHW (`ADRIA_BLEACHING_LOW_DHW_SCALE`), Mellin + 12%/yr (identified), κ 5, β 1.5, growth untouched.
+  - **1991 fast share, partially calibrated:** Lizard 0.15, MacGillivray 0.13, North Direction 0.31, others 0.25.
+  - **COTS:** `eb` seeds, `Q` 20, Ext×5, gradual Allee.
+  - **Score:** summed loss **7.97** (from 9.10) and coral `J` **0.260** (from 0.363), at run `20261014T_25_initial_share_1991_v2` arm `wc_b150_q20_eb_lin_cv2_pick`.
+- **Gate.** G2′ fails on Lizard and MacGillivray troughs at `A½ = 10` (0.056 and 0.070 against ≤ 0.054).
+- **Caveats:**
+  - North Direction's first wave (1.96 against 0.56) is barely penalised, because smoothing removes its observed 1995 peak.
+  - Lizard's loss-picked share (minimum; 29 adults/ha) conflicts with Pratchett's 40–55. The median share gives 53/ha. This is coupled to the `q` choice.
+- **Earlier baseline:** `wc_b150_q20_eb_lin` (loss 9.10, coral `J` 0.363), which passes G2′ at `A½ = 10`.
+
+## Close-out plan (2026-10-14)
+
+**Lead's decisions:**
+- (1) The working configuration above is confirmed.
+- (2) Re-score it under Pratchett's `q` (0.030).
+- (3) Score North Direction's first peak against the **raw** series (its 1995 peak counts), and do **not** penalise Eyrie for a missing observed first peak (it was probably missed by sparse surveys).
+- (4) **Goal:** close out with a short list of the most plausible candidate parameter sets for simulations, fix the late peak timing, promote the best options, then introduce COTS removal from the culling data.
+- **Closed:** no crash mechanism.
+
+**Method rules still apply.** Every step: preregister → opt-in switch with a default replay → exact-replay reference arm → audit → log. Never overwrite runs. The lead commits.
+
+**Phase A: lock the scoring (before any more model changes).**
+- **A1. Frozen score v2.** Preregister and implement score v2 as a wrapper; `cots_cycle_metrics.jl` stays unchanged.
+  - **North Direction:** use the raw observed series for peaks and loss (1995 and 2013 peaks).
+  - **Eyrie:** drop the first-peak terms (peak count, timing and height for the missing observed first peak), keeping the 2013 peak and the series terms.
+  - Report v1 and v2 side by side for every candidate.
+  - **Natural place:** a `--score v2` option in `rescore_detectability.jl` (so stored trajectories are re-scored without re-simulation), plus a matching column in `evaluate_gate_g2prime.py`.
+- **A2. Pratchett `q` re-score.**
+  - **Re-score** run 25 (`cv2_pick`, `cv2_acrpoc`, `cv2_q50`) with `--q=0.030`, under score v2 and G2′.
+  - **Consistent run.** Also run `cv2_pick` with seeds inverted at `q` 0.030. The `lizard_coral` runner pattern (`obs030`) shows how; it needs a small runner extension for the `initial_share` experiment.
+
+**Phase B: candidate set and timing.**
+- **B1. Diagnose late first waves on the working configuration.** Use stored fluxes (settlement, maturation, food survival, seeds) for North Direction and MacGillivray in 1992–98. Levers already in the code, with their earlier effects:
+  - `Q` (run 11: `Q` 10 gives a mean first-peak year of 1997.0 against 1998.3 at `Q` 30);
+  - seed level (EB vs IDW: run 17 shows little effect);
+  - share levels (higher shares give later peaks: q50 / q75 push North Direction to 1999);
+  - the Allee scale (held fixed by AGENTS; counterfactual only);
+  - external supply timing.
+- **B2. Bounded timing factorial on the working configuration**, scored with v2. Suggested: `Q` {10, 15, 20} × North Direction share {q25, min} (MacGillivray and Lizard fixed) × observation `q` {0.015, 0.030 consistent}. The reference arm replays `cv2_pick`.
+- **B3. Candidate set** (target 3–6 named configurations), chosen by score v2, G2′, coral `J` and peak timing. Likely members:
+  - **C1** working configuration;
+  - **C2** C1 with Pratchett `q`;
+  - **C3** C1 with Lizard at q50 share (matches Pratchett's density);
+  - **C4** C1 with the best timing fix from B2;
+  - **C5** the run-17 baseline (old coral) as a structural control.
+  - Record each as a TOML/CSV parameter set under `sandbox/calibration/candidates/` (checked in), with run IDs, switches and hashes.
+- **B4. Promotion gates** (AGENTS.md), for the candidate set only, labelled "calibration candidates for simulation", not the ADRIA default:
+  1. **Tests:** legacy control replay, unit tests (COTSMod `Pkg.test`, `test_bleaching_floor.jl`, `test_connectivity_retention.jl`), parse test, data provenance (hashes).
+  2. **Qualitative gate:** G2′ (with score v2).
+  3. **Replicated seeds:** at least 5 recorded `ADRIA_RNG_SEED` and `COTS_CONNECTIVITY_SEED` combinations. Report peak timing, height, prominence and inter-peak period (mean ± sd).
+  4. **Held-out tests:** temporal (fit 1992–2012, check 2013–24) and leave-one-reef-out; regional validation where observations exist.
+  5. **Sensitivity:** ±25% on `Q`, μ, the low-DHW scale, Ext×5 and the shares.
+  6. **Records:** run metadata complete (revisions, seeds, hashes, failures).
+  7. **Documentation:** a README and protocol entry with the exact reproduction commands.
+
+**Phase C: COTS removal (culling).**
+- **C1. Data.**
+  - **Source:** the CSIRO workbook (`sandbox/data/260529-COTS-Manta-Cull-RHIS-Lawrence-CSIRO.xlsx`, sheet `Cull`: date, reef, site, bottom time, cohorts 1–4 by size). Cull dives in the Lizard region run 2012–26; e.g. Eyrie 2022 removed 1,592 COTS; Lizard Lagoon 2024 removed 566.
+  - **Builder:** a checked-in `build_cull_removals.py` producing reef × year (and site where possible) removals per ha of reef area, split by cohort / size class. Record the cohort size definitions, units, hashes, the AMPTO/EOTR/legacy sources, and dive coverage. Output to the git-ignored `sandbox/data/derived/`.
+- **C2. Mechanism.** An opt-in COTSMod switch applying observed removals each year:
+  - absolute COTS/ha, bounded by the available adults and subadults, mapped by size class to model stages;
+  - applied at a stated point in the annual step;
+  - pure unit tests in COTSMod, and an ADRIA adapter env switch (e.g. `COTS_CULL_REMOVALS_CSV`) with an adapter test.
+  - Preregister the timing, units and the size-to-stage mapping first.
+- **C3. Experiment.** The candidate set × {no cull, observed cull}, 2012–2024: the effect on the 2013–15 second wave, troughs and coral. A no-cull reference replays each candidate exactly. Note that culling also biases the 2021–26 SALAD/manta detectability pairs.
+
+**Open data notes for the next context.**
+- **Survey timing.** LTMP reporting year = survey year + 1 for September–December surveys. Scoring keeps the reporting year (lead), and `derived/ltmp_survey_timing/survey_timing.csv` flags the bleaching-misaligned surveys. Read peak timing against survey dates.
+- **Pratchett (2005) Lizard pairs:**
+
+| Belt-transect survey | Density (COTS/ha) | LTMP manta (October survey) |
+| --- | --- | --- |
+| October 1996 | 40 | 0.90 COTS/tow |
+| November 1997 | 43 | 1.92 |
+| November 1998 | 13.5 | 0.05 |
+| September 1999 | about 0.5 | 0.00 |
+
+  Reef-wide coral was 32% (1996) and 23% (January 1999). The crash was disease-associated.
 
 ## Experiment chronology (runs in `runs/`)
 
@@ -256,6 +368,29 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 20 | Lizard local retention (negligible; Lizard food-limited) |
 | 21 | detectability re-score of run 20 |
 | 22 | G2′ evaluation of run 20 |
+
+2026-10-14:
+
+| Run | Result |
+| --- | --- |
+| 01 | detectability evidence v1 (pseudo-replicated pairing; superseded) |
+| 02 | detectability evidence v2 (47 paired surveys; strong hyperdepletion; `A½` not identified) |
+| 03 | bleaching floor × fast-share multiplier (floor 4 lifts Lizard; coral re-fit needed; baseline kept) |
+| 04 | G2′ re-evaluation with the trough gated on Lizard and MacGillivray (renamed from a colliding 03) |
+| 05 | detectability re-score of run 03 |
+| 06 | G2′ evaluation of run 03 |
+| 07 | survey-timing tracker |
+| 08–11 | Pratchett-anchored observation re-scores (`q` 0.030; `q_max` 0.055 / `A½` 30) and their G2′ evaluations (08–09 renamed from unnumbered IDs) |
+| 12 | coral re-fit: floor × μ × forcing `q` (floor 1 kept; μ at bound 0.08) |
+| 13 | Lizard hard coral × `q` × μ (more Lizard coral lowers its wave; μ 0.08 improves both fits) |
+| 14–17 | re-scores and G2′ of run 13 at `q` 0.015 and 0.030 |
+| 18–19 | exploratory re-score (`q_max` 0.04, `A½` 10; post hoc, used for no decision) |
+| 20 | coral re-fit v2 (μ identified at 0.10 / 0.12; cv2 selected) |
+| 21 | 1991 fast-share ranges (healthy-year photo transects) |
+| 22 | starting fast-share levels on cv2 (stage 2a) |
+| 23–24 | re-score and G2′ of run 22 |
+| 25 | starting fast-share confirmation with per-reef picks (stage 2b; loss 7.97) |
+| 26–27 | re-score and G2′ of run 25 |
 
 ## Known issues
 

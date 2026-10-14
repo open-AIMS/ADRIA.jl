@@ -8,7 +8,10 @@ A_half = 0 is the frozen linear model and is scored exactly as the runner does
 (fixed_observation_scale = q on adults), so it must reproduce the stored losses.
 Simulations are not rerun; only the observation mapping changes.
 
-Usage: julia --project=sandbox rescore_detectability.jl <output_dir> <run_dir>:<arm,arm,...> ...
+Usage: julia --project=sandbox rescore_detectability.jl [--q=<q>] <output_dir> <run_dir>:<arm,arm,...> ...
+
+`--q` replaces the frozen q = 0.015 (e.g. the Pratchett 2005 paired fits, 2026-10-14); the
+exact-replay check of the A_half = 0 control then does not apply and is recorded as such.
 """
 
 using Pkg
@@ -19,7 +22,11 @@ using CSV, DataFrames, Dates, TOML
 include(joinpath(@__DIR__, "cots_cycle_metrics.jl"))
 include(joinpath(@__DIR__, "calibration_run.jl"))
 
-const Q = 0.015
+const Q_FROZEN = 0.015
+const Q = let flag = filter(a -> startswith(a, "--q="), ARGS)
+    isempty(flag) ? Q_FROZEN : parse(Float64, split(only(flag), "=")[2])
+end
+0.0 < Q < 1.0 || error("q must lie in (0, 1)")
 const A_HALF = (0.0, 1.0, 3.0, 10.0, 30.0)
 const OBS = joinpath(ROOT, "sandbox", "data", "reef_cots.csv")
 const TARGETS = Dict("Lizard Island Reef" => "Lizard Isles",
@@ -31,6 +38,7 @@ detected_cpue(adults, a_half) = a_half == 0.0 ? Q .* adults :
     Q .* adults .* adults ./ (adults .+ a_half)
 
 function main(args)
+    args = filter(a -> !startswith(a, "--q="), args)
     length(args) >= 2 || error("Usage: rescore_detectability.jl <output_dir> <run_dir>:<arms> ...")
     out = abspath(args[1])
     isfile(joinpath(out, "detectability_scores.csv")) && error("Refusing to overwrite $out")
@@ -88,14 +96,14 @@ function main(args)
     end
     control = scores[scores.a_half .== 0.0, :]
     replay = maximum(abs.(control.loss .- control.stored_frozen_loss))
-    replay == 0.0 || error("A_half = 0 control does not reproduce stored losses: $replay")
+    Q != Q_FROZEN || replay == 0.0 || error("A_half = 0 control does not reproduce stored losses: $replay")
     CSV.write(joinpath(out, "detectability_scores.csv"), scores)
     CSV.write(joinpath(out, "detectability_series.csv"), series)
     metadata = Dict(
         "status" => "observation_sensitivity_not_promoted",
         "observation_model" => "CPUE = q * A * A / (A + A_half); A_half = 0 is the frozen linear model",
         "q_cots_tow_per_adult_ha" => Q, "a_half_adults_ha" => collect(A_HALF),
-        "control_max_abs_loss_delta" => replay,
+        "control_max_abs_loss_delta" => Q == Q_FROZEN ? replay : "not applicable (q override $(Q))",
         "runs_and_arms" => collect(args[2:end]),
         "created" => string(now()),
         "adria_revision" => git_revision(ROOT),

@@ -26,7 +26,8 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "predation_capacity", "outbreak_collapse", "growth_starvation",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
-    "initial_state_rebaseline", "local_retention") ||
+    "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
+    "lizard_coral", "coral_refit_v2", "initial_share") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -99,7 +100,8 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "trough_mechanisms", "initiation", "predation_capacity", "outbreak_collapse",
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
-    "composition_rebaseline", "initial_state_rebaseline", "local_retention")
+    "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -159,6 +161,17 @@ const JOINT_FAST = (0.8, 1.0)
 const JOINT_KAPPA = (1.0, 2.5, 5.0)
 const JOINT_BACKGROUND = (0.0, 0.03, 0.06)
 pct3(x) = lpad(round(Int, 100 * x), 3, '0')
+# Minimal reader for the {"reef": {"level": value, ...}, ...} JSON written by
+# build_initial_share_range.py (avoids adding a JSON dependency to the sandbox runner).
+function parse_share_levels(path::AbstractString)::Dict{String,Dict{String,Float64}}
+    text = read(path, String)
+    out = Dict{String,Dict{String,Float64}}()
+    for block in eachmatch(r"\"([^\"]+)\"\s*:\s*\{([^{}]*)\}", text)
+        out[String(block.captures[1])] = Dict(String(m.captures[1]) => parse(Float64, m.captures[2])
+            for m in eachmatch(r"\"([^\"]+)\"\s*:\s*([-0-9.eE+]+)", block.captures[2]))
+    end
+    return out
+end
 joint_arm_name(slow, fast, kappa, mu) =
     "forced_s$(pct3(slow))_f$(pct3(fast))_k$(pct3(kappa))_b$(pct3(mu))"
 joint_arm_values(name) = Tuple(parse(Int, part[2:end]) / 100 for part in split(name, "_")[2:5])
@@ -171,7 +184,25 @@ mellin_arm_name(slow, fast, kappa) = "mellin_s$(pct3(slow))_f$(pct3(fast))_k$(pc
 # Preregistered bleaching-response sensitivity (2026-10-13): CoralBlox growth untouched
 # (s = f = 1), Mellin background with or without 3%/yr chronic loss, cyclone kappa, and
 # ADRIA_DEBUG_BLEACHING_SCALAR beta; COTS forced from observed CPUE / q.
-const BLEACH = EXPERIMENT == "bleaching_sensitivity"
+# The coral re-fit (2026-10-14) is a member of the bleaching family (forced COTS, Mellin
+# background, kappa 5, beta 1.5, growth untouched): bleaching floor {1, 3, 4} x chronic
+# background mu {0.03, 0.045, 0.06, 0.08} x forcing q {0.015, 0.030}; arms
+# refit_f<floor>_mu<mu>_q<q>; refit_f100_mu030_q015 replays run 09 bleach_mel3_k500_b150.
+# Coral re-fit v2 (2026-10-14): low-DHW bleaching scale s {1, 0.25, 0} below 4 DHW x chronic
+# mu {0.06..0.14} x forcing alignment {rep: reporting-year table, srv: survey-year table};
+# arms refit2_s<s>_mu<mu>_<align>; refit2_s100_mu030_rep replays run 09.
+const REFIT2 = EXPERIMENT == "coral_refit_v2"
+const REFIT2_SCALES = (1.0, 0.25, 0.0)
+const REFIT2_MU = (0.06, 0.08, 0.10, 0.12, 0.14)
+const FORCED_ADULTS_SURVEY_CSV = joinpath(ROOT, "sandbox", "data", "derived",
+    "observed_cots_forcing_1991_2024_survey_year", "observed_adults_ha.csv")
+const REFIT = EXPERIMENT == "coral_refit" || REFIT2
+const REFIT_FLOORS = (1.0, 3.0, 4.0)
+const REFIT_MU = (0.03, 0.045, 0.06, 0.08)
+const REFIT_Q = (0.015, 0.030)
+const REFIT_KAPPA = 5.0
+const BLEACH = EXPERIMENT == "bleaching_sensitivity" || REFIT
+refit_arm_name(floor, mu, q) = "refit_f$(pct3(floor))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_q$(lpad(round(Int, 1000 * q), 3, '0'))"
 const BLEACH_BACKGROUND = ("mel" => 0.0, "mel3" => 0.03)
 const BLEACH_KAPPA = (2.5, 5.0)
 const BLEACH_BETA = (1.0, 1.5, 2.5)
@@ -196,7 +227,36 @@ const REBASE_RETENTION = EXPERIMENT == "local_retention"
 const RETENTION_LEVELS = Dict("owen" => nothing, "liz25" => ("lizard", 0.25),
     "liz50" => ("lizard", 0.5), "liz90" => ("lizard", 0.9), "all50" => ("all", 0.5))
 const LIZARD_COMPLEX_IDS = ("14-116b", "14-116c", "14-116d")
-const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL || REBASE_RETENTION
+# Bleaching-floor screen (2026-10-14): ADRIA_BLEACHING_DHW_FLOOR {1 (default), 4} x beta
+# {1, 1.5} x starting fast-share multiplier m {1, 2, 3} on the observed acrpoc share
+# (capped 0.9); eb/lin seeds; arms wc_b<beta>_q20_eb_lin_f<floor>_m<m>.
+const REBASE_FLOOR = EXPERIMENT == "bleaching_floor"
+const FLOOR_LEVELS = (1.0, 4.0)
+const SHARE_MULTIPLIERS = (1.0, 2.0, 3.0)
+const SHARE_CAP = 0.9
+# Lizard hard-coral initialisation screen (2026-10-14): Lizard 1991 cover x c_L {1, 1.5, 2}
+# (Pratchett 2005 reef-wide 32% vs LTMP ~13%) x observation q {0.015, 0.030} (eb seeds
+# inverted with the same q) x chronic mu {0.03, 0.08}; arms
+# wc_b150_q20_eb_lin_obs<q>_mu<mu>_c<c_L>.
+const REBASE_LIZCORAL = EXPERIMENT == "lizard_coral"
+const LIZCORAL_Q = (0.015, 0.030)
+const LIZCORAL_MU = (0.03, 0.08)
+const LIZCORAL_SCALES = (1.0, 1.5, 2.0)
+# Starting fast-share partial calibration (2026-10-14): coral re-fit v2 configuration (cv2:
+# low-DHW bleaching x0.25 below 4 DHW, Mellin + 12%/yr) x 1991 fast share level {min, q25, q50,
+# q75, max} of each reef's healthy-year photo-transect range (build_initial_share_range.py);
+# arms wc_b150_q20_eb_lin_ref (old coral, replays run 17), ..._cv2_acrpoc, ..._cv2_<level>,
+# and ..._cv2_pick when OWEN_INITIAL_SHARE_PICKS="Lizard Island Reef=q75;..." is set.
+const REBASE_SHARE = EXPERIMENT == "initial_share"
+const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
+const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
+const CV2_MU = 0.12
+const CV2_LOW_DHW_SCALE = 0.25
+const SHARE_PICKS = get(ENV, "OWEN_INITIAL_SHARE_PICKS", "")
+const REBASE = EXPERIMENT == "cots_rebaseline" || REBASE_COMPOSITION || REBASE_INITIAL || REBASE_RETENTION ||
+    REBASE_FLOOR || REBASE_LIZCORAL || REBASE_SHARE
+lizcoral_parts(name) = (q=parse(Int, split(name, "_")[6][4:end]) / 1000,
+    mu=parse(Int, split(name, "_")[7][3:end]) / 1000, c=parse(Int, split(name, "_")[8][2:end]) / 100)
 const REBASE_KAPPA = 5.0
 const REBASE_CHRONIC = 0.03
 const REBASE_BETA = (1.0, 1.5)
@@ -322,7 +382,7 @@ end
 String.(surface.site_id) == String.(domain.loc_ids) ||
     error("1991 surface order does not match model site order")
 # Starting-state screen: empirical-Bayes surface (build_1991_eb_surface.py), same sites/order.
-eb_surface = if REBASE_INITIAL || REBASE_RETENTION
+eb_surface = if REBASE_INITIAL || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL || REBASE_SHARE
     table = CSV.read(joinpath(EB_SURFACE_DIR, "surface.csv"), DataFrame)
     String.(table.site_id) == String.(domain.loc_ids) || error("EB surface order does not match model sites")
     # pandas' default float parser can differ from Julia's by one ulp on the copied column.
@@ -422,7 +482,7 @@ else
     nothing
 end
 # Bleaching screen: kappa x background level (mel reuses the Mellin cube exactly).
-bleach_cyclones = if BLEACH
+bleach_cyclones = if BLEACH && !REFIT
     Dict((level, kappa) => mu == 0.0 ? mellin_cyclones[kappa] :
         ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[kappa])) .* (1.0 - mu);
             timesteps=years, locs=domain.loc_ids,
@@ -431,8 +491,39 @@ bleach_cyclones = if BLEACH
 else
     nothing
 end
-BLEACH && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
+BLEACH && !REFIT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
     error("Bleaching-screen mortality outside [0, 1]")
+# Coral re-fit: same expression as the bleaching screen's mel3 cube, so mu = 0.03 replays it.
+refit_cyclones = if REFIT
+    Dict(mu => ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REFIT_KAPPA])) .* (1.0 - mu);
+            timesteps=years, locs=domain.loc_ids,
+            species=ADRIA.functional_group_names(), scenarios=[1])
+        for mu in (REFIT2 ? (0.03, REFIT2_MU...) : REFIT_MU))
+else
+    nothing
+end
+REFIT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(refit_cyclones)) &&
+    error("Re-fit mortality outside [0, 1]")
+# Forcing q = 0.030 (Pratchett 2005 pairs): the q = 0.015 adults table scaled by 0.015 / q.
+refit_forcing = if REFIT2
+    Dict("rep" => FORCED_ADULTS_CSV, "srv" => FORCED_ADULTS_SURVEY_CSV)
+elseif REFIT
+    table = CSV.read(FORCED_ADULTS_CSV, DataFrame; types=Dict(:site_id => String))
+    out = Dict(0.015 => FORCED_ADULTS_CSV)
+    for q in REFIT_Q
+        q == 0.015 && continue
+        scaled = copy(table)
+        for column in names(scaled)[2:end]
+            scaled[!, column] = Float64.(scaled[!, column]) .* (0.015 / q)
+        end
+        path = joinpath(OUT, "forced_adults_q$(lpad(round(Int, 1000 * q), 3, '0')).csv")
+        CSV.write(path, scaled)
+        out[q] = path
+    end
+    out
+else
+    nothing
+end
 # Re-baseline: ref reuses the domain cube so it replays run 15; k500 is cyclones only,
 # mel3 is Mellin + 3%/yr only (kappa 1), wc is the working coral configuration.
 rebase_cyclones = if REBASE
@@ -447,6 +538,16 @@ else
 end
 REBASE && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(rebase_cyclones)) &&
     error("Re-baseline mortality outside [0, 1]")
+lizcoral_cyclones = REBASE_LIZCORAL ? Dict(mu => mu == REBASE_CHRONIC ? rebase_cyclones["wc"] :
+        ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - mu);
+            timesteps=years, locs=domain.loc_ids,
+            species=ADRIA.functional_group_names(), scenarios=[1])
+    for mu in LIZCORAL_MU) : nothing
+REBASE_LIZCORAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(lizcoral_cyclones)) &&
+    error("Lizard-coral mortality outside [0, 1]")
+cv2_cyclones = REBASE_SHARE ? ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - CV2_MU);
+    timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1]) : nothing
+REBASE_SHARE && !all(0.0 .<= Array(cv2_cyclones) .<= 1.0) && error("cv2 mortality outside [0, 1]")
 MELLIN && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(mellin_cyclones)) &&
     error("Mellin combined mortality outside [0, 1]")
 JOINT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(joint_cyclones)) &&
@@ -535,7 +636,7 @@ composition = if COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || R
         end
         cover, unchanged = observed_composition_cover(site_share)
         out[level] = (cover=cover, reef_share=reef_share, default_share=default_share,
-            unchanged_sites=unchanged, other_weight=weight)
+            unchanged_sites=unchanged, other_weight=weight, site_share=site_share)
     end
     (levels=out, cover=out["acrpoc"].cover, reef_share=out["acrpoc"].reef_share,
      default_share=out["acrpoc"].default_share, unchanged_sites=out["acrpoc"].unchanged_sites,
@@ -543,6 +644,45 @@ composition = if COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || R
 else
     nothing
 end
+# Bleaching-floor screen: starting fast share = observed acrpoc share x m (capped), totals
+# and within-block structure preserved; m = 1 reproduces composition.cover exactly.
+# Lizard hard-coral initialisation: acrpoc cover with every Lizard site (all sub-reefs)
+# multiplied by c_L; composition share preserved; c_L = 1 is composition.cover exactly.
+lizcoral_cover = REBASE_LIZCORAL ? Dict(c => let cover = copy(composition.cover)
+        cover[:, mapping["Lizard Island Reef"].indices] .*= c
+        maximum(vec(sum(cover; dims=1))) <= 0.9 || error("Lizard-scaled cover exceeds 0.9 of habitable area")
+        cover
+    end for c in LIZCORAL_SCALES) : nothing
+REBASE_LIZCORAL && lizcoral_cover[1.0] != composition.cover && error("c_L = 1 does not reproduce the acrpoc composition")
+# Starting fast-share levels: reef-specific values at each level (other reefs take the default).
+share_levels = REBASE_SHARE ? let raw = parse_share_levels(SHARE_LEVELS_JSON)
+    function level_share(reef_level)
+        share = fill(raw["default"][reef_level["default"]], length(domain.loc_ids))
+        for reef in ("Lizard Island Reef", "MacGillivray Reef", "North Direction Reef")
+            share[mapping[reef].indices] .= raw[reef][reef_level[reef]]
+        end
+        return share
+    end
+    picks = Dict{String,String}()
+    if !isempty(SHARE_PICKS)
+        for item in split(SHARE_PICKS, ";")
+            reef, level = split(item, "=")
+            level in SHARE_LEVEL_NAMES || error("Unknown share level $level")
+            picks[String(reef)] = String(level)
+        end
+        Set(keys(picks)) == Set(["Lizard Island Reef", "MacGillivray Reef", "North Direction Reef"]) ||
+            error("OWEN_INITIAL_SHARE_PICKS must name all three calibration reefs")
+    end
+    uniform(level) = Dict("default" => level, "Lizard Island Reef" => level,
+        "MacGillivray Reef" => level, "North Direction Reef" => level)
+    covers = Dict{String,Matrix{Float64}}(level => observed_composition_cover(level_share(uniform(level)))[1]
+        for level in SHARE_LEVEL_NAMES)
+    isempty(picks) || (covers["pick"] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), picks)))[1])
+    (raw=raw, covers=covers, picks=picks)
+end : nothing
+share_scaled = REBASE_FLOOR ? Dict(m => observed_composition_cover(
+        min.(composition.levels["acrpoc"].site_share .* m, SHARE_CAP))[1] for m in SHARE_MULTIPLIERS) : nothing
+REBASE_FLOOR && share_scaled[1.0] != composition.cover && error("m = 1 does not reproduce the acrpoc composition")
 
 # Plain label vector captured once. Rebuilding from `collect(cube.species)` returns a
 # dimension-wrapped vector, so each rebuild nested the lookup one level deeper and the
@@ -604,6 +744,21 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : REBASE_SHARE ? [
+    (name="wc_b150_q20_eb_lin_ref", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    (name="wc_b150_q20_eb_lin_cv2_acrpoc", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    [(name="wc_b150_q20_eb_lin_cv2_$(level)", alpha=0.015, coral="observed_composition", initial="cohort_full")
+     for level in SHARE_LEVEL_NAMES];
+    [(name="wc_b150_q20_eb_lin_cv2_pick", alpha=0.015, coral="observed_composition", initial="cohort_full")
+     for _ in 1:(isempty(SHARE_PICKS) ? 0 : 1)]
+] : REBASE_LIZCORAL ? [
+    (name="wc_b150_q20_eb_lin_obs$(lpad(round(Int, 1000 * q), 3, '0'))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_c$(pct3(c))",
+        alpha=q, coral="observed_composition", initial="cohort_full")
+    for q in LIZCORAL_Q for mu in LIZCORAL_MU for c in LIZCORAL_SCALES
+] : REBASE_FLOOR ? [
+    (name="wc_b$(pct3(beta))_q20_eb_lin_f$(pct3(floor))_m$(pct3(m))", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for floor in FLOOR_LEVELS for beta in REBASE_BETA for m in SHARE_MULTIPLIERS
 ] : REBASE_RETENTION ? [
     (name="wc_b150_q20_eb_lin_$(level)", alpha=0.015, coral="observed_composition",
         initial="cohort_full")
@@ -622,6 +777,14 @@ treatments = EXPERIMENT == "initialization" ? [
     (name="mel3_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
     [(name="wc_b$(pct3(beta))_q$(q)", alpha=0.015, coral="observed_composition", initial="cohort_full")
      for beta in REBASE_BETA for q in REBASE_Q]
+] : REFIT2 ? [
+    (name="refit2_s100_mu030_rep", alpha=0.015, coral="observed_composition", initial="no_cots");
+    [(name="refit2_s$(pct3(s))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_$(align)", alpha=0.015,
+        coral="observed_composition", initial="no_cots")
+     for s in REFIT2_SCALES for mu in REFIT2_MU for align in ("rep", "srv")]
+] : REFIT ? [
+    (name=refit_arm_name(floor, mu, q), alpha=0.015, coral="observed_composition", initial="no_cots")
+    for floor in REFIT_FLOORS for mu in REFIT_MU for q in REFIT_Q
 ] : BLEACH ? [
     (name=bleach_arm_name(level, kappa, beta), alpha=0.015, coral="observed_composition",
         initial="no_cots")
@@ -717,7 +880,15 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : REBASE_INITIAL || REBASE_RETENTION ? let
+) : REBASE_SHARE ? let
+    state = make_initial_state(0.015, "alpha015_cohort_full_eb_lin"; cohort_multiplier=1.0, cpue=eb_surface)
+    Dict(t.name => state for t in treatments)
+end : REBASE_LIZCORAL ? let
+    # eb seeds inverted linearly with the arm's observation q; q = 0.015 reproduces run 17's eb_lin state.
+    states = Dict(q => make_initial_state(q, "alpha$(lpad(round(Int, 1000 * q), 3, '0'))_cohort_full_eb_lin";
+            cohort_multiplier=1.0, cpue=eb_surface) for q in LIZCORAL_Q)
+    Dict(t.name => states[lizcoral_parts(t.name).q] for t in treatments)
+end : REBASE_INITIAL || REBASE_RETENTION || REBASE_FLOOR ? let
     sources = Dict("idw" => Float64.(surface.cots_cpue_1989_1991_idw), "eb" => eb_surface)
     halves = Dict("lin" => 0.0, "h10" => INITIAL_A_HALF)
     states = Dict((source, inversion) => make_initial_state(0.015,
@@ -890,7 +1061,8 @@ for t in run_treatments
     ENV["COTS_STARVATION_POST_GRAZING"] = GROWTH && endswith(t.name, "_PG") ? "true" : "false"
     ENV["COTS_STARVATION_GRACE_YEARS"] = GRACE ? split(t.name, "_g")[end] : "0"
     if ((CORAL || JOINT) && startswith(t.name, "forced")) || MELLIN || BLEACH
-        ENV["COTS_FORCED_ADULTS_CSV"] = FORCED_ADULTS_CSV
+        ENV["COTS_FORCED_ADULTS_CSV"] = REFIT2 ? refit_forcing[split(t.name, "_")[4]] : REFIT ?
+            refit_forcing[parse(Int, split(t.name, "_q")[end]) / 1000] : FORCED_ADULTS_CSV
     else
         delete!(ENV, "COTS_FORCED_ADULTS_CSV")
     end
@@ -927,12 +1099,35 @@ for t in run_treatments
     elseif MELLIN
         kappa_value = parse(Int, split(t.name, "_")[4][2:end]) / 100
         domain.cyclone_mortality_scens = mellin_cyclones[kappa_value]
+    elseif REFIT
+        domain.cyclone_mortality_scens = refit_cyclones[parse(Int, split(t.name, "_")[3][3:end]) / 1000]
     elseif BLEACH
         bleach_parts = split(t.name, "_")
         domain.cyclone_mortality_scens =
             bleach_cyclones[(bleach_parts[2], parse(Int, bleach_parts[3][2:end]) / 100)]
     elseif REBASE
         domain.cyclone_mortality_scens = rebase_cyclones[split(t.name, "_")[1]]
+    end
+    if REBASE_LIZCORAL
+        domain.cyclone_mortality_scens = lizcoral_cyclones[lizcoral_parts(t.name).mu]
+    end
+    if REBASE_SHARE && occursin("_cv2_", t.name)
+        domain.cyclone_mortality_scens = cv2_cyclones
+    end
+    if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name))
+        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE ? string(CV2_LOW_DHW_SCALE) :
+            string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
+        ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = "4.0"
+    else
+        delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE")
+        delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD")
+    end
+    if REBASE_FLOOR && split(t.name, "_")[6] != "f100"
+        ENV["ADRIA_BLEACHING_DHW_FLOOR"] = string(parse(Int, split(t.name, "_")[6][2:end]) / 100)
+    elseif REFIT && !REFIT2 && split(t.name, "_")[2] != "f100"
+        ENV["ADRIA_BLEACHING_DHW_FLOOR"] = string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
+    else
+        delete!(ENV, "ADRIA_BLEACHING_DHW_FLOOR")
     end
     if REBASE_RETENTION
         level = split(t.name, "_")[6]
@@ -967,6 +1162,8 @@ for t in run_treatments
     ENV["COTS_ALLEE_EXPONENT"] = "0.5"
     if HABITAT
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
+    elseif REFIT
+        ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = "1.5"
     elseif BLEACH
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(parse(Int, split(t.name, "_b")[end]) / 100)
     elseif REBASE && startswith(t.name, "wc_")
@@ -996,6 +1193,9 @@ for t in run_treatments
         t.coral == "observed_composition" ?
         (GRACE ? composition.levels[split(t.name, "_")[1]].cover :
          REBASE_COMPOSITION ? composition.levels[split(t.name, "_")[end]].cover :
+         REBASE_FLOOR ? share_scaled[parse(Int, split(t.name, "_")[7][2:end]) / 100] :
+         REBASE_LIZCORAL ? lizcoral_cover[lizcoral_parts(t.name).c] :
+         REBASE_SHARE && !(split(t.name, "_")[end] in ("ref", "acrpoc")) ? share_levels.covers[split(t.name, "_")[end]] :
          composition.cover) : baseline_cover
     if TROUGH && startswith(t.name, "bgeo")
         initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
@@ -1103,7 +1303,7 @@ for t in run_treatments
                 t.initial == "legacy" ?
                 0.1 .* [p > 0.1 ? min(p / 0.5, 1.0) : 0.0
                     for p in domain.cots_init_density] .* Float64(candidate.seed_mult) :
-                REBASE_INITIAL || REBASE_RETENTION ? Float64.(CSV.read(initial_paths[t.name], DataFrame).adult_ha) :
+                REBASE_INITIAL || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL || REBASE_SHARE ? Float64.(CSV.read(initial_paths[t.name], DataFrame).adult_ha) :
                 Float64.(surface.cots_cpue_1989_1991_idw) ./ t.alpha .* (compat ? k : 1.0)
             push!(initial_reef, (t.name, reef,
                 sum(m.weights .* state_seed[m.indices]),
@@ -1221,6 +1421,9 @@ delete!(ENV, "COTS_HAZARD_FOOD_COUPLED")
 delete!(ENV, "COTS_HAZARD_MAX")
 delete!(ENV, "ADRIA_RNG_SEED")
 delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
+delete!(ENV, "ADRIA_BLEACHING_DHW_FLOOR")
+delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE")
+delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD")
 domain.loc_data.k .= baseline_k
 domain.cyclone_mortality_scens = zero_cyclones
 domain.loc_data.CB_CALIB_GROUPS .= base_cb_groups
@@ -1278,6 +1481,27 @@ metadata = Dict(
         "observed_fast_share_by_reef" => composition.reef_share,
         "working_coral" => "kappa $(REBASE_KAPPA), Mellin table + $(REBASE_CHRONIC)/yr chronic, bleaching beta per arm, s = f = 1",
         "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin[site, year]) * (1 - mu); bleaching loss scaled by ADRIA_DEBUG_BLEACHING_SCALAR",
+        "initial_share" => REBASE_SHARE ? Dict(
+            "share_levels_json" => SHARE_LEVELS_JSON, "share_levels_sha256" => file_sha256(SHARE_LEVELS_JSON),
+            "levels" => share_levels.raw, "picks" => share_levels.picks,
+            "coral_v2" => "ADRIA_BLEACHING_LOW_DHW_SCALE $(CV2_LOW_DHW_SCALE) below 4 DHW; Mellin + $(CV2_MU)/yr; kappa 5; beta 1.5 (re-fit v2 selection)",
+            "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
+        ) : "not tested",
+        "lizard_coral" => REBASE_LIZCORAL ? Dict(
+            "lizard_scale" => collect(LIZCORAL_SCALES), "observation_q" => collect(LIZCORAL_Q), "chronic_mu" => collect(LIZCORAL_MU),
+            "lizard_sites" => length(mapping["Lizard Island Reef"].indices),
+            "evidence" => "Pratchett 2005 reef-wide hard coral 32.2% (Oct 1996) vs LTMP 9 m manta 12.7% / photo 10.7%",
+            "scoring" => "runner scores at q = 0.015; q = 0.030 arms are read via rescore_detectability.jl --q=0.030",
+            "seeds" => "eb surface CPUE / q (linear), 6:3:1 preload",
+        ) : "not tested",
+        "bleaching_floor" => REBASE_FLOOR ? Dict(
+            "switch" => "ADRIA_BLEACHING_DHW_FLOOR (unset = HEAT_LB = 1.0, established path); floor levels $(collect(FLOOR_LEVELS))",
+            "meaning" => "minimum bleaching susceptibility (DHW-weeks): no mortality at or below; tolerance distribution truncated there",
+            "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
+            "share_multipliers" => collect(SHARE_MULTIPLIERS), "share_cap" => SHARE_CAP,
+            "share_by_reef_m1" => composition.reef_share,
+            "test" => "sandbox/calibration/test_bleaching_floor.jl",
+        ) : "not tested",
         "local_retention" => REBASE_RETENTION ? Dict(
             "transform" => "connectivity_retention.jl retain_within_groups: rows sources, columns sinks; source s in group G keeps rho of its surviving larvae (row sum) within G, Owen within-G pattern kept, exports scaled; row sums preserved",
             "transform_sha256" => file_sha256(joinpath(@__DIR__, "connectivity_retention.jl")),
@@ -1295,7 +1519,12 @@ metadata = Dict(
             "inversion" => "lin: A = C / q; h10: A = (C/q + sqrt((C/q)^2 + 4 A_half C/q)) / 2, inverse of C = q A^2 / (A + A_half), A_half = $(INITIAL_A_HALF)",
             "preload" => "6:3:1 juvenile:subadult:adult on the inverted adults",
         ) : "idw surface, linear inversion",
-        "arms" => REBASE_RETENTION ?
+        "arms" => REBASE_SHARE ? "wc_b150_q20_eb_lin_{ref, cv2_acrpoc, cv2_min..cv2_max, cv2_pick}" :
+            REBASE_LIZCORAL ?
+            "wc_b150_q20_eb_lin_obs{015,030}_mu{030,080}_c{100,150,200}" :
+            REBASE_FLOOR ?
+            "wc_b{100,150}_q20_eb_lin_f{100,400}_m{100,200,300}" :
+            REBASE_RETENTION ?
             "wc_b150_q20_eb_lin_{owen,liz25,liz50,liz90,all50}" :
             REBASE_INITIAL ?
             "wc_b150_q{20,30}_{idw,eb}_{lin,h10}" :
@@ -1304,16 +1533,24 @@ metadata = Dict(
             "ref_q30 (kappa 1, no background, beta unset); k500_q30 (kappa 5 only); mel3_q30 (Mellin + 3% only); wc_b{100,150}_q{$(join(REBASE_Q, ","))}",
         "fast_share_by_level" => Dict(level => Dict("reefs" => v.reef_share, "default" => v.default_share,
             "unchanged_sites" => v.unchanged_sites) for (level, v) in composition.levels),
-        "bleaching_scalar" => REBASE_INITIAL || REBASE_RETENTION ? [1.5] : collect(REBASE_BETA),
-        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION || REBASE_RETENTION ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
-        "selection" => REBASE_RETENTION ?
+        "bleaching_scalar" => REBASE_INITIAL || REBASE_RETENTION || REBASE_LIZCORAL ? [1.5] : collect(REBASE_BETA),
+        "predation_capacity_q_cots_ha_yr" => REBASE_COMPOSITION || REBASE_RETENTION || REBASE_FLOOR || REBASE_LIZCORAL ? [20] : REBASE_INITIAL ? [20, 30] : collect(REBASE_Q),
+        "selection" => REBASE_FLOOR ?
+            "m: min summed loss among arms with G2' Lizard/MacGillivray trough no worse than ref and manta total RMSE <= 1.1 x ref; floor 4 by evidence if manta coral J not worse; beta by coral J" :
+            REBASE_RETENTION ?
             "none: diagnostic; gate G2' (evaluate_gate_g2prime.py) on the re-score; discrimination vs all50 control" :
             REBASE_INITIAL ?
             "none: diagnostic of first-wave ranking and heights; h10 arms read primarily under the matching A_half = 10 observation re-score" :
             REBASE_COMPOSITION ?
             "adoption only if Lizard and MacGillivray first peaks rise, mean trough min <= 4 adults/ha, summed loss worsens <= 0.5, fast RMSE worsens <= 0.01; lead decides" :
             "Q per beta: min summed smoothed_3y loss over 4 reefs, first peak on every reef, ties to smaller Q; beta by lower frozen coral J at its selected Q",
-        "reference" => REBASE_RETENTION ?
+        "reference" => REBASE_SHARE ?
+            "wc_b150_q20_eb_lin_ref must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
+            REBASE_LIZCORAL ?
+            "wc_b150_q20_eb_lin_obs015_mu030_c100 must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
+            REBASE_FLOOR ?
+            "wc_b150_q20_eb_lin_f100_m100 must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
+            REBASE_RETENTION ?
             "wc_b150_q20_eb_lin_owen must replay wc_b150_q20_eb_lin of 20261013T_17_initial_state_rebaseline_1991_v1" :
             REBASE_INITIAL ?
             "wc_b150_q20_idw_lin must replay wc_b150_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
@@ -1321,7 +1558,28 @@ metadata = Dict(
             "wc_b{100,150}_q20_acrpoc must replay wc_b{100,150}_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
             "ref_q30 must replay acrpoc_g0 of 20261012T_15_food_grace_1991_v1",
     ) : "not tested",
-    "bleaching_sensitivity_screen" => BLEACH ? Dict(
+    "coral_refit_v2_screen" => REFIT2 ? Dict(
+        "forced_tables" => Dict(k => Dict("path" => v, "sha256" => file_sha256(v)) for (k, v) in refit_forcing),
+        "survey_table_metadata_sha256" => file_sha256(joinpath(dirname(FORCED_ADULTS_SURVEY_CSV), "metadata.json")),
+        "low_dhw" => "ADRIA_BLEACHING_LOW_DHW_SCALE s in $(collect(REFIT2_SCALES)) below 4 DHW (unset for s = 1)",
+        "chronic_mu" => collect(REFIT2_MU), "kappa" => REFIT_KAPPA, "bleaching_scalar" => 1.5, "forcing_q" => 0.015,
+        "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
+        "mellin_background_sha256" => file_sha256(MELLIN_BACKGROUND_CSV),
+        "reference" => "refit2_s100_mu030_rep must replay bleach_mel3_k500_b150 of 20261013T_09_bleaching_sensitivity_1991_v1",
+    ) : "not tested",
+    "coral_refit_screen" => REFIT && !REFIT2 ? Dict(
+        "domain" => DOMAIN_PATH,
+        "forced_adults_csv" => FORCED_ADULTS_CSV, "forced_adults_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "forced_tables" => Dict(string(q) => Dict("path" => path, "sha256" => file_sha256(path)) for (q, path) in refit_forcing),
+        "forcing_q_note" => "q = 0.030 is the Poisson fit to the Pratchett (2005) Lizard pairs; adults = 0.015-table x 0.015 / q",
+        "mellin_background_csv" => MELLIN_BACKGROUND_CSV, "mellin_background_sha256" => file_sha256(MELLIN_BACKGROUND_CSV),
+        "growth_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "corals", "growth.jl")),
+        "floors" => collect(REFIT_FLOORS), "chronic_mu" => collect(REFIT_MU), "forcing_q" => collect(REFIT_Q),
+        "kappa" => REFIT_KAPPA, "bleaching_scalar" => 1.5,
+        "mortality" => "1 - (1 - m_cyclone)^kappa * (1 - m_mellin) * (1 - mu); bleaching floor via ADRIA_BLEACHING_DHW_FLOOR (unset for floor 1)",
+        "reference" => "refit_f100_mu030_q015 must replay bleach_mel3_k500_b150 of 20261013T_09_bleaching_sensitivity_1991_v1",
+    ) : "not tested",
+    "bleaching_sensitivity_screen" => BLEACH && !REFIT ? Dict(
         "domain" => DOMAIN_PATH,
         "domain_dhw_sha256" => file_sha256(joinpath(DOMAIN_PATH, "DHWs", "dhw_RCPhistorical.nc")),
         "domain_cyclone_sha256" => file_sha256(joinpath(DOMAIN_PATH, "cyclones", "cyclone_mortality.csv")),

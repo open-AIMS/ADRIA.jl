@@ -2539,3 +2539,549 @@ New checked-in tools: `connectivity_retention.jl`, `test_connectivity_retention.
 - (a) **Food scale for Lizard.** Gather evidence on what Lizard's COTS ate in 1995–98: the full prey breadth (*Montipora*, *Isopora*, crest *Acropora* above 9 m) and the reef-wide fast cover. Then decide whether θ and the condition saturation should be defined on a broader prey pool. This is a mechanism change on an independently set threshold, so it needs evidence, not a fit.
 - (b) **North Direction's inter-wave population** (the remaining G2′ failure; item 4): why 80–130 subadults/ha persist through 1999–2002 and refill adults.
 - (c) **Bleaching β.** β = 1.0 instead of 1.5 removes less of Lizard's pre-outbreak food in 1994 (run 11: Lizard first peak 0.41 vs 0.35). A small lever, already measured.
+
+
+## Lead's decisions and new evidence (2026-10-14)
+
+**North Direction (G2′ component 4).** The lead is not concerned by North Direction's higher inter-wave density. Unlike most reefs, it continued to record > 0.05 COTS/tow during the 2000s, but it was surveyed only intermittently, so the remnant population was probably unobserved in some years. **The G2′ trough test therefore gates Lizard and MacGillivray only.** North Direction's inter-wave level is still reported. `evaluate_gate_g2prime.py` gains a `--trough-reefs` option; the default keeps all three reefs, for replay.
+
+**Pratchett (2005), *Coral Reefs* 24:453–462** (the lead supplied it): the Lizard outbreak of 1994–99, from 10 locations × 2 depths, 200 m² belt transects searched twice (under 0.8% missed).
+- **Densities.** About 12.5 COTS/ha in October 1994 (from Sweatman et al. 1998). The build-up was gradual, reaching 40 COTS/ha in October 1996, then 40–55 COTS/ha until June 1998.
+- **Crash.** 0.92 → 0.06 per 200 m² between June 1998 and January 1999 (46 → 3 per ha), then under 0.5 per ha by September 1999.
+- **Cohorts.** At least four, with recruitment from about 1990 onwards: a gradual build-up, a probable **primary outbreak** from which outbreaks spread south, and **self-seeding** suggested. Small starfish were found only at sheltered back-reef sites (North Reef, Casuarina, Corner Beach). Starfish were **almost absent from the lagoon**.
+- **Cause of the crash.** Coral cover was **still 22.9% at the end, against 32.2% at the start**, so the crash was **not food-driven**. All size classes declined, so it was **not senescence**. An infectious disease was demonstrated in starfish from Lizard in January 1999 (Pratchett 1999).
+- **Implications for this work:**
+  - **Food.** Lizard's real outbreak was not food-limited (reef-wide cover about 23–32%), whereas the model's Lizard fast cover is 0.02–0.04.
+  - **Crash mechanism.** The crash is a disease-like, density-associated mortality, not starvation.
+  - **Retention.** The lagoon is not where Lizard's starfish were.
+
+**Manta detectability from paired data**
+- **Run:** [run 02 (v2)](runs/20261014T_02_manta_detectability_evidence_v2/manta_detectability_fit.json), via the checked-in `analyse_manta_detectability.py`; derived tables are in the git-ignored `sandbox/data/derived/manta_detectability_pairs_lizard/`.
+- **Superseded:** [v1](runs/20261014T_01_manta_detectability_evidence_v1/SUPERSEDED.txt), whose pairing reused manta surveys.
+- **Data and pairing.** SALAD 2021–26 (the lead's master workbook; "Eagle" is Eyrie) and the Pratchett (2005) belt densities are paired with LTMP and Control Program manta surveys on the same reef within 6 months: one pair per manta survey, 47 pairs.
+- **Effective `q` (manta COTS/tow per diver COTS/ha):**
+  - **2021–26:** 0.002–0.006 at diver densities of about 2–35 COTS/ha (SALAD hotspots up to 80/ha). That is **3–7× below the frozen `q = 0.015`**, with no detectable trend within that range.
+  - **Lizard 1996–97 outbreak:** 0.022–0.045 (40–43 COTS/ha against 0.90 and 1.92 COTS/tow), **above 0.015**.
+  - **During the crash (November 1998):** 13.5 COTS/ha on belt transects against 0.05 COTS/tow on manta in October 1998, an effective `q` of 0.004.
+- **Model fit.** Across all pairs the power model gives an exponent of 1.4–1.7 (hyperdepletion), and the linear model is no better. `A½` is **not identified**: the profile 95% interval is unbounded, because the two density clusters come from different eras, methods and spatial scales (SALAD follows feeding scars into hotspots; belt transects and manta tows are reef-wide).
+- **Conclusion.** The evidence contradicts a constant `q` at both ends, and supports strong density-dependent manta detection. It does not fix `A½`.
+- **Most material finding.** At Lizard's real outbreak density (diver 40–55/ha), manta read 0.9–1.9 COTS/tow. The frozen `q = 0.015` maps 1.92 COTS/tow to 128 adults/ha, about 2.5–3× the diver density. The model's Lizard first-wave deficit against **diver** density is about 1.6× (29 vs 46 adults/ha), not the 5× implied by `q = 0.015`.
+- **Who decides.** `q` is a lead-adopted convention; whether to revisit it is the lead's decision.
+
+**Time-convention finding (for the lead; nothing changed).**
+- **What `year` means.** In `reef_cots.csv` (and `reef_manta.csv`, `report_year`), `year` is the **AIMS reporting year** (July–June, named for its ending year): every survey from July to December carries the next calendar year. All four calibration reefs are surveyed in September–November, so each observation is labelled **about 1 year after it was made**. For example, Lizard's "1998" peak (1.92) was surveyed in October 1997, and the "1999" crash value (0.05) in October 1998.
+- **What the model compares.** Model year Y includes year-Y disturbances (DHW is indexed by the bleaching summer), and the scorer compares it with observations labelled Y, so the model is effectively scored against surveys made about a year earlier.
+- **What follows:**
+  - modelled peaks are probably not "a year early" as previously read;
+  - the 2016–17 coral trough is offset by a year;
+  - the observed-COTS forcing table (built by `year`) grazes a year late.
+- **Proposed migration** (lead to decide; it changes a time convention, so it needs a compatibility test): score against `floor(survey_date)` (the survey calendar year) for COTS and coral, and rebuild the forcing table on the same basis.
+
+## Preregistered bleaching threshold floor × starting fast-coral share (2026-10-14)
+
+Status: **directed by the project lead (2026-10-14), item (a); preregistered before implementation.**
+
+### Lead's reasoning
+
+- **Bleaching.** The 1994 loss of fast coral to bleaching is suspect: there should be no mortality until heat stress exceeds about 4 DHW, and then only some. A strong response at high levels is acceptable, provided it does not assume mortality at low heat stress.
+- **Starting fast cover.** The photo transects sample a small part of each reef, while the COTS densities come from manta tows over the whole reef. The starting fast-coral cover should therefore be allowed to increase where that helps match the data.
+
+### Evidence
+
+- **Effective DHW on the calibration reefs** (5 m, ADRIA's depth attenuation):
+
+| Year | Effective DHW |
+| --- | --- |
+| 1994 | 3.3–3.6 |
+| 1996 | about 1.6 |
+| 1998 | about 1.1 |
+| 2002, 2004, 2010 | 1.5–2.5 |
+| 2016–17 | 7.5–8.8 |
+| 2020 | 4.7–6.1 |
+| 2022 | 3.5–4.0 |
+| 2024 | about 5.7 |
+
+- **Current ADRIA behaviour.** Mortality is the fraction of each coral group's tolerance distribution (truncated normal) lying below effective DHW. The truncation's lower bound is `HEAT_LB` = 1.0 DHW, so every year above 1 DHW kills the low-tolerance tail. ADRIA's own comment in `bleaching_mortality!` reads "with 4.0 DHW-weeks as the minimum susceptibility threshold", which disagrees with the constant.
+- **Literature.** GBR coral loss begins at about 3–4 DHW and is severe above about 6 (Hughes et al. 2018, *Nature* 556:492, which ADRIA already cites).
+- **Pratchett 2005.** Reef-wide coral cover at Lizard was 32% in October 1996.
+
+### Mechanism
+
+**Opt-in ADRIA switch `ADRIA_BLEACHING_DHW_FLOOR`** (DHW-weeks; default `HEAT_LB` = 1.0, giving identical results).
+- `bleaching_mortality!` takes the floor as its minimum susceptibility threshold. It is used for the active-location test, as the lower truncation bound of the tolerance distribution (still `max(floor, previous bleaching DHW)`), and in the post-mortality mean update.
+- **Below the floor** there is no mortality.
+- **Above the floor** the tolerance mass that lay below it is renormalised above it. *(Corrected 2026-10-14, before any run: the original wording said this makes the response at high DHW stronger. The unit test showed the opposite: renormalising upwards slightly **lowers** mortality above the floor, to 0.992 against 0.996 at 8 DHW for mean 4 ± 1.5. The lead's "strong response at high levels" therefore comes from β, which the factorial crosses with the floor.)*
+- `ADRIA_DEBUG_BLEACHING_SCALAR` (β) still applies.
+- **Test:** `test_bleaching_floor.jl` checks that the default equals the explicit `HEAT_LB`, that there is no mortality below the floor, and that mortality at 8 DHW is at least the default value.
+
+**Starting fast share.** The observed 1993–95 photo-transect share (`acrpoc`) is multiplied by `m` ∈ {1, 1.5, 2, 3}, capped at 0.9, on every reef, with total cover and within-block structure preserved (run-12 method). The Lizard shares are 0.21 / 0.31 / 0.42 / 0.63.
+
+### Arms (12)
+
+Floor {1 (default), 4} × β {1.0, 1.5} × `m` {1, 2, 3}, on the adopted baseline (working coral, `Q = 20`, `eb` seeds with linear inversion, Ext×5, gradual Allee). The `m = 1.5` level is dropped to keep the grid small.
+
+**Reference.** `floor100_b150_m100` must replay run 17 `wc_b150_q20_eb_lin` exactly.
+
+### Expected consequences
+
+- **Floor 4.** No bleaching loss in 1994, 1996, 1998, 2002, 2004 or 2010. Lizard's pre-outbreak fast cover stays at about 0.07–0.09 rather than falling to 0.04, so the first wave rises and becomes less food-limited (Lizard first peak up perhaps 20–40%). Second waves, which depend on inter-wave fast cover, rise. The 2016–17 and 2020–24 losses are similar or stronger.
+- **`m` > 1.** First waves rise on every reef. The risk (run 12) is North Direction and Eyrie overshooting, and Lizard and MacGillivray troughs rising.
+- **β.** Matters less under floor 4, because only years above 4 DHW are affected.
+
+### Selection rule (frozen)
+
+The `m` scale is an uncertain **input** that the lead allows to be fitted.
+- **Eligible arms** must have a G2′ trough test on Lizard and MacGillivray no worse than the reference, and a reef-wide manta total-cover RMSE (the reef-wide coral observation) no more than 10% worse than the reference. The photo-transect fast RMSE is reported but does not gate, because the lead's premise is that the transects under-represent reef-wide fast cover.
+- **Choice among eligible arms:** the minimum summed frozen loss.
+- **Floor and β.** These are coral parameters. The floor is set by evidence (4) if the coral `J` (manta component) is not worse; β is then chosen by coral `J`, as before.
+- **Readings.** All arms are re-scored under `A½` (sensitivity) and evaluated with G2′ (trough gate on Lizard and MacGillivray).
+
+### Report
+
+- summed loss, G2′, and peaks per reef;
+- Lizard's pre-outbreak fast cover (1992–96) and maturation;
+- coral `J` components;
+- bleaching loss by year.
+
+### Failures and rollback
+
+**Failures:**
+- an inexact replay;
+- the floor test failing;
+- non-finite states.
+
+**Rollback:** `ADRIA_BLEACHING_DHW_FLOOR` unset, and `m = 1`.
+
+### Bleaching-floor decision (2026-10-14)
+
+[Run](runs/20261014T_03_bleaching_floor_1991_v1/metadata.toml), [audit](runs/20261014T_03_bleaching_floor_1991_v1/bleaching_floor_audit.json), [plot](runs/20261014T_03_bleaching_floor_1991_v1/bleaching_floor.png), [re-score](runs/20261014T_05_detectability_rescore_bleaching_floor_1991_v1/metadata.toml) and [G2′, trough gated on Lizard and MacGillivray](runs/20261014T_06_gate_g2prime_bleaching_floor_v1/gate_g2prime.json).
+
+**ADRIA change (opt-in).**
+- `bleaching_mortality!(…; heat_lb = HEAT_LB)` takes the floor, and `run_model` reads `ADRIA_BLEACHING_DHW_FLOOR`; it must be finite and ≥ `HEAT_LB`, and unset means `HEAT_LB`.
+- `test_bleaching_floor.jl` passes 8/8: the default is identical to the explicit `HEAT_LB`, there is no mortality at or below 4 DHW, and mortality above the floor is ≥ 95% of the default.
+- The G2′ evaluator gains `--trough-reefs`. Re-evaluating runs 11, 15, 17 and 20 with the trough gated on Lizard and MacGillivray ([evaluation](runs/20261014T_04_gate_g2prime_lizmacg_trough_v1/gate_g2prime.json)) shows the **adopted baseline `wc_b150_q20_eb_lin` passes G2′ at `A½ = 10`**, but not under the linear observation model.
+
+**Checks.**
+- `f100_b150_m100` replays run 17 `wc_b150_q20_eb_lin` exactly (0.0).
+- 1991 totals are identical in all arms, and the re-score control is exact.
+
+**Result.** No arm passes G2′ under the linear observation model. Under `A½ = 10` only the reference passes.
+
+| Arm (β 1.5) | Summed loss | Lizard first / second (obs 1.92 / 0.74) | Lizard peak adults /ha (diver obs 40–55) | Lizard fast 1993 → 1994 | MacG / North Dir. first (obs 0.86 / 0.56) | Lizard trough CPUE, linear / `A½` 10 (obs ≤ 0.054) | Coral `J` (manta RMSE) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| floor 1, m 1 (ref) | 9.10 | 0.43 / 0.16 | 29 | 0.091 → 0.042 | 0.54 / 0.92 | 0.105 / 0.048 | 0.363 (0.131) |
+| **floor 4, m 1** | 9.79 | **0.59** / 0.17 | **39** | **0.091 → 0.099** | 0.67 / 1.42 | 0.144 / 0.081 | 0.392 (0.144) |
+| floor 1, m 2 | 12.49 | 1.61 / 0.50 | 107 | 0.170 → 0.083 | 0.71 / 3.35 | 0.516 / 0.417 | 0.286 (0.121) |
+| floor 4, m 2 | 11.12 | 1.85 / 0.90 | 123 | 0.170 → 0.179 | 1.06 / 3.54 | 0.762 / 0.653 | 0.332 (0.137) |
+| floor 4, m 3 | 17.19 | 2.22 / 0.87 | 148 | 0.247 → 0.257 | 2.21 / 3.83 | 1.05 / 0.94 | 0.325 (0.141) |
+
+At floor 4, β 1.0 and 1.5 give identical COTS dynamics, because no bleaching occurs before 2016.
+
+**Against the predictions:**
+- **Floor 4 and Lizard: as predicted.** The 1994 loss is removed, and Lizard's first wave rises by 36%; its peak adult density of 39/ha now matches Pratchett's diver density of 40–55/ha. Second waves barely change.
+- **Floor 4 overall: not predicted.**
+  - North Direction's first wave overshoots (1.42).
+  - Troughs rise, and Lizard fails the trough test even at `A½ = 10`.
+  - Coral `J` worsens, mainly through manta total cover, because coral now grows more.
+  - **Reason:** the floor also removes the 1.5–2.5 DHW bleaching losses of 1996, 1998, 2002, 2004 and 2010. Those losses had been supplying part of the chronic coral loss that the coral fit needed (the "Mellin + 3%" term was fitted with them in place).
+- **`m` > 1.** First waves rise everywhere. Lizard reaches its *manta-scale* target only at m 2–3 (adults 107–148/ha, which is what `q = 0.015` implies), and Lizard's second wave reaches 0.9 at floor 4, m 2. But North Direction and Eyrie overshoot heavily, and troughs explode. A uniform multiplier cannot help Lizard without breaking the other reefs.
+
+**Frozen selection.** Only the reference meets the trough and manta-cover conditions, so `m = 1`. The floor-4 condition (manta coral `J` not worse) fails. **The baseline is unchanged.**
+
+**Synthesis for the lead.**
+- (1) **Lizard's first-wave height is largely a units question.** On the diver scale (Pratchett 2005), Lizard's outbreak was 40–55 COTS/ha. With floor 4, the model reaches 39 adults/ha. The apparent 5× deficit came from converting 1.92 COTS/tow with `q = 0.015` (128/ha). The paired data give `q` ≈ 0.02–0.045 at outbreak densities.
+- (2) **The floor is evidence-supported, but it exposes a coral-side gap.** With mortality below 4 DHW removed, the coral model needs its chronic loss re-fitted. That is a coral-side step: a forced-COTS fit of the background μ under floor 4 (and possibly the time-convention correction) before COTS screens use floor 4.
+- (3) **A uniform starting-share multiplier is rejected.** A Lizard-specific (reef-wide) share would need its own evidence, such as Pratchett's unpublished reef-wide coral data (32% total cover, 1996) or the RHIS benthic records in the lead's CSIRO workbook. It should not be fitted.
+
+
+## Lead's decisions (2026-10-14, second round) and Pratchett-anchored observation models
+
+**Time convention.** No migration: observations stay scored at their LTMP reporting year. Survey timing is now **tracked**.
+- **Tracker.** The new `build_survey_timing.py` writes [run 07](runs/20261014T_07_survey_timing_v1/survey_timing_summary.json), with tables in the git-ignored `sandbox/data/derived/ltmp_survey_timing/`.
+- **Lag.** 99% of calibration-reef surveys (COTS manta, coral manta, photo transects) are made in September–December, a median 0.21 years before the end of the model year they are scored with. They therefore predate that model year's bleaching summer.
+- **Surveys predating ≥ 3 DHW bleaching the model has already applied:**
+  - **1994 (3.3–3.5 DHW):** surveyed October 1993.
+  - **2017 (about 8 DHW):** surveyed September–December 2016, so they show the 2016 bleaching but not 2017's.
+  - **2020** (MacGillivray, 5.5 DHW).
+  - **2021–22** (3.5–4.0 DHW).
+  - **2024** (5.5–5.8 DHW): surveyed November 2023, and January 2024 on Eyrie.
+- **Use.** Audits should read these flags whenever a coral or COTS residual falls in a flagged year.
+
+**Pratchett-anchored observation models (re-score only; seeds still inverted at `q = 0.015`).**
+- **Fits to Pratchett's four Lizard pairs:**
+  - Poisson-fit linear `q` = **0.030**;
+  - saturating fit runs to its `A½` bound (`q_max` 0.055 at `A½` 30), so it is not identified;
+  - power model exponent b = 3.5. The November 1998 crash point drives the steepness.
+- **Re-score.** `rescore_detectability.jl` gains `--q=`. [`q` 0.030](runs/20261014T_08_rescore_pratchett_q0030_v1/metadata.toml) and [`q` 0.055](runs/20261014T_09_rescore_pratchett_q00552_v1/metadata.toml) were evaluated with [G2′ (0.030)](runs/20261014T_10_gate_g2prime_rescore_pratchett_q0030_v1/gate_g2prime.json) and [G2′ (0.055)](runs/20261014T_11_gate_g2prime_rescore_pratchett_q00552_v1/gate_g2prime.json). Both directories were created without a sequence number and renamed (`RUN_RENAMES.csv`).
+- **Linear `q` = 0.030** lowers the baseline's frozen loss **9.10 → 7.29**, the best to date. Peaks double (Lizard 0.69, MacGillivray 0.70, North Direction 1.42 COTS/tow smoothed). But trough CPUE doubles too (Lizard 0.21, MacGillivray 0.19, against an observed upper bound of 0.054), so G2′ fails.
+- **Saturating (0.055, `A½` 30)** loses Lizard's second peak (loss 10.0).
+- **Conclusion.** A linear `q` cannot match both the outbreak peaks and the troughs. Pratchett's pairs need **strong curvature**, high detection at outbreak density and very low detection in troughs, which is consistent with the SALAD pairs.
+
+## Preregistered coral re-fit: bleaching floor × chronic background × forcing `q` (2026-10-14)
+
+Status: **directed by the project lead (2026-10-14), item 3; preregistered before implementation.** Runner-only (forced COTS); uses the opt-in ADRIA floor switch.
+
+**Lead's reasoning.** With the bleaching floor raised, coral loss previously attributed to low-DHW bleaching (1–3.6 DHW, every few years) is removed. The background should be re-fitted, so that this loss is attributed to other chronic processes. A floor of 3 should also be tried.
+
+### Setup
+
+- **Model.** COTS forced from observed CPUE ÷ `q` (COTS dynamics off), observed `acrpoc` composition, RME group 5, CoralBlox growth untouched, κ 5, β 1.5.
+- **Background.** Mellin table + μ: combined mortality `1 − (1 − m_cyc)^κ · (1 − m_mellin) · (1 − μ)`.
+- **Forcing table.** For `q = 0.030`, the forcing table is scaled by 0.5 at run time and written into the run directory with its hash.
+
+### Arms (24)
+
+Floor {1 (default), 3, 4} × μ {0.03, 0.045, 0.06, 0.08} × forcing `q` {0.015, 0.030}.
+
+**Reference.** `refit_f100_mu030_q015` must replay run 09 `bleach_mel3_k500_b150` exactly.
+
+### Frozen objective and selection
+
+- **Objective.** Coral `J`, unchanged: mean RMSE fast + slow (photo transects) + total (manta), 1992–2024.
+- **Selection.** Per floor and `q`: μ at minimum `J`. A μ at a grid bound is reported as unidentified.
+- **Floor choice.** The floor is evidence-set. Floor 4 (or 3) is preferred if its best `J` is within 5% of floor 1's best at the same `q`; otherwise this is reported.
+- **Secondary reports:**
+  - Lizard pre-outbreak fast cover (1992–96) and fast cover 2005–13, against photo transects;
+  - 2017–19 total trough, against manta (survey-timing flags apply);
+  - 2020–24 recovery.
+
+### Expected consequences
+
+- **Floor 3–4** removes the 1994–2010 low-DHW losses, so the best μ rises (about 0.045–0.06) to restore chronic loss. `J` should be within a few percent of floor 1.
+- **Lizard's pre-outbreak fast cover** rises at floor 3–4, because the 1994 loss is gone.
+- **`q = 0.030`** halves forced grazing, so the best μ rises further.
+- **Risk.** A higher uniform μ removes fast and slow coral alike. The 2005–13 fast overshoot (about 2×) persists.
+
+### Failures and rollback
+
+**Failures:** an inexact replay; mortality outside [0, 1]; COTS dynamics active.
+
+**Rollback:** floor unset, μ = 0.03, `q` = 0.015.
+
+### Coral re-fit decision (2026-10-14)
+
+[Run 12](runs/20261014T_12_coral_refit_1991_v1/metadata.toml), [audit](runs/20261014T_12_coral_refit_1991_v1/coral_refit_audit.json) and [plot](runs/20261014T_12_coral_refit_1991_v1/coral_refit.png). New audit script: `audit_1991_coral_refit.py`.
+
+**Checks.**
+- `refit_f100_mu030_q015` replays run 09 `bleach_mel3_k500_b150` exactly (0.0).
+- COTS dynamics are zero in all forced arms, and cover stays in range.
+
+**Result.** Best `J` per floor and forcing `q`:
+
+| Floor | `q` 0.015: best μ / `J` | `q` 0.030: best μ / `J` |
+| --- | --- | --- |
+| 1 | 0.08 (bound) / **0.254** | 0.08 (bound) / 0.282 |
+| 3 | 0.08 (bound) / 0.287 | 0.08 (bound) / 0.325 |
+| 4 | 0.08 (bound) / 0.295 | 0.08 (bound) / 0.338 |
+
+For reference, floor 1 with μ 0.03 at `q` 0.015 (the current configuration) has `J` 0.315.
+
+- **μ is at the grid bound in every cell**, so it is unidentified. The coral model wants more chronic loss than 8%/yr, as in the earlier joint fit (6% at its bound). Raising μ improves slow cover and manta total, but worsens fast RMSE (0.065 → 0.077).
+- **Floors 3 and 4 are 13–16% worse than floor 1, even with μ re-fitted.** That fails the preregistered 5% condition. The loss is in 1992–2012 (`J` 0.246 at floor 1 against 0.288 and 0.296).
+- **Forcing at `q = 0.030`** (half the grazing) is worse at every floor.
+
+**Why floors 3 and 4 lose (survey dates from the timing tracker).** The 9 m photo transects record a fast-coral **loss across the 1994 heat stress**:
+- **Lizard:** 0.039 in October 1993 → 0.023 in October 1994 (−41%).
+- **North Direction:** 0.064 → 0.036 (−44%), with almost no COTS (0.06 COTS/tow), so not grazing.
+- **MacGillivray:** 0.031 → 0.036 (+16%).
+- **Model, floor 1:** Lizard −73% (bleaching plus forced COTS at `q` 0.015), North Direction −50%, MacGillivray −80%.
+- **Model, floor 4:** Lizard −11%, North Direction **+22%**.
+
+So the data contradict "no mortality below 4 DHW" at these reefs in 1994 (3.3–3.5 effective DHW): a loss occurred. Floor 1 overshoots it where COTS are also forced, and floor 4 removes it.
+
+**Decision.**
+- Nothing is promoted, and the floor stays at 1 (the default).
+- The floor switch stays opt-in. The evidence supports *some* mortality at about 3.3–3.5 DHW on these reefs. A weaker low-DHW response (rather than a hard floor) would need its own evidence.
+- The best μ is unidentified (bound at 0.08). It is carried as a factor below, not adopted.
+
+## Preregistered Lizard hard-coral initialisation × observation `q` × chronic background (2026-10-14)
+
+Status: **directed by the project lead (2026-10-14), item 4; preregistered before implementation.** Runner-only.
+
+### Evidence
+
+- **Pratchett (2005)** measured reef-wide hard coral at Lizard (10 locations, 3 and 7 m belt transects): **32.2% in October 1996** and 22.9% in January 1999. At the same time, LTMP at 9 m recorded 12.7% (manta) and 10.7% (photo) in October 1996, and 10.6% and 12.2% in October 1998. LTMP under-represents Lizard's coral **2.2–2.5×**, where the starfish actually lived (sheltered back reef and crest at 3 m, exposed slopes at 7 m).
+- **The model's Lizard cover** tracks LTMP manta: about 0.16 of site area in 1991, against manta 0.19 in October 1993.
+- **RHIS (snorkel, 2–3 m, 2018–26)** shows Lizard's shallow hard and fast cover at about half its neighbours' (hard 0.10–0.18 against 0.27–0.37). That is after severe bleaching in 2016–17, 2020 and 2024, so it does not inform 1991, and it is **not** used to scale. It is reported as a caveat.
+- **The other reefs** have no comparable reef-wide 1990s evidence, so the scale applies to Lizard's three sub-reefs only.
+
+### Treatment
+
+- **Lizard scale `c_L`.** The 1991 initial cover (all groups and sizes) at Lizard sites is multiplied by `c_L` ∈ {1, 1.5, 2}, keeping the observed `acrpoc` composition share. 2 is roughly Pratchett's ratio. Total habitable cover must stay ≤ 0.9.
+- **Observation `q`** ∈ {0.015 (frozen), 0.030 (Pratchett pairs)}, applied consistently: seeds are `eb` CPUE ÷ `q`, and the trajectories are scored at the same `q` (the `q = 0.030` arms via `rescore_detectability.jl --q=0.030`).
+- **Chronic background μ** ∈ {0.03 (current), 0.08 (re-fit bound)}.
+- **Everything else** is the adopted baseline: working coral, floor 1, β 1.5, `Q = 20`, Ext×5, gradual Allee.
+
+**Arms (12).** `wc_b150_q20_eb_lin_obs{015,030}_mu{030,080}_c{100,150,200}`.
+
+**Reference.** `…_obs015_mu030_c100` must replay run 17 `wc_b150_q20_eb_lin` exactly.
+
+### Expected consequences
+
+- **`c_L` 2** gives Lizard about 2× the food, so its first wave rises (perhaps towards 40–55 adults/ha on the diver scale), its second wave rises, and troughs rise.
+- **`q` 0.030** halves the seeds; first waves change little (run 17) and read 2× higher. Troughs also read 2× higher, so they risk the G2′ trough test.
+- **μ 0.08** lowers coral everywhere, so waves and troughs both shrink.
+
+### Report
+
+- summed loss under the arm's own `q`;
+- G2′ (trough gated on Lizard and MacGillivray), read at `A½` 0 and 10;
+- Lizard peak adults against Pratchett's 40–55/ha;
+- Lizard first and second waves;
+- coral `J` components, with Lizard total cover against manta and Pratchett's 32% (1996).
+
+### Failures and rollback
+
+**Failures:**
+- an inexact replay;
+- Lizard total cover > 0.9 of habitable area;
+- non-finite states.
+
+**Rollback:** `c_L = 1`, `q` 0.015, μ 0.03.
+
+### Lizard hard-coral decision (2026-10-14)
+
+[Run 13](runs/20261014T_13_lizard_coral_1991_v1/metadata.toml), [audit](runs/20261014T_13_lizard_coral_1991_v1/lizard_coral_audit.json) and [plot](runs/20261014T_13_lizard_coral_1991_v1/lizard_coral.png). New audit script: `audit_1991_lizard_coral.py`.
+
+Supporting runs:
+- re-scores at [`q` 0.015](runs/20261014T_14_rescore_lizard_coral_q015_v1/metadata.toml) and [`q` 0.030](runs/20261014T_15_rescore_lizard_coral_q030_v1/metadata.toml);
+- G2′ evaluations at [`q` 0.015](runs/20261014T_16_gate_g2prime_lizard_coral_q015_v1/gate_g2prime.json) and [`q` 0.030](runs/20261014T_17_gate_g2prime_lizard_coral_q030_v1/gate_g2prime.json) (trough gated on Lizard and MacGillivray).
+
+**Checks.**
+- `obs015_mu030_c100` replays run 17 `wc_b150_q20_eb_lin` exactly (0.0).
+- External supply is identical in all arms, and the `q` 0.015 re-score control is exact.
+
+**Result** (each arm read at its own `q`):
+
+| Arm | Loss | Lizard first / second (COTS/tow) | Lizard peak adults (Pratchett 40–55) | Lizard total HC 1996 (Pratchett 0.32) | MacG / North Dir. second (obs 0.67 / 0.71) | G2′ at `A½` 10 (Lizard / MacG trough; bound 0.054) | Coral `J` |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `q` .015, μ .03, `c_L` 1 (ref) | 9.10 | 0.43 / 0.16 | 29 | 0.32 | 0.40 / 0.83 | pass (0.048 / 0.040) | 0.363 |
+| `q` .015, μ .03, `c_L` 2 | 9.19 | 0.31 / 0.17 | 21 | 0.41 | 0.40 / 0.83 | pass | 0.400 |
+| **`q` .015, μ .08, `c_L` 1** | **8.86** | 0.40 / 0.21 | 27 | 0.29 | **0.54** / 0.90 | fail by a hair (0.051 / 0.054) | **0.267** |
+| `q` .030, μ .03, `c_L` 1 | **7.30** | 0.87 / 0.32 | 29 | 0.32 | 0.80 / 1.67 | fail (0.097 / 0.080) | 0.363 |
+| `q` .030, μ .08, `c_L` 1 | 7.58 | 0.82 / 0.42 | 27 | 0.29 | 1.07 / 1.77 | fail | 0.267 |
+
+**Against the predictions.**
+- **Lizard hard coral: the opposite of what was predicted.** Raising Lizard's starting coral **lowers** its first wave (peak adults 29 → 24 → 21 at `c_L` 1 / 1.5 / 2). The model total in 1996 rises only 0.32 → 0.41, because the reef is near space-full.
+- **Why.** Fast coral cannot grow in 1992–93. The 1994 heat stress removes a larger stock (0.111 → 0.045). The doubled slow coral then crowds fast-coral recovery (0.025 in 1996, against 0.042), so Lizard's starfish have **less** food. In this model, more *total* coral at a fixed composition does not feed COTS; only fast coral that survives into 1995–97 would.
+- **`q` 0.030 (Pratchett, with consistent seeds).** As in the re-score, peaks double, the loss falls to its lowest value yet (7.30), and troughs double, failing G2′.
+- **μ 0.08** (the coral re-fit's choice, made independently with forced COTS): coral `J` 0.363 → 0.267, the COTS loss improves (9.10 → 8.86), and second waves rise. This is a **cross-validated improvement** on both sides, but μ sits at its grid bound.
+
+**Exploratory, post-hoc re-score (not preregistered; used for no decision).**
+- [Runs 18–19](runs/20261014T_19_gate_g2prime_lizard_coral_q040_exploratory_v1/gate_g2prime.json): density-dependent detection with `q_max` anchored to Pratchett's outbreak pairs (0.04) and `A½` 10.
+- **Result.** Loss 7.4–8.0, distinct waves (worst separation 0.06–0.10), and MacGillivray's second wave 0.85. But inter-wave CPUE is 0.13–0.15, about 7 adults/ha over 1999–2011, against the observed level of about 4.6.
+- **The remaining excess** is the model's slow decline after the first peak: 12–20 adults/ha persist through 1999–2002, whereas Pratchett saw 46 → 3 per ha in seven months.
+
+**Decision.**
+- Nothing is promoted.
+- A Lizard hard-coral scale is **rejected**: it lowers Lizard's wave.
+- **For the lead:**
+  - adopting μ 0.08 (better coral fit and COTS loss) would need an extended μ grid first, to identify it;
+  - adopting a detection model with Pratchett's outbreak `q`.
+- **The binding failure** is now the post-peak crash (item 4). Pratchett (2005) shows it was disease-associated, affected all size classes, and happened with coral still at 23%.
+
+
+### Correction (2026-10-14): the 1994 fast-coral loss and North Direction's COTS
+
+The coral re-fit decision above wrongly stated that North Direction's 1993 → 1994 fast-coral drop (−44%) happened "with almost no COTS (0.06 COTS/tow)". The figure 0.06 is the **report-year** 1994 value, which was surveyed in **October 1993**.
+
+At the **October 1994** survey, the one showing the fast-coral drop, COTS were at outbreak level:
+- North Direction 0.56 COTS/tow;
+- Lizard 0.53;
+- MacGillivray 0.29, where fast coral rose.
+
+The 1993 → 1994 transect losses therefore coincide with the **early COTS outbreak**, as the lead judged. They are not evidence for bleaching mortality at 3.3–3.5 DHW.
+
+The forced-COTS table is keyed by reporting year, so the forced runs apply the October-1994 densities in model year 1995, one year late. In model year 1994 they graze at October-1993 levels. That penalised the floor-3 and floor-4 arms in 1994: with low-DHW bleaching removed, nothing removed fast coral in model 1994.
+
+The "floor rejected by the coral data" conclusion is **withdrawn**. It is re-tested in the re-fit v2 screen below, with forcing aligned to survey dates as a factor.
+
+
+## Lead's decisions (2026-10-14, third round)
+
+- **No crash mechanism.** The lead does not think one is needed; item 4 is closed.
+- **Chronic background.** Extend the μ grid and identify the level.
+- **Bleaching below 4 DHW.**
+  - **Lead's position:** there is no evidence for bleaching mortality below 4 DHW, and the 1993 → 1994 transect fast-coral loss is much more likely to have come from the early COTS outbreak (confirmed by the correction above).
+  - **Change wanted:** not necessarily a floor, but at least a strong reduction in low-DHW mortality, combined with a higher background.
+- **Starting fast cover.** With no 1991 data, use the entire range of fast shares observed at each reef in all photo-transect data, limit it to plausible values by comparison with the manta tows, and allow the initialisation to be partially calibrated.
+
+## Preregistered coral re-fit v2: low-DHW bleaching reduction × extended μ × forcing alignment (2026-10-14)
+
+Status: **directed by the project lead; preregistered before implementation.**
+
+### Mechanism (opt-in ADRIA switch, default identical)
+
+- **Switches.** `ADRIA_BLEACHING_LOW_DHW_SCALE` (`s`, default 1) and `ADRIA_BLEACHING_LOW_DHW_THRESHOLD` (`D`, default 4 DHW).
+- **Rule.** In `bleaching_mortality!`, if effective DHW < `D` at a location, that year's bleaching mortality fraction is multiplied by `s`. Mortality at or above `D` is unchanged.
+- **How it differs from the floor.** It does not renormalise the tolerance distribution, so the response at high DHW is exactly the default. It is the lead's "strong reduction under 4 DHW".
+- **Known simplification.** The stored bleaching DHW (the next year's lower truncation bound) still updates when mortality is scaled.
+- **Test:** `test_bleaching_floor.jl` is extended to check that the default is identical, that mortality is scaled below `D`, and that it is unchanged above.
+
+### Forcing alignment (new derived input)
+
+- **Builder change.** `build_observed_cots_forcing.py` gains `--year-basis {report, survey}`. The default `report` reproduces the existing table (checked by hash). `survey` keys each LTMP survey by `floor(survey_date)`, so model year Y is grazed by the COTS observed during calendar year Y.
+- **Scope.** This is a coral-forcing input only. Scoring stays at the reporting year (lead).
+
+### Arms (31)
+
+- **Low-DHW treatment `L`:** default, `s` = 0.25 (below 4), `s` = 0 (below 4).
+- **μ:** {0.06, 0.08, 0.10, 0.12, 0.14}.
+- **Forcing alignment:** {report, survey}.
+- Plus `ref` = default, μ 0.03, report, which **must replay run 09 `bleach_mel3_k500_b150` exactly**.
+- **Fixed:** κ 5, β 1.5, growth untouched, `q` 0.015 forcing, observed composition.
+
+### Frozen objective and selection
+
+- **Objective.** Coral `J`, unchanged.
+- **μ.** Per (`L`, alignment), μ at minimum `J`; a value at the grid edge is reported as unidentified.
+- **`L`.** Set by the lead's evidence position: `s` = 0.25 or 0 is preferred if its best `J` is within 5% of the default's at the same alignment.
+- **Alignment.** Reported. It changes no scoring.
+
+**Expected.**
+- μ is identified in 0.08–0.12.
+- Under survey alignment, the 1994 fast-coral loss is reproduced by COTS rather than bleaching, so `s` = 0–0.25 is no worse than the default.
+
+## Preregistered partial calibration of the 1991 starting fast share (2026-10-14), stage 2 after re-fit v2
+
+- **Plausible range per reef.** The photo-transect fast share (*Acropora* + Pocilloporidae over hard coral, 9 m), taken from all years in which that reef's LTMP manta total cover was **at or above its own median**, i.e. healthy, pre-outbreak-like states consistent with 1991. Years with degraded cover are excluded.
+- **Levels.** The minimum, 25th, 50th and 75th percentiles and maximum of that range for Lizard, MacGillivray and North Direction. Other reefs (including Eyrie, which has no transects) take the mean of the three reefs' values at the same level.
+- **Application.** Applied as in run 12: totals and within-block structure preserved.
+
+**Stage 2a (5 arms + reference).**
+- Arms at each level, all reefs together, on the coral configuration selected in v2 and the adopted COTS baseline.
+- The reference arm `acrpoc` replays the matching v2-configuration arm.
+
+**Stage 2b (partial calibration).**
+- Each calibration reef's level is chosen by **its own** smoothed frozen loss, which is approximately separable because seeds and coral are reef-specific.
+- One confirmation arm then runs the per-reef choices together.
+- **Adoption condition:** the confirmation arm must not worsen G2′ (trough gated on Lizard and MacGillivray) relative to stage 2a's `acrpoc` arm.
+
+**Report.**
+- per-reef chosen levels;
+- first and second waves;
+- G2′;
+- coral `J` (expected to worsen for the transects in 1993–95 by construction, since they are not the 1991 state);
+- Lizard peak adults against Pratchett's 40–55/ha.
+
+### Coral re-fit v2 decision (2026-10-14)
+
+[Run 20](runs/20261014T_20_coral_refit_v2_1991_v1/metadata.toml), [audit](runs/20261014T_20_coral_refit_v2_1991_v1/coral_refit_v2_audit.json) and [plot](runs/20261014T_20_coral_refit_v2_1991_v1/coral_refit_v2.png).
+
+**New tools.**
+- **ADRIA** (opt-in, default identical): `ADRIA_BLEACHING_LOW_DHW_SCALE` and `ADRIA_BLEACHING_LOW_DHW_THRESHOLD` in `bleaching_mortality!` and `run_model`. `test_bleaching_floor.jl` now passes 13/13.
+- **Forcing builder:** `build_observed_cots_forcing.py --year-basis survey`. The default `report` rebuild reproduces the existing table hash exactly. The survey-year table is in `sandbox/data/derived/observed_cots_forcing_1991_2024_survey_year/`.
+- **Audit:** `audit_1991_coral_refit_v2.py`.
+
+**Operational notes.**
+- The first audit attempts failed before any result was read:
+  - `grid.align` resolved to pandas' `DataFrame.align` method, not the column, so the column was renamed `alignment`;
+  - a plot path key was wrong.
+- Partial audit outputs written by those attempts were deleted before the rerun.
+
+**Checks.**
+- The reference replays run 09 exactly (0.0).
+- COTS are off in all forced arms, and cover stays in range.
+
+**Result** (best μ per low-DHW treatment and forcing alignment; frozen `J`; the current configuration is 0.315):
+
+| Low-DHW bleaching | Reporting-year forcing: μ / `J` | Survey-year forcing: μ / `J` |
+| --- | --- | --- |
+| default (`s` = 1) | **0.10** / 0.249 | 0.10 / 0.253 |
+| **`s` = 0.25 below 4 DHW** | **0.12** / 0.259 | 0.12 / 0.259 |
+| `s` = 0 below 4 DHW | 0.14 (bound) / 0.289 | 0.12 / 0.294 |
+
+- **μ is identified.** It is now interior: 0.10 with default bleaching, 0.12 with low-DHW mortality cut to a quarter. As the lead expected, a stronger low-DHW reduction is compensated by a higher chronic background.
+- **`s` = 0.25** is within 5% of the default (`J` 0.259 against 0.249), so it is **selected** under the frozen rule, consistent with the lead's evidence position.
+- **`s` = 0** is 16% worse at every μ. Its manta fit worsens (2017–19 total 0.05 against 0.071 observed), so a complete removal is not supported, but a strong reduction is.
+- **Survey-year forcing** leaves `J` unchanged. But it drives Lizard's 1992–96 fast coral to about 0.004 (observed 0.035), because the forced densities (`q = 0.015`) are applied in the year they were observed, which is the 1993–94 outbreak build-up. This is the forcing-`q` question again: Pratchett's diver densities imply the forced adults are about 2× too high.
+
+**Decision.**
+- Nothing is promoted.
+- **Selected coral configuration ("cv2")** for the next COTS screens:
+  - CoralBlox growth untouched;
+  - Mellin + **12%/yr** chronic;
+  - κ 5, β 1.5;
+  - bleaching mortality ×**0.25 below 4 DHW**.
+- Reporting-year forcing is retained for coral fits, consistent with scoring.
+
+### Starting fast-share partial calibration decision (2026-10-14)
+
+**Inputs.** [Range (run 21)](runs/20261014T_21_initial_share_range_v1/initial_share_range.json), built by `build_initial_share_range.py` (table in the git-ignored `sandbox/data/derived/initial_fast_share_range/`). Healthy-year photo-transect fast share (years with manta ≥ the reef's median):
+
+| Reef | Range | Median | Healthy years kept |
+| --- | --- | --- | --- |
+| Lizard | 0.147–0.453 | 0.308 | 11 of 24 |
+| MacGillivray | 0.050–0.387 | 0.129 | 12 of 25 |
+| North Direction | 0.191–0.627 | 0.326 | 12 of 24 |
+| Others (mean of the three) | 0.129–0.489 | | |
+
+**Runs.**
+- Stage 2a: [run 22](runs/20261014T_22_initial_share_1991_v1/initial_share_audit.json).
+- Stage 2b confirmation: [run 25](runs/20261014T_25_initial_share_1991_v2/initial_share_audit.json).
+- Re-scores 23 and 26; G2′ evaluations 24 and 27 (trough gated on Lizard and MacGillivray).
+- New tools: `audit_1991_initial_share.py`. The runner gains the `initial_share` experiment and `OWEN_INITIAL_SHARE_PICKS`.
+
+**Checks.**
+- `…_ref` (old coral, observed composition) replays run 17 `wc_b150_q20_eb_lin` exactly (0.0) in both runs.
+- 1991 totals and external supply are identical across arms, and the re-score controls are exact.
+
+**Result** (cv2 coral configuration unless stated):
+
+| Arm | Summed loss | Lizard / MacG / North Dir. 1991 share | Lizard first / second (obs 1.92 / 0.74) | Lizard peak adults (Pratchett 40–55) | MacG second (obs 0.67) | North Dir. first (obs 0.56) | G2′ `A½` 10 trough, Lizard / MacG (≤ 0.054) | Coral `J` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ref (old coral, `acrpoc`) | 9.10 | 0.21 / 0.13 / 0.25 | 0.43 / 0.16 | 29 | 0.40 | 0.92 | 0.048 / 0.040 (pass) | 0.363 |
+| cv2 `acrpoc` | 8.58 | 0.21 / 0.13 / 0.25 | 0.48 / 0.24 | 32 | 0.60 | 1.36 | 0.078 / 0.069 | 0.239 |
+| cv2 min | 8.50 | 0.15 / 0.05 / 0.19 | 0.42 / 0.26 | 28 | 0.62 | 0.92 | 0.054 / 0.061 | 0.253 |
+| cv2 q50 | 8.21 | 0.31 / 0.13 / 0.33 | **0.79 / 0.35** | **53** | 0.58 | 2.33 | 0.186 / 0.070 | 0.244 |
+| cv2 q75 / max | 11.87 / 16.62 | up to 0.45 / 0.39 / 0.63 | 1.16–1.79 / 0.43–0.57 | 77–119 | 0.52–0.58 | 3.3–3.6 | 0.26–0.48 / 0.08–0.62 | 0.255–0.282 |
+| **cv2 pick** (Lizard min, MacG q50, North Dir. q25) | **7.97** | 0.15 / 0.13 / 0.31 | 0.44 / 0.24 | 29 | 0.58 | 1.96 | 0.056 / 0.070 | 0.260 |
+
+**Against the expectations.**
+- **The cv2 coral configuration helps both models.** Coral `J` improves (0.363 → 0.239) and the COTS loss improves (9.10 → 8.58), with larger second waves, MacGillivray's near observed. Troughs rise (Lizard and MacGillivray about 0.07–0.08 at `A½` 10).
+- **Within the plausible range**, the median share puts Lizard's first wave at 53 adults/ha, inside Pratchett's diver-observed 40–55.
+- **But Lizard's own frozen loss picks the minimum share.** The frozen loss (linear `q` 0.015) penalises the higher troughs that a larger first wave brings more than it rewards the closer peak height.
+- **Per-reef separability is only approximate.** In the pick arm, Lizard's own loss (1.77) is higher than in the uniform-min arm (1.47): North Direction's larger first wave at q25 changes Lizard's supply.
+- **Confirmation.** Loss 7.97, the lowest yet under the frozen observation model. G2′ is not worse than cv2 `acrpoc`; both fail the trough test at `A½` 10 (Lizard 0.056, MacGillivray 0.070), so the adoption condition holds.
+
+**Caveats for the lead.**
+- (1) **North Direction's first wave (1.96 against 0.56 observed) is barely penalised**, because the smoothed observed series has no 1995 peak. The score partly ignores this overshoot.
+- (2) **Lizard's chosen level conflicts with Pratchett's diver density** (29 against 40–55 adults/ha). The higher level that matches Pratchett is rejected by a loss built on `q = 0.015`. The observation-model choice (`q`) and Lizard's initial share are coupled.
+
+**Decision.**
+- Nothing is promoted.
+- **Recommended working configuration** (lead to confirm):
+  - **Coral:** cv2 (low-DHW bleaching ×0.25 below 4 DHW, Mellin + 12%/yr, κ 5, β 1.5, growth untouched).
+  - **1991 fast share:** partially calibrated (Lizard 0.15, MacGillivray 0.13, North Direction 0.31, others 0.25).
+  - **Everything else:** the adopted baseline (`eb` seeds, `Q` 20, Ext×5, gradual Allee).
+  - **Score:** loss 7.97, coral `J` 0.260.
+- G2′ fails on Lizard and MacGillivray troughs at `A½` 10 (0.056 and 0.070 against 0.054), and passes at neither `A½` 0 nor 10.
+
+
+## Lead's decisions (2026-10-14, fourth round) and close-out plan
+
+**Decisions.**
+1. **Working configuration confirmed:** cv2 coral plus the partially calibrated 1991 fast shares (run 25 `wc_b150_q20_eb_lin_cv2_pick`; loss 7.97, coral `J` 0.260).
+2. **Re-score it under Pratchett's `q` (0.030).**
+3. **Scoring amendments:**
+   - **North Direction's** first peak is scored against the **raw** observed series (its 1995 peak counts).
+   - **Eyrie is not penalised** for a missing observed first peak: sparse surveys most likely missed it, and the IDW / outbreak-prediction surface would show it.
+4. **Close-out.**
+   - **Goal:** a short list of the most plausible candidate parameter sets to carry into simulations.
+   - **Problem to fix:** peak timing, which has drifted later.
+   - **Then:** promote the best-performing options and start on COTS removal from the culling data.
+
+**Timing diagnosis (from stored raw scores).** Modelled first peaks in reporting-year terms:
+
+| Arm | Lizard | MacGillivray | North Direction | Eyrie |
+| --- | --- | --- | --- | --- |
+| run 15 | 1998 | 1997 | 1998 | 2000 |
+| run 17 baseline | 1997 | 1997 | 1997 | 2000 |
+| cv2 `acrpoc` | 1998 | 1997 | 1998 | 2000 |
+| cv2 pick | 1997 | 1997 | **1999** | 2000 |
+| cv2 q50 | 1999 | 1997 | 1999 | 2000 |
+
+- **Observed** (raw, reporting year): Lizard 1998, MacGillivray 1996, North Direction 1995. In survey terms that is October 1997, October 1995 and October 1994.
+- **Gap.** North Direction and MacGillivray first waves come 2–4 years late. The lag grows as coral and starting fast share rise.
+
+The plan to work through is recorded in `CURRENT_STATE.md` ("Close-out plan").

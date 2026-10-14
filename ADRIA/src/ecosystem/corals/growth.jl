@@ -312,8 +312,20 @@ function bleaching_mortality!(
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
     bleach_dhw::SubArray{Float64},
-    tol_ceil::AbstractArray{Float64,3}
+    tol_ceil::AbstractArray{Float64,3};
+    heat_lb::Float64=HEAT_LB,
+    low_dhw_scale::Float64=1.0,
+    low_dhw_threshold::Float64=4.0
 )::Nothing
+    # `heat_lb` is the minimum susceptibility threshold (DHW-weeks): no bleaching mortality
+    # at or below it, and the tolerance distribution is truncated there. The default
+    # (HEAT_LB) is the established behaviour; a higher floor is an opt-in calibration
+    # sensitivity (ADRIA_BLEACHING_DHW_FLOOR, sandbox crash_mechanism_protocol.md 2026-10-14).
+    heat_lb >= HEAT_LB || throw(ArgumentError("heat_lb must be >= HEAT_LB ($HEAT_LB)"))
+    # Opt-in reduction of bleaching mortality below `low_dhw_threshold` (DHW-weeks): the
+    # mortality fraction is multiplied by `low_dhw_scale` in [0, 1]; the default (1.0) is the
+    # established behaviour (ADRIA_BLEACHING_LOW_DHW_SCALE, sandbox protocol 2026-10-14).
+    0.0 <= low_dhw_scale <= 1.0 || throw(ArgumentError("low_dhw_scale must lie in [0, 1]"))
     n_groups, n_sizes, _ = size(cover)
 
     # New evidence that all size classes bleach
@@ -326,7 +338,7 @@ function bleaching_mortality!(
 
     # Potential bleaching locations (skip locations with no heat stress)
     # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
-    active_locs = findall(eff_dhw .> HEAT_LB)
+    active_locs = findall(eff_dhw .> heat_lb)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -350,7 +362,7 @@ function bleaching_mortality!(
                     # Use the previous bleaching DHW as the distribution lower bound,
                     # with 4.0 DHW-weeks as the minimum susceptibility threshold
                     eff_dhw[loc], μ, stdev[grp, sc],
-                    max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
+                    max(heat_lb, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
                 )
 
@@ -358,6 +370,9 @@ function bleaching_mortality!(
                 if affected_pop > 0.0
                     # Depth effect is now handled via effective_dhw_at_depth (see scenario.jl).
                     mort_pop = affected_pop
+                    if low_dhw_scale != 1.0 && eff_dhw[loc] < low_dhw_threshold
+                        mort_pop *= low_dhw_scale
+                    end
 
                     # Set values close to 0.0 (e.g., 1e-214) to 0.0
                     # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
@@ -380,7 +395,7 @@ function bleaching_mortality!(
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], HEAT_LB, μ_ceil
+                        μ, stdev[grp, sc], heat_lb, μ_ceil
                     )
 
                     # Update population

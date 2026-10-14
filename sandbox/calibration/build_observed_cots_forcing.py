@@ -32,12 +32,19 @@ YEARS = list(range(1991, 2025))
 Q = 0.015  # COTS/tow per adult COTS/ha (approved convention)
 
 
-def build(output: Path) -> None:
+def build(output: Path, year_basis: str = "report") -> None:
+    """year_basis "report" (default; the table previously built) keys LTMP surveys by their
+    reporting year; "survey" keys them by the calendar year of the survey date (2026-10-14),
+    so model year Y is grazed by COTS observed during calendar year Y."""
+    if year_basis not in ("report", "survey"):
+        raise ValueError("year_basis must be report or survey")
     if output.exists():
         raise FileExistsError(f"Refusing to overwrite {output}")
     reef_shape = gpd.read_file(GLOBAL_REEFS)[["LABEL_ID", "reefName", "Shape_Area",
                                               "xCentroid", "yCentroid"]]
     cots = pd.read_csv(COTS)
+    if year_basis == "survey":
+        cots["year"] = np.floor(cots.survey_date).astype(int)
     cots = cots[cots.year.isin(YEARS)].copy()
     if (cots.tows <= 0).any() or (cots.cots < 0).any():
         raise ValueError("Invalid COTS count or tow effort")
@@ -84,6 +91,7 @@ def build(output: Path) -> None:
     pd.DataFrame(coverage).to_csv(output / "coverage_by_year.csv", index=False)
     metadata = {
         "status": "experimental_forcing_not_promoted",
+        "year_basis": year_basis,
         "purpose": "COTS predation forcing for coral-side calibration (forced grazing)",
         "years": [YEARS[0], YEARS[-1]],
         "units": "adult COTS per ha of site area = IDW COTS/tow / q",
@@ -113,4 +121,6 @@ def build(output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    build(parser.parse_args().output)
+    parser.add_argument("--year-basis", choices=("report", "survey"), default="report")
+    args = parser.parse_args()
+    build(args.output, args.year_basis)

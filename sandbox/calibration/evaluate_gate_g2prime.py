@@ -55,7 +55,12 @@ def observed_troughs(raw_scores: pd.DataFrame, observations: pd.DataFrame) -> di
     return out
 
 
-def main(output: Path, rescores: list[Path]) -> None:
+def main(output: Path, rescores: list[Path], trough_reefs: set[str] | None = None) -> None:
+    # Lead's decision (2026-10-14): the trough test may be restricted to a subset of the
+    # two-wave reefs (Lizard, MacGillivray); North Direction is then reported, not gated.
+    trough_reefs = set(TWO_WAVE) if trough_reefs is None else trough_reefs
+    if not trough_reefs <= set(TWO_WAVE):
+        raise ValueError(f"Unknown trough reefs: {trough_reefs - set(TWO_WAVE)}")
     files = {name: output / name for name in ("gate_g2prime.csv", "gate_g2prime.json")}
     if output.exists():
         raise FileExistsError(f"Refusing to overwrite {output}")
@@ -93,7 +98,8 @@ def main(output: Path, rescores: list[Path]) -> None:
             model_mean = float(cpue.loc[window["years"]].mean())
             reef_trough_ok = model_mean <= window["poisson_upper_95"]
             distinct &= bool(np.isfinite(ratio) and ratio <= SEPARATION)
-            trough_ok &= reef_trough_ok
+            if s.reef_name in trough_reefs:
+                trough_ok &= reef_trough_ok
             old_ratio.append(ratio)
             row |= {f"{short}_peaks": ";".join(f"{y}:{h:.2f}" for y, h in zip(years, heights)),
                     f"{short}_separation_ratio": ratio,
@@ -121,6 +127,7 @@ def main(output: Path, rescores: list[Path]) -> None:
         "status": "gate_evaluation_not_promoted",
         "gate": "G2' (crash_mechanism_protocol.md, 2026-10-13)",
         "constants": {"outbreak_cpue": OUTBREAK_CPUE, "separation": SEPARATION, "trough_bound": "Garwood 95% upper"},
+        "trough_gated_reefs": sorted(trough_reefs),
         "observed_troughs": troughs,
         "passing": result[result.passes_g2prime][key].to_dict(orient="records"),
         "inputs": {f"{r.name}/{n}": sha256(r / n) for r in rescores for n in (
@@ -145,5 +152,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
     parser.add_argument("rescores", type=Path, nargs="+")
+    parser.add_argument("--trough-reefs", nargs="+", default=None,
+                        help="model reef names whose trough is gated (default: all two-wave reefs)")
     args = parser.parse_args()
-    main(args.output.resolve(), [r.resolve() for r in args.rescores])
+    main(args.output.resolve(), [r.resolve() for r in args.rescores],
+         None if args.trough_reefs is None else set(args.trough_reefs))

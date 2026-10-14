@@ -784,6 +784,17 @@ function run_model(
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
     log_dhw_tols = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "true")) == true
     log_cover = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+    # Opt-in minimum bleaching susceptibility threshold (DHW-weeks). Unset keeps HEAT_LB,
+    # the established behaviour; see bleaching_mortality! and the sandbox calibration
+    # protocol (2026-10-14).
+    bleaching_dhw_floor = parse(Float64, get(ENV, "ADRIA_BLEACHING_DHW_FLOOR", string(HEAT_LB)))
+    isfinite(bleaching_dhw_floor) && bleaching_dhw_floor >= HEAT_LB ||
+        error("ADRIA_BLEACHING_DHW_FLOOR must be finite and >= HEAT_LB ($HEAT_LB)")
+    # Opt-in scaling of bleaching mortality below a DHW threshold (unset: established path).
+    bleaching_low_dhw_scale = parse(Float64, get(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE", "1.0"))
+    bleaching_low_dhw_threshold = parse(Float64, get(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD", "4.0"))
+    0.0 <= bleaching_low_dhw_scale <= 1.0 && isfinite(bleaching_low_dhw_threshold) ||
+        error("ADRIA_BLEACHING_LOW_DHW_SCALE must lie in [0, 1] with a finite threshold")
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -2148,7 +2159,10 @@ function run_model(
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
-            c_mean_tol_ceil
+            c_mean_tol_ceil;
+            heat_lb=bleaching_dhw_floor,
+            low_dhw_scale=bleaching_low_dhw_scale,
+            low_dhw_threshold=bleaching_low_dhw_threshold
         )
         
         bleach_scalar = parse(Float64, get(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR", "1.0"))

@@ -2513,3 +2513,73 @@ python sandbox/calibration/audit_1991_local_retention.py <run_dir>
 julia --project=sandbox sandbox/calibration/rescore_detectability.jl <rescore_dir> <run_dir>:<arms>
 & C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/evaluate_gate_g2prime.py <gate_dir> <rescore_dir> [...]
 ```
+
+### Detectability evidence, the bleaching floor, and a time-convention finding (2026-10-14)
+
+**Detectability.** `analyse_manta_detectability.py` pairs diver densities (SALAD 2021–26; Pratchett 2005 belt transects) with LTMP and Control Program manta surveys on the same reef within 6 months.
+- **Below the outbreak range.** Manta detects 3–7× less than `q = 0.015` implies at 2–35 COTS/ha.
+- **At outbreak density.** At Lizard's 1996–97 outbreak (40–55/ha) it detects more.
+- **Shape.** Detection is strongly density-dependent, but `A½` is not identified.
+
+**Bleaching floor.** The opt-in ADRIA switch `ADRIA_BLEACHING_DHW_FLOOR` removes bleaching mortality at or below the floor.
+- **Lizard.** At 4 DHW, Lizard keeps its 1994 fast coral and reaches 39 adults/ha, close to the diver-observed 40–55/ha.
+- **Cost.** It also removes 1996–2010 low-DHW losses, so coral overgrows and North Direction overshoots. The chronic coral loss needs re-fitting before the floor is used.
+
+**Time convention.** LTMP `year` is the financial reporting year, so September–November surveys are labelled one year late. This is not changed; it awaits the lead's decision.
+
+Reproduce:
+
+```powershell
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/analyse_manta_detectability.py <new_run_dir>
+julia --project=sandbox sandbox/calibration/test_bleaching_floor.jl
+$env:OWEN_1991_EXPERIMENT = 'bleaching_floor'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_bleaching_floor_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl <rescore_dir> <run_dir>:<arms>
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/evaluate_gate_g2prime.py <gate_dir> <rescore_dir> --trough-reefs "Lizard Island Reef" "MacGillivray Reef"
+python sandbox/calibration/audit_1991_bleaching_floor.py <run_dir> <gate_dir>
+```
+
+### Survey timing, coral re-fit, Pratchett-anchored q and Lizard coral (2026-10-14)
+
+- **Survey timing.** `build_survey_timing.py` flags surveys that predate bleaching the model has already applied in the year they are scored with. Most calibration-reef surveys are made in Sep–Dec, before the next bleaching summer. Scoring is unchanged.
+- **Coral re-fit (forced COTS).** The chronic background goes to the grid bound (8%/yr). Bleaching floors of 3 or 4 fit worse, because the 9 m transects record a real fast-coral loss across the 1994 heat stress (3.3–3.5 DHW). The floor stays at its default.
+- **Pratchett-anchored `q` (0.030).** It lowers the COTS loss most, but doubles trough CPUE.
+- **Lizard hard coral.** Scaling it up *lowers* its outbreak, through space competition and a larger stock lost in 1994. Rejected.
+- **μ 0.08.** Improves coral and COTS fits together; awaiting an extended grid.
+- **Remaining failure.** The slow post-peak decline. Pratchett (2005) shows a disease crash across all size classes.
+
+Reproduce:
+
+```powershell
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_survey_timing.py <new_run_dir>
+$env:OWEN_1991_EXPERIMENT = 'coral_refit'   # then 'lizard_coral'
+$env:OWEN_1991_RUN_ID = '<YYYYMMDD>T_coral_refit_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_coral_refit.py <run_dir>
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl [--q=0.030] <rescore_dir> <run_dir>:<arms>
+python sandbox/calibration/audit_1991_lizard_coral.py <run_dir> --rescore015 <dir> --rescore030 <dir> --gate015 <dir> --gate030 <dir>
+```
+
+### Coral re-fit v2 and the starting fast-share calibration (2026-10-14)
+
+- **Correction.** The 1993–94 transect fast-coral loss coincides with outbreak-level COTS at the October 1994 surveys. It is not evidence for low-DHW bleaching.
+- **New ADRIA switch.** `ADRIA_BLEACHING_LOW_DHW_SCALE` (opt-in) scales bleaching mortality below 4 DHW.
+- **Coral re-fit v2.** μ is identified: 0.10/yr with default bleaching, and 0.12/yr with low-DHW mortality ×0.25. The latter is selected as **cv2**, with coral `J` 0.259 against 0.315 for the earlier configuration.
+- **Starting fast share.** Each reef's healthy-year photo-transect range (`build_initial_share_range.py`) is partially calibrated. The per-reef picks under cv2 give COTS loss **7.97** and coral `J` 0.260.
+- **Still failing.** Lizard and MacGillivray troughs remain above the observed bound at `A½ = 10`.
+
+Reproduce:
+
+```powershell
+julia --project=sandbox sandbox/calibration/test_bleaching_floor.jl
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_observed_cots_forcing.py --output <dir> --year-basis survey
+$env:OWEN_1991_EXPERIMENT = 'coral_refit_v2'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_coral_refit_v2.py <run_dir>
+& C:\Users\smatthew\AppData\Local\miniconda3\python.exe sandbox/calibration/build_initial_share_range.py <new_run_dir>
+$env:OWEN_1991_EXPERIMENT = 'initial_share'
+$env:OWEN_INITIAL_SHARE_PICKS = 'Lizard Island Reef=min;MacGillivray Reef=q50;North Direction Reef=q25'   # stage 2b only
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_1991_initial_share.py <run_dir> <gate_dir>
+```
