@@ -2021,7 +2021,8 @@ between engines -- `scens` must already have been sampled from that engine's own
   `kora_fpath`, and requires `KoraInterface` to be loaded -- see `ext/ADRIAKoraExt.jl`) or
   `:reefmod` (requires `reefmod_fpath`, and requires `ReefModInterface` to be loaded -- see
   `ext/ADRIAReefModExt.jl`; also requires an actual MATLAB on `PATH` -- see that extension's
-  docstring).
+  docstring) or `:coconet` (requires `coconet_fpath`, and requires `CoCoNetInterface` to be loaded --
+  see `ext/ADRIACoCoNetExt.jl`; runs a local CoCoNet clone through PythonCall).
   For `:coralpop`/`:kora`/`:reefmod`, `scens` is from `ADRIA.sample(coralpop_spec(), n)` /
   `ADRIA.sample(kora_spec(), n)` / `ADRIA.sample(reefmod_spec(), n)`; `dom` is translated (always
   -- none of the three has a project directory of its own) into per-site inputs, and `RCP` is
@@ -2050,6 +2051,10 @@ between engines -- `scens` must already have been sampled from that engine's own
 - `kora_fpath` : `:kora` only -- directory the run writes to, same convention as `coralpop_fpath`.
 - `reefmod_fpath` : `:reefmod` only -- directory the run writes to (per-scenario MATLAB `.mat` inputs
   and outputs), same convention as `coralpop_fpath`.
+- `coconet_fpath` : `:coconet` only -- directory the run writes to, same convention as `coralpop_fpath`.
+  `scens` is from `ADRIA.sample(coconet_spec(), n)`; `dom` is always translated (`dhw_idx`/`cyclone_idx`
+  pick the forcing member, `wave_idx` is unused, `RCP` is accepted-but-unused -- CoCoNet's
+  ocean-acidification penalty follows `dom.RCP`).
 - `dhw_idx`/`wave_idx`/`cyclone_idx` apply to `:cscape` (with `use_domain_translation=true`) and to
   `:coralpop`/`:kora`/`:reefmod`, which are always domain-translated; pass the same values to every
   engine being compared. `wave_idx` is unused by CoralPop, Kora and ReefMod; `cyclone_idx` is unused
@@ -2067,13 +2072,17 @@ between engines -- `scens` must already have been sampled from that engine's own
   `n_workers`/`keep_raw`/`calc_indicators`/`base_scenario_id`/`spec`/`matlab_exe`/`reefmod_gbr_dir` to
   `ReefModInterface.run_reefmod_scenarios` and `load_reefmod_results` for the `:reefmod` path (see
   `ext/ADRIAReefModExt.jl`; `n_workers` there caps concurrent MATLAB subprocesses, each its own OS
-  process -- like `:coralpop`, not like `:kora`).
+  process -- like `:coralpop`, not like `:kora`);
+  `n_workers`/`exeflags`/`keep_raw`/`base_scenario_id`/`spec`/`translator_kwargs` to
+  `CoCoNetInterface.run_coconet_scenarios`, `domain_to_coconet_inputs` and `load_coconet_results` for
+  the `:coconet` path (see `ext/ADRIACoCoNetExt.jl`; `n_workers` there are Distributed workers, each
+  with its own Python interpreter, like `:coralpop`).
 
 # Returns
 `ResultSet` -- ADRIA's own Zarr-backed result set for `:coralblox`,
 `CscapeInterface.CScapeResultSet` for `:cscape`, `CoralPopInterface.CoralPopResultSet` for
-`:coralpop`, `KoraInterface.KoraResultSet` for `:kora`, or `ReefModInterface.ReefModResultSet` for
-`:reefmod`.
+`:coralpop`, `KoraInterface.KoraResultSet` for `:kora`, `ReefModInterface.ReefModResultSet` for
+`:reefmod`, or `CoCoNetInterface.CoCoNetResultSet` for `:coconet`.
 
 # Examples
 ```julia
@@ -2109,6 +2118,11 @@ rs = ADRIA.run_scenarios(dom, scens_kora, "45", :kora; kora_fpath=fpath, dhw_idx
 using ReefModInterface
 scens_rm = ADRIA.sample(reefmod_spec(), 8)
 rs = ADRIA.run_scenarios(dom, scens_rm, "45", :reefmod; reefmod_fpath=fpath, dhw_idx=1, n_workers=4)
+
+# CoCoNet, on dom's own data -- requires `using CoCoNetInterface` and a Python with numpy/pandas/pyyaml
+using CoCoNetInterface
+scens_cn = ADRIA.sample(coconet_spec(), 128)
+rs = ADRIA.run_scenarios(dom, scens_cn, "45", :coconet; coconet_fpath=fpath, dhw_idx=1, cyclone_idx=1)
 ```
 """
 function run_scenarios(
@@ -2122,6 +2136,7 @@ function run_scenarios(
     kora_fpath::Union{String,Nothing}=nothing,
     corset_fpath::Union{String,Nothing}=nothing,
     reefmod_fpath::Union{String,Nothing}=nothing,
+    coconet_fpath::Union{String,Nothing}=nothing,
     use_domain_translation::Bool=false,
     dhw_idx::Int=0,
     wave_idx::Int=0,
@@ -2169,8 +2184,15 @@ function run_scenarios(
         return _run_scenarios_reefmod(
             dom, scens, reefmod_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
         )
+    elseif engine === :coconet
+        coconet_fpath === nothing && throw(ArgumentError(
+            "engine=:coconet requires `coconet_fpath` (the directory the run's outputs are written to)."
+        ))
+        return _run_scenarios_coconet(
+            dom, scens, coconet_fpath; dhw_idx, wave_idx, cyclone_idx, kwargs...
+        )
     else
-        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora, :corset, :reefmod."))
+        throw(ArgumentError("Unknown engine :$engine. Supported engines: :coralblox, :cscape, :coralpop, :kora, :corset, :reefmod, :coconet."))
     end
 end
 
@@ -2252,3 +2274,19 @@ MATLAB on `PATH` (or `ENV["REEFMOD_MATLAB_EXE"]` pointing at one) and a local cl
 that bundles Julia + MATLAB + the ReefMod-GBR clone, not only on a workstation with a MATLAB license.
 """
 function _run_scenarios_reefmod end
+
+"""
+    _run_scenarios_coconet(dom::Domain, scens::DataFrame, fpath::String;
+                           dhw_idx=0, wave_idx=0, cyclone_idx=0, kwargs...)
+
+Dispatch target for `run_scenarios(dom, scens, RCP, :coconet; ...)`. Declared here with zero methods for
+the same reason as the other engines' stubs: the weak-dependency extension `ext/ADRIACoCoNetExt.jl` adds
+the one real method, active only once `CoCoNetInterface` is loaded (`using CoCoNetInterface`). Calling
+this without `CoCoNetInterface` loaded raises Julia's usual "no method matching" error naming this
+function.
+
+CoCoNet (`gbrrestoration/coconet-python`, the Python port of the NetLogo Coral Community Network model)
+runs from a local clone through PythonCall, like CoralPop; see `CoCoNetInterface.jl/README.md` and its
+`src/domain_translator.jl` header for how an ADRIA domain drives it.
+"""
+function _run_scenarios_coconet end
