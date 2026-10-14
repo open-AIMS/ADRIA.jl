@@ -708,6 +708,7 @@ function run_model(
         # Reset log accumulators for this new scenario (they are written to each timestep)
         fill!(cache.dhw_tol_mean_log, 0.0)
         fill!(cache.cover_log, 0.0)
+        fill!(cache.recruitment, 0.0)
     end
 
     factor_names::Vector{String} = collect(param_set.factors.val)
