@@ -45,3 +45,39 @@ end
         end
     end
 end
+
+@testset "Scenario state does not leak between runs" begin
+    dom = @isdefined(TEST_DOM) ? TEST_DOM : ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+    samples = ADRIA.sample_cf(dom, 4)
+
+    @testset "to_coral_spec leaves the cached coral spec untouched" begin
+        before = deepcopy(ADRIA.coral_spec().params)
+        ADRIA.to_coral_spec(samples[1, :])
+        @test isequal(ADRIA.coral_spec().params, before)
+    end
+
+    @testset "Reused sim_cache matches a fresh one" begin
+        n_locs = dom.coral_growth.n_locs
+        n_groups = dom.coral_growth.n_groups
+        n_sizes = dom.coral_growth.n_sizes
+        edges = ADRIA.bin_edges(; unit=:m)
+        make_fgs() = [
+            ADRIA.FunctionalGroup.(
+                eachrow(edges[:, 1:(end - 1)]),
+                eachrow(edges[:, 2:end]),
+                eachrow(zeros(n_groups, n_sizes))
+            )
+            for _ = 1:n_locs
+        ]
+
+        ref = ADRIA.run_model(dom, samples[2, :], make_fgs()).raw
+
+        # Run a different scenario first so the reused cache holds stale state
+        fgs = make_fgs()
+        cache = ADRIA.setup_cache(dom)
+        ADRIA.run_model(dom, samples[1, :], fgs; sim_cache=cache)
+        reused = ADRIA.run_model(dom, samples[2, :], fgs; sim_cache=cache).raw
+
+        @test isequal(reused, ref)
+    end
+end

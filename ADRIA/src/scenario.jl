@@ -708,7 +708,6 @@ function run_model(
         # Reset log accumulators for this new scenario (they are written to each timestep)
         fill!(cache.dhw_tol_mean_log, 0.0)
         fill!(cache.cover_log, 0.0)
-        fill!(cache.recruitment, 0.0)
     end
 
     factor_names::Vector{String} = collect(param_set.factors.val)
@@ -860,7 +859,9 @@ function run_model(
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_scope::Matrix{Float64} = cache.fec_scope
+    fill!(fec_scope, 0.0)
     recruitment::Matrix{Float64} = cache.recruitment
+    fill!(recruitment, 0.0)
     dhw_t::Vector{Float64} = cache.dhw_step
     eff_dhw_t::Vector{Float64} = cache.eff_dhw_step
     depth_coeff::Vector{Float64} = cache.depth_coeff
