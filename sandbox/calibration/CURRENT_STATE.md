@@ -8,7 +8,7 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here:** the section **"Close-out plan (2026-10-14)"** below. Done: A1, A2, B1, B2, B3 (`candidates/candidates.toml`), B4 replicates, C1 and C2 (switch plus screen). Next: the lead's decisions, listed under "Open for the lead" in Progress.
+**Resume here:** the section **"Close-out plan (2026-10-14)"** → Progress. The simulation set is W, C3a and C6. The current focus is **the 2020–26 fifth-outbreak build-up** (lead's priority). See "Seventh round" in Progress for the open decisions.
 
 **Read in this order:**
 1. this page;
@@ -313,6 +313,22 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
   - whether μ 0.09 replaces C5 as the trough-respecting member (replicate across seeds first);
   - whether the trough test formally moves to the stronger under-detection setting;
   - then held-out and sensitivity gates on the final set.
+- **Seventh round (lead):**
+  - replicate μ 0.09 and swap it for C5 if confirmed;
+  - trough test at `A½ 30` (with `A½ 10` reported);
+  - SALAD anchors the cull-catch conversion;
+  - **priority: match the 2020–26 fifth-outbreak build-up seen in SALAD and cull data**;
+  - held-out and sensitivity gates after that.
+- **Done:**
+  - **C6 confirmed** (run 48; troughs at the bound on average; coral `J` 0.279). **The simulation set is W, C3a and C6.**
+  - **2020s targets:** `build_2020s_density_targets.py` (density ≈ 7.9 × cull-per-diver-hour^0.55). W is about 5× too low.
+  - **Diagnosis:** the external supply is built from manta-based outbreak predictions, which are near zero in 2018–25.
+  - **Supply counterfactual** (run 49): extra supply reaches the targets, but the model then booms and crashes (2023 peak, 2024 crash) where the data show a sustained build-up.
+- **Open for the lead:**
+  - an evidence-based 2020s external supply;
+  - a diver-anchored 2020s score term;
+  - the boom-bust dynamics;
+  - 2025–26 forcing.
 
 **Phase A: lock the scoring (before any more model changes).**
 - **A1. Frozen score v2.** Preregister and implement score v2 as a wrapper; `cots_cycle_metrics.jl` stays unchanged.
@@ -445,6 +461,9 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
 | 43–44 | re-score and G2′ of run 42 |
 | 45 | intermediate coral settings (μ × low-DHW bleaching) |
 | 46–47 | re-score and G2′ of run 45 |
+| 48 | candidate set with C6 × 5 seed pairs |
+| 49 | external-supply counterfactual (2020s) |
+| 50–55 | re-scores and G2′ of runs 48–49 |
 
 ## Known issues
 

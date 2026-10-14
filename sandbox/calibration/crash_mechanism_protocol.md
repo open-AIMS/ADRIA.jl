@@ -3601,3 +3601,123 @@ The lead decides.
 - The model's 2020s Lizard population (about 2 adults/ha) is likely too low.
 
 **Decision.** Nothing is promoted. Culling stays off pending the lead.
+
+
+## Lead's decisions (2026-10-14, seventh round)
+
+1. **Background mortality 9%/yr.** Replicate μ 0.09 (bleaching ×0.25 below 4 DHW) across the 5 seed pairs. If confirmed, it replaces the run-17 coral control (C5) in the simulation set, which becomes W, C3a and C6.
+2. **Between-wave (trough) test.** The test formally uses the stronger low-density under-detection by manta (`A½ = 30`). `A½ = 10` is reported alongside.
+3. **SALAD as the density anchor.** SALAD diver densities anchor the conversion of cull catch to density.
+   - **Priority:** the model must reproduce the build-up of the fifth outbreak in 2020–2026 seen in the SALAD and cull data. These are more accurate than manta, which only starts to rise in 2025/26.
+4. **Promotion gates.** Held-out and sensitivity gates follow on the final set.
+
+## Fifth-outbreak build-up: diagnosis and diver-anchored targets (2026-10-14)
+
+**Model** (W at seed pair 1; run 37 flows and mechanisms):
+- COTS stay below about 1.6 adults/ha on Lizard, North Direction and Eyrie through 2017–2024.
+- **Three limits act together:**
+  1. **External larval supply collapses.**
+     - Lizard: 98–174 per ha per year (2014–16), then 6–14 (2018–24).
+     - North Direction: 169–295, then 8–22.
+     - The supply is built from the GBR-wide outbreak-probability surface `gbrPredsAdj_20262408.csv`, i.e. the probability that manta CPUE > 0.22 on each upstream reef.
+     - Mean probability on northern GBR reefs (12–17.5° S): 0.25 in 2012–14, but **0.018–0.038 in 2018–2025, the lowest in the record**.
+     - The boundary forcing therefore inherits manta's low-density blindness.
+  2. **Starvation.** Fast coral is near zero from 2015 to about 2020 (second wave, 2016–17 bleaching, cyclones). Adult food survival is 0.05–0.11 until 2021, so maturing adults die.
+  3. **The predator pit** removes 2–6 of the 7–26 recruits per ha per year.
+
+**Diver-anchored targets** (`build_2020s_density_targets.py` → git-ignored `sandbox/data/derived/density_targets_2020s/`; summaries only).
+- **SALAD–cull pairs:** 21 SALAD reef-months paired with cull dives on the same reef within ±60 days.
+- **Conversion:** density ≈ **7.9 × (cull COTS per diver-hour)^0.55**.
+  - The power fit is better than linear (AIC 350 against 393).
+  - The concave shape is consistent with cull divers targeting aggregations.
+  - The Poisson fit ignores overdispersion, so its intervals are too narrow.
+
+Targets (adults/ha, reporting year; SALAD where surveyed, otherwise converted cull catch):
+
+| Reef | 2020–21 | 2022–23 | 2024–25 | Model W, 2020–24 |
+| --- | --- | --- | --- | --- |
+| Lizard | 3.4 | 6–8 | 9 | 0.4–1.6 |
+| North Direction | 3.4–3.6 | 2.5–3.7 | 11–13 | 0.05–1.25 |
+| Eyrie | 0–2 | 17–45 | 12–16 | 0.1–1.3 |
+| Martin | 7 | 7 | 9–11 | (not output) |
+
+- SALAD itself misses some COTS (published detectability 50–82%), so the targets are conservative.
+- The model's years end in 2024. 2025–26 needs forcing extended (DHW, cyclones).
+
+## Preregistered diagnostic: 2017–2024 external-supply counterfactual (2026-10-14)
+
+**Question.** If more larvae arrive from upstream in the 2020s, can the model build toward the diver-anchored densities? Or do starvation and the predator pit still block it?
+
+**Change.** Labelled counterfactual switch, opt-in.
+- New ADRIA env: `COTS_EXTERNAL_SUPPLY_WINDOW = "<start>:<end>:<factor>"`. It multiplies the evidence-derived external supply (potential and pelagic) by `factor` in the calendar years `start..end`.
+- Unset gives the established path.
+- This is a diagnostic only, not a candidate mechanism. The supply itself would later be rebuilt from evidence.
+
+**Arms** (W at seed pair 1, `q` 0.015):
+- window 2017–2024 × factor {1, 3, 10, 30};
+- window 2019–2024 × factor 10.
+
+Factor 1 must replay W exactly.
+
+**Expected.**
+- If supply is the main limit, adults rise in 2021–24 toward 3–13/ha, roughly in proportion to the factor.
+- If starvation dominates, the rise is delayed until fast coral recovers (about 2021–22), and is damped.
+
+**Read-out.**
+- Per reef: adults/ha in 2020–24 against the targets; the first year above 3/ha;
+- the flux decomposition (settlement, juvenile predation, maturation, food survival);
+- coral in 2020–24;
+- loss v2 and G2′, to check that the 1992–2016 fit is not changed (the window starts after the second wave).
+
+**Failure criteria.** Factor 1 does not replay, or an arm fails.
+
+**Rollback.** The env is unset by default.
+
+
+## Candidate rerun with μ 0.09 (C6) across 5 seed pairs (2026-10-14)
+
+**Runs.**
+- Run `20261014T_48_candidates_1991_v2`: 35 arms, no failures.
+- Re-scores: runs 50 and 51. G2′: runs 52 and 53.
+- Audit: `candidates_audit.json`, extended with C6 and the `A½ 30` columns.
+
+**Controls.** All 30 original arms replay run 37 exactly, and C6 at seed pair 1 replays run 45 (93 table checks, maximum difference 0.0).
+
+**C6** (W with μ 0.09), over 5 seeds:
+- loss v2 7.14 ± 0.85;
+- coral `J` 0.279;
+- troughs at `A½ 10`: Lizard 0.050 ± 0.001, MacGillivray 0.055 ± 0.005 (bound 0.054);
+- G2′ passes in 3/5 seeds at `A½ 10` and 3/5 at `A½ 30`.
+
+**Under the adopted trough standard (`A½ 30`)**, G2′ passes in 5/5 seeds for W, 3/5 for C6 and 1/5 for C5.
+
+**Decision.** C6 is confirmed as the trough-respecting member: its troughs are at the bound on average, with a much better coral fit than C5. Per the lead's conditional decision, it replaces C5. **The simulation set is W, C3a and C6.**
+
+## External-supply counterfactual results (2026-10-14; labelled diagnostic)
+
+**Implementation.**
+- ADRIA `COTS_EXTERNAL_SUPPLY_WINDOW` (`parse_cots_supply_window`, `cots_supply_window_factor` in `cots.jl`; hook in `scenario.jl`). Unit test `test_supply_window.jl`: 12/12. The cull adapter test still passes (16/16).
+- Run `20261014T_49_supply_window_1991_v1`: 5 arms, no failures. Factor 1 replays W exactly. Re-score: run 54. G2′: run 55. Audit: `supply_window_audit.json`.
+
+**Results** (W at seed pair 1). "2020s error" is the mean log((model + 0.5) / (target + 0.5)) over 18 reef-years in 2020–24 with diver-anchored targets.
+
+| Supply | 2020s error (bias, mean absolute) | Lizard adults 2020–24 | North Direction 2020–24 | Eyrie 2020–24 | Loss v2 | G2′ at `A½ 30` |
+| --- | --- | --- | --- | --- | --- | --- |
+| ×1 (W) | −1.57, 1.59 (about 5× low) | 0.5, 0.4, 0.8, 1.6, 1.2 | 0.5, 0.1, 0.1, 1.3, 0.7 | 0.1, 0.2, 0.4, 0.9, 1.3 | 6.44 | pass |
+| ×3, 2017–24 | −0.63, 0.95 | 1.1, 0.4, 2.2, 8.5, 2.3 | 1.9, 0.3, 3.8, 17.9, 14.9 | 0.2, 0.9, 1.8, 5.3, 5.2 | 6.54 | pass |
+| ×10, 2017–24 | 0.00, 1.15 | 3.4, 1.5, 12.8, 35.0, 2.9 | 7.3, 1.7, 19.0, 43.9, 2.8 | 0.8, 2.1, 0.9, 5.8, 1.5 | 8.89 | pass |
+| ×30, 2017–24 | +0.42, 1.16 | 11.6, 5.8, 10.2, 14.3, 4.0 | 23.6, 6.1, 16.7, 11.9, 4.2 | 3.0, 7.1, 2.6, 6.0, 4.4 | 12.08 | fail |
+| ×10, 2019–24 | −0.27, **0.89** | 0.5, 6.7, 14.9, 16.1, 2.0 | 0.5, 1.0, 2.8, 11.3, 2.5 | 0.1, 6.8, 7.3, 26.3, 5.4 | 7.16 | pass |
+
+Targets: Lizard about 3 → 9, North Direction about 3.5 → 11–13, Eyrie about 2 → 12–45 adults/ha.
+
+**Findings.**
+1. **External supply is the main limit on the 2020s build-up.** Restoring it (×3–10) raises 2020–23 populations into the diver-observed range. With factors up to 10 the 1992–2016 fit is unchanged, because the window starts after the second wave.
+2. **The model booms and busts where the observations show a sustained build-up.**
+   - With extra supply, adults peak in 2023 (Lizard 16–35/ha) and crash in 2024 (2–3/ha) as food runs out. Total coral falls to 0.02–0.04 at ×10–30 under COTS grazing plus the 2024 bleaching.
+   - SALAD shows a sustained, moderate build-up (Lizard 6–9 adults/ha from 2022 to 2025).
+   - Juvenile predation removes 100–130 per ha over 2017–24, near the saturation cap (`Q` 20 per year).
+3. **The manta-based loss v2 rises as the 2020s fit improves** (6.44 → 8.89 at ×10). Manta reads near zero in 2020–24, so the frozen score penalises a build-up that the diver data show. The 2020s need a diver-anchored score term.
+4. **The model ends in 2024.** The 2025–26 targets (Eyrie 34/ha and South Direction 23/ha in 2026) need extended forcing.
+
+**Decision.** Nothing is promoted. Rebuilding the 2020s supply from evidence, scoring the 2020s against diver data, and the boom-bust dynamics are for the lead.

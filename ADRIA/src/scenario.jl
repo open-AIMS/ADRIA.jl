@@ -1429,6 +1429,8 @@ function run_model(
     )
     cots_external_outbreak_production >= 0.0 ||
         error("COTS_EXTERNAL_OUTBREAK_PRODUCTION must be non-negative")
+    # Labelled counterfactual: external outbreak supply multiplier for a calendar-year window.
+    cots_supply_window = parse_cots_supply_window(get(ENV, "COTS_EXTERNAL_SUPPLY_WINDOW", ""))
     cots_external_outbreak_production > 0.0 && !cots_separated_recruitment && error(
         "Evidence-derived outbreak supply requires COTS_SEPARATED_RECRUITMENT=true"
     )
@@ -2266,6 +2268,11 @@ function run_model(
                 calendar_year,
                 cots_external_outbreak_production
             )
+            supply_factor = cots_supply_window_factor(cots_supply_window, calendar_year)
+            if supply_factor != 1.0
+                potential_supply .*= supply_factor
+                pelagic_supply .*= supply_factor
+            end
             !cots_apply_larval_survival && (pelagic_supply = potential_supply)
             apply_external_larval_supply!(
                 cots_models, potential_supply, pelagic_supply

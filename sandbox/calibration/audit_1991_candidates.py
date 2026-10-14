@@ -33,7 +33,10 @@ RUNS = ROOT / "sandbox/calibration/runs"
 BASE = "wc_b150_q20_eb_lin"
 CANDIDATES = {  # id -> (observation q, suffix)
     "W": (0.015, "cv2_pnd"), "C1": (0.015, "cv2_pick"), "C2": (0.030, "cv2_pnd"),
-    "C3a": (0.015, "cv2_pndl50"), "C3b": (0.030, "cv2_pndl50"), "C5": (0.015, "ref")}
+    "C3a": (0.015, "cv2_pndl50"), "C3b": (0.030, "cv2_pndl50"), "C5": (0.015, "ref"),
+    # C6 (sixth round): W with chronic mu 0.09; present from run 20261014T_48 onwards.
+    "C6": (0.015, "m090_l025_cv2_pnd")}
+RUN37 = "20261014T_37_candidates_1991_v1"
 REPLAYS = {  # s1 arm -> (prior run, prior arm)
     f"{BASE}_obs015_s1_cv2_pick": ("20261014T_25_initial_share_1991_v2", f"{BASE}_cv2_pick"),
     f"{BASE}_obs015_s1_cv2_pnd": ("20261014T_32_timing_1991_v1", f"{BASE}_obs015_cv2_pnd"),
@@ -62,12 +65,22 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
     if len(tables["failures"]):
         raise ValueError("Failed evaluations in run")
     trajectories, mechanisms = tables["trajectories"], tables["mechanisms"]
+    present = [c for c in CANDIDATES if arm(c, 1) in set(trajectories.treatment)]
+    if "C6" in CANDIDATES and "C6" not in present:
+        CANDIDATES.pop("C6")
     expected = {arm(c, s) for c in CANDIDATES for s in range(1, N_SEEDS + 1)}
     if set(trajectories.treatment) != expected or len(trajectories) != len(expected) * 4 * N_YEARS:
         raise ValueError("Missing or incomplete treatments")
 
+    replays = dict(REPLAYS)
+    if run.name != RUN37:
+        # Later candidate runs: every original arm (all seeds) must replay run 37, and C6 at
+        # seed pair 1 must replay the coral-mix arm of run 45.
+        replays = {name: (RUN37, name) for name in expected if "_m090_" not in name}
+        if "C6" in CANDIDATES:
+            replays[arm("C6", 1)] = ("20261014T_45_coral_mix_1991_v1", arm("C6", 1))
     replay = {}
-    for current, (prior_run, prior_arm) in REPLAYS.items():
+    for current, (prior_run, prior_arm) in replays.items():
         for name in ("trajectories", "flows", "mechanisms"):
             prior = pd.read_csv(RUNS / prior_run / f"{name}.csv")
             columns = [c for c in prior if c not in ("treatment", "reef_name", "year")]
@@ -101,7 +114,7 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
                 raise ValueError(f"Missing re-score rows for {name}")
             x = series[q]
             x = x[(x.run == run.name) & (x.treatment == name) & (x.a_half == 0.0)]
-            gate0, gate10 = g2[q].loc[(name, 0.0)], g2[q].loc[(name, 10.0)]
+            gate0, gate10, gate30 = (g2[q].loc[(name, a)] for a in (0.0, 10.0, 30.0))
             row = {"candidate": cid, "seed": seed, "treatment": name, "q": q,
                    "summed_loss_v1": float(s[s.observation_treatment == "smoothed_3y"].loss.sum()),
                    "summed_loss_v2": float(primary.loss_v2.sum()),
@@ -113,6 +126,9 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
                    "g2_pass_ahalf10": bool(gate10.passes_g2prime),
                    "liz_trough_ahalf10": float(gate10.liz_trough_model_mean_cpue),
                    "macg_trough_ahalf10": float(gate10.macg_trough_model_mean_cpue),
+                   "g2_pass_ahalf30": bool(gate30.passes_g2prime),
+                   "liz_trough_ahalf30": float(gate30.liz_trough_model_mean_cpue),
+                   "macg_trough_ahalf30": float(gate30.macg_trough_model_mean_cpue),
                    "liz_peak_adults_1995_2000": float(trajectories[(trajectories.treatment == name) &
                        (trajectories.reef_name == "Lizard Island Reef") &
                        trajectories.year.between(1995, 2000)].adults_ha.max())}
@@ -143,9 +159,11 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
     replicates.to_csv(paths["candidates_replicates.csv"], index=False)
 
     metrics = ["summed_loss_v2", "summed_loss_v1", "coral_J", "mean_abs_first_peak_error",
-               "liz_peak_adults_1995_2000", "liz_trough_ahalf10", "macg_trough_ahalf10"]
+               "liz_peak_adults_1995_2000", "liz_trough_ahalf10", "macg_trough_ahalf10",
+               "liz_trough_ahalf30", "macg_trough_ahalf30"]
     summary = result.groupby("candidate")[metrics].agg(["mean", "std"]).reindex(list(CANDIDATES))
     summary[("g2_pass_ahalf10", "seeds")] = result.groupby("candidate").g2_pass_ahalf10.sum()
+    summary[("g2_pass_ahalf30", "seeds")] = result.groupby("candidate").g2_pass_ahalf30.sum()
     summary[("g2_c1_c3_ahalf0", "seeds")] = result.groupby("candidate").g2_c1_c3_ahalf0.sum()
     # AGENTS gate 3 (replicated seeds): better than C1 on v2 loss and first-peak timing in
     # the same seed, without worse coral J (tolerance 0.005), in at least 4 of 5 seeds.
@@ -163,7 +181,8 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
                   .agg(["mean", "std"]))
 
     fig, axes = plt.subplots(4, 1, figsize=(11, 13), sharex=True)
-    colors = {"W": "#1baf7a", "C1": "#52514e", "C2": "#3987e5", "C3a": "#eb6834", "C3b": "#c4458f", "C5": "#9a9893"}
+    colors = {"W": "#1baf7a", "C1": "#52514e", "C2": "#3987e5", "C3a": "#eb6834", "C3b": "#c4458f", "C5": "#9a9893",
+              "C6": "#0d366b"}
     cots_obs = pd.read_csv(ROOT / "sandbox/data/reef_cots.csv")
     for i, (reef, observed_name) in enumerate(REEFS.items()):
         axis = axes[i]
@@ -206,7 +225,7 @@ def main(run: Path, rescores: dict[float, Path], gates: dict[float, Path]) -> No
     s1 = result[result.seed == 1].set_index("candidate")
     print(s1[["summed_loss_v1", "summed_loss_v2", "coral_J", "liz_first_peak", "macg_first_peak", "nd_first_peak",
               "liz_first_wave_cpue", "macg_first_wave_cpue", "nd_first_wave_cpue", "liz_peak_adults_1995_2000",
-              "liz_loss_v2", "macg_loss_v2", "nd_loss_v2", "eyr_loss_v2", "g2_pass_ahalf10",
+              "liz_loss_v2", "macg_loss_v2", "nd_loss_v2", "eyr_loss_v2", "g2_pass_ahalf10", "g2_pass_ahalf30",
               "liz_trough_ahalf10", "macg_trough_ahalf10"]].round(3).to_string())
     print(reef_stats.round(2).to_string())
     print("Gate 3:", gate3)

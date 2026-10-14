@@ -40,6 +40,7 @@ using Test
         "score_v2.jl",
         "test_score_v2.jl",
         "test_cull_removals.jl",
+        "test_supply_window.jl",
         "score_1985_reference_on_1991_window.jl",
     ]
         source = read(joinpath(@__DIR__, filename), String)

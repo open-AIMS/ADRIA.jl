@@ -2649,3 +2649,18 @@ julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
 python sandbox/calibration/audit_1991_coral_mix.py <run> <rescore> <gate>
 & C:/Users/smatthew/AppData/Local/miniconda3/python.exe sandbox/calibration/analyse_cull_vs_manta.py
 ```
+
+### 2020s build-up: diver-anchored targets and the external-supply counterfactual (2026-10-14, seventh round)
+
+- **Diver-anchored targets.** `build_2020s_density_targets.py` converts cull catch to density using SALAD as the anchor, and builds 2019–26 targets by reef and year. Inputs are licensed, so outputs are git-ignored.
+- **Supply counterfactual.** `COTS_EXTERNAL_SUPPLY_WINDOW` (`<start>:<end>:<factor>`) is a labelled, opt-in diagnostic multiplier on the evidence-derived external supply.
+- **Finding.** External supply, derived from manta-based outbreak predictions, is the main limit on the 2020s build-up. With supply restored, the model booms and busts instead of building up steadily.
+
+```powershell
+julia --project=sandbox sandbox/calibration/test_supply_window.jl
+& C:/Users/smatthew/AppData/Local/miniconda3/python.exe sandbox/calibration/build_2020s_density_targets.py
+$env:OWEN_1991_EXPERIMENT = 'supply_window'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+# re-score at q 0.015, evaluate G2', then:
+python sandbox/calibration/audit_1991_supply_window.py <run> <rescore> <gate>
+```

@@ -357,6 +357,27 @@ function load_cots_forced_adults(path::AbstractString, loc_ids::AbstractVector{<
 end
 
 """
+    parse_cots_supply_window(spec) -> Union{Nothing,Tuple{Int,Int,Float64}}
+
+Labelled counterfactual (`COTS_EXTERNAL_SUPPLY_WINDOW = "<start>:<end>:<factor>"`;
+crash_mechanism_protocol.md, 2026-10-14): multiply the evidence-derived external outbreak
+supply by `factor` in calendar years `start..end`. Empty = established path.
+"""
+function parse_cots_supply_window(spec::AbstractString)::Union{Nothing,Tuple{Int,Int,Float64}}
+    isempty(spec) && return nothing
+    parts = split(spec, ":")
+    length(parts) == 3 || error("COTS_EXTERNAL_SUPPLY_WINDOW must be <start>:<end>:<factor>")
+    start_year, end_year, factor = parse(Int, parts[1]), parse(Int, parts[2]), parse(Float64, parts[3])
+    start_year <= end_year || error("COTS_EXTERNAL_SUPPLY_WINDOW years are reversed")
+    isfinite(factor) && factor >= 0.0 || error("COTS_EXTERNAL_SUPPLY_WINDOW factor must be finite and non-negative")
+    return (start_year, end_year, factor)
+end
+
+"""Supply multiplier for `calendar_year` under a parsed window (1 outside it or when unset)."""
+cots_supply_window_factor(window::Union{Nothing,Tuple{Int,Int,Float64}}, calendar_year::Integer)::Float64 =
+    isnothing(window) || !(window[1] <= calendar_year <= window[2]) ? 1.0 : window[3]
+
+"""
     load_cots_cull_removals(path, loc_ids, calendar_years) -> Array{Float64,3}
 
 Opt-in observed culling (`COTS_CULL_REMOVALS_CSV`; crash_mechanism_protocol.md,

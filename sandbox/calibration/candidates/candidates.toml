@@ -48,7 +48,7 @@ g2prime_ahalf10_seeds_passing = 0
 limitations = "inter-wave troughs above the observed bound on Lizard/MacGillivray; North Direction first peak ~2 years late; Lizard first wave ~29 adults/ha vs Pratchett 40-55"
 
 [candidates.C3a]
-status = "candidate: Lizard at Pratchett's density"
+status = "simulation set: Lizard at Pratchett's density"
 arm = "wc_b150_q20_eb_lin_obs015_s<k>_cv2_pndl50"
 coral = "cv2"
 fast_share_1991 = { lizard = 0.308, macgillivray = 0.129, north_direction = 0.191 }
@@ -59,7 +59,7 @@ g2prime_ahalf10_seeds_passing = 0
 limitations = "Lizard inter-wave trough 3.5x the observed bound; Lizard first peak 1999 vs observed 1997/98"
 
 [candidates.C5]
-status = "structural control (run-17 coral)"
+status = "structural control (run-17 coral); replaced in the simulation set by C6"
 arm = "wc_b150_q20_eb_lin_obs015_s<k>_ref"
 coral = "run17"
 fast_share_1991 = "acrpoc (observed 1993-95 Acropora + Pocilloporidae share)"
@@ -68,6 +68,17 @@ loss_v2_mean_sd = [6.84, 0.49]
 coral_J = 0.363
 g2prime_ahalf10_seeds_passing = 4
 limitations = "coral fit much worse (J 0.363); bleaching mortality below 4 DHW retained"
+
+[candidates.C6]
+status = "simulation set (replaces C5; lead's conditional decision, sixth/seventh round; replicated in run 20261014T_48)"
+arm = "wc_b150_q20_eb_lin_obs015_s<k>_m090_l025_cv2_pnd"
+coral = "cv2 with chronic_mu 0.09"
+fast_share_1991 = { lizard = 0.147, macgillivray = 0.129, north_direction = 0.191 }
+observation_q = 0.015
+loss_v2_mean_sd = [7.14, 0.85]
+coral_J = 0.279
+g2prime_seeds_passing = { ahalf10 = 3, ahalf30 = 3 }
+limitations = "troughs at the observed bound on average (MacGillivray 0.055 vs 0.054); no 2020s build-up (all candidates)"
 
 [candidates.C1]
 status = "dominated (previous working configuration)"
