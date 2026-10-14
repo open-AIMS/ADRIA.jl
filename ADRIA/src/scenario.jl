@@ -2053,7 +2053,7 @@ between engines -- `scens` must already have been sampled from that engine's own
   and outputs), same convention as `coralpop_fpath`.
 - `coconet_fpath` : `:coconet` only -- directory the run writes to, same convention as `coralpop_fpath`.
   `scens` is from `ADRIA.sample(coconet_spec(), n)`; `dom` is always translated (`dhw_idx`/`cyclone_idx`
-  pick the forcing member, `wave_idx` is unused, `RCP` is accepted-but-unused -- CoCoNet's
+  pick the forcing member, `wave_idx` is unused, `RCP` is accepted-but-unused -- CoCoNet's optional
   ocean-acidification penalty follows `dom.RCP`).
 - `dhw_idx`/`wave_idx`/`cyclone_idx` apply to `:cscape` (with `use_domain_translation=true`) and to
   `:coralpop`/`:kora`/`:reefmod`, which are always domain-translated; pass the same values to every
