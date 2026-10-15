@@ -985,3 +985,27 @@ end
         @test count(==("45"), scens.ssp) == 3 * n_per_stratum * length(ssp_strata)
     end
 end
+
+@testset "single free parameter" begin
+    # QuasiMonteCarlo's OwenScramble crashes for d=1, so sampling must still succeed
+    # (and stay randomised) when only one parameter is free.
+    dom = deepcopy(ADRIA_DOM_45)
+    spec = ADRIA._filtered_model_spec(
+        ADRIA.model_spec(dom), dom.loc_data.CB_CALIB_GROUPS
+    )
+
+    free_idx = findfirst(.!spec.is_constant)
+    spec.is_constant .= true
+    spec.is_constant[free_idx] = false
+
+    fname = spec.fieldname[free_idx]
+    scens = ADRIA.sample(spec, 32)
+    @test size(scens, 1) == 32
+
+    free_vals = scens[:, fname]
+    @test all(isfinite, free_vals)
+    @test length(unique(free_vals)) > 1
+
+    scens2 = ADRIA.sample(spec, 32)
+    @test scens2[:, fname] != free_vals
+end

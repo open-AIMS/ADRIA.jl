@@ -98,7 +98,7 @@ function sample(
     n_samples::Int64,
     sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    if contains(string(sample_method), "SobolSample") && !ispow2(n_samples)
+    if sample_method isa SobolSample && !ispow2(n_samples)
         throw(
             DomainError(
                 n_samples, "`n_samples` must be a power of 2 when using the Sobol' sampler"
@@ -123,17 +123,13 @@ function sample(
     end
 
     # QuasiMonteCarlo's OwenScramble crashes for d=1 (produces a 0×1 bits array).
-    # Fall back to unscrambled Sobol when only one parameter is free.
-    _sample_method = if n_vary_params == 1 && contains(string(sample_method), "SobolSample")
-        SobolSample()
-    else
-        sample_method
-    end
+    # Sample a second, discarded dimension so the requested scrambling is retained.
+    n_dims = sample_method isa SobolSample ? max(n_vary_params, 2) : n_vary_params
 
     # Create uniformly distributed samples for uncertain parameters
-    samples_tmp = QMC.sample(
-        n_samples, zeros(n_vary_params), ones(n_vary_params), _sample_method
-    )
+    samples_tmp = QMC.sample(n_samples, zeros(n_dims), ones(n_dims), sample_method)[
+        1:n_vary_params, :
+    ]
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
     samples_tmp = _quantile_scale(vary_dists, samples_tmp)
