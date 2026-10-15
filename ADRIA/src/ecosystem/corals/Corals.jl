@@ -57,11 +57,17 @@ end
 """
     bin_widths()
 
-Helper function defining coral colony diameter bin widths.
+Coral colony diameter bin widths (in meters) as a `YAXArray` with dimensions
+`functional_groups` and `size_classes`.
 """
-function bin_widths()::Matrix{Float64}
+function bin_widths()::YAXArray
     edges = bin_edges(; unit=:m)
-    return edges[:, 2:end] .- edges[:, 1:(end - 1)]
+    widths = edges[:, 2:end] .- edges[:, 1:(end - 1)]
+    return DataCube(
+        widths;
+        functional_groups=string.(functional_group_names()),
+        size_classes=["size_class_$i" for i in 1:size(widths, 2)]
+    )
 end
 
 """
