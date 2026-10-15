@@ -86,7 +86,9 @@ function main(args)
         for arm in arms, (reef, observed) in TARGETS
             rows = sort(trajectories[(trajectories.treatment .== arm) .&
                 (trajectories.reef_name .== reef), :], :year)
-            nrow(rows) == 34 || error("Missing trajectory rows for $arm / $reef in $run_dir")
+            # 1991-2024 (v0.3) or 1991-2026 (v0.4); manta scoring stays within 1992-2024.
+            (nrow(rows) in (34, 36) && Int.(rows.year) == collect(1991:(1990 + nrow(rows)))) ||
+                error("Missing trajectory rows for $arm / $reef in $run_dir")
             years = Int.(rows.year)
             adults = Float64.(rows.adults_ha)
             obs = sort(raw_obs[(raw_obs.reef_name .== observed) .& (raw_obs.year .>= 1992) .&

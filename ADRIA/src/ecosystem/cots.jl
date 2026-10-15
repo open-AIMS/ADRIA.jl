@@ -378,6 +378,46 @@ cots_supply_window_factor(window::Union{Nothing,Tuple{Int,Int,Float64}}, calenda
     isnothing(window) || !(window[1] <= calendar_year <= window[2]) ? 1.0 : window[3]
 
 """
+    load_cots_larval_survival(path, loc_ids, calendar_years) -> Matrix{Float64}
+
+Opt-in larval-survival index (`COTS_LARVAL_SURVIVAL_CSV`; crash_mechanism_protocol.md,
+2026-10-15): columns `site_id, year, multiplier` (dimensionless, finite, >= 0). Returns
+`[timestep, location]` multipliers; site-years absent from the table are 1. Unknown sites or
+invalid multipliers are errors.
+"""
+function load_cots_larval_survival(path::AbstractString, loc_ids::AbstractVector{<:AbstractString},
+    calendar_years::AbstractVector{<:Integer})::Matrix{Float64}
+    isfile(path) || error("Missing COTS larval-survival CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:site_id => String))
+    all(in(names(table)), ["site_id", "year", "multiplier"]) ||
+        error("COTS larval-survival CSV needs columns site_id, year, multiplier")
+    sites = Dict(String(id) => loc for (loc, id) in enumerate(loc_ids))
+    years = Dict(Int(year) => t for (t, year) in enumerate(collect(calendar_years)))
+    multipliers = ones(Float64, length(years), length(loc_ids))
+    for row in eachrow(table)
+        loc = get(sites, row.site_id, 0)
+        loc == 0 && error("COTS larval-survival site $(row.site_id) is not a domain site")
+        value = Float64(row.multiplier)
+        isfinite(value) && value >= 0.0 || error("COTS larval-survival multipliers must be finite and non-negative")
+        t = get(years, Int(row.year), 0)
+        t == 0 && continue
+        multipliers[t, loc] = value
+    end
+    return multipliers
+end
+
+"""Scale each location's pre-pelagic larval production (separated recruitment) by the
+timestep's survival multiplier, at the source, before dispersal."""
+function apply_cots_larval_survival!(cots_models::CotsState, multipliers::AbstractVector{<:Real})::Nothing
+    length(multipliers) == length(cots_models) ||
+        throw(DimensionMismatch("larval-survival multipliers must match locations"))
+    for (model, m) in zip(cots_models, multipliers)
+        model.last_local_fecundity *= m
+    end
+    return nothing
+end
+
+"""
     load_cots_cull_removals(path, loc_ids, calendar_years) -> Array{Float64,3}
 
 Opt-in observed culling (`COTS_CULL_REMOVALS_CSV`; crash_mechanism_protocol.md,

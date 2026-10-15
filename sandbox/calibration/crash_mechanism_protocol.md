@@ -3983,3 +3983,257 @@ Both are moderate-to-high heat years. With the current bleaching response (which
 **Other DMS sources.** The eReefs biogeochemistry stores (gridded baseline, and the reef-level `cots-ereef-biogeochemistry`) both end in March 2019.
 
 **Outstanding:** a 2025–26 chlorophyll source and a pre-2003 predictor. These go to the lead.
+
+
+## Lead's decisions (2026-10-15, tenth round)
+
+1. **Bleaching sensitivity:** test a narrower tolerance spread (existing `<coral_id>_dist_std`) together with a raised reduced-mortality threshold (existing `ADRIA_BLEACHING_LOW_DHW_THRESHOLD`, 4 → 6 DHW, ×0.25 below). Judge on the 2016–17 losses, which must remain, and the 2020/2024 non-losses.
+2. **Recovery:** check the manta and model cover comparison and fix bleaching first. Revisit growth only if a gap remains.
+3. **Chlorophyll:** use NOAA VIIRS, calibrated to MODIS, for 2025–26, and test river discharge as the pre-2003 predictor.
+4. **Builds:** the corrected outbreak layer and the 2026 domain are built next (not waiting on the lead).
+
+## Manta against model cover (2026-10-15)
+
+Comparison of the forced-COTS μ 0.12 arms, with bleaching on and off (runs 20261015T_01 and _02), against the manta HC median.
+
+**Lizard.** Manta matches the site-area fraction (`total_coral_site_fraction`; 2007: 0.22 vs manta 0.14). The habitable-area fraction is about 2× too high (0.36), so the current comparator is right.
+
+**MacGillivray and North Direction.** Manta in 2021–24 (MacGillivray 0.19–0.47; North Direction 0.50–0.58) exceeds the model's maximum cover in any year, even with bleaching off (about 0.32–0.37 of habitable area).
+- The model's cover ceiling under μ 0.12 is below these unprecedented values.
+- North Direction's manta jump from 0.09 (2019) to 0.50 (2021) is faster than coral growth allows, which suggests sampling noise on a small reef (few tows).
+- **Conclusion:** comparator scale is not the cause. Bleaching (question 1) and the chronic-background equilibrium are the levers; growth is not revisited yet.
+
+## Preregistered tolerance-spread × low-DHW threshold screen (2026-10-15)
+
+**Hypothesis.** ADRIA ratchets fast-coral mean tolerance to about 6–7 DHW by 2016, so the large losses at DHW 4–6 in 2020 and 2024 come from the tolerance spread (sd about 2.9–3.5) and from full mortality above 4 DHW.
+- A narrower spread steepens the dose–response around the evolved mean.
+- A threshold of 6 limits mortality below 6 DHW to ×0.25.
+- The 2016–17 events (DHW 8–9) remain lethal.
+
+**Change.** No code change; existing scenario values and switches only.
+- **Experiment:** `coral_spread`, forced COTS (reporting-year table, `q` 0.015).
+- **Fixed:** β unset (1.0); mean tolerance unshifted; heritability 0.3; growth untouched; κ 5.
+- **Factors:**
+  - every `<coral_id>_dist_std` × s ∈ {1, 0.75, 0.5};
+  - low-DHW threshold t ∈ {4, 6} DHW (×0.25 below);
+  - μ ∈ {0.12, 0.09}.
+- **Arms:** `spread_s<s>_t<t>_m<μ>` (12), plus bleaching-off counterfactuals `spread_off_t40_m<μ>` (2) for attribution.
+- **Reference:** `spread_s100_t40_m120` must replay run 20261015T_01 `therm_b100_d000_h030_m120_p100` exactly. `spread_off_t40_m120` must replay run 02 `therm_b000_d000_h030_m120_p100`.
+
+**Read-out**, per arm (Lizard, MacGillivray and North Direction):
+- the bleaching-attributable relative loss, `1 − cover / cover_bleaching_off` at the same μ, for 2016–17 (expected large, about 50% of fast coral in the northern GBR 2016 event) and for 2020 and 2024 (observed small);
+- coral `J` 1992–2024 and 1992–2016;
+- the post-2017 recovery error.
+
+**Selection rule.** Among arms that keep at least half of the reference's 2016–17 bleaching-attributable fast-coral loss, take the lowest 2020+2024 attributable loss; ties go to coral `J`. The lead decides.
+
+**Failure.** A reference does not replay, or an arm fails.
+
+
+## Tolerance-spread × low-DHW threshold results (2026-10-15)
+
+**Run.** `20261015T_05_coral_spread_1991_v1`: 14 arms, no failures. Both references replay exactly (0.0). Audit: `coral_spread_audit.json`.
+- The audit's final console print failed on a display-only column (fixed after the outputs were written). The recorded `script_sha256` is the pre-fix version; the outputs are unaffected.
+
+**Bleaching-attributable fast-coral loss** (Lizard, MacGillivray and North Direction mean, against bleaching off at the same μ; μ 0.12):
+
+| Spread × | Threshold | 2016 | 2017 | 2020 | 2022 | 2024 | `J` all | Post-2017 error |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 (reference) | 4 | 72% | 55% | 59% | 22% | 45% | 0.258 | 0.143 |
+| **1** | **6** | **72%** | **55%** | **48%** | **13%** | **16%** | **0.262** | 0.150 |
+| 0.75 | 4 | 93% | 71% | 79% | 43% | 69% | 0.259 | 0.137 |
+| 0.75 | 6 | 93% | 71% | 65% | 22% | 25% | 0.260 | 0.143 |
+| 0.5 | 4 | 100% | 78% | 94% | 80% | 97% | 0.279 | 0.151 |
+| 0.5 | 6 | 100% | 78% | 72% | 33% | 36% | 0.269 | 0.154 |
+
+**Findings.**
+1. **A narrower tolerance spread increases mortality.** ADRIA's tolerance ratchet (class means reset to the mean truncated at `HEAT_LB` after any mortality) lifts the means less when the spread is small, so the evolved tolerance stays near the DHW of later events.
+2. **Raising the existing low-DHW threshold from 4 to 6 DHW** (mortality ×0.25 below it) keeps the 2016–17 mass-bleaching losses unchanged, and cuts the attributable fast-coral loss in 2024 from 45% to 16% and in 2022 from 22% to 13%.
+   - 2020 stays at 48%, since its DHW (5.5–6.6) is partly above 6.
+   - Coral `J` changes 0.258 → 0.262; the post-2017 error moves 0.143 → 0.150.
+3. **μ 0.09 against 0.12** changes the losses little but worsens `J` (as in run 45).
+
+**Selection (preregistered rule):** `spread_s100_t60_m120`, i.e. tolerance spread unchanged, low-DHW threshold 6 DHW (×0.25 below), μ 0.12, no bleaching multiplier. The lead decides; the next step is to re-test it with dynamic COTS under score v3.
+
+## Corrected outbreak-prediction layer (2026-10-15)
+
+**Builder:** `domain_building/build_corrected_outbreak_layer.py`. Output: git-ignored `sandbox/data/derived/outbreak_layer_corrected_2018_2026/`.
+
+**Inputs.** The lead's predictions for 1991–2025 plus the 2026 file. Observed outbreak indicators for reporting years 2018–2026:
+- SALAD density ≥ 15 COTS/ha;
+- otherwise cull catch ≥ 3.235 COTS per diver-hour (the 15/ha equivalent under the SALAD anchor), with ≥ 2 h of bottom time.
+
+**Method.** Residuals (indicator − predicted probability) are spread by inverse distance within 50 km and shrunk toward zero (a single observation at 50 km contributes half). The result is clamped to [0, 1]. Years 1991–2017 are unchanged.
+
+**Result.**
+- 66–151 observed reef-years per year, of which 12–29 per year are outbreaks.
+- Northern GBR mean outbreak probability (12–17.5° S), original → corrected:
+
+| Year | Original | Corrected |
+| --- | --- | --- |
+| 2018 | 0.041 | 0.051 |
+| 2019 | 0.018 | 0.012 |
+| 2020 | 0.025 | 0.047 |
+| 2021 | 0.029 | 0.080 |
+| 2022 | 0.024 | 0.033 |
+| 2023 | 0.018 | 0.040 |
+| 2024 | 0.031 | 0.086 |
+| 2025 | 0.038 | 0.138 |
+| 2026 | 0.031 | 0.199 |
+
+  For comparison, 2012–14 was 0.25.
+
+**Caveat.** Culling is targeted at outbreaks, so cull data are present mainly where COTS were found. Unculled reefs keep the original probability; they are not treated as evidence of no outbreak.
+
+
+## Chlorophyll 2025–26 (VIIRS) (2026-10-15)
+
+**Builder.** `domain_building/extract_chla_viirs_wet_season.py`: NOAA CoastWatch `noaacwNPPVIIRSSQchlaDaily` (S-NPP VIIRS Science Quality, 4 km). Same reef pixel and season rules as MODIS. Output: `sandbox/data/derived/chla_index_lizard_2003_2026/`.
+
+**Calibration against MODIS** (overlap 2013–2024, 1,152 reef-seasons):
+- reef-season correlation of the log anomalies: r 0.56 (mean) and 0.54 (p90);
+- domain-median r: 0.84 and 0.86;
+- VIIRS anomalies are scaled to MODIS by no-intercept slopes of 0.43 (mean) and 0.40 (p90).
+
+**Combined index:** MODIS 2003–2024, plus calibrated VIIRS for 2025–2026. Domain medians: 2025 +0.063, 2026 +0.012.
+
+**Pre-2003:** no valid predictor yet (the Niño 3.4 GAMs have no skill). River discharge has not yet been tested.
+
+## Domain v0.4 (1985–2026) and the corrected COTS dataset (2026-10-15)
+
+**`domain_building/build_lizard_domain_v4.py`** (output `sandbox/data/Lizard_Historical_v0.4`, git-ignored): v0.3 copied, plus
+- DHW 1985–2026 (2025–26 from the validated DMS extraction);
+- cyclones 2025–26 zero;
+- `domain_data_version` 0.4.0.
+
+**`extend_mellin_background_2026.py`:** Mellin background extended to 2026 (stand-in: 2015–2024 site mean).
+
+**`build_lizard_cots_connectivity_owen.py`** gains `--predictions` (one or more files) and `--dataset-name`; the defaults are unchanged. v0.4 holds:
+- `owen_global_2018_2023`: the lead's predictions 1991–2025 plus the 2026 file. The boundary is identical to v0.3 for 1991–2025 (maximum difference 0.0);
+- `owen_global_2018_2023_corrected`: the corrected layer.
+
+  Domain-summed external outbreak boundary (original → corrected):
+
+  | Year | Original | Corrected |
+  | --- | --- | --- |
+  | 2018 | 5.1 | 5.8 |
+  | 2019 | 2.8 | 4.3 |
+  | 2020 | 1.8 | 4.2 |
+  | 2021 | 1.7 | 5.0 |
+  | 2022 | 1.9 | 2.7 |
+  | 2023 | 1.7 | 3.2 |
+  | 2024 | 2.8 | 16.9 |
+  | 2025 | 3.3 | 37.3 |
+  | 2026 | 3.2 | 39.0 |
+
+  For comparison, 2016 was 22.5.
+
+**Runner switches.** `OWEN_1991_DOMAIN_VERSION` (`v0.3` default, or `v0.4`; v0.4 is for dynamic-COTS experiments only) and `OWEN_1991_COTS_DATASET`. The re-score tool accepts 1991–2026 trajectories; manta scoring stays within 1992–2024, and diver targets extend to 2026.
+
+**Smoke and replay checks** (W at seed pair 1, old cv2 coral):
+- **Run 06** (v0.4, original dataset) replays v0.3 run 37 for 1991–2024: maximum relative difference about 4e-15 in trajectories, flows and mechanisms.
+- **Run 07** (v0.4, corrected dataset): the fifth outbreak appears but late and booming.
+
+| Reef | Run 07 adults/ha | Targets |
+| --- | --- | --- |
+| Lizard | 4.8 in 2024, 16.8 in 2026 | 3.4 → 9 |
+| Eyrie | 8.7 in 2024, 14.7 in 2026 | 17–45 from 2022 |
+| North Direction | 9.5 in 2026 | 11–13 in 2024–25 |
+| MacGillivray | 22 in 2026 | 2.5–4.3 |
+
+2020–2022 stays below 1/ha, against targets of about 3.5/ha.
+
+
+## Lead's decisions (2026-10-15, eleventh round)
+
+1. **Coral for the 2020s runs:** no bleaching multiplier (β 1); tolerance spread unchanged; bleaching mortality ×0.25 below 6 DHW (existing `ADRIA_BLEACHING_LOW_DHW_THRESHOLD`); chronic μ 0.12/yr.
+   - The working configuration's arm prefix `wc_b150` sets β 1.5 through the runner. The new-coral arms use `wc_b100`.
+2. **Chlorophyll larval survival.** The proposed form and a new opt-in ADRIA adapter switch are accepted. A plot was requested and made (`figures/larval_survival_curve_proposal.png`, `plot_larval_survival_curve.py`).
+3. **Experiment.** Run the new coral × supply dataset × chlorophyll survival experiment to 2026.
+   - The lead accepts that the 2020–22 build-up may be partly missed, but relates it to the February 2019 flooding. The 2019 wet season has the second-highest chl-a anomaly after 2011 (domain median ×1.4–1.5 at b = 3).
+4. **Pre-2003:** the chlorophyll index is neutral (×1) until a river-discharge predictor is tested.
+
+## Preregistered chlorophyll larval-survival switch and 2020s experiment (2026-10-15)
+
+**Hypothesis (initiation region; lead).** Wet seasons with high chlorophyll (floods, upwelling) raise survival of larvae produced within the domain, so successive good years build local recruitment. The 2019 floods would then lift recruits in 2019 and adults by about 2021–22. The 2024 Jasper floods (the largest anomaly) feed the 2025–26 build-up.
+
+**Mechanism** (opt-in; units dimensionless).
+- **Multiplier:** `m(reef, season) = min(5, (chl / reef normal)^b) = min(5, exp(b · log_anom))`, using the reef wet-season chl-a index from `chla_index_lizard_2003_2026` (MODIS 2003–2024, VIIRS-calibrated 2025–2026). It is 1 before 2003 and where missing.
+- **Where:** applied at the source to the pre-pelagic larval production of each domain site (`last_local_fecundity`, separated recruitment) in model year = season year (Dec(y−1)–Apr(y) spawning), after the COTS step and before dispersal. So it scales both local retention and export to other domain reefs. External boundary supply is unchanged.
+- **ADRIA:** env `COTS_LARVAL_SURVIVAL_CSV` (columns `site_id, year, multiplier`). Unset gives the established path. Applied multipliers are logged as `cots_larval_survival_log`.
+- **Tables:** `build_larval_survival_index.py` builds them (git-ignored derived data). The variants are wet-season mean or p90, × b ∈ {1.5, 3}.
+
+**Tests.**
+- the loader: coverage, validation, and years outside the table → 1;
+- the applier: scales production only;
+- a zero-effect table is the identity.
+
+**Experiment** `chl_survival` (domain v0.4, to 2026; working configuration W at seed pair 1; one run per supply dataset {`owen_global_2018_2023` (the lead's predictions plus 2026), `owen_global_2018_2023_corrected`}).
+- **Replay arm:** `wc_b150_..._t40_chloff_cv2_pnd`, the old coral (W), must replay smoke runs 06 / 07 exactly.
+- **New coral (β 1, threshold 6):** chl off, mean b 1.5, mean b 3, p90 b 1.5, p90 b 3.
+
+**Read-out.**
+- score v3, with diver targets 2020–2026;
+- adults/ha against targets per reef and year, highlighting 2020–22 (the post-2019-flood signal) and 2024–26;
+- recruits in 2019–20;
+- coral 2020–26 (boom-bust check);
+- v2 and G2′ for 1992–2016, to confirm the earlier waves are not degraded.
+
+**Expected.**
+- The new coral removes most of the 2024 coral crash, so the boom-bust is damped.
+- Chl survival raises 2019–20 recruitment, giving adults of about 1–3/ha by 2021–22, and amplifies 2025–26.
+- The corrected supply adds the 2024–26 build-up.
+- b = 3 could overshoot the 2011–13 wave (2011 ×1.7–1.9), so the second-wave height is checked.
+
+**Failure criteria.** A replay fails, an arm fails, or the 1992–2016 v2 loss worsens by more than 1.0 in a selected arm.
+
+**Rollback.** The env is unset by default.
+
+
+## Chlorophyll larval-survival × new coral × supply results (2026-10-15)
+
+**Implementation.**
+- **ADRIA:** `load_cots_larval_survival` and `apply_cots_larval_survival!` (`cots.jl`); env `COTS_LARVAL_SURVIVAL_CSV`; log `cots_larval_survival_log`. Adapter test `test_larval_survival_index.jl`: 10/10.
+- **Tables:** `build_larval_survival_index.py` → git-ignored `larval_survival_index_lizard/`. Domain-median multipliers at b 3: 2011 ×1.5–1.8, 2019 ×1.3, 2024 ×1.8–2.2.
+
+**Runs.**
+- Runs 20261015T_08 (the lead's predictions + 2026) and _09 (corrected layer): domain v0.4, 6 arms each, no failures.
+- Re-scores: 10 and 12. G2′: 11 and 13. Runs 10–13 were renamed for clarity (RUN_RENAMES.csv).
+- The replay arms (old coral) reproduce smoke runs 06 and 07 exactly (0.0).
+- Audit: `runs/20261015T_09_.../chl_survival_audit.json` and `chl_survival.png`.
+
+**Score v3** (seed pair 1; diver targets 2020–2026; lower is better):
+
+| Supply | Arm | v3 | Manta part (1992–2021) | Diver error (sum of 4 reefs) | v2 1992–2024 | G2′ at `A½ 30` |
+| --- | --- | --- | --- | --- | --- | --- |
+| original | old coral (W) | 15.61 | 6.51 | 6.07 | 6.44 | pass |
+| original | **new coral**, chl off | **11.34** | 6.60 | **3.16** | 6.54 | pass |
+| original | new coral, p90 b 3 | 11.21 | 6.42 | 3.19 | 6.37 | pass |
+| corrected | old coral (W) | 12.63 | 6.51 | 4.08 | 6.45 | pass |
+| corrected | new coral, chl off | 11.34 | 6.60 | 3.16 | 6.59 | pass |
+| corrected | **new coral, p90 b 3** | **10.99** | 6.43 | 3.04 | 6.41 | pass |
+
+**Adults/ha 2020–2026** (new coral, chl off) against targets:
+
+| Reef | Original supply | Corrected supply | Target |
+| --- | --- | --- | --- |
+| Lizard | 5.1 → 3.9 (2024) → 6.1 | 4.9 → 12.7 (2024) → 36 | 3.4 → 8.6 → 5.0 |
+| North Direction | 2.3 → 7.0 → 10.5 | 2.3 → 16.6 → 55 | 3.6 → 12.8 → 7.2 |
+| MacGillivray | 2.9 → 3.9 → 5.4 | 2.7 → 8.9 → 34 | 2.5 → 4.3 |
+| Eyrie | 0.8 → 2.3 → 2.2 | 0.7 → 13.6 → 22 | 1.9 → 45 → 34 |
+
+**Findings.**
+1. **The new coral is the main improvement.**
+   - It removes the 2020–22 starvation collapse: adults persist at 2–6/ha, within the diver range.
+   - Fast coral in 2026 is about 0.17–0.26, against 0.04–0.09 with the old coral.
+   - Diver error halves (6.07 → 3.16). The 1992–2016 fit and G2′ are kept (v2 6.44 → 6.54).
+   - The lead's 2020–22 concern is largely met through adult persistence rather than new recruitment.
+2. **The chlorophyll survival effect is small** (v3 −0.1 to −0.35).
+   - 2019–20 recruitment rises only 2–4% on Lizard, MacGillivray and North Direction, because external supply (Ext×5) dominates settlement. Local production in 2019 is small at the 2019 population levels.
+   - The 2024 Jasper index raises 2026 adults (Lizard 6.1 → 8.9 at p90 b 3).
+   - b 3 slightly raises the 2010s second wave (Lizard 15.5 → 19.5; North Direction 57 → 68).
+3. **The corrected layer with Ext×5 overshoots in 2025–26** (Lizard 36–52 vs 5; North Direction 55–78 vs 7; MacGillivray 34–53 vs 2.5–4.3), while fixing Eyrie (13.6–22 vs 12–45, against 2.2 with the original).
+   - Ext×5 was set with the original manta-based layer (0.02–0.04 probability in the 2020s). With the corrected layer it multiplies an already larger 2024–26 supply.
+4. **Implication.** In the 2020s the external multiplier and the outbreak layer are confounded. A lower multiplier would let local recruitment, and so the chlorophyll mechanism, carry more of the build-up. That is closer to the lead's initiation-region hypothesis.
+
+**Decision.** Nothing is promoted. The lead decides on adopting the new coral and on the next factorial (external multiplier × supply × chlorophyll).

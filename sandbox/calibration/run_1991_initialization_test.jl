@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -101,7 +101,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -178,8 +178,14 @@ joint_arm_values(name) = Tuple(parse(Int, part[2:end]) / 100 for part in split(n
 # Preregistered Mellin follow-up (2026-10-13): as the joint fit, but the background
 # mortality is the Mellin et al. 2019 / COTS_Model site x year table.
 const MELLIN = EXPERIMENT == "mellin_coral"
+# Domain version (2026-10-15): v0.3 (1985-2024, default) or v0.4 (1985-2026; DHW 2025-26 from
+# NOAA CRW, cyclones 2025-26 zero, Mellin background 2025-26 = 2015-24 site mean). v0.4 is for
+# dynamic-COTS experiments only (observed-COTS forcing tables end in 2024).
+const DOMAIN_VERSION = get(ENV, "OWEN_1991_DOMAIN_VERSION", "v0.3")
+DOMAIN_VERSION in ("v0.3", "v0.4") || error("OWEN_1991_DOMAIN_VERSION must be v0.3 or v0.4")
+const END_YEAR = DOMAIN_VERSION == "v0.4" ? 2026 : 2024
 const MELLIN_BACKGROUND_CSV = joinpath(ROOT, "sandbox", "data", "derived",
-    "mellin_background_mortality_1991_2024", "background_mortality.csv")
+    "mellin_background_mortality_1991_$(END_YEAR)", "background_mortality.csv")
 mellin_arm_name(slow, fast, kappa) = "mellin_s$(pct3(slow))_f$(pct3(fast))_k$(pct3(kappa))"
 # Preregistered bleaching-response sensitivity (2026-10-13): CoralBlox growth untouched
 # (s = f = 1), Mellin background with or without 3%/yr chronic loss, cyclone kappa, and
@@ -215,7 +221,18 @@ const THERMAL_POST_FROM = 2018
 thermal_parts(name) = (p = split(name, "_"); (beta=parse(Int, p[2][2:end]) / 100,
     delta=parse(Int, p[3][2:end]) / 100, h=parse(Int, p[4][2:end]) / 100,
     mu=parse(Int, p[5][2:end]) / 1000, post=parse(Int, p[6][2:end]) / 100))
-const BLEACH = EXPERIMENT == "bleaching_sensitivity" || REFIT || THERMAL
+# Tolerance-spread x low-DHW threshold screen (2026-10-15, tenth round): as coral_thermal
+# (forced COTS, beta unset, Delta 0, heritability 0.3) with every <coral_id>_dist_std x s and
+# ADRIA_BLEACHING_LOW_DHW_THRESHOLD t (x0.25 below); arms spread_s<s x100>_t<t x10>_m<mu x1000>
+# and bleaching-off counterfactuals spread_off_t40_m<mu x1000>.
+const SPREAD = EXPERIMENT == "coral_spread"
+const SPREAD_S = (1.0, 0.75, 0.5)
+const SPREAD_T = (4.0, 6.0)
+const SPREAD_MU = (0.12, 0.09)
+spread_parts(name) = (p = split(name, "_"); (off=p[2] == "off",
+    s=p[2] == "off" ? 1.0 : parse(Int, p[2][2:end]) / 100, t=parse(Int, p[3][2:end]) / 10,
+    mu=parse(Int, p[4][2:end]) / 1000))
+const BLEACH = EXPERIMENT == "bleaching_sensitivity" || REFIT || THERMAL || SPREAD
 refit_arm_name(floor, mu, q) = "refit_f$(pct3(floor))_mu$(lpad(round(Int, 1000 * mu), 3, '0'))_q$(lpad(round(Int, 1000 * q), 3, '0'))"
 const BLEACH_BACKGROUND = ("mel" => 0.0, "mel3" => 0.03)
 const BLEACH_KAPPA = (2.5, 5.0)
@@ -308,7 +325,17 @@ const SUPPLYWIN = EXPERIMENT == "supply_window"
 const SUPPLYWIN_ARMS = ((2017, 2024, 1), (2017, 2024, 3), (2017, 2024, 10), (2017, 2024, 30), (2019, 2024, 10))
 supply_window_spec(name) = (m = match(r"_sw(\d{4})_(\d{4})_x(\d{3})_", name);
     isnothing(m) ? "" : "$(m.captures[1]):$(m.captures[2]):$(parse(Int, m.captures[3]))")
-const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window")
+# Chlorophyll larval survival x new coral (2026-10-15, eleventh round; domain v0.4 to 2026): W at
+# seed pair 1; replay arm wc_b150_..._t40_chloff (old coral, beta 1.5, low-DHW threshold 4) and
+# new-coral arms wc_b100_..._t60_<chl> (beta 1, threshold 6) with chl in {chloff, mb15, mb30,
+# pb15, pb30} (COTS_LARVAL_SURVIVAL_CSV tables, build_larval_survival_index.py).
+const CHLSURV = EXPERIMENT == "chl_survival"
+const CHLSURV_DIR = joinpath(ROOT, "sandbox", "data", "derived", "larval_survival_index_lizard")
+const CHLSURV_VARIANTS = ("chloff", "mb15", "mb30", "pb15", "pb30")
+chl_table(name) = (m = match(r"_t\d+_(chloff|mb15|mb30|pb15|pb30)_", name);
+    isnothing(m) || m.captures[1] == "chloff" ? nothing : joinpath(CHLSURV_DIR, "larval_survival_$(m.captures[1]).csv"))
+chl_threshold(name) = parse(Int, match(r"_t(\d+)_", name).captures[1]) / 10
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
@@ -326,7 +353,11 @@ const REBASE_Q = (10, 20, 30, 45, 70)
 const V3RUN = INITIATION || PIT || COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT ||
     MELLIN || BLEACH || REBASE
 const V3 = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.3")
-const DOMAIN_PATH = V3RUN ? V3 : V2
+const V4 = joinpath(ROOT, "sandbox", "data", "Lizard_Historical_v0.4")
+DOMAIN_VERSION == "v0.4" && !V3RUN && error("v0.4 requires a v0.3-family experiment")
+DOMAIN_VERSION == "v0.4" && (BLEACH || CORAL || JOINT || MELLIN) &&
+    error("v0.4 does not support observed-COTS forcing experiments (tables end in 2024)")
+const DOMAIN_PATH = V3RUN ? (DOMAIN_VERSION == "v0.4" ? V4 : V3) : V2
 const EXTERNAL_MULTIPLIER = 5.0
 const JUVENILE_PRELOAD_MULTIPLIER = 5.0
 # Preregistered trough-mechanism screen (2026-10-12): predator pit (P), preferred-prey
@@ -374,7 +405,11 @@ const K_MIGRATION = EXPERIMENT == "unit_compat_k2" ?
     fixed_scales["Lizard Island Reef"] / Q_FIXED
 const PER_CAPITA_M2_PER_ADULT_YEAR = 10.0
 
-ENV["ADRIA_COTS_CONNECTIVITY_DATASET"] = "owen_global_2018_2023"
+# COTS connectivity dataset (2026-10-15): v0.4 also holds owen_global_2018_2023_corrected
+# (cull/SALAD-corrected outbreak layer, 2018-2026).
+const COTS_DATASET = get(ENV, "OWEN_1991_COTS_DATASET", "owen_global_2018_2023")
+occursin(r"^[A-Za-z0-9_.-]+$", COTS_DATASET) || error("Invalid OWEN_1991_COTS_DATASET")
+ENV["ADRIA_COTS_CONNECTIVITY_DATASET"] = COTS_DATASET
 ENV["ADRIA_COTS_CONNECTIVITY_MODE"] = "cots"
 ENV["COTS_CONNECTIVITY_TEMPORAL_MODE"] = "sample"
 ENV["COTS_CONNECTIVITY_SEED"] = string(SEED)
@@ -495,7 +530,7 @@ scenario[!, :allee_threshold] .= 3.0
 
 # The input NetCDF has absolute calendar years: do not relabel 1985 forcing.
 all_years = Int.(domain.env_layer_md.timeframe)
-all_years == collect(1985:2024) || error("Unexpected V2 historical years")
+all_years == collect(1985:END_YEAR) || error("Unexpected historical years for $(DOMAIN_VERSION)")
 keep = findall(>=(1991), all_years)
 years = all_years[keep]
 domain.dhw_scens = ADRIA.DataCube(Float64.(Array(domain.dhw_scens)[keep, :, :]);
@@ -544,7 +579,7 @@ else
     nothing
 end
 # Bleaching screen: kappa x background level (mel reuses the Mellin cube exactly).
-bleach_cyclones = if BLEACH && !REFIT && !THERMAL
+bleach_cyclones = if BLEACH && !REFIT && !THERMAL && !SPREAD
     Dict((level, kappa) => mu == 0.0 ? mellin_cyclones[kappa] :
         ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[kappa])) .* (1.0 - mu);
             timesteps=years, locs=domain.loc_ids,
@@ -553,7 +588,7 @@ bleach_cyclones = if BLEACH && !REFIT && !THERMAL
 else
     nothing
 end
-BLEACH && !REFIT && !THERMAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
+BLEACH && !REFIT && !THERMAL && !SPREAD && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(bleach_cyclones)) &&
     error("Bleaching-screen mortality outside [0, 1]")
 # Coral re-fit: same expression as the bleaching screen's mel3 cube, so mu = 0.03 replays it.
 refit_cyclones = if REFIT
@@ -567,12 +602,12 @@ end
 REFIT && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(refit_cyclones)) &&
     error("Re-fit mortality outside [0, 1]")
 # Heat-tolerance screen: cv2 expression with mu per year (mu x post from THERMAL_POST_FROM).
-thermal_cyclones = THERMAL ? Dict((mu, post) => let
+thermal_cyclones = THERMAL || SPREAD ? Dict((mu, post) => let
         mu_t = reshape([y >= THERMAL_POST_FROM ? mu * post : mu for y in years], :, 1, 1, 1)
         ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REFIT_KAPPA])) .* (1.0 .- mu_t);
             timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
-    end for mu in THERMAL_MU for post in THERMAL_POST) : nothing
-THERMAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(thermal_cyclones)) &&
+    end for mu in (THERMAL ? THERMAL_MU : SPREAD_MU) for post in (THERMAL ? THERMAL_POST : (1.0,))) : nothing
+(THERMAL || SPREAD) && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(thermal_cyclones)) &&
     error("Heat-tolerance screen mortality outside [0, 1]")
 # Forcing q = 0.030 (Pratchett 2005 pairs): the q = 0.015 adults table scaled by 0.015 / q.
 refit_forcing = if REFIT2
@@ -755,7 +790,7 @@ share_levels = REBASE_SHARE ? let raw = parse_share_levels(SHARE_LEVELS_JSON)
     covers = Dict{String,Matrix{Float64}}(level => observed_composition_cover(level_share(uniform(level)))[1]
         for level in SHARE_LEVEL_NAMES)
     isempty(picks) || (covers["pick"] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), picks)))[1])
-    if TIMING || CANDIDATES || CULLING || CORALMIX || SUPPLYWIN
+    if TIMING || CANDIDATES || CULLING || CORALMIX || SUPPLYWIN || CHLSURV
         for (set, set_picks) in TIMING_SHARE_SETS
             covers[set] = observed_composition_cover(level_share(merge(Dict("default" => "q50"), set_picks)))[1]
         end
@@ -827,6 +862,10 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : CHLSURV ? [
+    (name="wc_b150_q20_eb_lin_obs015_s1_t40_chloff_cv2_pnd", alpha=0.015, coral="observed_composition", initial="cohort_full");
+    [(name="wc_b100_q20_eb_lin_obs015_s1_t60_$(chl)_cv2_pnd", alpha=0.015, coral="observed_composition",
+        initial="cohort_full") for chl in CHLSURV_VARIANTS]
 ] : SUPPLYWIN ? [
     (name="wc_b150_q20_eb_lin_obs015_s1_sw$(a)_$(b)_x$(lpad(f, 3, '0'))_cv2_pnd", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
@@ -881,6 +920,12 @@ treatments = EXPERIMENT == "initialization" ? [
     (name="mel3_q30", alpha=0.015, coral="observed_composition", initial="cohort_full");
     [(name="wc_b$(pct3(beta))_q$(q)", alpha=0.015, coral="observed_composition", initial="cohort_full")
      for beta in REBASE_BETA for q in REBASE_Q]
+] : SPREAD ? [
+    [(name="spread_s$(lpad(round(Int, 100 * s), 3, '0'))_t$(round(Int, 10 * th))_m$(lpad(round(Int, 1000 * mu), 3, '0'))",
+        alpha=0.015, coral="observed_composition", initial="no_cots")
+     for s in SPREAD_S for th in SPREAD_T for mu in SPREAD_MU];
+    [(name="spread_off_t40_m$(lpad(round(Int, 1000 * mu), 3, '0'))", alpha=0.015,
+        coral="observed_composition", initial="no_cots") for mu in SPREAD_MU]
 ] : THERMAL ? [
     (name="therm_b150_d000_h030_m120_p100", alpha=0.015, coral="observed_composition", initial="no_cots");
     # Diagnostic (2026-10-15): bleaching off, to attribute the 2020/2024 coral losses.
@@ -992,7 +1037,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : TIMING || CANDIDATES || CULLING || CORALMIX || SUPPLYWIN ? let
+) : TIMING || CANDIDATES || CULLING || CORALMIX || SUPPLYWIN || CHLSURV ? let
     states = Dict(q => make_initial_state(q, "alpha$(lpad(round(Int, 1000 * q), 3, '0'))_cohort_full_eb_lin";
             cohort_multiplier=1.0, cpue=eb_surface) for q in TIMING_OBS_Q)
     Dict(t.name => states[timing_obs_q(t.name)] for t in treatments)
@@ -1039,7 +1084,7 @@ archived_density_params = Dict(name => Float64(scenario[1, name])
 # random stream. Migration screens pin the archived control's derived seed.
 archived_rng_seed = floor(Int64, sum(Float64(scenario[1, name])
     for name in names(scenario) if name != "RCP"))
-(CANDIDATES || CULLING || CORALMIX || SUPPLYWIN) && CANDIDATE_SEEDS[1] != (SEED, archived_rng_seed) &&
+(CANDIDATES || CULLING || CORALMIX || SUPPLYWIN || CHLSURV) && CANDIDATE_SEEDS[1] != (SEED, archived_rng_seed) &&
     error("Candidate seed pair 1 must be the archived pair ($(SEED), $(archived_rng_seed))")
 # Coral calibration groups. The Lizard loader assigns group 1 to every site; the
 # GBR-wide RME layer assigns each reef a group. ADRIA keeps only the CB-group
@@ -1244,6 +1289,8 @@ for t in run_treatments
         domain.cyclone_mortality_scens = refit_cyclones[parse(Int, split(t.name, "_")[3][3:end]) / 1000]
     elseif THERMAL
         domain.cyclone_mortality_scens = thermal_cyclones[(thermal_parts(t.name).mu, thermal_parts(t.name).post)]
+    elseif SPREAD
+        domain.cyclone_mortality_scens = thermal_cyclones[(spread_parts(t.name).mu, 1.0)]
     elseif BLEACH
         bleach_parts = split(t.name, "_")
         domain.cyclone_mortality_scens =
@@ -1260,10 +1307,10 @@ for t in run_treatments
     if is_coralmix_arm(t.name)
         domain.cyclone_mortality_scens = coralmix_cyclones[coralmix_parts(t.name).mu]
     end
-    if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name)) || THERMAL
-        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE || THERMAL ? string(CV2_LOW_DHW_SCALE) :
+    if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name)) || THERMAL || SPREAD
+        ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE || THERMAL || SPREAD ? string(CV2_LOW_DHW_SCALE) :
             string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
-        ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = "4.0"
+        ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = SPREAD ? string(spread_parts(t.name).t) : "4.0"
     else
         delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_SCALE")
         delete!(ENV, "ADRIA_BLEACHING_LOW_DHW_THRESHOLD")
@@ -1317,6 +1364,9 @@ for t in run_treatments
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = occursin("no_bleaching", t.name) ? "0.0" : "1.0"
     elseif REFIT
         ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = "1.5"
+    elseif SPREAD
+        spread_parts(t.name).off ? (ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = "0.0") :
+            delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR")
     elseif THERMAL
         thermal_parts(t.name).beta == 1.0 ? delete!(ENV, "ADRIA_DEBUG_BLEACHING_SCALAR") :
             (ENV["ADRIA_DEBUG_BLEACHING_SCALAR"] = string(thermal_parts(t.name).beta))
@@ -1342,10 +1392,18 @@ for t in run_treatments
     else
         delete!(ENV, "ADRIA_RNG_SEED")
     end
-    if CANDIDATES || CULLING || CORALMIX || SUPPLYWIN
+    if CANDIDATES || CULLING || CORALMIX || SUPPLYWIN || CHLSURV
         connectivity_seed, rng_seed = candidate_seed_pair(t.name)
         ENV["COTS_CONNECTIVITY_SEED"] = string(connectivity_seed)
         ENV["ADRIA_RNG_SEED"] = string(rng_seed)
+    end
+    if CHLSURV
+        ENV["ADRIA_BLEACHING_LOW_DHW_THRESHOLD"] = string(chl_threshold(t.name))
+    end
+    if CHLSURV && !isnothing(chl_table(t.name))
+        ENV["COTS_LARVAL_SURVIVAL_CSV"] = chl_table(t.name)
+    else
+        delete!(ENV, "COTS_LARVAL_SURVIVAL_CSV")
     end
     if SUPPLYWIN && supply_window_spec(t.name) != ""
         ENV["COTS_EXTERNAL_SUPPLY_WINDOW"] = supply_window_spec(t.name)
@@ -1410,6 +1468,16 @@ for t in run_treatments
             JOINT || MELLIN ? growth_scenarios[join(split(t.name, "_")[2:3] .|> (x -> x[2:end]), "_")] :
             COLLAPSE && startswith(t.name, "grmefast") ? scenario_rme_fast :
             COLLAPSE && startswith(t.name, "grme") ? scenario_rme : scenario
+        if SPREAD
+            # Existing ADRIA scenario factors only: tolerance spread scaled.
+            sp = spread_parts(t.name)
+            active_scenario = copy(active_scenario)
+            spread_columns = filter(name -> endswith(name, "_dist_std"), names(active_scenario))
+            length(spread_columns) == 35 || error("Expected 35 <coral_id>_dist_std columns")
+            for name in spread_columns
+                active_scenario[!, name] .= active_scenario[!, name] .* sp.s
+            end
+        end
         if THERMAL
             # Existing ADRIA scenario factors only: mean heat tolerance shift and heritability.
             tp = thermal_parts(t.name)
@@ -1625,6 +1693,7 @@ for t in run_treatments
 end
 delete!(ENV, "COTS_CULL_REMOVALS_CSV")
 delete!(ENV, "COTS_EXTERNAL_SUPPLY_WINDOW")
+delete!(ENV, "COTS_LARVAL_SURVIVAL_CSV")
 delete!(ENV, "COTS_INITIAL_STATE_CSV")
 delete!(ENV, "ADRIA_COTS_ENABLED")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR")
@@ -1819,6 +1888,23 @@ metadata = Dict(
             REBASE_COMPOSITION ?
             "wc_b{100,150}_q20_acrpoc must replay wc_b{100,150}_q20 of 20261013T_11_cots_rebaseline_1991_v1" :
             "ref_q30 must replay acrpoc_g0 of 20261012T_15_food_grace_1991_v1",
+    ) : "not tested",
+    "chl_survival_screen" => CHLSURV ? Dict(
+        "switch" => "COTS_LARVAL_SURVIVAL_CSV (unset = established path); multiplier on site larval production before dispersal",
+        "tables" => Dict(v => Dict("path" => joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"),
+            "sha256" => file_sha256(joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"))) for v in CHLSURV_VARIANTS if v != "chloff"),
+        "index_metadata_sha256" => file_sha256(joinpath(CHLSURV_DIR, "metadata.json")),
+        "new_coral" => "beta 1 (wc_b100), bleaching x0.25 below 6 DHW, cv2 mu 0.12, spread unchanged",
+        "replay" => "wc_b150_..._t40_chloff_cv2_pnd must replay the v0.4 smoke run of the same COTS dataset (20261015T_06 / _07)",
+        "cots_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
+        "scenario_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),
+    ) : "not tested",
+    "coral_spread_screen" => SPREAD ? Dict(
+        "dist_std_scale" => collect(SPREAD_S), "low_dhw_threshold" => collect(SPREAD_T),
+        "low_dhw_scale" => CV2_LOW_DHW_SCALE, "chronic_mu" => collect(SPREAD_MU),
+        "bleaching_scalar" => "unset (1.0); 0.0 in spread_off arms", "dist_mean" => "unshifted",
+        "heritability" => "default", "forcing" => FORCED_ADULTS_CSV, "forcing_sha256" => file_sha256(FORCED_ADULTS_CSV),
+        "reference" => "spread_s100_t40_m120 must replay therm_b100_d000_h030_m120_p100 of 20261015T_01; spread_off_t40_m120 must replay therm_b000_d000_h030_m120_p100 of 20261015T_02",
     ) : "not tested",
     "coral_thermal_screen" => THERMAL ? Dict(
         "dist_mean_shift_dhw" => collect(THERMAL_DELTA), "heritability" => collect(THERMAL_H),
@@ -2050,6 +2136,8 @@ metadata = Dict(
     "external_production_pre_pelagic_recruits_ha_year" => boundary,
     "fecundity_pre_pelagic_recruits_adult_year" => fecundity,
     "hydrodynamic_mode" => "sample", "hydrodynamic_seed" => SEED,
+    "domain_version" => DOMAIN_VERSION, "end_year" => END_YEAR, "domain_path" => DOMAIN_PATH,
+    "cots_connectivity_dataset" => COTS_DATASET, "mellin_background_csv_used" => MELLIN_BACKGROUND_CSV,
     "julia_version" => string(VERSION),
     "active_project" => string(Base.active_project()),
     "adria_revision" => get(ENV, "COTS_RUN_ADRIA_REVISION", git_revision(ROOT)),

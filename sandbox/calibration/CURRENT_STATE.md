@@ -348,6 +348,18 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
   - **Coral screen** (run 20261015T_01, with diagnostics 02–04): the 2024 loss is entirely bleaching. The mean-tolerance shift and heritability wash out (ADRIA ratchets the tolerance means towards about 7 DHW). The remaining levers are the tolerance spread and the existing low-DHW threshold and floor switches.
   - **Disturbance evidence:** unknown-cause events halved after 2017; disease did not.
   - **Chlorophyll:** MODIS 2003–24 extracted. The Niño 3.4 back-cast has no skill. There is no 2025–26 chlorophyll on DMS.
+- **Tenth round (lead):** spread + threshold test; VIIRS for 2025–26; discharge pre-2003; build the corrected layer and the 2026 domain.
+- **Done:**
+  - **Coral selection** `spread_s100_t60_m120`: threshold 6 DHW, spread unchanged, μ 0.12, no β (lead to confirm).
+  - **Corrected outbreak layer.**
+  - **VIIRS-extended chlorophyll index** (2003–26).
+  - **Domain v0.4** with two COTS datasets (`OWEN_1991_DOMAIN_VERSION=v0.4`, `OWEN_1991_COTS_DATASET`). Run 06 replays v0.3. Run 07 (corrected) gives a late, booming fifth outbreak.
+- **Eleventh round (lead):** adopt the new coral (β 1, ×0.25 below 6 DHW, μ 0.12); chlorophyll larval survival (opt-in `COTS_LARVAL_SURVIVAL_CSV`); run the 2026 experiment; 2020–22 linked to the 2019 floods; pre-2003 chl neutral.
+- **Done** (runs 20261015T_08–13, `chl_survival_audit.json`):
+  - **The new coral is the major fix** (v3 15.6 → 11.3; the 2020s persist).
+  - **The chl effect is small** (external supply dominates settlement).
+  - **The corrected layer × Ext×5 overshoots 2025–26** but fixes Eyrie.
+- **Open:** adopt the new coral in the candidate set; next factorial Ext {1, 2.5, 5} × supply × chl.
 - **Plan** (protocol, "Plan for the 2020s fifth-outbreak build-up"):
   1. post-2017 coral screen;
   2. domain v0.4 to 2026;

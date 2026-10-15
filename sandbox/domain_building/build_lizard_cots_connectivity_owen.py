@@ -31,6 +31,7 @@ RME_ROOT = DATA_ROOT / "rme_ml_2025_06_05" / "data_files"
 RME_ID_LIST = RME_ROOT / "id" / "id_list_2024_12_01.csv"
 DEFAULT_SURVIVAL = RME_ROOT / "water_csv" / "COTS_LARVAL_REDUCTION_q3baseline.csv"
 DATASET_NAME = "owen_global_2018_2023"
+PREDICTION_PATHS = [PREDICTIONS]
 OUTBREAK_CPUE_THRESHOLD = 0.22
 
 NEW_TO_OLD_ALIASES = {
@@ -149,7 +150,9 @@ def write_forcing_toml(
 
 
 def load_prediction_matrix(global_ids: list[str]) -> tuple[np.ndarray, list[int], pd.DataFrame]:
-    predictions = pd.read_csv(PREDICTIONS)
+    # One or more prediction files (e.g. 1991-2025 plus the 2026 file) are concatenated.
+    predictions = pd.concat([pd.read_csv(path)[["year", "reefName", "outbrProb"]] for path in PREDICTION_PATHS],
+                            ignore_index=True)
     predictions["reef_id"] = predictions["reefName"].map(reef_id_from_name)
     if bool(predictions.duplicated(["reef_id", "year"]).any()):
         raise ValueError("Outbreak predictions contain duplicate reef-year keys")
@@ -175,6 +178,7 @@ def load_prediction_matrix(global_ids: list[str]) -> tuple[np.ndarray, list[int]
 
 
 def main() -> None:
+    global PREDICTION_PATHS, DATASET_NAME
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--domain", type=Path, default=DEFAULT_DOMAIN)
     parser.add_argument(
@@ -192,7 +196,15 @@ def main() -> None:
         choices=("error", "latest_available"),
         default="error",
     )
+    parser.add_argument("--predictions", type=Path, nargs="+", default=[PREDICTIONS],
+                        help="outbreak-probability prediction CSV(s); default the 1991-2025 file")
+    parser.add_argument("--dataset-name", default=DATASET_NAME,
+                        help="dataset folder under cots_connectivity/datasets (ADRIA_COTS_CONNECTIVITY_DATASET)")
     arguments = parser.parse_args()
+    PREDICTION_PATHS = [path.resolve() for path in arguments.predictions]
+    if any(not (c.isalnum() or c in "_-.") for c in arguments.dataset_name):
+        raise ValueError("Dataset name contains unsupported characters")
+    DATASET_NAME = arguments.dataset_name
     domain_root = arguments.domain.resolve()
     site_map_path = domain_root / "site_to_reef.csv"
     if not site_map_path.is_file():
@@ -436,7 +448,7 @@ def main() -> None:
         ],
         "sources": [
             *(source_record(path) for path in REEF_SHAPE_SOURCES),
-            source_record(PREDICTIONS),
+            *[source_record(path) for path in PREDICTION_PATHS],
             source_record(RME_ID_LIST),
             source_record(DEFAULT_SURVIVAL),
             *(source_record(path) for path in matrix_paths),

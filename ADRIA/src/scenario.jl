@@ -1458,6 +1458,16 @@ function run_model(
         Float64.(location_k(domain))
     # Opt-in observed culling: pre-spawning removals before the COTS step, post-spawning
     # removals after it (before dispersal). Unset = established path.
+    # Opt-in larval-survival index (multiplier on each site's larval production at source,
+    # applied before dispersal). Unset = established path.
+    cots_larval_survival_csv = get(ENV, "COTS_LARVAL_SURVIVAL_CSV", "")
+    cots_larval_survival = if isempty(cots_larval_survival_csv)
+        nothing
+    else
+        cots_enabled || error("COTS_LARVAL_SURVIVAL_CSV requires ADRIA_COTS_ENABLED=true")
+        cots_separated_recruitment || error("COTS_LARVAL_SURVIVAL_CSV requires COTS_SEPARATED_RECRUITMENT=true")
+        load_cots_larval_survival(cots_larval_survival_csv, domain.loc_ids, cots_calendar_years)
+    end
     cots_cull_csv = get(ENV, "COTS_CULL_REMOVALS_CSV", "")
     cots_cull = if isempty(cots_cull_csv)
         nothing
@@ -1492,6 +1502,8 @@ function run_model(
     # Observed cull removals actually applied (COTS ha^-1): pre juveniles, pre adults,
     # post juveniles, post adults. Zero unless COTS_CULL_REMOVALS_CSV is set.
     Ycots_culled = zeros(Float64, tf, 4, n_locs)
+    # Larval-survival multipliers applied (1 unless COTS_LARVAL_SURVIVAL_CSV is set).
+    Ycots_larval_survival = ones(Float64, tf, n_locs)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -2211,6 +2223,10 @@ function run_model(
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
         isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post)
+        if !isnothing(cots_larval_survival)
+            apply_cots_larval_survival!(cots_models, @view(cots_larval_survival[tstep, :]))
+            Ycots_larval_survival[tstep, :] .= @view(cots_larval_survival[tstep, :])
+        end
         if !isnothing(cots_forced_adults)
             COTSMod.forced_grazing!(C_cover_t, @view(cots_forced_adults[tstep, :]),
                 cots_prey_map; habitable_fraction=cots_forced_habitable,
@@ -2417,6 +2433,7 @@ function run_model(
         cots_mechanism_log=Ycots_mechanism,
         cots_forcing_year=Ycots_forcing_year,
         cots_calendar_year=cots_calendar_years,
-        cots_culled_log=Ycots_culled
+        cots_culled_log=Ycots_culled,
+        cots_larval_survival_log=Ycots_larval_survival
     )
 end
