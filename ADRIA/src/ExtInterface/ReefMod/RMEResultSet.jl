@@ -86,7 +86,8 @@ function load_results(
     connectivity = load_connectivity(RMEDomain, data_dir, loc_ids)
 
     location_max_coral_cover = 1 .- geodata.k ./ 100
-    location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
+    geom_col = _get_geom_col(geodata)
+    location_centroids = [centroid(multipoly) for multipoly ∈ geodata[!, geom_col]]
 
     timeframe = 2008:2101
     if !haskey(raw_set.axes, :timesteps)
@@ -196,14 +197,14 @@ function _construct_scenario_groups(
 
     counterfactual_scens::BitVector = BitVector([
         p_a == 0.0 && e_a == 0 for (p_a, e_a)
-         in
+        in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
     # Intervened if not counterfactual
     intervened_scens::BitVector = BitVector([
         p_a != 0 || e_a != 0 for (p_a, e_a)
-         in
+        in
         zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
@@ -291,20 +292,10 @@ function _create_model_spec(scenario_spec::DataFrame)::DataFrame
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
-    rcps = rs.RCP
-    scens = length(rs.outcomes[:total_cover].scenarios)
-    locations = length(rs.outcomes[:total_cover].sites)
-    tf = rs.env_layer_md.timeframe
-
-    println("""
-           Name: $(rs.name)
-
-           Results stored at: $(rs.env_layer_md.dpkg_path)
-
-           RCP(s) represented: $(rcps)
-           Scenarios run: $(scens)
-           Number of locations: $(locations)
-           Timesteps: $(tf)
-           """)
-    return nothing
+    return _show_external_resultset(
+        io, rs;
+        count_label="Scenarios run",
+        count=length(rs.outcomes[:total_cover].scenarios),
+        n_locs=length(rs.outcomes[:total_cover].sites)
+    )
 end

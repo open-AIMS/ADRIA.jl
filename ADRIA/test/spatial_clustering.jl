@@ -7,10 +7,10 @@ using Statistics
 @testset "Constrain spatial groups" begin
     n_locs = 30
     loc_ids = collect(1:n_locs)
-    area_to_seed = 695.11
+    iv_CAq_area = 695.11
     orig_site_order = shuffle(Vector(1:n_locs))
     site_order = copy(orig_site_order)
-    available_space = rand(Uniform(area_to_seed + 100.0, area_to_seed + 1000.0), 30)
+    available_space = rand(Uniform(iv_CAq_area + 100.0, iv_CAq_area + 1000.0), 30)
     n_iv_locs = 5
 
     prefsites = site_order[1:5]
@@ -26,7 +26,7 @@ using Statistics
         reef_locs,
         s_order,
         rankings,
-        area_to_seed,
+        iv_CAq_area,
         available_space,
         n_iv_locs,
         3)
@@ -51,7 +51,7 @@ using Statistics
         reef_locs,
         s_order,
         rankings,
-        area_to_seed,
+        iv_CAq_area,
         available_space,
         n_iv_locs,
         3
@@ -60,16 +60,16 @@ using Statistics
     @test all(new_prefsites .== prefsites) ||
         "All sites in different reefs but some were still replaced."
 
-    # Make slected sites not have enough space to seed corals
-    available_space[prefsites] .= (area_to_seed - 100.0) / n_iv_locs
-    available_space[s_order[n_iv_locs + 1, 1]] = area_to_seed
+    # Make selected sites not have enough space for coral aquaculture
+    available_space[prefsites] .= (iv_CAq_area - 100.0) / n_iv_locs
+    available_space[s_order[n_iv_locs + 1, 1]] = iv_CAq_area
 
     s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_locs)]
     rankings = Int64[loc_ids zeros(Int64, n_locs) zeros(Int64, n_locs)]
 
     new_prefsites, rankings = constrain_reef_cluster(
-        reef_locs, s_order, rankings, area_to_seed, available_space, n_iv_locs, 3
+        reef_locs, s_order, rankings, iv_CAq_area, available_space, n_iv_locs, 3
     )
     @test length(new_prefsites) == (n_iv_locs + 1) ||
-        "Not enough sites were selected to fit the corals to be seeded."
+        "Not enough sites were selected to fit the coral aquaculture corals."
 end

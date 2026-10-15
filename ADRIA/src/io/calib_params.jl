@@ -5,10 +5,15 @@ Read calibrated coral parameter values from a NetCDF dataset (produced by CoralB
 calibration) and return a Dict mapping Coral struct field names to their calibrated values.
 Covers `linear_extension`, `mb_rate`, `dist_mean`, `dist_std`, `linear_extension_scale`,
 and `mb_rate_scale`. Any field not present in the dataset falls back to the ADRIA default.
+
+Variables are normally `(n_groups, n_sizes)`. A 1-D `(n_groups,)` variable is accepted and
+broadcast across every size class: `dist_std` is calibrated per functional group, matching
+ADRIA's own default of `repeat(<5 group values>; inner=n_sizes)`.
 """
 function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
     overrides = Dict{String,Float64}()
     fg_names = string.(functional_group_names())
+    n_sizes = size(bin_widths(), 2)
 
     for (param_name, varname) in (
         ("linear_extension", "linear_extension"),
@@ -16,12 +21,16 @@ function _coral_calib_overrides(nc_ds)::Dict{String,Float64}
         ("dist_mean", "dist_mean"),
         ("dist_std", "dist_std")
     )
-        # Older calibration outputs predate per-size-class `dist_std`
+        # Older calibration outputs predate calibrated `dist_std` entirely
         Symbol(varname) in keys(nc_ds.cubes) || continue
 
-        data = Array(nc_ds[varname])  # (n_groups, n_sizes)
-        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(data, 2)
-            overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = data[fg_idx, sc]
+        data = Array(nc_ds[varname])
+        # Per-group (n_groups,) → broadcast to (n_groups, n_sizes). Files written before
+        # dist_std became per-group carry the full matrix and are used as-is.
+        vals = ndims(data) == 1 ? repeat(data, 1, n_sizes) : data
+
+        for (fg_idx, fg) in enumerate(fg_names), sc = 1:size(vals, 2)
+            overrides["$(fg)_$(fg_idx)_$(sc)_$(param_name)"] = vals[fg_idx, sc]
         end
     end
 
@@ -60,19 +69,51 @@ function _growth_accel_calib_overrides(nc_ds)::Dict{String,Float64}
 end
 
 """
+    _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+
+Read calibrated depth-attenuation values from a NetCDF dataset and return a Dict mapping
+`DepthAttenuation` struct field names to their calibrated values.
+
+Calibration outputs written before `depth_attenuation` entered the search space have no such
+variable, in which case an empty Dict is returned and the ADRIA defaults stand. Values are
+looked up by their `depth_atten_param` label rather than by position, so the two factors
+cannot be silently transposed.
+
+# Arguments
+- `calib_dataset` : Calibration parameters NetCDF, opened with `open_dataset` (produced by
+    CoralBlox calibration; see `load_calib_params`)
+"""
+function _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :depth_attenuation in keys(calib_dataset.cubes) || return overrides
+
+    da = calib_dataset["depth_attenuation"]
+    p_names = string.(collect(DimensionalData.lookup(da, :depth_atten_param)))
+    vals = Array(da)
+
+    for fn in string.(fieldnames(DepthAttenuation))
+        idx = findfirst(==(fn), p_names)
+        isnothing(idx) || (overrides[fn] = vals[idx])
+    end
+
+    return overrides
+end
+
+"""
     load_calib_params(calib_params_fn::String)
 
-Build the `Coral` and `GrowthAcceleration` component instances for a domain.
+Build the `Coral`, `GrowthAcceleration` and `DepthAttenuation` component instances for a
+domain.
 
 If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
 values are applied as overrides; otherwise the ADRIA defaults are used.
 
 # Returns
-Tuple of (Coral, GrowthAcceleration)
+Tuple of (Coral, GrowthAcceleration, DepthAttenuation)
 """
 function load_calib_params(calib_params_fn::String)
     if isempty(calib_params_fn) || !isfile(calib_params_fn)
-        return Coral(), GrowthAcceleration()
+        return Coral(), GrowthAcceleration(), DepthAttenuation()
     end
 
     @info "Loading calibrated coral parameters from $(calib_params_fn)"
@@ -82,6 +123,9 @@ function load_calib_params(calib_params_fn::String)
         create_coral_instance(; overrides=_coral_calib_overrides(nc_ds)),
         create_growth_acceleration_instance(;
             overrides=_growth_accel_calib_overrides(nc_ds)
+        ),
+        create_depth_attenuation_instance(;
+            overrides=_depth_attenuation_calib_overrides(nc_ds)
         )
     )
 end

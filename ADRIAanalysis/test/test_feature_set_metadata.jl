@@ -3,8 +3,8 @@ using DataFrames
 using ADRIA
 using ADRIAanalysis
 
-# `feature_set(rs::ResultSet)` needs a real ResultSet (dhw_stats, ranks, seed_log,
-# mc_log, etc. are all populated from an actual simulation run) -- there is no
+# `feature_set(rs::ResultSet)` needs a real ResultSet (dhw_stats, ranks, CAq_log,
+# LvM_log, etc. are all populated from an actual simulation run) -- there is no
 # lightweight mock for this in ADRIAanalysis/test. Reuse the same gated-fixture
 # pattern as `integration_cluster_rules.jl`: run a small scenario set against the
 # on-disk `Test_domain` fixture, skipping (with a @warn, not a failure) if that
@@ -34,9 +34,9 @@ else
         # that actually survive into the output.
         candidate_tagged_cols = [
             :dhw_mean, :dhw_stdev, :dhw_complexity,
-            :n_loc_seed_mean, :n_loc_fog_mean, :n_loc_mc_mean,
+            :n_loc_CAq_mean, :n_loc_Fog_mean, :n_loc_LvM_mean,
             :depth_max,
-            :seed_total_deployed_coral_M, :mc_total_deployed_coral_M
+            :CAq_total_deployed_coral_M, :LvM_total_deployed_coral_M
         ]
         present_tagged_cols = [c for c in candidate_tagged_cols if c in fs_cols]
 
@@ -52,15 +52,15 @@ else
             @test colmetadata(fs, col, "label", "MISSING") != "MISSING"
         end
 
-        # At least one seed_volume_*/mc_volume_* per-functional-group column
+        # At least one CAq_volume_*/LvM_volume_* per-functional-group column
         # should also be tagged, if any survived `_filter_constants`.
         volume_cols = [
             c for c in fs_cols if
-            startswith(string(c), "seed_") || startswith(string(c), "mc_")
+            startswith(string(c), "CAq_") || startswith(string(c), "LvM_")
         ]
         volume_cols = [
             c for c in volume_cols if
-            c ∉ (:seed_total_deployed_coral_M, :mc_total_deployed_coral_M)
+            c ∉ (:CAq_total_deployed_coral_M, :LvM_total_deployed_coral_M)
         ]
         if !isempty(volume_cols)
             for col in volume_cols
@@ -68,7 +68,7 @@ else
                 @test colmetadata(fs, col, "label", "MISSING") != "MISSING"
             end
         else
-            @warn "No seed_/mc_ volume columns survived _filter_constants; " *
+            @warn "No CAq_/LvM_ volume columns survived _filter_constants; " *
                 "skipping per-functional-group metadata assertions."
         end
 
@@ -114,7 +114,7 @@ end
     df_masked = df[mask, :]
     @test colmetadata(df_masked, :a, "ptype", "MISSING") == "continuous"
 
-    # hcat! with a second frame (as used to attach seed/mc volume columns)
+    # hcat! with a second frame (as used to attach coral aquaculture/larval methods volume columns)
     extra = DataFrame(; d=rand(10))
     colmetadata!(extra, :d, "ptype", "continuous"; style=:note)
     DataFrames.hcat!(df, extra)

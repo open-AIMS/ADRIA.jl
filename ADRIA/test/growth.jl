@@ -17,6 +17,20 @@ using ADRIA.Distributions
     end
 end
 
+@testset "coral_spec source hash tracks coral_factors.jl" begin
+    corals_dir = joinpath(pkgdir(ADRIA), "src", "ecosystem", "corals")
+    factors_file = joinpath(corals_dir, "coral_factors.jl")
+    original = read(factors_file, String)
+    baseline = ADRIA._coral_spec_source_hash()
+    try
+        write(factors_file, original * "\n# cache-invalidation probe\n")
+        @test ADRIA._coral_spec_source_hash() != baseline
+    finally
+        write(factors_file, original)
+    end
+    @test ADRIA._coral_spec_source_hash() == baseline
+end
+
 @testset "Coral Spec" begin
     coral_params = ADRIA.coral_spec().params
 

@@ -21,8 +21,8 @@ s_tac = ADRIA.metrics.scenario_total_cover(rs)
 # Plot scenario outcomes
 ADRIA.viz.scenarios(rs.inputs, s_tac)
 
-# Plot outcomes of scenarios where SRM < 1.0
-ADRIA.viz.scenarios(rs.inputs, s_tac[:, scens.SRM .< 1.0])
+# Plot outcomes of scenarios where iv_Shd < 1.0
+ADRIA.viz.scenarios(rs.inputs, s_tac[:, scens.iv_Shd .< 1.0])
 ```
 
 # Arguments

@@ -1,7 +1,7 @@
 # sampling_dependencies.jl
 #
 # Many sampled parameters are only meaningful under certain scenario settings
-# (e.g. seeding/fogging deployment parameters only matter when an intervention
+# (e.g. coral aquaculture/fogging deployment parameters only matter when an intervention
 # is actually enabled, and decision-strategy weights only matter under
 # :guided). Sampling every parameter unconditionally wastes sample budget on
 # combinations that don't affect model output and dilutes sensitivity/PAWN
@@ -134,7 +134,7 @@ const _PARAM_DEPENDENCIES = [
 # ---------------------------------------------------------------------------
 # Group membership (explicit Dict; pre-sampling groups only)
 #
-# :seed_strategy/:fog_strategy/:mc_strategy appear ONLY in :strategy_group,
+# :iv_CAq_strategy/:iv_Fog_strategy/:iv_LvM_strategy appear ONLY in :strategy_group,
 # not in :intervention_group. :strategy_group fixes them to -1.0 for CF and
 # to DECISION_STRATEGY[:periodic] for unguided; including them in
 # :intervention_group (fix_to=0.0) would produce a conflicting fix_to for the
@@ -150,32 +150,37 @@ const _PARAM_DEPENDENCIES = [
 
 const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
     :intervention_group => [
-        :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM,
-        :N_mc_settlers, :seeding_devices_per_m2, :min_iv_locations,
-        :mc_min_iv_locations, :fogging, :SRM, :a_adapt, :a_adapt_ref,
-        :seed_years, :shade_years, :fog_years, :plan_horizon, :projection_confidence,
-        :seed_deployment_freq, :fog_deployment_freq, :shade_deployment_freq,
-        :mc_deployment_freq, :seed_year_start, :shade_year_start,
-        :fog_year_start, :mc_year_start, :mc_years,
-        :mcb_albedo, :mcb_duration, :mcb_deployment_freq,
-        # NOTE: :seed_strategy/:fog_strategy/:mc_strategy are intentionally
+        :iv_CAq_N_TA, :iv_CAq_N_CA, :iv_CAq_N_CNA, :iv_CAq_N_SM, :iv_CAq_N_LM,
+        :iv_LvM_N_settlers, :iv_CAq_devices_per_m2, :min_iv_locations,
+        :iv_LvM_min_iv_locations, :iv_Fog, :iv_Shd, :iv_CAq_a_adapt,
+        :iv_CAq_a_adapt_ref,
+        :iv_CAq_years, :iv_Shd_years, :iv_Fog_years, :plan_horizon,
+        :projection_confidence,
+        :iv_CAq_deployment_freq, :iv_Fog_deployment_freq, :iv_Shd_deployment_freq,
+        :iv_LvM_deployment_freq, :iv_CAq_year_start, :iv_Shd_year_start,
+        :iv_Fog_year_start, :iv_LvM_year_start, :iv_LvM_years,
+        :iv_MCB_albedo, :iv_MCB_duration, :iv_MCB_deployment_freq,
+        # NOTE: :iv_CAq_strategy/:iv_Fog_strategy/:iv_LvM_strategy are intentionally
         # excluded here — they belong exclusively to :strategy_group (see above).
         :reactive_absolute_threshold, :reactive_loss_threshold,
         :reactive_min_cover_remaining, :reactive_response_delay,
-        :seed_revisit_cadence, :fog_revisit_cadence, :mc_revisit_cadence
+        :iv_CAq_revisit_cadence, :iv_Fog_revisit_cadence, :iv_LvM_revisit_cadence
     ],
     :criteria_weights => [
-        :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,
-        :seed_out_connectivity, :seed_depth, :seed_coral_cover,
-        :seed_cluster_diversity, :seed_geographic_separation,
-        :fog_heat_stress, :fog_wave_stress, :fog_in_connectivity,
-        :fog_out_connectivity, :fog_depth, :fog_coral_cover,
-        :fog_cluster_diversity, :fog_geographic_separation,
-        :mc_heat_stress, :mc_wave_stress, :mc_in_connectivity,
-        :mc_out_connectivity, :mc_depth, :mc_coral_cover,
-        :mc_cluster_diversity, :mc_geographic_separation
+        :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
+        :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
+        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation,
+        :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
+        :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
+        :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation,
+        :iv_LvM_heat_stress, :iv_LvM_wave_stress, :iv_LvM_in_connectivity,
+        :iv_LvM_out_connectivity, :iv_LvM_depth, :iv_LvM_coral_cover,
+        :iv_LvM_cluster_diversity, :iv_LvM_geographic_separation
+        # NOTE: iv_Shd_* criteria weights are deliberately excluded — ShdCriteriaWeights is
+        # not currently included in the module (see DecisionWeights.jl), so these columns
+        # don't exist in model_spec today. Add them here if/when that's revived.
     ], :depth_thresholds => [:depth_min, :depth_offset],
-    :strategy_group => [:seed_strategy, :fog_strategy, :mc_strategy]
+    :strategy_group => [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
 )
 
 # ---------------------------------------------------------------------------

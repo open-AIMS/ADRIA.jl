@@ -4,9 +4,9 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights,
-    MCCriteriaWeights
+    LvMCriteriaWeights
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -34,10 +34,10 @@ mutable struct ADRIADomain <: Domain
     # Each element of these vector is a pair weight and list of location ids.
     # The weights represents the share of the intervention capacity that will be distributed
     # to each list of locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
     model::Model  # core model
@@ -45,7 +45,7 @@ mutable struct ADRIADomain <: Domain
 end
 
 """
-    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel)
+    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten)
 
 Wrapper around `ModelParameters.Model` construction so it can be targeted by
 `@compile_workload`.
@@ -65,9 +65,10 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     @nospecialize(mwt),
     @nospecialize(dth),
     @nospecialize(coral),
-    @nospecialize(growth_accel)
+    @nospecialize(growth_accel),
+    @nospecialize(depth_atten)
 )::Model
-    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel))
+    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten))
 end
 
 """
@@ -95,7 +96,7 @@ function Domain(
     calib_params_fn::String=""
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
-    if has_mcb_scenarios(DHW)
+    if has_MCB_scenarios(DHW)
         albedos = collect(DHW.albedo)
         durations = collect(DHW.mcb_durations)
     else
@@ -104,7 +105,7 @@ function Domain(
     end
 
     intervention_params = (
-        mcb_albedo=Factor(
+        iv_MCB_albedo=Factor(
             albedos[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,
@@ -112,7 +113,7 @@ function Domain(
             name="MCB Albedo",
             description="Albedo level to use from 5D DHW dataset."
         ),
-        mcb_duration=Factor(
+        iv_MCB_duration=Factor(
             durations[1];
             ptype="ordered categorical",
             dist=CategoricalDistribution,
@@ -122,17 +123,20 @@ function Domain(
         )
     )
 
-    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
 
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(; intervention_params...),
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds(),
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        depth_atten_instance
     )
 
     return ADRIADomain(
@@ -518,6 +522,8 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
             d.env_layer_md.timeframe
         )]
     end
+
+    d.RCP = RCP
 
     return d
 end

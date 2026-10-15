@@ -7,7 +7,7 @@ Flatten.jl / ModelParameters concrete-method overrides for large `Param`-only st
 build a per-field inline expression for every struct they encounter.  For structs with
 many homogeneous fields (`Coral` has 331, `GrowthAcceleration` has 36) the expression
 size grows as O(N), but Julia must *type-infer* each intermediate tuple concatenation step,
-so the total compile cost is O(N²).  For the 8-component domain model tuple assembled
+so the total compile cost is O(N²).  For the 9-component domain model tuple assembled
 in `_assemble_domain_model`, the outer `@generated _reconstruct` additionally tries to
 inline all ~427 fields at once, yielding O(427²) ≈ 900 s of cold-start compilation.
 

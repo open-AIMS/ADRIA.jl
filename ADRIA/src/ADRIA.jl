@@ -53,6 +53,7 @@ include("ecosystem/corals/coral_factors.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
+include("ecosystem/DepthAttenuation.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/corals/flatten_overrides.jl")
@@ -67,13 +68,26 @@ include("io/calib_params.jl")
 
 include("decision/Decision.jl")
 include("interventions/Interventions.jl")
-include("interventions/seeding.jl")
-include("interventions/fogging.jl")
-include("interventions/moving_corals.jl")
+include("interventions/CAq.jl")
+include("interventions/Fog.jl")
+include("interventions/LvM.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
-include("io/rme_result_io.jl")
+
+# External model interfaces: domains and result sets.
+# Must precede metrics/metrics.jl, which includes model-specific metric
+# implementations (e.g. metrics/cscape.jl) that dispatch on these types.
+include("ExtInterface/ADRIA/Domain.jl")
+include("ExtInterface/ReefMod/RMEDomain.jl")
+include("ExtInterface/ReefMod/ReefModDomain.jl")
+include("ExtInterface/ReefMod/RMEResultSet.jl")
+include("ExtInterface/CScape/CScapeResultSet.jl")
+# CScape outcome loading (`_load_variable!` and helpers): kept in the ADRIA module,
+# not the `metrics` submodule, so it can use NetCDF/ProgressMeter directly. Consumed
+# by metrics/cscape.jl.
+include("ExtInterface/CScape/CScapeOutcomes.jl")
+
 include("io/result_post_processing.jl")
 include("io/result_io.jl")
 include("io/sampling/sampling.jl")
@@ -83,17 +97,16 @@ include("metrics/performance.jl")
 include("scenario.jl")
 include("analysis/analysis.jl")
 
-include("ExtInterface/ADRIA/Domain.jl")
-include("ExtInterface/ReefMod/RMEDomain.jl")
-include("ExtInterface/ReefMod/ReefModDomain.jl")
+# Depends on metrics, so it is loaded after metrics/metrics.jl.
+include("ExtInterface/ReefMod/RMEExport.jl")
 
 include("viz/viz.jl")
 
 export
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, create_coral_instance,
-    create_growth_acceleration_instance, Intervention, SimConstants,
-    SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
+    create_growth_acceleration_instance, Intervention, SimConstants, DepthAttenuation,
+    CAqCriteriaWeights, FogCriteriaWeights, LvMCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
@@ -106,6 +119,7 @@ export RMEDomain
 export ReefModDomain
 
 export RMEResultSet
+export CScapeResultSet
 # metric helper methods
 # export dims, ndims
 
@@ -143,6 +157,11 @@ const COMPAT_DPKG = ["0.8.0"]
     precompile(ADRIA.sample_guided, (ADRIADomain, Int))
     precompile(ADRIA.sample_unguided, (ADRIADomain, Int))
     precompile(ADRIA.model_spec, (ADRIADomain, DataFrame))
+    # `fix_factor!` writes the mutated spec back through `update!`; the workload block
+    # below exercises the underlying reconstruct path against the assembled model.
+    precompile(ADRIA.update!, (ADRIADomain, DataFrame))
+    precompile(ADRIA.fix_factor!, (ADRIADomain, Symbol))
+    precompile(ADRIA.fix_factor!, (ADRIADomain, Vector{Symbol}))
 
     redirect_stdio(stdout=devnull, stderr=devnull) do
         let
@@ -207,23 +226,44 @@ const COMPAT_DPKG = ["0.8.0"]
         end
     end
 
-    # Full domain model assembly — covers the 8-component tuple form used by
+    # Full domain model assembly — covers the 9-component tuple form used by
     # load_domain() via _assemble_domain_model(). Without this workload entry,
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost
     # shifts to Pkg.precompile() time and interactive first-call is <1 s.
     redirect_stdio(stdout=devnull, stderr=devnull) do
         _arr = ones(Float32, 1, 1, 1)
-        _assemble_domain_model(
+        _model = _assemble_domain_model(
             EnvironmentalLayer(_arr, _arr, _arr),
             Intervention(),
-            SeedCriteriaWeights(),
+            CAqCriteriaWeights(),
             FogCriteriaWeights(),
-            MCCriteriaWeights(),
+            LvMCriteriaWeights(),
             DepthThresholds(),
             Coral(),
-            GrowthAcceleration()
+            GrowthAcceleration(),
+            DepthAttenuation()
         )
+
+        # Factor-fixing write-back path (see `update!` in Domain.jl for why the exact
+        # `Float64` / `Vector{Float64}` column forms matter). Run twice: a freshly
+        # assembled model has a `Float64`/`Int` `val` mix (`guided` etc. default to an
+        # `Int` literal); the first write flips those to `Float64`, changing the `Param`
+        # types handed to `Flatten.reconstruct`, and every `fix_factor!` after the first
+        # sees that all-`Float64` shape. Values are written back unchanged -- compile
+        # coverage only. Guarded so a failure degrades coverage rather than breaking
+        # `using ADRIA`.
+        try
+            for _ in 1:2
+                _ms = model_spec(_model)
+                _model[:val] = Float64.(_ms.val)
+                _model[:dist_params] = Vector{Float64}[
+                    collect(Float64, _dp) for _dp in _ms.dist_params
+                ]
+            end
+        catch err
+            @debug "compile-workload factor write-back failed" err
+        end
     end
 end
 

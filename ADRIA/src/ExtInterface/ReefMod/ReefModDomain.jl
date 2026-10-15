@@ -33,10 +33,10 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     cyclone_mortality_scens
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}        # locations eligible for fogging
-    shade_target_locations::Vector{String}    # locations eligible for shading
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}        # locations eligible for fogging
+    Shd_target_locations::Vector{String}    # locations eligible for shading
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
 
     model
     sim_constants::SimConstants
@@ -157,9 +157,9 @@ function load_domain(
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -170,14 +170,17 @@ function load_domain(
         timeframe
     )
 
-    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
         Intervention(),
         criteria_weights...,
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        depth_atten_instance
     ))
 
     return ReefModDomain(
@@ -333,6 +336,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     dhws = correct_axis_names!(dhws)
 
     d.dhw_scens = dhws
+    d.RCP = RCP
 
     return d
 end

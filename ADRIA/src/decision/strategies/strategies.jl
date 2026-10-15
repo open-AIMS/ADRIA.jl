@@ -31,7 +31,7 @@ end
 #  Arguments
 - `strategy_idx` : Can be either `1` (periodic) or `2` (reactive).
 - `param_set` : Single scenario param_set.
-- `iv_type` : Can be either `"seed"`, `"mc"` or `"fog"`.
+- `iv_type` : Can be either `"iv_CAq"`, `"iv_LvM"` or `"iv_Fog"`.
 """
 function strategy_type(strategy_idx::Int64)
     if is_reactive(strategy_idx)
@@ -39,7 +39,7 @@ function strategy_type(strategy_idx::Int64)
     elseif is_periodic(strategy_idx)
         return PeriodicStrategy
     end
-    throw(ArgumentError("Unknown mc strategy type: $strategy_type"))
+    throw(ArgumentError("Unknown strategy type: $strategy_type"))
 end
 function strategy_type(param_set::YAXArray{Float64,1}, iv_type::String)
     return strategy_type(Int64(param_set[factors = At(["$(iv_type)_strategy"])][1]))

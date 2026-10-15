@@ -4,9 +4,12 @@
 Initialize ADRIA configuration options from `config.toml`
 or load defaults if not found.
 """
-function setup()::Nothing
-    if has_setup()
-        return nothing
+function setup(; force::Bool=false)::Nothing
+    # Don't run setup unless force is true
+    if !force
+        if get(ENV, "ADRIA_HAS_SETUP", "false") == "true"
+            return nothing
+        end
     end
 
     try
@@ -41,6 +44,8 @@ function setup()::Nothing
         ENV["ADRIA_LOG_DHW_TOLS"] = false
         ENV["ADRIA_LOG_COVER"] = false
     end
+
+    ENV["ADRIA_HAS_SETUP"] = true
 
     return nothing
 end

@@ -12,7 +12,7 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights
 
 abstract type AbstractReefModDomain <: Domain end
@@ -40,10 +40,10 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
     sim_constants::SimConstants
@@ -288,9 +288,9 @@ function load_domain(
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -302,14 +302,17 @@ function load_domain(
         )
     end
 
-    coral_instance, growth_accel_instance = load_calib_params(calib_params_fn)
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
         criteria_weights...,
         coral_instance,
-        growth_accel_instance
+        growth_accel_instance,
+        depth_atten_instance
     ))
 
     return adjust_sampling_bounds(
@@ -697,17 +700,14 @@ end
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
-    @set! d.RCP = RCP
+    d.RCP = RCP
     data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
 
     timeframe::Tuple{Int64,Int64} = (
         d.env_layer_md.timeframe[1],
         d.env_layer_md.timeframe[end]
     )
-    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
-
-    # Cyclones are not RCP-specific?
-    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
+    d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
 
     return d
 end
