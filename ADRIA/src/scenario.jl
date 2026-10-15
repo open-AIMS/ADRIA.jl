@@ -859,7 +859,9 @@ function run_model(
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_scope::Matrix{Float64} = cache.fec_scope
+    fill!(fec_scope, 0.0)
     recruitment::Matrix{Float64} = cache.recruitment
+    fill!(recruitment, 0.0)
     dhw_t::Vector{Float64} = cache.dhw_step
     eff_dhw_t::Vector{Float64} = cache.eff_dhw_step
     depth_coeff::Vector{Float64} = cache.depth_coeff

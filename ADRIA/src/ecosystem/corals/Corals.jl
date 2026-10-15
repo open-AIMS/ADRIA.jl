@@ -500,16 +500,17 @@ end
 function _update_coral_spec(
     spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame
 )::DataFrame
+    _spec = copy(spec)  # `coral_spec()` returns a shared cached DataFrame; never mutate it
     fnames::Vector{String} = String.(coral_params[!, :fieldname])
     for p in pnames
         target::BitVector = occursin.(p, fnames)
         for tn in fnames[target]
-            idx::BitVector = spec.coral_id .== rsplit(tn, "_$p"; keepempty=false)
-            spec[idx, [p]] .= coral_params[coral_params.fieldname .== tn, :val]
+            idx::BitVector = _spec.coral_id .== rsplit(tn, "_$p"; keepempty=false)
+            _spec[idx, [p]] .= coral_params[coral_params.fieldname .== tn, :val]
         end
     end
 
-    return spec
+    return _spec
 end
 
 """
@@ -559,13 +560,14 @@ end
 function to_coral_spec(inputs::YAXArray)::DataFrame
     _, pnames, spec = coral_spec()
 
-    coral_ids::Vector{String} = spec[:, :coral_id]
+    _spec = copy(spec)  # `coral_spec()` returns a shared cached DataFrame; never mutate it
+    coral_ids::Vector{String} = _spec[:, :coral_id]
     for p in pnames
         # wrapping `p` in an array is necessary so update of DF works
-        spec[!, [p]] .= Array(inputs[At(coral_ids .* "_" .* p)])
+        _spec[!, [p]] .= Array(inputs[At(coral_ids .* "_" .* p)])
     end
 
-    return spec
+    return _spec
 end
 function to_coral_spec(inputs::DataFrameRow)::DataFrame
     ins = DataCube(Vector(inputs); factors=names(inputs))
