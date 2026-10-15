@@ -4237,3 +4237,335 @@ Comparison of the forced-COTS μ 0.12 arms, with bleaching on and off (runs 2026
 4. **Implication.** In the 2020s the external multiplier and the outbreak layer are confounded. A lower multiplier would let local recruitment, and so the chlorophyll mechanism, carry more of the build-up. That is closer to the lead's initiation-region hypothesis.
 
 **Decision.** Nothing is promoted. The lead decides on adopting the new coral and on the next factorial (external multiplier × supply × chlorophyll).
+
+
+## Lead's decisions (2026-10-15, twelfth round)
+
+1. **Simulation candidates:** adopt the new coral (β 1; ×0.25 below 6 DHW) for all simulation candidates (W, C3a, C6), re-checked over the 5 seed pairs.
+2. **External multiplier test.** Test a lower external-supply multiplier.
+   - **Priority:** local build-up. If chlorophyll-driven survival can be shown to help start the 4th (2010s) and 5th (2020s) waves, where satellite data exist, then a 1990s-only boost may be considered, but only if chlorophyll cannot be back-cast.
+3. **Outbreak layer:** choose between the original and corrected layers after the multiplier test.
+
+## Preregistered external-multiplier × supply × chlorophyll factorial (2026-10-15)
+
+**Hypothesis.** Ext×5 swamps local recruitment, so the chlorophyll larval-survival effect cannot act. With lower external supply:
+- local production and retention carry more of each build-up;
+- high-chl seasons (2011, 2019, 2024) advance or amplify the 4th and 5th waves;
+- the corrected layer no longer overshoots in 2025–26.
+
+The 1990s wave (chl neutral before 2003) is expected to weaken as Ext falls.
+
+**Design.** Experiment `ext_chl`: domain v0.4, 1991–2026, W at seed pair 1, new coral (β 1, ×0.25 below 6 DHW, μ 0.12).
+- external multiplier ∈ {1, 2.5, 5} × chlorophyll survival ∈ {off, p90 b 3} = 6 arms per run;
+- one run per supply dataset (the lead's predictions + 2026; corrected layer);
+- arms `wc_b100_q20_eb_lin_obs015_s1_t60_e<Ext×10>_<chl>_cv2_pnd`;
+- **controls:** e50 chl off and e50 p90 b 3 replay the matching run 08 / 09 arms exactly.
+
+**Read-out.**
+- score v3 (manta part and diver error) and v2 1992–2024; G2′ at `A½ 30` and 10;
+- **wave starts:** per reef, the first year adults reach 3/ha and the peak adults/year in 1993–2001 (wave 3, chl neutral), 2008–2015 (wave 4) and 2019–2026 (wave 5);
+- **the chlorophyll effect** = p90 b 3 minus off at the same Ext and supply, in settled recruits (2011–12, 2019–20, 2024–25) and in wave-4 and wave-5 adults and onset years;
+- **the local share of settlement** (local + internal immigration over total) in 2010–2014 and 2019–2026.
+
+**Expected.**
+- Lower Ext raises the local share, and so the chlorophyll effect, on wave starts.
+- Wave 3 weakens at Ext 1.
+- The corrected layer at Ext 1–2.5 builds 2024–26 without the ×5 overshoot.
+
+**Criteria for the lead.**
+- the chlorophyll effect on wave-4 and wave-5 onset or size;
+- v3;
+- no loss of waves 3–4 under G2′.
+
+**Failure.** A replay fails, or an arm fails.
+
+**Rollback.** Runner-only (existing switches).
+
+
+## External-multiplier × supply × chlorophyll results (2026-10-15)
+
+**Runs.**
+- Runs 20261015T_14 (original layer) and _15 (corrected layer): 6 arms each, no failures.
+- Re-scores: 16 and 18. G2′: 17 and 19. Audit: `runs/20261015T_15_.../ext_chl_audit.json` and `ext_chl.png`.
+- The e50 arms replay runs 08 / 09 exactly (0.0).
+
+**Score v3** (seed pair 1):
+
+| Ext | Original, chl off / on | Corrected, chl off / on | Manta part (off) | Matched v2 peaks (off) | G2′ at `A½ 30` |
+| --- | --- | --- | --- | --- | --- |
+| ×1 | 28.6 / 28.5 | 28.0 / 28.3 | 20.9 | 1–2 of 7 | fail |
+| ×2.5 | 16.9 / 16.7 | 16.0 / 16.1 | 10.0 | 7 | fail |
+| ×5 | 11.3 / 11.2 | 11.3 / **11.0** | 6.6 | 7 | pass |
+
+**Waves** (Lizard; onset = first year ≥ 3 adults/ha in the window):
+- **Wave 3 (1993–2001):** peak 30/ha in 1997 at ×5, but 32 in 2000 at ×2.5 and 12 in 2001 at ×1. Lower Ext delays and shrinks the 1990s wave, which has no chl support.
+- **Wave 4 (2008–2015):** peak 15.5 at ×5 against 7.8 at ×1. Adults are already ≥ 3/ha by 2008 in every arm, so onset is not discriminated.
+
+**Local share of settlement**, i.e. 1 − external/settled, increases as Ext falls:
+- Lizard 2010–14: 14% at ×5, 22% at ×1;
+- Lizard 2019–26 (original layer): 33% at ×5, 78% at ×1.
+
+**Chlorophyll effect** (p90 b 3, on − off):
+- **Recruits:**
+  - 2011–12: +10.7% at ×5, +15.7% at ×1 (Lizard); +18–27% at MacGillivray;
+  - 2019–20: +3–7% at ×5, +19–20% at ×1;
+  - 2024–25: +21–35% at ×5, +42–96% at ×1.
+- **Wave-4 peak:** +14–27% on Lizard, MacGillivray and North Direction at every Ext.
+- **Wave-5 peak:** +21–75%.
+- **Onset:** never earlier. In this configuration chl amplifies waves rather than advancing them.
+
+**Findings.**
+1. **Ext×5 cannot be reduced without losing the 1990s and 2010s manta fit** (v3 ×5 11.3 → ×2.5 about 16.5 → ×1 about 28). The external multiplier is doing work that local dynamics alone do not.
+2. **Chl survival does act on the 4th and 5th waves** (+15–27% recruits in 2011–12; larger effects in 2019–20 and 2024–25 as the local share rises), but on size, not timing.
+3. **The 1990s wave has no chl index** (neutral before 2003), so it cannot benefit at lower Ext. Per the lead (twelfth round), a 1990s-only boost is considered only if chl cannot be back-cast.
+
+## In-water chlorophyll 1992–2009 (lead, 2026-10-15)
+
+**Source.** The lead found `sandbox/data/GBR_chlorophyll_monitoring_1992-2009.csv` (AIMS Long Term Chlorophyll Monitoring Program; 19,174 samples; CHL_A µg/L).
+- Lizard region (within 0.6° of Lizard Island): 3,154 samples. The Lizard Island transect (Codhole, MacGillivray, North Reef, Eagle Islet, Near Martin Reef, …) was sampled monthly 1993–1999; Cooktown–Osprey 1997–2008.
+- **Wet-season (Dec–Apr) regional mean:**
+
+| Season | Mean (µg/L) |
+| --- | --- |
+| 1993 | 0.25 |
+| 1994 | 0.28 |
+| 1995 | 0.28 |
+| 1996 | 0.34 |
+| 1997 | 0.24 |
+| 1998 | 0.31 |
+| 1999 | 0.33 |
+| 2000 | 0.18 |
+| 2001 | 0.19 |
+| 2002 | 0.25 |
+| 2003 | 0.14 |
+| 2004 | 0.24 |
+| 2005 | 0.24 |
+| 2006 | 0.21 |
+| 2007 | 0.21 |
+
+  The 1990s were higher than the 2000s.
+
+**Overlap with MODIS** (seasons 2003–2008):
+- satellite OC3 is about 3–4× the in-water level (bottom and coastal contamination);
+- the season-level interannual correlation is r −0.19 over 6 seasons (2008 has only 4 samples).
+
+A season-level bias correction would therefore be fragile. Same-day matchups (in-water sample against the satellite pixel, 2002–2008) give hundreds of pairs for the calibration.
+
+**Lead's direction.** Make a full 1992–2026 series, with the in-water data as the reference for bias correction, because surface satellite chl-a underestimates what larvae are exposed to.
+
+
+## Lead's decisions (2026-10-15, thirteenth round)
+
+1. **Satellite-to-in-water correction by same-day matchups** (in-water sample against the satellite pixel, 2002–2008).
+2. **Test both survival forms:** the relative anomaly, and an absolute curve on the in-water scale (relaxed Fabricius).
+3. **One Lizard-region in-water value per season for 1993–2002,** with each reef's offset carried back from the satellite years.
+4. **Re-test the external multiplier** once the full 1993–2026 series exists.
+
+## Preregistered full chlorophyll series (in-water scale) and Ext re-test (2026-10-15)
+
+**Matchups** (`domain_building/build_chla_inwater_matchups.py`).
+- **In-water:** AIMS LTCMP samples north of 17.5° S, July 2002 – January 2009. Each station visit gives the mean CHL_A over all sampled depths (the larval-exposure proxy; a near-surface-only sensitivity uses ≤ 10 m).
+- **Satellite:** the same-day MODIS-Aqua OC3 at the nearest valid pixel within 5 km.
+- **Fit:** `log10(in-water) = a + b · log10(OC3)` by OLS, with n, r, residual sd, and per-transect checks.
+
+**Series** (`build_chla_index_full.py`; wet season Dec(y−1)–Apr(y); per reef):
+- **2003–2024:** MODIS season mean and p90 converted with the matchup fit.
+- **2025–2026:** VIIRS season values mapped to MODIS by a per-reef log-log fit over 2013–2024, then converted.
+- **1993–2002:** the Lizard-region in-water wet-season mean and p90 (stations within 0.6° of Lizard Island; seasons with ≥ 16 samples), times each reef's mean offset from the regional value over 2003–2026 (converted satellite).
+- **Anomalies:** relative to each reef's 1993–2026 geometric mean.
+
+**Survival forms.**
+1. **Anomaly:** `min(5, exp(3 · log_anom_p90))`, as before but now covering 1993–2026.
+2. **Absolute, relaxed Fabricius:** `S(c) = f + (1 − f) · logistic(−0.48 + 2.02 · log2 c)` on the in-water-equivalent p90 c. The multiplier is `min(5, S(c) / S(c_ref))`, with `c_ref` the domain 1993–2026 median.
+   - The floor f relaxes the near-zero survival at low chl. A plot of the alternatives goes to the lead; f = 0.1 is used in the run unless the lead changes it.
+
+**Experiment** `ext_chl2` (v0.4, W at seed pair 1, new coral; both supply layers):
+- Ext {1, 2.5, 5} × chl {off, anomaly (full), absolute (f 0.1)};
+- **controls:** the Ext and chl-off arms replay runs 14 / 15.
+
+**Read-out.** As in the Ext × chl factorial, plus the wave-3 onset and peak with chl now active in the 1990s.
+
+**The question:** does chl-driven local recruitment let a lower Ext keep waves 3–4, i.e. is the ×5 boost replaceable?
+
+
+## Full chlorophyll series: build notes and correction (2026-10-15)
+
+**Matchups** (`build_chla_inwater_matchups.py`): 834 station visits, of which 323 have a valid same-day MODIS pixel. All-depth OLS: `log10(iw) = −0.604 + 0.330 · log10(OC3)`, r 0.52, residual sd 0.26 (log10). In-water is 0.42× OC3 at the median.
+- By transect: Cairns b 0.49 (r 0.80); Cooktown–Osprey b 0.16 (r 0.28, n 119); Port Douglas b 0.27.
+- The near-surface sensitivity has only 5 pairs and is not usable.
+
+**Correction to the preregistered conversion** (made before any model run). The p90 forms use the **RMA** conversion (b = 0.33 / 0.52 = 0.63), not OLS.
+- Over 2003–2007, the in-water regional means match both conversions (in-water about 0.21; OLS 0.23; RMA 0.25–0.28).
+- The in-water p90 (about 0.32) is matched by RMA (0.33–0.36) but compressed by OLS (0.26–0.28). Daily pixel noise attenuates the OLS slope, and the compressed OLS upper tail would make every satellite season look low against the in-water 1990s.
+- The mean-anomaly variant keeps OLS.
+
+**Series** (`build_chla_index_full.py`): MODIS-era rows are limited to ≤ 2024. MODIS ends 2024-12-25; its empty 2025–26 rows had shadowed the VIIRS rows and been mapped to the cap by a Python `min(5, NaN)`. That was fixed with a duplicate guard before any run, and the affected derived outputs were deleted and rebuilt.
+
+**Tables** (`build_larval_survival_index_full.py`; `figures/larval_survival_full_series.png`): reef-median multipliers.
+
+| Season | Anomaly, season mean (OLS) | Anomaly, season p90 (RMA) | Absolute relaxed, p90 (RMA; f 0.1, c_ref 0.361) |
+| --- | --- | --- | --- |
+| 1996 | 2.61 | 3.61 | 1.50 |
+| 1998 | 2.05 | 2.27 | 1.26 |
+| 1999 | 2.57 | 3.11 | 1.41 |
+| 2000 | 0.37 | 0.21 | 0.83 |
+| 2011 | 1.11 | 1.40 | 1.09 |
+| 2019 | 1.06 | 1.16 | 1.04 |
+| 2024 | 1.21 | 1.65 | 1.13 |
+
+1991–1992 have no data (neutral, ×1).
+
+**Experiment `ext_chl2`:** Ext {1, 2.5, 5} × chl {off, anomaly-mean OLS (`amols`), anomaly-p90 RMA (`aprma`), absolute RMA (`abrma`)} × both supply layers. The chl-off arms replay runs 14 / 15 by name.
+
+
+## Full chlorophyll series × external multiplier results (2026-10-15)
+
+**Runs.**
+- Runs 20261015T_22 (original layer) and _23 (corrected layer): 12 arms each, no failures. Runs 20–21 failed at load (`ext_chl2` was missing from an experiment list; FAILED.txt kept).
+- Re-scores: 24 and 26. G2′: 25 and 27. Audit: `runs/20261015T_23_.../ext_chl_audit.json` (generalised `audit_1991_ext_chl.py`).
+- The chl-off arms replay runs 14 / 15 exactly (0.0).
+
+**Score v3**, range over the chl variants:
+
+| Ext | Original layer | Corrected layer | Best |
+| --- | --- | --- | --- |
+| ×1 | 27.2–28.6 | 26.7–28.0 | p90 anomaly (RMA) |
+| ×2.5 | 16.5–17.4 | 15.8–16.7 | absolute (RMA) |
+| ×5 | 11.17–11.34 | **10.98**–11.45 | p90 anomaly (RMA) |
+
+- G2′ at `A½ 30` passes only at ×5.
+- The 1990s manta part at ×1 improves with the p90 anomaly (20.9 → 19.5) but remains about 3× the ×5 value.
+
+**Wave 3 (1990s; chl now from in-water data)**, Lizard / North Direction:
+- ×1: onset 1998 / 1996 in every chl arm. The peak rises from 12 to 20/ha (Lizard) and from 23 to 42/ha (North Direction) with the p90 anomaly (+60% / +85%), but still peaks in 2001.
+- ×2.5: onset 1996 / 1995; peak in 2000.
+- ×5: onset 1994; peak in 1997 / 1998.
+
+**Chl never advances an onset.** The high-chl seasons (1996 ×3.6, 1998 ×2.3, 1999 ×3.1) follow the observed onset (about 1994–95), and 1993–95 are near neutral (×0.8–1.85).
+
+**Chl effects at ×5** (p90 anomaly, RMA):
+- wave-4 peak +48% at Lizard, +23% at North Direction;
+- 1996–97 recruits +16–22%;
+- v3 −0.2 to −0.4.
+
+**Findings.**
+1. **The back-cast chlorophyll series amplifies but does not initiate** the 1990s wave. At lower Ext it raises the wave-3 peak strongly but cannot correct its timing, so it cannot replace Ext×5.
+2. **At ×5, chl is a modest, consistent improvement,** amplifying waves 3–5 after high-chl seasons. The p90 anomaly with RMA is the best variant.
+3. **At ×2.5, chl worsens v3** (+0.5): amplified waves overshoot the manta heights.
+4. Per the lead's twelfth-round condition, the 1990s question is now: chl can be back-cast, but does not start that wave. A 1990s-only external boost, with a lower Ext afterwards, is the remaining option if the lead wants local dynamics to carry waves 4–5.
+
+
+## Lead's decisions (2026-10-15, fourteenth round) and next steps
+
+1. **Keep chl larval survival at Ext×5** (p90 anomaly, RMA conversion).
+   - The lead doubts that the 1990s multipliers (1996 ×3.6, 1998 ×2.3, 1999 ×3.1) are really that much higher than the satellite era. It is most likely an artefact: there is no high-chl season in the in-water/satellite overlap (2003–2008), so the splice cannot calibrate the peaks.
+   - **Bias-correct the 1990s segment:** bring the 1990s p90-anomaly peaks into line with the 2011 and 2024 satellite-era peaks, or vice versa.
+2. **No 1990s-only boost test.** Ext×5 is kept consistently across all years.
+3. **Carry both outbreak layers** (the lead's predictions + 2026, and the corrected layer) into the candidate set as a stated uncertainty.
+4. **Run the candidate re-check over 5 seed pairs** with the new coral (and chl), followed by the remaining promotion gates.
+
+**Next steps (in order).**
+1. **1990s chl peak correction** (`build_chla_index_full.py` or a follow-on builder; new output directory, never overwrite).
+   - Scale the 1993–2002 log anomalies (p90, RMA) by `k = mean(domain-median anomaly 2011, 2024) / mean(domain-median anomaly 1996, 1999)` (about (0.112 + 0.167) / (0.428 + 0.378) ≈ 0.35). This brings the 1990s peaks in line with the satellite-era peaks; apply the same k to the whole 1990s segment, both signs.
+   - Alternative (lead's "vice versa"): scale the satellite era up by 1/k.
+   - Recommended: scale the 1990s down. The in-water regional p90 spans stations, depths and days (spatial spread), which inflates its variance, and the satellite era has more seasons.
+   - Rebuild the p90-anomaly survival table (cap 5, b 3), and plot the old and corrected multipliers for the lead.
+2. **Candidate re-check** (new runner experiment, domain v0.4 to 2026, Ext×5):
+   - candidates W (shares min/q50/min), C3a (Lizard q50) and C6 (μ 0.09), all with the new coral (β 1, `wc_b100`; ×0.25 below 6 DHW) and chl on (the corrected p90 table);
+   - × both outbreak layers × 5 seed pairs;
+   - scored with v3 (G2′ at `A½ 30`, with 10 reported); `audit_1991_candidates.py` adapted;
+   - replay controls: seed-pair-1 arms against the matching runs 22 / 23 or 08 / 09 where configurations coincide.
+3. **Remaining promotion gates** on the chosen set:
+   - held-out years (fit 1992–2012, check 2013–2026);
+   - leave-one-reef-out;
+   - ±25% sensitivity (Q, μ, low-DHW scale, Ext, shares, chl b);
+   - metadata and documentation;
+   - update `candidates/candidates.toml`.
+4. **Later:** culling back on (once the 2020s densities are plausible); the cyclone track → 4 m wave-height tool; a river-discharge predictor for pre-2003 chl, if still needed.
+
+
+## 1990s chlorophyll peak correction: result (2026-10-15)
+
+**Builder:** `build_larval_survival_index_corrected.py` writes to `sandbox/data/derived/larval_survival_index_lizard_full_1990s_corrected/` (new directory; the uncorrected tables are untouched). Figure: `figures/larval_survival_1990s_correction.png`.
+
+- **Correction:** `k = mean(domain-median p90 anomaly 2011, 2024) / mean(1996, 1999) = 0.3459` (RMA conversion).
+  - Applied to every reef's 1993–2002 p90 log anomaly, both signs. The reef long-term geometric mean is kept (no re-centring; the full-series mean anomaly shifts by about −0.01).
+- **Spread of the domain-median anomaly:** 1990s SD 0.295 → 0.102. The satellite era (2003–26) is 0.066.
+- **Control:** the satellite-era and missing-year multipliers reproduce the uncorrected `ap_rma` table exactly (max |Δ| 0, checked by the builder).
+
+| Season | Before | After |
+| --- | --- | --- |
+| 1993 | 0.82 | 0.93 |
+| 1994 | 1.31 | 1.10 |
+| 1995 | 1.85 | 1.24 |
+| 1996 | 3.61 | **1.56** |
+| 1998 | 2.27 | 1.33 |
+| 1999 | 3.11 | **1.48** |
+| 2000 | 0.21 | 0.58 |
+| 2001 | 0.43 | 0.75 |
+| (2011, 2024, unchanged) | 1.40, 1.65 | 1.40, 1.65 |
+
+Values are reef-median multipliers, `min(5, exp(3 · anomaly))`.
+
+
+## Preregistered candidate re-check (2026-10-15, fourteenth round, step 2)
+
+**Experiment** `recheck`: domain v0.4 (to 2026), Ext×5, Q 20, gradual Allee, `eb` seeds, q 0.015. New coral: β 1 (`wc_b100`), ×0.25 below 6 DHW. Chl on, using the 1990s-corrected p90 table (`aprmak`). Each layer (`OWEN_1991_COTS_DATASET` original / corrected) gets 16 arms:
+- **W** `wc_b100_q20_eb_lin_obs015_s<k>_t60_e50_aprmak_cv2_pnd`: shares Lizard min, MacGillivray q50, North Direction min; μ 0.12;
+- **C3a** `..._e50_aprmak_cv2_pndl50`: Lizard q50 share;
+- **C6** `..._e50_m090_aprmak_cv2_pnd`: W with chronic μ 0.09;
+- each at seed pairs k = 1–5 (`CANDIDATE_SEEDS`);
+- **replay control:** `wc_b100_q20_eb_lin_obs015_s1_t60_e50_aprma_cv2_pnd` (uncorrected table) must replay the same arm of run 20261015T_22 / _23 exactly. Against W at s1, it also gives the effect of the correction.
+
+**Scoring:**
+- `rescore_detectability.jl` (score v3), and `evaluate_gate_g2prime.py` (G2′ at `A½ 30`, with 10 reported);
+- audit `audit_1991_recheck.py`: per candidate × layer, the seed mean and range of v3, the manta part (v2 to 2021) and the diver error; G2′ passes out of 5; wave-3/4/5 onset and peak per reef; 2025–26 model adults against the diver/cull targets.
+
+**Decision rules (fixed before running):**
+1. **Gate.** A candidate is retained for the promotion gates if it passes G2′ at `A½ 30` in at least 4 of the 5 seed pairs on both layers.
+2. **Ranking.** Retained candidates are ranked by seed-mean v3. A candidate more than 1.5 above the best seed mean is reported but not carried forward unless the lead decides otherwise.
+3. **Correction effect.** If the correction worsens v3 at seed 1 by more than 0.5, it is reported to the lead before the gates. It is not reverted automatically, since it is a data correction rather than a tuning choice.
+4. **Seeds.** Seed spread (max − min v3 over seeds) is reported; a spread larger than the gap between candidates means they are not distinguishable.
+
+
+## Candidate re-check results (2026-10-15)
+
+**Runs and evaluations:**
+- runs 20261015T_28 (original layer) and _29 (corrected layer): 16 arms each, no failures;
+- re-scores 30 / 31 (control replay delta 0.0);
+- G2′ in [34](runs/20261015T_34_gate_recheck_original_lizmacg/gate_g2prime.json) / [35](runs/20261015T_35_gate_recheck_corrected_lizmacg/gate_g2prime.json), with the trough gated on Lizard and MacGillivray (lead, 2026-10-14);
+- audit: [`runs/20261015T_29_.../recheck_audit.json`](runs/20261015T_29_recheck_corrected_1991_v1/recheck_audit.json) and `recheck.png` (`audit_1991_recheck.py`).
+
+The replay arm reproduces run 22 / 23 exactly (0.0) and gives the same G2′ verdict as runs 25 / 27.
+
+**Process error, caught and corrected.** Gates 32 / 33 were first evaluated without `--trough-reefs`, so North Direction's trough was gated as well. Every arm failed, including the replay arm, which had passed in run 25. Both gates are kept and marked SUPERSEDED. The audit outputs built from them are kept in run 29 under the prefix `SUPERSEDED_all_reef_trough_`.
+
+**Results by candidate** (seed mean over 5 seed pairs, with the range):
+
+| Candidate | v3, original layer | v3, corrected layer | Manta part | Diver error (orig / corr) | G2′ at `A½ 30` (orig / corr) |
+| --- | --- | --- | --- | --- | --- |
+| W | 12.29 (11.15–13.48) | 11.54 (10.66–12.67) | 6.83 | 3.64 / 3.14 | **5/5 / 5/5** |
+| C3a (Lizard q50) | 12.15 (10.99–13.31) | 11.45 (10.38–12.49) | 6.73 | 3.61 / 3.15 | 0/5 / 0/5 |
+| C6 (μ 0.09) | 13.04 (11.97–13.89) | 11.98 (10.95–13.05) | 7.23 | 3.87 / 3.16 | 2/5 / 2/5 |
+
+**Findings.**
+1. **Only W passes the preregistered gate (≥ 4/5 seeds on both layers); W is retained.**
+   - **C3a:** with the new coral, Lizard's 1990s wave peaks late (1999, detected 0.5–0.65 COTS/tow) and stays high through the 2000s. The trough is 0.11–0.19 against an upper bound of 0.054. In 3 of 5 seeds the 2010s wave does not separate.
+   - **C6:** Lizard's 2010s wave is faint (detected 0.04–0.06), and in 3 seeds a peak is missed.
+   - C3a's v3 is marginally lower than W's (−0.1), which is well inside the seed spread (about 2.0).
+2. **Seed spread (about 2.0 in v3) exceeds the gaps between candidates.** v3 alone cannot separate them; the qualitative gate does.
+3. **The 1990s chl correction is neutral to slightly favourable:** W at seed 1, v3 −0.01 (original) and −0.05 (corrected); manta part +0.03; diver error −0.03 / −0.06.
+4. **The 2020s by layer** (W, seed mean; model ÷ diver/cull target):
+
+   | Layer | Reef | 2025 | 2026 |
+   | --- | --- | --- | --- |
+   | Original | Lizard | 0.35 | 0.97 |
+   | Original | North Direction | 0.49 | 1.13 |
+   | Original | Eyrie | 0.16 | 0.08 |
+   | Corrected | Lizard | 1.8 | 7.9 |
+   | Corrected | North Direction | 1.3 | 7.2 |
+   | Corrected | Eyrie | 1.3 | 0.8 |
+
+   - **Original layer:** flat at about 3/ha through 2020–26 at Lizard (targets 6–9). There is no build-up at Eyrie.
+   - **Corrected layer:** tracks the 2020–25 build-up at Lizard, North Direction and Eyrie, then overshoots in 2026: 40–55/ha at Lizard, MacGillivray and North Direction, against targets of 5–7. The observed 2025 → 2026 densities fall at Lizard (9.1 → 5.0) and North Direction (10.6 → 7.2).
+   - Culling is off in these runs. Direct removals on Lizard's main reef were about 1 COTS/ha/yr in 2024–26, too small to explain the gap alone. Several nearby reefs were culled at 10–70 COTS/ha/yr (e.g. 15-028, 15-084, 15-071c, 14-163), which would reduce larval supply reaching the calibration reefs.

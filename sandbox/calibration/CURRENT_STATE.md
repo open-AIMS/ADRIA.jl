@@ -8,7 +8,19 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here:** the section **"Close-out plan (2026-10-14)"** → Progress. The simulation set is W, C3a and C6. The current focus is **the 2020–26 fifth-outbreak build-up** (lead's priority). See "Seventh round" in Progress for the open decisions.
+**Resume here (2026-10-15, after the candidate re-check):** read the protocol sections **"1990s chlorophyll peak correction: result"** and **"Candidate re-check results"** (end of `crash_mechanism_protocol.md`). Done: 1990s chl correction (k 0.346) and the candidate re-check (only W retained; corrected layer overshoots 2026). Waiting on the lead: whether to turn observed culling on before the promotion gates, and how to define held-out years / leave-one-reef-out for screened (not optimised) candidates. Then:
+1. promotion gates on W (held-out years, leave-one-reef-out, ±25% sensitivity);
+2. metadata/docs and `candidates/candidates.toml`.
+
+Ext×5 stays for all years (no 1990s-only boost).
+
+**Current working configuration (2026-10-15):**
+- **Base:** W, i.e. 1991 shares Lizard min, MacGillivray q50, North Direction min, other reefs q50; Q 20; Ext×5; gradual Allee; `eb` seeds; q 0.015.
+- **New coral:** β 1, bleaching ×0.25 below 6 DHW, μ 0.12, growth and tolerance spread untouched.
+- **Chl larval survival:** p90 anomaly, RMA, b 3, cap 5, with the 1993–2002 segment scaled by k 0.346 (`aprmak`, `build_larval_survival_index_corrected.py`).
+- **Domain:** v0.4 (1985–2026).
+- **Outbreak layer:** original or corrected (both carried).
+- **Score:** v3.
 
 **Read in this order:**
 1. this page;
@@ -360,6 +372,21 @@ Work order set by the lead (2026-10-13): (1) re-baseline, (2) first-wave height,
   - **The chl effect is small** (external supply dominates settlement).
   - **The corrected layer × Ext×5 overshoots 2025–26** but fixes Eyrie.
 - **Open:** adopt the new coral in the candidate set; next factorial Ext {1, 2.5, 5} × supply × chl.
+- **Twelfth round (lead):** new coral for all candidates (re-check over 5 seeds is pending); test a lower Ext with chl; 1990s boost only if chl cannot be back-cast; choose the layer after the test.
+- **Done** (runs 20261015T_14–19):
+  - **Lower Ext loses the 1990s/2010s fit**, so Ext×5 is kept.
+  - **Chl amplifies waves 4–5** (no earlier onset).
+  - **The lead found in-water chl 1992–2009** (`sandbox/data/GBR_chlorophyll_monitoring_1992-2009.csv`). A full 1992–2026 index, calibrated to in-water, is next (method to agree).
+- **Thirteenth round (lead):** matchup correction; test the anomaly and absolute forms; regional in-water 1993–2002; re-test Ext.
+- **Done** (runs 20261015T_22–27):
+  - **Full 1993–2026 chl series** (`build_chla_inwater_matchups.py`, `build_chla_index_full.py`, `build_larval_survival_index_full.py`).
+  - **Chl amplifies but does not initiate waves**, so Ext×5 stays.
+  - **Best:** p90 anomaly (RMA) at ×5, v3 10.98 (corrected) / 11.17 (original).
+- **Open for the lead:**
+  - the chl variant to carry;
+  - the layer;
+  - whether to try a 1990s-only boost with a lower Ext after 2002;
+  - the candidate re-check over 5 seeds with the new coral.
 - **Plan** (protocol, "Plan for the 2020s fifth-outbreak build-up"):
   1. post-2017 coral screen;
   2. domain v0.4 to 2026;

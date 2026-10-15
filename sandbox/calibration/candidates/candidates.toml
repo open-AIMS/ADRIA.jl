@@ -46,6 +46,7 @@ loss_v2_mean_sd = [6.79, 0.79]
 coral_J = 0.250
 g2prime_ahalf10_seeds_passing = 0
 limitations = "inter-wave troughs above the observed bound on Lizard/MacGillivray; North Direction first peak ~2 years late; Lizard first wave ~29 adults/ha vs Pratchett 40-55"
+recheck_2026_10_15 = { status = "retained (only candidate passing the re-check gate)", arm = "wc_b100_q20_eb_lin_obs015_s<k>_t60_e50_aprmak_cv2_pnd", runs = "20261015T_28 / _29; gates 34 / 35", v3_mean_original = 12.29, v3_mean_corrected = 11.54, g2prime_ahalf30_seeds_passing = { original = 5, corrected = 5 }, note = "new coral + 1990s-corrected chl, domain v0.4; corrected layer overshoots 2026 ~7-8x at Lizard / North Direction" }
 
 [candidates.C3a]
 status = "simulation set: Lizard at Pratchett's density"
@@ -57,6 +58,7 @@ loss_v2_mean_sd = [6.72, 0.70]
 coral_J = 0.228
 g2prime_ahalf10_seeds_passing = 0
 limitations = "Lizard inter-wave trough 3.5x the observed bound; Lizard first peak 1999 vs observed 1997/98"
+recheck_2026_10_15 = { status = "not retained (fails the re-check gate)", arm = "wc_b100_q20_eb_lin_obs015_s<k>_t60_e50_aprmak_cv2_pndl50", v3_mean_original = 12.15, v3_mean_corrected = 11.45, g2prime_ahalf30_seeds_passing = { original = 0, corrected = 0 }, note = "Lizard 1990s wave peaks 1999 and stays high (trough 0.11-0.19 vs 0.054)" }
 
 [candidates.C5]
 status = "structural control (run-17 coral); replaced in the simulation set by C6"
@@ -79,6 +81,7 @@ loss_v2_mean_sd = [7.14, 0.85]
 coral_J = 0.279
 g2prime_seeds_passing = { ahalf10 = 3, ahalf30 = 3 }
 limitations = "troughs at the observed bound on average (MacGillivray 0.055 vs 0.054); no 2020s build-up (all candidates)"
+recheck_2026_10_15 = { status = "not retained (fails the re-check gate)", arm = "wc_b100_q20_eb_lin_obs015_s<k>_t60_e50_m090_aprmak_cv2_pnd", v3_mean_original = 13.04, v3_mean_corrected = 11.98, g2prime_ahalf30_seeds_passing = { original = 2, corrected = 2 }, note = "Lizard 2010s wave faint (detected 0.04-0.06); missed in 3 seeds" }
 
 [candidates.C1]
 status = "dominated (previous working configuration)"

@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -101,7 +101,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -329,13 +329,34 @@ supply_window_spec(name) = (m = match(r"_sw(\d{4})_(\d{4})_x(\d{3})_", name);
 # seed pair 1; replay arm wc_b150_..._t40_chloff (old coral, beta 1.5, low-DHW threshold 4) and
 # new-coral arms wc_b100_..._t60_<chl> (beta 1, threshold 6) with chl in {chloff, mb15, mb30,
 # pb15, pb30} (COTS_LARVAL_SURVIVAL_CSV tables, build_larval_survival_index.py).
-const CHLSURV = EXPERIMENT == "chl_survival"
+const CHLSURV = EXPERIMENT in ("chl_survival", "ext_chl", "ext_chl2", "recheck")
+# External multiplier x supply x chl factorial (2026-10-15, twelfth round): new coral; arms
+# wc_b100_..._t60_e<Ext x10>_<chl>_cv2_pnd with Ext in {1, 2.5, 5} and chl in {chloff, pb30}.
+const EXTCHL = EXPERIMENT in ("ext_chl", "ext_chl2")
+# ext_chl2 (2026-10-15, thirteenth round): full 1993-2026 in-water-scale chl series
+# (build_larval_survival_index_full.py): amols / aprma / abrma.
+const CHLFULL_DIR = joinpath(ROOT, "sandbox", "data", "derived", "larval_survival_index_lizard_full")
+const CHLFULL_FILES = Dict("amols" => "am_ols", "aprma" => "ap_rma", "abrma" => "ab_rma")
+const EXTCHL_VARIANTS = EXPERIMENT == "ext_chl2" ? ("chloff", "amols", "aprma", "abrma") : ("chloff", "pb30")
+const EXTCHL_EXT = (1.0, 2.5, 5.0)
 const CHLSURV_DIR = joinpath(ROOT, "sandbox", "data", "derived", "larval_survival_index_lizard")
 const CHLSURV_VARIANTS = ("chloff", "mb15", "mb30", "pb15", "pb30")
-chl_table(name) = (m = match(r"_t\d+_(chloff|mb15|mb30|pb15|pb30)_", name);
-    isnothing(m) || m.captures[1] == "chloff" ? nothing : joinpath(CHLSURV_DIR, "larval_survival_$(m.captures[1]).csv"))
+# Candidate re-check (2026-10-15, fourteenth round; v0.4 to 2026, Ext x5, new coral, chl on):
+# candidates W (cv2_pnd), C3a (cv2_pndl50) and C6 (W with chronic mu 0.09, _m090_) x five seed
+# pairs, chl = the 1990s-corrected p90-anomaly table (aprmak, build_larval_survival_index_corrected.py);
+# arms wc_b100_q20_eb_lin_obs015_s<k>_t60_e50[_m090]_aprmak_<cv2_pnd|cv2_pndl50>. Replay arm
+# wc_b100_..._s1_t60_e50_aprma_cv2_pnd (uncorrected table) replays run 22 / 23 by name.
+const RECHECK = EXPERIMENT == "recheck"
+const RECHECK_ARMS = (("", "cv2_pnd"), ("", "cv2_pndl50"), ("_m090", "cv2_pnd"))
+const RECHECK_MU = 0.09
+const CHLK_TABLE = joinpath(ROOT, "sandbox", "data", "derived", "larval_survival_index_lizard_full_1990s_corrected",
+    "larval_survival_ap_rma_k.csv")
+chl_table(name) = (m = match(r"_(chloff|mb15|mb30|pb15|pb30|amols|aprma|aprmak|abrma)_cv2_", name);
+    isnothing(m) || m.captures[1] == "chloff" ? nothing : m.captures[1] == "aprmak" ? CHLK_TABLE :
+    haskey(CHLFULL_FILES, m.captures[1]) ? joinpath(CHLFULL_DIR, "larval_survival_$(CHLFULL_FILES[m.captures[1]]).csv") :
+    joinpath(CHLSURV_DIR, "larval_survival_$(m.captures[1]).csv"))
 chl_threshold(name) = parse(Int, match(r"_t(\d+)_", name).captures[1]) / 10
-const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival")
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival", "ext_chl", "ext_chl2", "recheck")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
@@ -654,11 +675,11 @@ cv2_cyclones = REBASE_SHARE ? ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclone
     timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1]) : nothing
 REBASE_SHARE && !all(0.0 .<= Array(cv2_cyclones) .<= 1.0) && error("cv2 mortality outside [0, 1]")
 # Same expression as cv2 / run 17 ("wc"), with mu varied.
-coralmix_cyclones = CORALMIX || CANDIDATES ? Dict(mu => ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - mu);
+coralmix_cyclones = CORALMIX || CANDIDATES || RECHECK ? Dict(mu => ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - mu);
     timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
     for mu in CORALMIX_MU) : nothing
-(CORALMIX || CANDIDATES) && Array(coralmix_cyclones[CV2_MU]) != Array(cv2_cyclones) && error("mu 0.12 does not reproduce cv2")
-(CORALMIX || CANDIDATES) && Array(coralmix_cyclones[REBASE_CHRONIC]) != Array(rebase_cyclones["wc"]) && error("mu 0.03 does not reproduce run 17")
+(CORALMIX || CANDIDATES || RECHECK) && Array(coralmix_cyclones[CV2_MU]) != Array(cv2_cyclones) && error("mu 0.12 does not reproduce cv2")
+(CORALMIX || CANDIDATES || RECHECK) && Array(coralmix_cyclones[REBASE_CHRONIC]) != Array(rebase_cyclones["wc"]) && error("mu 0.03 does not reproduce run 17")
 is_coralmix_arm(name) = (CORALMIX || CANDIDATES) && occursin("_cv2_", name) && occursin(r"_m\d{3}_l\d{3}_", name)
 MELLIN && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(mellin_cyclones)) &&
     error("Mellin combined mortality outside [0, 1]")
@@ -862,6 +883,16 @@ treatments = EXPERIMENT == "initialization" ? [
 ] : EXPERIMENT == "ulp_noise_floor" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
+] : RECHECK ? [
+    [(name="wc_b100_q20_eb_lin_obs015_s$(k)_t60_e50$(mu)_aprmak_$(share)", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+     for (mu, share) in RECHECK_ARMS for k in eachindex(CANDIDATE_SEEDS)];
+    [(name="wc_b100_q20_eb_lin_obs015_s1_t60_e50_aprma_cv2_pnd", alpha=0.015, coral="observed_composition",
+        initial="cohort_full")]
+] : EXTCHL ? [
+    (name="wc_b100_q20_eb_lin_obs015_s1_t60_e$(lpad(round(Int, 10 * e), 2, '0'))_$(chl)_cv2_pnd", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for e in EXTCHL_EXT for chl in EXTCHL_VARIANTS
 ] : CHLSURV ? [
     (name="wc_b150_q20_eb_lin_obs015_s1_t40_chloff_cv2_pnd", alpha=0.015, coral="observed_composition", initial="cohort_full");
     [(name="wc_b100_q20_eb_lin_obs015_s1_t60_$(chl)_cv2_pnd", alpha=0.015, coral="observed_composition",
@@ -1307,6 +1338,9 @@ for t in run_treatments
     if is_coralmix_arm(t.name)
         domain.cyclone_mortality_scens = coralmix_cyclones[coralmix_parts(t.name).mu]
     end
+    if RECHECK && occursin("_m090_", t.name)
+        domain.cyclone_mortality_scens = coralmix_cyclones[RECHECK_MU]
+    end
     if (REFIT2 && split(t.name, "_")[2] != "s100") || (REBASE_SHARE && occursin("_cv2_", t.name)) || THERMAL || SPREAD
         ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = REBASE_SHARE || THERMAL || SPREAD ? string(CV2_LOW_DHW_SCALE) :
             string(parse(Int, split(t.name, "_")[2][2:end]) / 100)
@@ -1341,6 +1375,7 @@ for t in run_treatments
     external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ||
         (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
         EXTERNAL_MULTIPLIER : 1.0
+    (EXTCHL || RECHECK) && (external_multiplier = parse(Int, match(r"_e(\d+)_", t.name).captures[1]) / 10)
     predation_capacity = COMPOSITION ? composition_arm_q(t.name) :
         REBASE ? parse(Float64, match(r"_q(\d+)", t.name).captures[1]) :
         COLLAPSE || GROWTH || GRACE || CORAL || JOINT || MELLIN || BLEACH ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
@@ -1891,10 +1926,23 @@ metadata = Dict(
     ) : "not tested",
     "chl_survival_screen" => CHLSURV ? Dict(
         "switch" => "COTS_LARVAL_SURVIVAL_CSV (unset = established path); multiplier on site larval production before dispersal",
-        "tables" => Dict(v => Dict("path" => joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"),
+        "tables" => RECHECK ?
+            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in ("aprmak", "aprma")) :
+            EXPERIMENT == "ext_chl2" ?
+            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in EXTCHL_VARIANTS if v != "chloff") :
+            Dict(v => Dict("path" => joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"),
             "sha256" => file_sha256(joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"))) for v in CHLSURV_VARIANTS if v != "chloff"),
         "index_metadata_sha256" => file_sha256(joinpath(CHLSURV_DIR, "metadata.json")),
         "new_coral" => "beta 1 (wc_b100), bleaching x0.25 below 6 DHW, cv2 mu 0.12, spread unchanged",
+        "recheck" => RECHECK ? Dict(
+            "candidates" => Dict("W" => "cv2_pnd (shares Lizard min, MacGillivray q50, North Direction min, others q50), mu 0.12",
+                "C3a" => "cv2_pndl50 (Lizard q50 share), mu 0.12", "C6" => "_m090_ cv2_pnd, chronic mu $(RECHECK_MU)"),
+            "seed_pairs_connectivity_adria_rng" => [collect(s) for s in CANDIDATE_SEEDS],
+            "chl" => "aprmak: p90 anomaly RMA with the 1993-2002 segment scaled by k (larval_survival_index_lizard_full_1990s_corrected)",
+            "chl_index_metadata_sha256" => file_sha256(joinpath(dirname(CHLK_TABLE), "metadata.json")),
+            "replay" => "wc_b100_q20_eb_lin_obs015_s1_t60_e50_aprma_cv2_pnd must replay the same arm of 20261015T_22 / _23 (same COTS dataset)",
+        ) : "not tested",
+        "external_multiplier" => RECHECK ? "per arm _e<Ext x10>_ (x5)" : EXTCHL ? "per arm _e<Ext x10>_ in $(collect(EXTCHL_EXT)) (overrides x$(EXTERNAL_MULTIPLIER))" : "x$(EXTERNAL_MULTIPLIER)",
         "replay" => "wc_b150_..._t40_chloff_cv2_pnd must replay the v0.4 smoke run of the same COTS dataset (20261015T_06 / _07)",
         "cots_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
         "scenario_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),
