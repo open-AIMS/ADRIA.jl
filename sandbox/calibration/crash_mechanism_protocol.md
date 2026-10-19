@@ -5234,3 +5234,42 @@ W-current is **not promoted**. It fails gate 4 on the correction-weight × `Q` c
 - at North Direction it is close (0.04–0.12 against 0.06–0.11 in 2021–24); the previous "far too slow" statement is withdrawn.
 
 Before 2016 the model strips fast coral harder than observed (2013 share 0.02–0.10 against 0.12–0.32). Food therefore does not explain the late 2020s build-up.
+
+
+## Lead's decisions (2026-10-19, twenty-first round) and the ribbon connectivity check
+
+**Decisions (all agreed):**
+1. Adopt correction weight `w` 3 with `Q` 25 as the working configuration (W + `h10`), and rerun the ±25% sensitivity on it.
+2. Model the never-COTS reefs first with wave exposure: an opt-in reef-level effect reducing settlement or juvenile survival where exposure is high, driven by the GBR ReefGuidance wave rasters.
+3. Diagnose the 2016–22 juvenile-to-adult pipeline at Lizard and Eyrie against observed size classes.
+
+Work through round 20 was committed (`df024da1`) before this check.
+
+**Ribbon connectivity check** (lead: the never-COTS reefs draw most larvae from within the domain; are they connected to the reefs that actually had COTS?). Diagnostic `analyse_ribbon_connectivity.py`; outputs in the git-ignored `sandbox/data/derived/ribbon_connectivity/`.
+- **The internal COTS connectivity is hydrodynamic, not the distance-based stand-in.** The dataset's `reef_connectivity_<year>.csv` equal the Owen global sub-matrix (max difference 1e-16), sampled by hydrodynamic year. The distance-based `connectivity/Lizard_Connectivity.csv` is ADRIA's coral connectivity.
+- **Outbreak-weighted larval pressure,** `Σ_j C[j,i] A_j/A_i s_j × (P_j, LTMP outbreak, or culled ≥ 1/ha/yr)`, relative to Martin (an outbreak reef):
+
+  | Reef | Predicted P (W3 / W4 / W5) | LTMP outbreak reefs (W3 / W4) | Culled reefs (W4 / W5) |
+  | --- | --- | --- | --- |
+  | Yonge / Carter / No Name | 2.3–3.0 / 2.4–3.1 / 3.3–4.5 | 1.6–1.8 / 1.4–1.5 | 1.6–1.8 / 2.7–3.1 |
+  | Linnet / Eyrie | 1.6–1.7 / 1.5–1.7 / 1.5–1.7 | 1.4–1.6 / 1.4–1.8 | 1.5–1.9 / 1.3–2.0 |
+  | Lizard / MacGillivray / North Direction | 4.1–7.6 / 4.2–7.9 / 3.7–6.7 | 4.4–8.2 / 4.1–7.0 | 4.9–8.4 / 5.9–11.1 |
+
+- **Findings:**
+  1. The ribbon reefs are **not** poorly connected to reefs known to have COTS. They receive more outbreak-weighted larvae than Martin, Linnet or Eyrie (all outbreak reefs), including from Mackay Reefs (15-024, LTMP outbreak in W3) and U/N 15-022 / 14-149 (P 0.5–0.7).
+  2. 57–59% of their larval connection weight comes from **Ribbon No 10 Reef (14-146)**, a domain reef with P about 0.015 and no outbreak record. About 96% comes from domain reefs, mostly the outer ribbon cluster.
+  3. In the model the ribbon cluster can therefore seed itself: false outbreaks on Ribbon No 10 would feed Yonge, Carter and No Name. A reef-level effect on the whole outer ribbon cluster (wave exposure, low in-water chl) remains the best-supported explanation; connectivity alone is not.
+  - Next: add Ribbon No 10 (14-146) to the extra reported reefs.
+
+**Next steps after compaction (in order):**
+1. **Working configuration W-next:** W + `h10`, `Q` 25, `owen_global_2018_2023_corr_w3`, Ext×5, new coral, chl `aprmak`, culling off.
+   - Rerun gate 5 (±25%) on it. The runner's `sens` experiment hard-codes `q20` in its arm names and was run on `corr_w2`, so parameterise its base `Q`. `Q` ±25% of 25 is 18.75 / 31.25; the arm-name parse is integer, so either add a decimal token or use 19 / 31 and record it.
+   - Extend the extra reefs with Ribbon No 10.
+2. **Wave-exposure mechanism** (preregister before coding).
+   - **Hypothesis:** high ocean-swell exposure lowers COTS settlement or juvenile survival.
+   - **Implementation:** opt-in ADRIA adapter hook, like `COTS_LARVAL_SURVIVAL_CSV`: a per-site multiplier on settling recruits from all sources, applied after dispersal and external supply.
+   - **Input:** built by a checked-in script from `never_cots_diagnostic/site_waves.csv`; fill Linnet's raster gap by nearest valid site and record it.
+   - **Choices for the lead:** site-level versus reef-level exposure (reef mean Hs does not separate the ribbons; most-exposed-site power and Tp do), and the functional form and floor.
+   - **Controls:** the switch off replays W-next exactly; test the extra reefs plus the calibration score. COTSMod is unchanged unless the hook needs it.
+3. **2016–22 juvenile-to-adult pipeline diagnostic** at Lizard and Eyrie: model recruits, subadults and adults by year against observed size classes (cull cohorts 1–4 in `cull_reef_year.csv`; SALAD sizes if available).
+4. **Later:** outer-shelf in-water correction of the satellite chl (absolute form); culling once the build-up is on time; a cyclone-track tool.

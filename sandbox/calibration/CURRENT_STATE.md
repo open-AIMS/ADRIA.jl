@@ -8,7 +8,7 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here (2026-10-19, twentieth round done):** read the protocol sections **"Never-COTS reefs: data checks"** and **"Promotion checks: results"**. W-current (h10, Q 20, w 2) is not promoted: gates favour w 3 / Q 25; gate 5 fails on Ext ×1.25 and μ 0.09. Waiting on the lead: adopt w 3 / Q 25; a wave-exposure (and/or in-water chl) mechanism for the never-COTS reefs; next step on the late 2020s build-up (coral dominance is not slow at any calibration reef; photo-transect comparison, protocol "Coral dominance: correction").
+**Resume here (2026-10-19, after the twenty-first round):** read the protocol section **"Lead's decisions (2026-10-19, twenty-first round) and the ribbon connectivity check"** (end of `crash_mechanism_protocol.md`); its "Next steps after compaction" list is the plan: (1) W-next = W + `h10`, `Q` 25, `corr_w3`, re-run the ±25% sensitivity and add Ribbon No 10 to the extra reefs; (2) preregister and build the opt-in wave-exposure settlement mechanism; (3) juvenile-to-adult pipeline diagnostic at Lizard and Eyrie. Gates need `--trough-reefs "Lizard Island Reef" "MacGillivray Reef"` and the miniconda Python.
 
 Ext×5 stays for all years (no 1990s-only boost).
 
@@ -17,7 +17,8 @@ Ext×5 stays for all years (no 1990s-only boost).
 - **New coral:** β 1, bleaching ×0.25 below 6 DHW, μ 0.12, growth and tolerance spread untouched.
 - **Chl larval survival:** p90 anomaly, RMA, b 3, cap 5, with the 1993–2002 segment scaled by k 0.346 (`aprmak`, `build_larval_survival_index_corrected.py`).
 - **Domain:** v0.4 (1985–2026).
-- **Outbreak layer:** face value (`owen_global_2018_2023_facevalue`, main); original (low case); corrected (labelled high case).
+- **Outbreak layer:** `owen_global_2018_2023_corr_w3` (correction weight 3; adopted round 21); `corr_w2` / face value / original as lower cases; corrected (×5) labelled high case.
+- **Start / pit:** `h10` start (eb surface at A½ 10); `Q` 25 (adopted round 21).
 - **Score:** v3.
 
 **Read in this order:**
