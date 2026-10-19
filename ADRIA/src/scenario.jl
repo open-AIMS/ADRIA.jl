@@ -1228,6 +1228,7 @@ function run_model(
         juvenile_predation_capacity = parse(Float64,
             get(ENV, "COTS_JUVENILE_PREDATION_CAPACITY", "20.0")),
         preferred_maturation = lowercase(get(ENV, "COTS_PREFERRED_MATURATION", "false")) == "true",
+        starvation_bank = lowercase(get(ENV, "COTS_JUVENILE_STARVATION_BANK", "false")) == "true",
         allee_stretched = lowercase(get(ENV, "COTS_ALLEE_STRETCHED", "false")) == "true",
         allee_exponent = parse(Float64, get(ENV, "COTS_ALLEE_EXPONENT", "0.5")),
         starvation_post_grazing = lowercase(get(ENV, "COTS_STARVATION_POST_GRAZING", "false")) == "true",
@@ -1467,6 +1468,16 @@ function run_model(
         cots_enabled || error("COTS_LARVAL_SURVIVAL_CSV requires ADRIA_COTS_ENABLED=true")
         cots_separated_recruitment || error("COTS_LARVAL_SURVIVAL_CSV requires COTS_SEPARATED_RECRUITMENT=true")
         load_cots_larval_survival(cots_larval_survival_csv, domain.loc_ids, cots_calendar_years)
+    end
+    # Opt-in reef-habitat settlement modifier (time-invariant multiplier on each site's
+    # settlement from all sources, applied after the transition). Unset = established path.
+    cots_settlement_modifier_csv = get(ENV, "COTS_SETTLEMENT_MODIFIER_CSV", "")
+    cots_settlement_modifier = if isempty(cots_settlement_modifier_csv)
+        nothing
+    else
+        cots_enabled || error("COTS_SETTLEMENT_MODIFIER_CSV requires ADRIA_COTS_ENABLED=true")
+        cots_separated_recruitment || error("COTS_SETTLEMENT_MODIFIER_CSV requires COTS_SEPARATED_RECRUITMENT=true")
+        load_cots_settlement_modifier(cots_settlement_modifier_csv, domain.loc_ids)
     end
     cots_cull_csv = get(ENV, "COTS_CULL_REMOVALS_CSV", "")
     cots_cull = if isempty(cots_cull_csv)
@@ -2227,6 +2238,8 @@ function run_model(
             apply_cots_larval_survival!(cots_models, @view(cots_larval_survival[tstep, :]))
             Ycots_larval_survival[tstep, :] .= @view(cots_larval_survival[tstep, :])
         end
+        isnothing(cots_settlement_modifier) ||
+            apply_cots_settlement_modifier!(cots_models, cots_settlement_modifier)
         if !isnothing(cots_forced_adults)
             COTSMod.forced_grazing!(C_cover_t, @view(cots_forced_adults[tstep, :]),
                 cots_prey_map; habitable_fraction=cots_forced_habitable,

@@ -5273,3 +5273,266 @@ Work through round 20 was committed (`df024da1`) before this check.
    - **Controls:** the switch off replays W-next exactly; test the extra reefs plus the calibration score. COTSMod is unchanged unless the hook needs it.
 3. **2016–22 juvenile-to-adult pipeline diagnostic** at Lizard and Eyrie: model recruits, subadults and adults by year against observed size classes (cull cohorts 1–4 in `cull_reef_year.csv`; SALAD sizes if available).
 4. **Later:** outer-shelf in-water correction of the satellite chl (absolute form); culling once the build-up is on time; a cyclone-track tool.
+
+
+## Preregistered: gate 5 on W-next (2026-10-19, twenty-first round, item 1)
+
+**Configuration under test (W-next):** W shares, `h10` start, `Q` 25, Ext×5, new coral (β 1, ×0.25 below 6 DHW, μ 0.12), chl `aprmak` (b 3), `owen_global_2018_2023_corr_w3`, culling off, q 0.015, score v3.
+
+**Runner change.** `OWEN_1991_SENS_Q` sets the base `Q` of experiment `sens` (default 20 reproduces run 20261019T_06's arm set). Any other base adds `Q` × f through the token `_sxq<f>_`, which multiplies the parsed `Q`, so 25 × 0.75 / 1.25 = 18.75 / 31.25 exactly (no rounding). Ribbon No 10 Reef (14-146; no LTMP surveys) is added to the opt-in extra reported reefs (`OWEN_1991_EXTRA_REEFS=true`), which writes `trajectories_extra.csv` / `flows_extra.csv` only.
+
+**Design.** 65 arms (5 seeds): 5 base arms, which must replay the `q25` arms of 20261016T_03 (`pit_q`, corr_w3) exactly, and ×0.75 / ×1.25 on Ext, μ, low-DHW scale, chl slope b, `Q` and the initial fast shares.
+
+**Pass rule (as for W-current).** Each perturbation passes G2′ (`A½ 30`, trough on Lizard and MacGillivray) in ≥ 4/5 seeds, and its seed-mean v3 is no more than 1.0 above the base (11.01 on run 20261016T_03). The result is "not confined to a narrow region" if every perturbation passes. Failures are reported with their qualitative change.
+
+**Also reported (not scored):** Ribbon No 10 against Yonge / Carter / No Name. If Ribbon No 10 has false outbreaks that lead the other ribbon reefs, the ribbon cluster self-seeds in the model.
+
+
+## Results (2026-10-19): gate 5 on W-next, Ribbon No 10, wave evidence, juvenile pipeline
+
+### Gate 5 (±25%) on W-next
+
+Run 20261019T_12 (65 arms, no failures); re-score 13 (control replay 0.0); G2′ 14 (trough on Lizard and MacGillivray); audit `sens_audit.json` / `sens.png` in run 12 (`audit_1991_sens.py --base-q 25`). Base arms replay the `q25` arms of 20261016T_03 exactly (0.0); base v3 is 11.01.
+
+| Parameter | ×0.75: Δv3, G2′ | ×1.25: Δv3, G2′ |
+| --- | --- | --- |
+| Pit capacity `Q` (18.75 / 31.25) | +0.30, 5/5 ✓ | +0.01, 5/5 ✓ |
+| External multiplier (3.75 / 6.25) | **+1.55, 3/5 ✗** | +0.57, 5/5 ✓ |
+| Chronic coral mortality μ (0.09 / 0.15) | +0.58, **3/5 ✗** | −0.17, 4/5 ✓ |
+| Low-DHW bleaching scale | −0.08, 5/5 ✓ | +0.10, 5/5 ✓ |
+| Chl slope b (2.25 / 3.75) | +0.02, 5/5 ✓ | 0.00, 5/5 ✓ |
+| Initial fast shares | −0.11, 5/5 ✓ | +0.60, 5/5 ✓ |
+
+**Gate 5 fails on 2 of 12** (Ext ×0.75; μ ×0.75 on G2′). Compared with W-current, the Ext failure has moved from more supply to less. W-next depends on external supply at about the ×5 level, and on background coral mortality of at least about 0.12. 1990s peak years move by at most 0.8 y. W-next is **not promoted**.
+
+### Ribbon No 10 (extra reefs, base arms)
+
+Ribbon No 10 does **not** lead the other ribbon reefs. It peaks at 16 adults/ha in 2002 and 7.8 in 2015, against Yonge / Carter / No Name at 21–30 in 2001–03 and 14–18 in 2014. Settlement on the ribbon reefs in 1993–2016 is 62–65% external supply (from non-domain reefs) and 33–37% from domain reefs. Ribbon No 10 is 64% external.
+
+So the false ribbon outbreaks are fed mainly by external supply, not by the ribbon cluster seeding itself. A sink-side (settlement) effect reaches all sources; a source-side effect on domain reefs would reach only about a third.
+
+### Wave exposure: independent check against all LTMP reefs in the domain
+
+Mean wave period Tp, area-weighted over each reef (GBR ReefGuidance rasters), against LTMP manta history 1986–2027 for the 29 domain reefs with wave data:
+- **Tp ≥ 6.98 s (9 reefs):** Carter, No Name, Yonge, Harrier, Ribbon Reefs 1 / 3 / 6 / 9 and Lena never reached 0.22 COTS/tow (max ≤ 0.06). The exception is Irene (Tp 7.62; max 1.13, 2 years ≥ 0.22).
+- **Tp ≤ 6.59 s (20 reefs):** 18 had at least one year ≥ 0.22 (all except Fly and Hilder). They include Marx (6.59), Forrester (6.03) and Mackay (5.72).
+
+Most of these reefs are outside the score, so this is evidence beyond the calibration fit. Tp marks ocean-swell exposure and so also outer-shelf position. It does not separate waves from other outer-shelf properties such as low in-water chl.
+
+In the domain, 52 of 113 reefs have Tp ≥ 6.0, 30 have Tp ≥ 7.0, and 27% of reef area has Tp ≥ 6.5. Martin, Linnet and Maxwell have 29 sites missing raster values; these take the nearest valid site's values (≤ 4.2 km). Martin is 5.33 s and Linnet 5.25 s.
+
+### Wave hook (implemented, off by default)
+
+- **ADRIA `COTS_SETTLEMENT_MODIFIER_CSV`** (`site_id, multiplier` in [0, 1]; every site exactly once). After the COTS transition and before dispersal, it multiplies each site's settlement gate, and so scales local retention, internal immigration, external supply and pulses exactly once. It also scales the background immigration already settled in the transition (`N[1]` and its flux). It requires separated recruitment.
+- **Unset is the established path.** Test `test_settlement_modifier.jl` passes 15/15. COTSMod is unchanged.
+- **Builder `domain_building/build_wave_settlement_modifier.py`** (`--metric tp_reef | power_reef_max | power_site`, linear ramp from 1 at `e0` to `floor` at `e1`). Not yet run; it awaits the lead's choice.
+
+### Juvenile-to-adult pipeline, 2010–26
+
+Diagnostic `analyse_juvenile_pipeline.py` (W-next arms of 20261016T_03, 5 seeds); outputs in the git-ignored `sandbox/data/derived/juvenile_pipeline/` (summary statistics only). Maturation yield = adults matured in year t / subadults at the end of year t−1.
+
+| Reef | Subadults 2015–17 (/ha) | Maturation yield 2012–14 → 2015–18 → 2020–24 | Pit removals 2015–18 (total /ha) | Min food survival 2015–19 | First year model adults ≥ 5/ha |
+| --- | --- | --- | --- | --- | --- |
+| Lizard | 88 | 0.20 → **0.025** → 0.12 | 68 | 0.06 | 2024 |
+| Eyrie | 50 | 0.31 → **0.076** → 0.11 | 56 | 0.06 | 2024 |
+| MacGillivray | 88 | 0.31 → **0.024** → 0.09 | 68 | 0.05 | 2026 |
+| North Direction | 132 | 0.27 → **0.028** → 0.12 | 77 | 0.05 | 2019 |
+
+**Observed:**
+- Eyrie: 531 culled in 2021, 71% over 25 cm.
+- Lizard: culls in 2021–23 are 75–91% over 25 cm, and the SALAD median diameter is 350 mm in 2021 and 2022 (5% under 150 mm).
+- North Direction: the SALAD median is 300–500 mm in 2022–25.
+
+With approximate growth (about 15–25 cm at age 2, over 25 cm at age 3+), the adults present in 2021 settled in about 2018 or earlier, during or before the coral trough. Small COTS are under-detected by divers (detection below 0.5 under 15 cm), so cohort 1 shares are not used.
+
+**Finding.** The model settles a large 2012–16 cohort, then loses it at the juvenile-to-adult step in 2015–18. The predator pit removes about 55–77/ha. The remainder starves at maturation, because food survival is about 0.05 while fast coral is near zero after the 2016–17 bleaching. The model's 2020s adults therefore have to come from new settlement after 2019, which is low (Lizard 7–16/ha/yr in 2019–21) and arrives about 3 years late.
+
+Deaker et al. 2020 show juveniles can stay herbivorous on coralline algae for years and resume growth once coral returns, the "juvenile bank". In this model, juveniles that cannot find coral die instead of waiting.
+
+The model already has this mechanism behind a switch (COTSMod `preferred_maturation`: maturation fraction √F̄, retained juveniles exempt from starvation). It failed on 2026-10-12 because fast coral on the old coral calibration never recovered enough to release the bank. On the new coral, fast coral recovers by 2019–21, so the test is no longer the same.
+
+### Chlorophyll (scoping, not built)
+
+The current chl index (`aprmak`) averages 1.0 on every reef: it carries year-to-year anomalies only, with no cross-shelf level. Owen source survival is off (`COTS_APPLY_LARVAL_SURVIVAL=false`).
+
+In-water LTCMP medians for 1992–2009 are:
+- outer shelf: Cod Hole 0.13 / 0.13, Osprey 0.12–0.13, Cairns shelf-break 0.15, Saxon 0.15 µg/L;
+- mid shelf, Lizard area: 0.21–0.27 µg/L;
+- inner-shelf river influence: Port Douglas and Daintree 0.35–0.62 µg/L.
+
+A static reef-level factor `(chl_iw / chl_ref)^b`, capped at 1, applied at the source through the existing `COTS_LARVAL_SURVIVAL_CSV` path (multiplied into `aprmak`), would lower outer-shelf larval production. Ecologically, larvae spawned in oligotrophic outer-shelf water develop poorly. It needs a per-reef in-water climatology (interpolated from LTCMP stations by cross-shelf position) and a decision on whether it also scales the external boundary sources. Because about two thirds of ribbon settlement is external, chl at the domain's sources alone would do little for the ribbons. Combined with waves, it would mainly cut outer-shelf production that leaks to mid-shelf reefs.
+
+### Status
+
+W-next is not promoted (gate 5 fails 2/12). Decisions requested from the lead: (1) the wave-mechanism form; (2) whether to retest the juvenile bank on the new coral; (3) whether to build the cross-shelf chl term to combine with waves.
+
+
+## Lead's decisions (2026-10-19, twenty-second round)
+
+1. **Wave mechanism agreed as proposed:** reef-average wave period, a ramp from 6.6 to 7.0 s, and floors 0.1 / 0.25 / 0.5.
+2. **Juvenile bank agreed:** retest `preferred_maturation` on W-next, with the pit on.
+3. **Cross-shelf in-water chl term agreed, after the wave test.** Also test whether to reduce supply only from domain sources (inside) or also from the external boundary sources (outside).
+
+Order: waves → juvenile bank → chl (inside versus inside + outside).
+
+
+## Preregistered: wave-exposure settlement mechanism (2026-10-19, twenty-second round)
+
+1. **Hypothesis.** On reefs exposed to ocean swell, COTS settlement and early post-settlement survival are low (dislodgement, unstable habitat and fewer sheltered juvenile microhabitats). These reefs therefore stay below outbreak densities even with high larval supply. The evidence is the LTMP cross-section in the domain: mean wave period ≥ 7 s → 8 of 9 reefs never reached 0.22 COTS/tow, against 18 of 20 outbreak reefs at ≤ 6.6 s.
+
+2. **Change.** Each site's settlement gate is multiplied by `m = 1 − (1 − floor) · clamp((Tp_reef − 6.6) / (7.0 − 6.6), 0, 1)`, where `Tp_reef` is the reef's area-weighted mean peak wave period (s).
+   - The multiplier is time-invariant and shared by all sites of a reef.
+   - It acts after the COTS transition and before dispersal, so it scales settlement from all sources (local, internal, external, background) exactly once.
+   - Switch: `COTS_SETTLEMENT_MODIFIER_CSV`; unset is the established path.
+   - Inputs: `build_wave_settlement_modifier.py --metric tp_reef --e0 6.6 --e1 7.0 --floor {0.1, 0.25, 0.5}`, giving `sandbox/data/derived/wave_settlement_modifier/tp66_70_f{010,025,050}/`. Twenty-nine sites without raster values (Martin, Linnet, Maxwell) take the nearest valid site's values (≤ 4.2 km).
+   - Affected: 37 of 113 reefs, including Yonge, Carter, No Name, Ribbon No 10, the other ribbon reefs and Irene. Unaffected (m = 1): all score reefs, Martin, Linnet, Marx, Forrester, Mackay and 15-022.
+
+3. **Expected consequences.**
+   - Ribbon reefs: false 1990s, 2000s and 2014 outbreaks are much reduced. With floor 0.25 and about 63% external settlement, settlers fall to about a quarter; through the pit and the Allee effect, adults should fall by more than that.
+   - Score reefs: affected only through less larval production on exposed reefs reaching them (Lizard receives about 8% of its connection weight from Ribbon No 10). Expect a small reduction in 1990s and 2014 peak heights, and little change in timing.
+   - The late 2020s build-up is not expected to be fixed by this.
+
+4. **Control and factorial.** W-next (`wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_aprmak_cv2_pnd`, `corr_w3`, Ext×5, culling off) × {off, floor 0.5, 0.25, 0.1} × 5 seed pairs = 20 arms. Runner experiment `wave`; arms carry a suffix `_wv<floor×100>` (none = off).
+   - The off arms must replay the `q25` arms of 20261016T_03 exactly.
+   - Extra reefs are on (Martin, Linnet, Yonge, Carter, No Name, Ribbon No 10).
+
+5. **Parameters and evidence.** The ramp ends (6.6 and 7.0 s) come from the LTMP cross-section above (largest outbreak reef Tp 6.59; smallest never-COTS reef Tp 6.98). The floor has no field estimate; 0.1–0.5 are labelled sensitivities.
+
+6. **Readouts and failure criteria.**
+   - **Ribbon reefs** (Yonge, Carter, No Name): seed-mean model adults and detected CPUE (q 0.015 with `A½ 30`) against LTMP (never ≥ 0.22).
+     - **Success:** detected CPUE stays below 0.22 in every year 1992–2026, in at least 4 of 5 seeds.
+   - **Calibration:** v3 and G2′ (`A½ 30`, trough on Lizard and MacGillivray).
+     - **Failure:** seed-mean v3 rises by more than 0.5, or G2′ passes in fewer than 4/5 seeds.
+   - Martin and Linnet: must keep their 1990s and 2014 outbreaks.
+   - Fluxes: settled recruits and their external / internal split on the extra reefs.
+   - **Rollback:** the switch is unset by default.
+
+
+## Wave-exposure screen: results (2026-10-19)
+
+Run 20261019T_15 (20 arms, no failures); re-score 16 (control replay 0.0); G2′ 17 (trough on Lizard and MacGillivray); audit `wave_audit.json`, `wave_summary.csv` and `wave.png` in run 15 (`audit_1991_wave.py`). The off arms replay the `q25` arms of 20261016T_03 exactly (0.0).
+
+| Floor | Seed-mean v3 (Δ) | G2′ | Max detected COTS/tow (seed mean), Yonge / Carter / No Name | Seeds with no year ≥ 0.22 (Y / C / N) | Ribbon settlers 1993–2016 (/ha/yr) |
+| --- | --- | --- | --- | --- | --- |
+| off | 11.01 | 5/5 | 0.18 / 0.27 / 0.16 | 4 / 1 / 5 | 38.6 |
+| 0.5 | 10.90 (−0.11) | 5/5 | 0.05 / 0.10 / 0.04 | 5 / 5 / 5 | 17.7 |
+| 0.25 | 11.01 (+0.00) | 5/5 | 0.006 / 0.018 / 0.003 | 5 / 5 / 5 | 8.6 |
+| 0.1 | 10.89 (−0.12) | 5/5 | 0.002 / 0.003 / 0.001 | 5 / 5 / 5 | 3.6 |
+
+(LTMP maximum on these reefs is 0.00–0.01.)
+
+**Findings.**
+- **Ribbon reefs:** every floor meets the preregistered success criterion; floor 0.25 is closest to the observed levels.
+- **Calibration:** unchanged (Δv3 within ±0.12; G2′ 5/5). Score-reef peak years are identical in every wave. Peak heights change by ≤ 1 adult/ha, except North Direction's 2013 peak, which rises from 60 to 65–69.
+- **Martin and Linnet:** unchanged. The preregistered "keep the 1990s and 2014 outbreaks" check fails in every arm, including off: model Martin reaches 0.15 detected COTS/tow in 2014 against an observed 0.51. That is an existing under-prediction, not a wave effect.
+- **The 2020s are not changed**, as expected.
+
+**Status.** The mechanism passes its screen; the floor is the lead's choice (0.25 recommended). Not promoted until the combined configuration passes the gates.
+
+
+## Preregistered: juvenile bank retest on the new coral (2026-10-19, twenty-second round)
+
+1. **Hypothesis.** Juveniles that cannot find preferred coral stay herbivorous on coralline algae and wait, instead of starving at maturation (Deaker et al. 2020). The 2014–16 cohort would then survive the 2016–17 coral trough and mature as fast coral returns in 2019–21, bringing the 2020s adults forward by about 2–3 years.
+
+2. **Change.** This uses the existing COTSMod switch `preferred_maturation` (`COTS_PREFERRED_MATURATION=true`; runner treatment code `PDA` instead of `PA`), with no code change.
+   - The maturing fraction is `g = √F̄`, where F̄ is remembered preferred (fast) cover (habitable fraction).
+   - Matured juveniles face the food factor `f`; retained juveniles `(1 − g)` stay in N2, exempt from starvation and still subject to `m2` and the predator pit each year.
+   - The 2026-10-12 test of this switch failed on the old coral, where F̄ never recovered. This is a retest on the new coral, not a new parameter.
+
+3. **Expected consequences.**
+   - **Benefit:** 2015–18 maturation yield stops collapsing to about 0.03, and adults at Lizard and Eyrie reach 5/ha by about 2021–22 instead of 2024.
+   - **Risk 1:** g is about 0.25–0.45 at typical F̄ (0.06–0.2), so maturation is slower in normal years and the 1990s and 2014 waves may be delayed or lowered, as in the earlier test.
+   - **Risk 2:** the pit erodes the bank each year, which may cancel the benefit.
+
+4. **Control and factorial.** W-next × bank {off, on} × wave {off, floor 0.25} × 5 seed pairs = 20 arms.
+   - Runner experiment `bank`; arms `wc_b100_q25_eb_h10_obs015_s<k>_t60_e50[_jb]_aprmak_cv2_pnd[_wv025]`.
+   - The bank-off arms must replay run 20261019T_15 (wave off: also 20261016T_03) exactly.
+
+5. **Evidence and bounds.** The form and its √ follow CoCoNet; the retention-without-starvation evidence is Deaker et al. 2020 (6.5 years on coralline algae). No new parameters.
+
+6. **Readouts and failure criteria** (paired by seed and wave setting).
+   - **Required improvement:** a lower diver error (2020–26).
+   - **Failure:**
+     - seed-mean v3 rises by more than 0.5, or G2′ passes in fewer than 4/5 seeds;
+     - a 1990s peak (Lizard, MacGillivray, North Direction) moves later by more than 1 year;
+     - the 2020s are not earlier: the first year with model adults ≥ 5/ha at Lizard and Eyrie does not move earlier.
+   - **Also reported:** maturation yield 2015–18, bank size (subadults) and pit removals, and the ribbon reefs.
+   - **Rollback:** the switch is off by default.
+   - If the 1990s are delayed, the next form to propose is a bank that operates only when coral is scarce. That would be a new preregistration.
+
+
+## Juvenile bank retest: results (2026-10-19)
+
+Run 20261019T_18 (20 arms, no failures); re-score 19 (control replay 0.0); G2′ 20; audit `bank_audit.json`, `bank_summary.csv` and `bank.png` in run 18 (`audit_1991_bank.py`). The bank-off arms replay run 15 exactly (0.0).
+
+| Wave | Bank | v3 | Manta part | Diver error | G2′ | 1990s peak year (Lizard / MacGillivray / North Direction) | First year adults ≥ 5/ha (Lizard / Eyrie) | Lizard subadults 2018 | Lizard adults 2022 / 2026 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| off | off | 11.01 | 6.48 | 3.02 | 5/5 | 1997.0 / 1997.4 / 1997.0 | 2023.2 / 2024.2 | 21 | 3.5 / 23.7 |
+| off | on | **16.50** | 9.60 | **4.60** | **0/5** | **1999.8 / 2000.2 / 1999.8** | 2019.0 / 2020.4 | 94 | 11.1 / 10.4 |
+| 0.25 | off | 11.01 | 6.32 | 3.13 | 5/5 | 1997.0 / 1997.4 / 1997.0 | 2024.2 / 2024.2 | 22 | 3.2 / 23.6 |
+| 0.25 | on | **16.51** | 9.59 | **4.62** | **0/5** | 1999.8 / 2000.2 / 1999.8 | 2019.0 / 2020.4 | 94 | 11.1 / 10.3 |
+
+**Verdict: fail** on every preregistered criterion except "earlier 2020s":
+- Δv3 is +5.5 and G2′ passes 0/5;
+- the 1990s peaks are 2.8 y later, and the 2014 peaks are lower;
+- the diver error is worse (+1.5 to +1.6).
+
+**What happened.**
+- **The bank works as intended through the trough.** About 94 subadults/ha survive to 2018 at Lizard, against 21, and are released as fast coral returns.
+- **Timing and size are wrong.** Adults reach 15–20/ha in 2020–21 at Lizard, MacGillivray and North Direction, against observed 3–8/ha, then decline. That is too early and too high; Eyrie stays too low (about 5/ha against 16–40).
+- **The 1990s delay comes from the form.** With `g = √F̄` and F̄ ≈ 0.05–0.2, only 22–45% of juveniles mature in an ordinary year.
+
+Waves do not interact with the bank. The test shows that juvenile survival through the trough can move the 2020s, but this form is too strong in normal years and releases too much too early.
+
+
+## Preregistered: scarcity-only juvenile bank (2026-10-19, twenty-second round)
+
+Agreed with the lead as the follow-up form if the retest delayed the 1990s.
+
+1. **Hypothesis.** Juveniles wait on coralline algae only when they cannot find coral; when coral is available they mature as normal. The bank therefore forms in coral troughs and costs nothing in normal years.
+
+2. **Change** (new opt-in COTSMod switch `starvation_bank`; ADRIA env `COTS_JUVENILE_STARVATION_BANK`, default false). Of the background and pit survivors J:
+   - a fraction `f` (the existing food-survival factor) matures;
+   - the fraction `1 − f`, which currently starves, stays in N2 as herbivorous juveniles (subject again to `m2` and the pit next year);
+   - nothing starves.
+   - Off reproduces the current path exactly. It is exclusive with `preferred_maturation` and `juvenile_storage`. No new parameter; the logged maturation fraction is `f`.
+
+3. **Expected consequences.**
+   - **1990s:** f is close to 1 in normal years (0.85–1.0 at Lizard in 2010–13), so 1990s timing should be nearly unchanged.
+   - **Trough:** in 2015–18 (f about 0.05) about 95% of juvenile survivors wait. The bank is eroded by `m2` (about 0.32/yr) and the pit, and is released as f recovers in 2019–20.
+   - **Risk:** release is still in 2019–21, possibly earlier than the observed rise (Lizard 2022; Eyrie 2021–23), and the size of the release is not tuned.
+
+4. **Control and factorial.** W-next × {scarcity bank off, on} × wave {off, 0.25} × 5 seeds = 20 arms. Runner experiment `bank2`; arms carry `_sb_`. Off arms replay run 20261019T_15.
+
+5. **Evidence.** Deaker et al. 2020 (juveniles persist on coralline algae up to 6.5 y and resume growth when coral is supplied); Wilmes et al. 2020 (the coral diet switch is needed to mature).
+
+6. **Failure criteria:** as for the bank retest (Δv3 > 0.5, G2′ < 4/5, 1990s peak > 1 y later, no earlier 2020s, or diver error not lower).
+   - **Tests:** COTSMod unit tests (off replays legacy; on gives matured `J·f`, retained `J·(1−f)`, no starvation; exclusivity) and an ADRIA env parse check.
+
+
+## Scarcity-only juvenile bank: results (2026-10-19)
+
+**Implementation.**
+- COTSMod `starvation_bank` (opt-in; exclusive with `preferred_maturation` and `juvenile_storage`); COTSMod tests 395/395 pass.
+- ADRIA env `COTS_JUVENILE_STARVATION_BANK`; runner experiment `bank2`.
+
+Run 20261019T_21 (20 arms, no failures); re-score 22 (control replay 0.0); G2′ 23; audit `bank_audit.json` and `bank.png` in run 21 (`audit_1991_bank.py`). The off arms replay run 15 exactly (0.0).
+
+| Wave | Bank | v3 | Manta part | Diver error | G2′ | 1990s peak years | First year adults ≥ 5/ha (Lizard / Eyrie) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| off | off | 11.01 | 6.48 | 3.02 | 5/5 | 1997.0 / 1997.4 / 1997.0 | 2023.2 / 2024.2 |
+| off | on | **12.41** | 6.71 | **3.80** | 5/5 | unchanged | 2019.4 / 2021.8 |
+| 0.25 | on | **12.37** | 6.65 | **3.81** | 5/5 | unchanged | 2019.4 / 2021.8 |
+
+**Per reef** (v3, bank off → on, wave off):
+
+| Reef | v3 | Diver error | Detail |
+| --- | --- | --- | --- |
+| Lizard | 2.47 → 2.42 | 0.53 → 0.51 | Adults 2021–25 are 8.5 / 8.1 / 8.6 / 9.4 / 11.3 against targets 3.4 / 8.3 / 5.9 / 8.6 / 9.1 (off: 3.3–9.0) |
+| MacGillivray | **2.55 → 3.57** | 0.74 → 1.47 | Adults 22 / 13.5 / 11.7 in 2019–21 against targets 2.5 (2020) and 0 (2021) |
+| North Direction | 2.40 → 2.74 | | Mostly the manta part |
+| Eyrie | 3.60 → 3.68 | | Still too low: 4.7–6.9 in 2021–24 against 17–45 |
+
+**Verdict: fail** (Δv3 +1.4 > 0.5; diver error +0.7 to +0.8). The 1990s are untouched, which removes the main defect of the √F̄ form, and the bank brings Lizard's 2020s on time.
+
+The failure is MacGillivray's early release. The bank releases when modelled fast coral (food survival) recovers, and MacGillivray's model fast coral recovers 2–5× faster than its photo transects (fast share 0.59 against 0.20 in 2021; see the coral-dominance correction above). So the bank's timing is only as good as the coral recovery. The 2026 overshoot (21–32 adults/ha against 5–7) is unchanged by either bank.

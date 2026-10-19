@@ -418,6 +418,52 @@ function apply_cots_larval_survival!(cots_models::CotsState, multipliers::Abstra
 end
 
 """
+    load_cots_settlement_modifier(path, loc_ids) -> Vector{Float64}
+
+Opt-in reef-habitat settlement modifier (`COTS_SETTLEMENT_MODIFIER_CSV`;
+crash_mechanism_protocol.md, 2026-10-19, wave exposure): columns `site_id, multiplier`
+(dimensionless, finite, in [0, 1]), time-invariant. Every domain site must appear exactly
+once; unknown, duplicate or missing sites and invalid multipliers are errors.
+"""
+function load_cots_settlement_modifier(path::AbstractString,
+    loc_ids::AbstractVector{<:AbstractString})::Vector{Float64}
+    isfile(path) || error("Missing COTS settlement-modifier CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:site_id => String))
+    all(in(names(table)), ["site_id", "multiplier"]) ||
+        error("COTS settlement-modifier CSV needs columns site_id, multiplier")
+    sites = Dict(String(id) => loc for (loc, id) in enumerate(loc_ids))
+    multipliers = fill(NaN, length(loc_ids))
+    for row in eachrow(table)
+        loc = get(sites, row.site_id, 0)
+        loc == 0 && error("COTS settlement-modifier site $(row.site_id) is not a domain site")
+        isnan(multipliers[loc]) || error("Duplicate COTS settlement-modifier site $(row.site_id)")
+        value = Float64(row.multiplier)
+        isfinite(value) && 0.0 <= value <= 1.0 ||
+            error("COTS settlement modifiers must be finite and in [0, 1]")
+        multipliers[loc] = value
+    end
+    any(isnan, multipliers) && error("COTS settlement-modifier CSV is missing domain sites")
+    return multipliers
+end
+
+"""Scale each location's settlement (separated recruitment) by its habitat modifier, after the
+COTS transition and before dispersal. The settlement gate scales local retention, internal
+immigration, external supply and pulses exactly once; the background immigration already
+settled in the transition (`N[1]`, separated recruitment) is scaled here as well."""
+function apply_cots_settlement_modifier!(cots_models::CotsState, multipliers::AbstractVector{<:Real})::Nothing
+    length(multipliers) == length(cots_models) ||
+        throw(DimensionMismatch("settlement modifiers must match locations"))
+    for (model, m) in zip(cots_models, multipliers)
+        model.params.separated_recruitment ||
+            error("COTS settlement modifier requires separated recruitment")
+        model.last_settlement_gate *= m
+        model.N[1] *= m
+        model.last_background_immigration *= m
+    end
+    return nothing
+end
+
+"""
     load_cots_cull_removals(path, loc_ids, calendar_years) -> Array{Float64,3}
 
 Opt-in observed culling (`COTS_CULL_REMOVALS_CSV`; crash_mechanism_protocol.md,

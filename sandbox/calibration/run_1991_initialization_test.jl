@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -66,7 +66,8 @@ const TARGETS = [
 # Extra reported reefs (lead, 2026-10-16, nineteenth round): Martin and Linnet (2020s increase in
 # manta) and Yonge, Carter and No Name (almost never COTS). Opt-in (OWEN_1991_EXTRA_REEFS=true):
 # written to trajectories_extra.csv / flows_extra.csv only, so existing outputs and replays are
-# unchanged; not part of any score.
+# unchanged; not part of any score. Ribbon No 10 (14-146, no LTMP surveys) added 2026-10-19
+# (twenty-first round): the main larval source of Yonge, Carter and No Name in the Owen matrices.
 const EXTRA_REEFS_ON = get(ENV, "OWEN_1991_EXTRA_REEFS", "false") == "true"
 const EXTRA_REEFS = [
     (model="Martin Reef", observed="Martin Reef"),
@@ -74,6 +75,7 @@ const EXTRA_REEFS = [
     (model="Yonge Reef", observed="Yonge Reef"),
     (model="Carter Reef", observed="Carter Reef"),
     (model="No Name Reef", observed="No Name Reef"),
+    (model="Ribbon No 10 Reef", observed="none"),
 ]
 const FLOW_NAMES = ["local_fecundity", "background_immigration", "internal_immigration",
     "external_immigration", "maturation", "retained_juveniles", "settlement_gate",
@@ -113,7 +115,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -341,7 +343,7 @@ supply_window_spec(name) = (m = match(r"_sw(\d{4})_(\d{4})_x(\d{3})_", name);
 # seed pair 1; replay arm wc_b150_..._t40_chloff (old coral, beta 1.5, low-DHW threshold 4) and
 # new-coral arms wc_b100_..._t60_<chl> (beta 1, threshold 6) with chl in {chloff, mb15, mb30,
 # pb15, pb30} (COTS_LARVAL_SURVIVAL_CSV tables, build_larval_survival_index.py).
-const CHLSURV = EXPERIMENT in ("chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens")
+const CHLSURV = EXPERIMENT in ("chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
 # External multiplier x supply x chl factorial (2026-10-15, twelfth round): new coral; arms
 # wc_b100_..._t60_e<Ext x10>_<chl>_cv2_pnd with Ext in {1, 2.5, 5} and chl in {chloff, pb30}.
 const EXTCHL = EXPERIMENT in ("ext_chl", "ext_chl2")
@@ -382,13 +384,34 @@ const LOCALEXT_FEC = (1.0, 2.0, 3.0)
 # Q 20 on the face-value dataset replays run 42.
 const PITQ = EXPERIMENT == "pit_q"
 const PITQ_Q = (10, 15, 20, 25)
+# Wave-exposure settlement mechanism (2026-10-19, twenty-second round): W-next (Q 25; run on corr_w3) x
+# {off, floor 0.5, 0.25, 0.1}; arms wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_aprmak_cv2_pnd[_wv<floor x100>].
+# Off arms replay the q25 arms of 20261016T_03. Tables: build_wave_settlement_modifier.py
+# --metric tp_reef --e0 6.6 --e1 7.0 (COTS_SETTLEMENT_MODIFIER_CSV).
+const WAVE = EXPERIMENT == "wave"
+# Juvenile bank retest (2026-10-19, twenty-second round): W-next x bank {off, _jb_ = preferred_maturation on
+# (treatment PDA)} x wave {off, _wv025}. Bank-off arms replay 20261019T_15.
+const BANK = EXPERIMENT == "bank"
+# Scarcity-only juvenile bank (2026-10-19, twenty-second round): _sb_ arms set COTS_JUVENILE_STARVATION_BANK
+# (J*f mature, J*(1-f) wait in N2, none starve); x wave {off, _wv025}. Off arms replay 20261019T_15.
+const BANK2 = EXPERIMENT == "bank2"
+const WAVE_FLOORS = (0.5, 0.25, 0.1)
+const WAVE_DIR = joinpath(ROOT, "sandbox", "data", "derived", "wave_settlement_modifier")
+# Coral-cover set key: the last name token, ignoring a trailing wave suffix.
+cover_key(name) = split(replace(name, r"_wv\d{3}$" => ""), "_")[end]
+wave_table(name) = (m = match(r"_wv(\d{3})$", name); isnothing(m) ? nothing :
+    joinpath(WAVE_DIR, "tp66_70_f$(m.captures[1])", "settlement_modifier.csv"))
 # +/-25% sensitivity gate (2026-10-19, twentieth round): W + h10, Q 20, Ext x5, corr_w2 layer, one
 # parameter at a time at x0.75 / x1.25: external multiplier (_sxext<f>_), chronic coral mortality mu
 # (_sxmu<f>_), low-DHW bleaching scale (_sxlow<f>_), chl slope b (_sxchlb<f>_, tables from
 # build_larval_survival_index_corrected.py --b) and initial fast shares (suffix _sh<f>, capped at 0.9).
 # Q +/-25% is the pit_q run (20261016T_02, q15 / q25). Base arms (no token) replay run 20261016T_02.
+# W-next (2026-10-19, twenty-first round): OWEN_1991_SENS_Q sets the base Q (default 20 reproduces the
+# run above); any other base adds Q x f (_sxq<f>_, exact, e.g. 18.75 / 31.25 for Q 25). Run on the
+# corr_w3 dataset, the q25 base arms replay run 20261016T_03.
 const SENS = EXPERIMENT == "sens"
-const SENS_PARAMS = ("ext", "mu", "low", "chlb")
+const SENS_Q = parse(Int, get(ENV, "OWEN_1991_SENS_Q", "20"))
+const SENS_PARAMS = SENS_Q == 20 ? ("ext", "mu", "low", "chlb") : ("ext", "mu", "low", "chlb", "q")
 const SENS_FACTORS = (0.75, 1.25)
 sens_factor(name, p) = (m = match(Regex("_sx$(p)(\\d{3})_"), name); isnothing(m) ? 1.0 : parse(Int, m.captures[1]) / 100)
 const SENS_CHL_DIRS = Dict(0.75 => "larval_survival_index_lizard_full_1990s_corrected_b225",
@@ -401,7 +424,7 @@ chl_table(name) = (m = match(r"_(chloff|mb15|mb30|pb15|pb30|amols|aprma|aprmak|a
     haskey(CHLFULL_FILES, m.captures[1]) ? joinpath(CHLFULL_DIR, "larval_survival_$(CHLFULL_FILES[m.captures[1]]).csv") :
     joinpath(CHLSURV_DIR, "larval_survival_$(m.captures[1]).csv"))
 chl_threshold(name) = parse(Int, match(r"_t(\d+)_", name).captures[1]) / 10
-const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens")
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
@@ -936,13 +959,21 @@ treatments = EXPERIMENT == "initialization" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
 ] : SENS ? [
-    [(name="wc_b100_q20_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd", alpha=0.015,
         coral="observed_composition", initial="cohort_full") for k in eachindex(CANDIDATE_SEEDS)];
-    [(name="wc_b100_q20_eb_h10_obs015_s$(k)_t60_e50_sx$(par)$(pct3(f))_aprmak_cv2_pnd", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_sx$(par)$(pct3(f))_aprmak_cv2_pnd", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
      for par in SENS_PARAMS for f in SENS_FACTORS for k in eachindex(CANDIDATE_SEEDS)];
-    [(name="wc_b100_q20_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd_sh$(pct3(f))", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd_sh$(pct3(f))", alpha=0.015,
         coral="observed_composition", initial="cohort_full") for f in SENS_FACTORS for k in eachindex(CANDIDATE_SEEDS)]
+] : BANK || BANK2 ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50$(jb)_aprmak_cv2_pnd$(wv)", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for jb in ("", BANK2 ? "_sb" : "_jb") for wv in ("", "_wv025") for k in eachindex(CANDIDATE_SEEDS)
+] : WAVE ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd$(isnothing(f) ? "" : "_wv$(pct3(f))")", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for f in (nothing, WAVE_FLOORS...) for k in eachindex(CANDIDATE_SEEDS)
 ] : PITQ ? [
     (name="wc_b100_q$(Q)_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
@@ -1140,7 +1171,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : INITCULL || LOCALEXT || PITQ || SENS ? let
+) : INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? let
     # lin reproduces the recheck state file (same name and inversion).
     states = Dict(inv => make_initial_state(0.015, "alpha015_cohort_full_eb_$(inv)"; cohort_multiplier=1.0,
             cpue=eb_surface, a_half=a_half) for (inv, a_half) in INITCULL_A_HALF)
@@ -1459,12 +1490,13 @@ for t in run_treatments
     external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ||
         (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
         EXTERNAL_MULTIPLIER : 1.0
-    (EXTCHL || RECHECK || INITCULL || LOCALEXT || PITQ || SENS) && (external_multiplier = parse(Int, match(r"_e(\d+)_", t.name).captures[1]) / 10)
+    (EXTCHL || RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2) && (external_multiplier = parse(Int, match(r"_e(\d+)_", t.name).captures[1]) / 10)
     SENS && (external_multiplier *= sens_factor(t.name, "ext"))
     predation_capacity = COMPOSITION ? composition_arm_q(t.name) :
         REBASE ? parse(Float64, match(r"_q(\d+)", t.name).captures[1]) :
         COLLAPSE || GROWTH || GRACE || CORAL || JOINT || MELLIN || BLEACH ? COLLAPSE_Q : PIT && occursin("_q", t.name) ?
         parse(Float64, split(t.name, "_q")[end]) : JUVENILE_PREDATION_CAPACITY
+    SENS && (predation_capacity *= sens_factor(t.name, "q"))
     collapse_arm = COLLAPSE ? split(t.name, "_")[2] : "none"
     ENV["COTS_OUTBREAK_COLLAPSE"] = collapse_arm == "none" ? "false" : "true"
     ENV["COTS_COLLAPSE_THRESHOLD_HA"] = string(COLLAPSE_THRESHOLD_HA)
@@ -1477,7 +1509,9 @@ for t in run_treatments
     push!(setup_marks, ("collapse_cbgroups", time()))
     ENV["COTS_JUVENILE_PREDATION"] = occursin("P", trough_treatment) ? "true" : "false"
     ENV["COTS_JUVENILE_PREDATION_CAPACITY"] = string(predation_capacity)
+    BANK && occursin("_jb_", t.name) && (trough_treatment = "PDA")
     ENV["COTS_PREFERRED_MATURATION"] = occursin("D", trough_treatment) ? "true" : "false"
+    ENV["COTS_JUVENILE_STARVATION_BANK"] = BANK2 && occursin("_sb_", t.name) ? "true" : "false"
     ENV["COTS_ALLEE_STRETCHED"] = occursin("A", trough_treatment) ? "true" : "false"
     ENV["COTS_ALLEE_EXPONENT"] = "0.5"
     if HABITAT
@@ -1532,6 +1566,11 @@ for t in run_treatments
     if SENS && sens_factor(t.name, "low") != 1.0
         ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = string(CV2_LOW_DHW_SCALE * sens_factor(t.name, "low"))
     end
+    if (WAVE || BANK || BANK2) && !isnothing(wave_table(t.name))
+        ENV["COTS_SETTLEMENT_MODIFIER_CSV"] = wave_table(t.name)
+    else
+        delete!(ENV, "COTS_SETTLEMENT_MODIFIER_CSV")
+    end
     if SUPPLYWIN && supply_window_spec(t.name) != ""
         ENV["COTS_EXTERNAL_SUPPLY_WINDOW"] = supply_window_spec(t.name)
     else
@@ -1551,7 +1590,7 @@ for t in run_treatments
          REBASE_COMPOSITION ? composition.levels[split(t.name, "_")[end]].cover :
          REBASE_FLOOR ? share_scaled[parse(Int, split(t.name, "_")[7][2:end]) / 100] :
          REBASE_LIZCORAL ? lizcoral_cover[lizcoral_parts(t.name).c] :
-         REBASE_SHARE && !(split(t.name, "_")[end] in ("ref", "acrpoc")) ? share_levels.covers[split(t.name, "_")[end]] :
+         REBASE_SHARE && !(cover_key(t.name) in ("ref", "acrpoc")) ? share_levels.covers[cover_key(t.name)] :
          composition.cover) : baseline_cover
     if TROUGH && startswith(t.name, "bgeo")
         initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
@@ -1842,6 +1881,8 @@ delete!(ENV, "ADRIA_COTS_ENABLED")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_START_YEAR")
 delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR")
 delete!(ENV, "COTS_LAGGED_ADULT_HAZARD")
+delete!(ENV, "COTS_SETTLEMENT_MODIFIER_CSV")
+delete!(ENV, "COTS_JUVENILE_STARVATION_BANK")
 delete!(ENV, "COTS_HAZARD_FOOD_COUPLED")
 delete!(ENV, "COTS_HAZARD_MAX")
 delete!(ENV, "ADRIA_RNG_SEED")
@@ -2035,8 +2076,8 @@ metadata = Dict(
     ) : "not tested",
     "chl_survival_screen" => CHLSURV ? Dict(
         "switch" => "COTS_LARVAL_SURVIVAL_CSV (unset = established path); multiplier on site larval production before dispersal",
-        "tables" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS ?
-            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in (INITCULL || LOCALEXT || PITQ || SENS ? ("aprmak",) : ("aprmak", "aprma"))) :
+        "tables" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ?
+            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in (INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? ("aprmak",) : ("aprmak", "aprma"))) :
             EXPERIMENT == "ext_chl2" ?
             Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in EXTCHL_VARIANTS if v != "chloff") :
             Dict(v => Dict("path" => joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"),
@@ -2047,10 +2088,31 @@ metadata = Dict(
             "parameters" => Dict("ext" => "external multiplier 5 x f", "mu" => "chronic coral mortality $(CV2_MU) x f",
                 "low" => "low-DHW bleaching scale $(CV2_LOW_DHW_SCALE) x f", "chlb" => "chl slope b 3 x f (tables $(SENS_CHL_DIRS))",
                 "sh" => "initial fast shares (pnd set) x f, capped at $(SHARE_CAP)"),
-            "factors" => collect(SENS_FACTORS), "Q" => "covered by 20261016T_02 (q15 / q25)",
+            "factors" => collect(SENS_FACTORS), "base_Q" => SENS_Q,
+            "Q" => SENS_Q == 20 ? "covered by 20261016T_02 (q15 / q25)" : "Q $(SENS_Q) x f (_sxq<f>_)",
             "chl_tables_sha256" => Dict(string(f) => file_sha256(joinpath(ROOT, "sandbox", "data", "derived", d, "larval_survival_ap_rma_k.csv"))
                 for (f, d) in SENS_CHL_DIRS),
-            "replay" => "base arms must replay the q20 arms of 20261016T_02_pit_q_w2_1991_v1",
+            "replay" => SENS_Q == 20 ? "base arms must replay the q20 arms of 20261016T_02_pit_q_w2_1991_v1" :
+                "base arms must replay the q$(SENS_Q) arms of the pit_q run on the same COTS dataset (corr_w3: 20261016T_03_pit_q_w3_1991_v1)",
+        ) : "not tested",
+        "bank2" => BANK2 ? Dict(
+            "switch" => "COTS_JUVENILE_STARVATION_BANK=true on _sb_ arms (COTSMod starvation_bank; pit and gradual Allee kept)",
+            "form" => "of juvenile survivors J: J*f mature, J*(1-f) stay herbivorous in N2; none starve",
+            "wave" => "_wv025 arms: floor 0.25 table, sha256 $(file_sha256(wave_table("_wv025")))",
+            "replay" => "off arms must replay 20261019T_15_wave_w3_q25_1991_v1 (off and _wv025 arms)",
+        ) : "not tested",
+        "bank" => BANK ? Dict(
+            "switch" => "COTS_PREFERRED_MATURATION=true on _jb_ arms (treatment PDA; pit and gradual Allee kept)",
+            "form" => "maturing fraction sqrt(remembered preferred cover); retained juveniles exempt from starvation, subject to m2 and the pit",
+            "wave" => "_wv025 arms: COTS_SETTLEMENT_MODIFIER_CSV floor 0.25 table, sha256 $(file_sha256(wave_table("_wv025")))",
+            "replay" => "bank-off arms must replay 20261019T_15_wave_w3_q25_1991_v1 (off and _wv025 arms)",
+        ) : "not tested",
+        "wave" => WAVE ? Dict(
+            "switch" => "COTS_SETTLEMENT_MODIFIER_CSV (unset = established path); multiplier on each site's settlement gate after the transition, before dispersal",
+            "form" => "m = 1 - (1 - floor) * clamp((Tp_reef - 6.6) / (7.0 - 6.6), 0, 1); Tp_reef = area-weighted mean peak wave period (s)",
+            "floors" => collect(WAVE_FLOORS), "base" => "W-next: Q 25, h10, Ext x5, corr_w3 dataset, culling off",
+            "tables_sha256" => Dict(string(f) => file_sha256(wave_table("_wv$(pct3(f))")) for f in WAVE_FLOORS),
+            "replay" => "off arms must replay the q25 arms of 20261016T_03_pit_q_w3_1991_v1",
         ) : "not tested",
         "pit_q" => PITQ ? Dict(
             "predation_capacity_q_cots_ha_yr" => collect(PITQ_Q), "start" => "eb surface inverted at A_half 10 (h10)",
@@ -2081,7 +2143,7 @@ metadata = Dict(
             "chl_index_metadata_sha256" => file_sha256(joinpath(dirname(CHLK_TABLE), "metadata.json")),
             "replay" => "wc_b100_q20_eb_lin_obs015_s1_t60_e50_aprma_cv2_pnd must replay the same arm of 20261015T_22 / _23 (same COTS dataset)",
         ) : "not tested",
-        "external_multiplier" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS ? "per arm _e<Ext x10>_ (x5)" : EXTCHL ? "per arm _e<Ext x10>_ in $(collect(EXTCHL_EXT)) (overrides x$(EXTERNAL_MULTIPLIER))" : "x$(EXTERNAL_MULTIPLIER)",
+        "external_multiplier" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? "per arm _e<Ext x10>_ (x5)" : EXTCHL ? "per arm _e<Ext x10>_ in $(collect(EXTCHL_EXT)) (overrides x$(EXTERNAL_MULTIPLIER))" : "x$(EXTERNAL_MULTIPLIER)",
         "replay" => "wc_b150_..._t40_chloff_cv2_pnd must replay the v0.4 smoke run of the same COTS dataset (20261015T_06 / _07)",
         "cots_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
         "scenario_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),
