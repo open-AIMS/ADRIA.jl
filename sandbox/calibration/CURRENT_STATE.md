@@ -8,7 +8,34 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here (2026-10-19, twenty-second round):** read the protocol from **"Lead's decisions (2026-10-19, twenty-second round)"** to the end. The wave-exposure screen passes (run 20261019T_15; floor 0.25 recommended, not yet adopted). Both juvenile-bank forms fail: √F̄ (run 18) and scarcity-only `starvation_bank` (run 21; MacGillivray releases too early because model fast coral recovers too fast). **Waiting on the lead:** the wave floor, the bank's future, and the chl-term design (in-water climatology source, inside vs outside sources). Experiments: `wave`, `bank`, `bank2`; audits `audit_1991_wave.py`, `audit_1991_bank.py`.
+**Resume here (2026-10-19, twenty-ninth round):** the working configuration is now **W-wave-lf04**: W-wave plus Lizard 1991 fast cover +0.04. Arm `wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_lf04_aprmak_cv2_pnd_wv025`; runner experiment `lizfast` with `OWEN_1991_LIZFAST_DELTAS=0.04`.
+- **Recommended tests done** (run 20261019T_51; protocol "Round-29 tests: results"):
+  - the power-law manta observation selects no larger share and fails regionally;
+  - +0.06 reaches Pratchett's density but fails the G2′ trough test;
+  - RHIS shallow fast cover is 1.6× the 9 m cover at Lizard (2–4× elsewhere);
+  - Lizard coral now declines 1996–99, but only about a third of Pratchett's drop.
+- **Projection to 2100 is set up and piloted** (protocol "Projection set-up and pilot: results"):
+  - input set `sandbox/data/derived/projection_inputs_v0.5` (`build_projection_inputs.py`, test `test_projection_inputs.jl`);
+  - runner `OWEN_1991_PROJECTION=true` on experiment `lizfast` (commands in the README);
+  - pilot run 20261019T_58 (30 arms) with `audit_projection_pilot.py`;
+  - run 51 is the exact replay control (0 = run 15, +0.04 = run 48).
+- **Waiting on the lead** before the full ensemble: the 2026 overshoot, climate-coupled outside supply, thermal adaptation and outside coral larvae, cull scenarios, seeds 6–10.
+
+**Previous pointer (2026-10-19, twenty-eighth round):** as below, plus two items:
+- **Lizard 1991 fast-coral test** (run 20261019T_48, experiment `lizfast`): +0.02 / +0.04 raises Lizard's first wave to 31 / 36 adults/ha and lowers or holds v3. Adoption awaits the lead.
+- **Report figures with a culling overlay** (run 47; `--cull-run`) are in `sandbox/data/derived/calibration_report_figures_with_culling/`.
+
+**Previous pointer (twenty-seventh round):** the calibration is accepted for now (W-wave). **For forward projection to 2045, start from [FORWARD_PROJECTION_HANDOVER.md](FORWARD_PROJECTION_HANDOVER.md).** Report figures: `plot_calibration_report.py --run runs/20261019T_46_sens_wwave_report_1991_v1` (outputs in the git-ignored `sandbox/data/derived/calibration_report_figures/`).
+
+**Previous pointer (2026-10-19, twenty-sixth round):** W-wave (binary corr_w3 layer) remains the working configuration. The graded weight × culling factorial (runs 20261019T_33–45) finds no graded weight better than binary overall: w0.5 is nearest with culling off; w2 holds up best with culling on but overshoots Lizard, MacGillivray and North Direction. The remaining 2020s gap is reef-level (Eyrie large, MacGillivray small). Datasets `owen_global_2018_2023_corr_w{05,1,2,3}_graded`. **Waiting on the lead.** Read the protocol from "Lead's decision (2026-10-19, twenty-sixth round)".
+
+**Previous pointer (2026-10-19, twenty-fifth round):** W-wave remains the working configuration. The graded outbreak-layer correction (dataset `owen_global_2018_2023_corr_w3_graded`, run 20261019T_30) fixes the 2020s timing but overshoots 3–10× at weight 3. **Waiting on the lead** for a lower graded weight. Read the protocol from "Lead's decision (2026-10-19, twenty-fifth round)".
+
+**Previous pointer (2026-10-19, twenty-fourth round):** W-wave is the working configuration. Culling: reef-proportional allocation adopted, but culling stays off when scoring calibration. Chl on external supply fails (run 20261019T_27). **Key finding:** the 2020s timing is set by the external outbreak layer, whose source-reef probabilities for Lizard and Eyrie are 10–40× lower in 2018–21 than in 2014 (all layers; the corrections act only from 2022). Read the protocol from "Lead's decisions (2026-10-19, twenty-fourth round)". **Waiting on the lead** about the 2017–21 source probabilities.
+
+**Previous pointer (2026-10-19, twenty-third round):** working configuration is **W-wave** = W-next + wave floor 0.25 (arm `..._aprmak_cv2_pnd_wv025`). Read the protocol from **"Lead's decisions (2026-10-19, twenty-third round)"** to the end. Reef-level cull allocation (`COTS_CULL_ALLOCATION=reef_proportional`) works but culling worsens the fit until the 2020s build-up is earlier (run 20261019T_24). No chl signal precedes the 2014–18 cohorts; 2019 is the only positive year. Bank and cross-shelf chl are parked. **Waiting on the lead** for the next lever.
+
+**Previous pointer (2026-10-19, twenty-second round):** read the protocol from **"Lead's decisions (2026-10-19, twenty-second round)"** to the end. The wave-exposure screen passes (run 20261019T_15; floor 0.25 recommended, not yet adopted). Both juvenile-bank forms fail: √F̄ (run 18) and scarcity-only `starvation_bank` (run 21; MacGillivray releases too early because model fast coral recovers too fast). **Waiting on the lead:** the wave floor, the bank's future, and the chl-term design (in-water climatology source, inside vs outside sources). Experiments: `wave`, `bank`, `bank2`; audits `audit_1991_wave.py`, `audit_1991_bank.py`.
 
 **Previous pointer (2026-10-19, after the twenty-first round's work):** read the protocol section **"Results (2026-10-19): gate 5 on W-next, Ribbon No 10, wave evidence, juvenile pipeline"** (end of `crash_mechanism_protocol.md`). Items 1 and 3 of the round-21 plan are done (W-next gate 5 fails 2/12, run 20261019T_12–14; pipeline diagnostic finds the 2012–16 juvenile cohort starving at maturation in 2015–18). Item 2: the wave hook `COTS_SETTLEMENT_MODIFIER_CSV` is in ADRIA (off by default, test 15/15) and the builder `build_wave_settlement_modifier.py` is ready. **Waiting on the lead:** the wave form (exposure measure, ramp, floor), a retest of the juvenile bank (`preferred_maturation`) on the new coral, and a cross-shelf in-water chl term to combine with waves. Gates need `--trough-reefs "Lizard Island Reef" "MacGillivray Reef"` and the miniconda Python. Runner: `OWEN_1991_SENS_Q` sets the `sens` base `Q`; extra reefs include Ribbon No 10.
 
@@ -21,6 +48,7 @@ Ext×5 stays for all years (no 1990s-only boost).
 - **Domain:** v0.4 (1985–2026).
 - **Outbreak layer:** `owen_global_2018_2023_corr_w3` (correction weight 3; adopted round 21); `corr_w2` / face value / original as lower cases; corrected (×5) labelled high case.
 - **Start / pit:** `h10` start (eb surface at A½ 10); `Q` 25 (adopted round 21).
+- **Wave exposure (adopted round 23):** settlement × ramp on reef-mean wave period 6.6→7.0 s, floor 0.25 (`COTS_SETTLEMENT_MODIFIER_CSV`, `tp66_70_f025`).
 - **Score:** v3.
 
 **Read in this order:**

@@ -406,6 +406,27 @@ function load_cots_larval_survival(path::AbstractString, loc_ids::AbstractVector
     return multipliers
 end
 
+"""
+    load_cots_external_survival(path, calendar_years) -> Vector{Float64}
+
+Opt-in year-specific survival multiplier on external pelagic supply
+(`COTS_EXTERNAL_SURVIVAL_CSV`; crash_mechanism_protocol.md, 2026-10-19, twenty-fourth round):
+columns `year, multiplier` (dimensionless, finite, >= 0), one row per year. Returns one value per
+timestep; years absent from the table are 1. Duplicate years or invalid multipliers are errors.
+"""
+function load_cots_external_survival(path::AbstractString,
+    calendar_years::AbstractVector{<:Integer})::Vector{Float64}
+    isfile(path) || error("Missing COTS external-survival CSV: $path")
+    table = CSV.read(path, DataFrame)
+    all(in(names(table)), ["year", "multiplier"]) ||
+        error("COTS external-survival CSV needs columns year, multiplier")
+    allunique(table.year) || error("Duplicate years in COTS external-survival CSV")
+    values = Dict(Int(r.year) => Float64(r.multiplier) for r in eachrow(table))
+    all(v -> isfinite(v) && v >= 0.0, Base.values(values)) ||
+        error("COTS external-survival multipliers must be finite and non-negative")
+    return [get(values, Int(y), 1.0) for y in calendar_years]
+end
+
 """Scale each location's pre-pelagic larval production (separated recruitment) by the
 timestep's survival multiplier, at the source, before dispersal."""
 function apply_cots_larval_survival!(cots_models::CotsState, multipliers::AbstractVector{<:Real})::Nothing
@@ -498,14 +519,50 @@ function load_cots_cull_removals(path::AbstractString, loc_ids::AbstractVector{<
     return requests
 end
 
+"""
+    reef_proportional_requests(cots_models, requests, stage, groups, areas) -> Vector{Float64}
+
+Opt-in reef-level cull allocation (`COTS_CULL_ALLOCATION=reef_proportional`;
+crash_mechanism_protocol.md, 2026-10-19). Each reef's requested count
+`R = sum(requests .* areas)` (COTS) is reassigned to its sites in proportion to the COTS
+present in `stage` (2 juveniles, 3 adults) times site area, as divers search the reef and
+cull where COTS are. Site requests become `R * N_s / sum(N .* areas)` (COTS ha^-1), so the
+reef total is fully removable whenever the reef holds at least `R`; otherwise every site is
+cleared. A reef with no COTS keeps zero requests (the total is unmet).
+"""
+function reef_proportional_requests(cots_models::CotsState, requests::AbstractVector{<:Real},
+    stage::Int, groups::AbstractVector{<:AbstractVector{Int}}, areas::AbstractVector{<:Real})::Vector{Float64}
+    stage in (2, 3) || throw(ArgumentError("stage must be 2 (juveniles) or 3 (adults)"))
+    length(requests) == length(areas) == length(cots_models) ||
+        throw(DimensionMismatch("cull requests, areas and locations must match"))
+    out = zeros(Float64, length(requests))
+    for sites in groups
+        total = sum(Float64(requests[s]) * areas[s] for s in sites)
+        total > 0.0 || continue
+        stock = sum(cots_models[s].N[stage] * areas[s] for s in sites)
+        stock > 0.0 || continue
+        for s in sites
+            out[s] = total * cots_models[s].N[stage] / stock
+        end
+    end
+    return out
+end
+
 """Apply one phase (`:pre` or `:post`) of the timestep's cull requests and log what was
-removed into `removed_log[tstep, k, :]` (same k layout as the requests)."""
+removed into `removed_log[tstep, k, :]` (same k layout as the requests). With `groups`
+and `areas`, requests are first reallocated within each reef (`reef_proportional_requests`)."""
 function apply_cots_cull!(cots_models::CotsState, requests::Array{Float64,3},
-    removed_log::Array{Float64,3}, tstep::Int, phase::Symbol)::Nothing
+    removed_log::Array{Float64,3}, tstep::Int, phase::Symbol;
+    groups=nothing, areas=nothing)::Nothing
     phase in (:pre, :post) || throw(ArgumentError("phase must be :pre or :post"))
     k = phase == :pre ? 1 : 3
-    juveniles, adults = COTSMod.apply_removals!(cots_models,
-        @view(requests[tstep, k, :]), @view(requests[tstep, k + 1, :]))
+    juvenile_requests, adult_requests = if isnothing(groups)
+        @view(requests[tstep, k, :]), @view(requests[tstep, k + 1, :])
+    else
+        reef_proportional_requests(cots_models, @view(requests[tstep, k, :]), 2, groups, areas),
+        reef_proportional_requests(cots_models, @view(requests[tstep, k + 1, :]), 3, groups, areas)
+    end
+    juveniles, adults = COTSMod.apply_removals!(cots_models, juvenile_requests, adult_requests)
     removed_log[tstep, k, :] .= juveniles
     removed_log[tstep, k + 1, :] .= adults
     return nothing

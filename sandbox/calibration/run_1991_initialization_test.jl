@@ -27,7 +27,7 @@ EXPERIMENT in ("initialization", "cohort_history", "gap_grazing",
     "initial_composition", "food_grace", "coral_calibration", "joint_coral",
     "mellin_coral", "bleaching_sensitivity", "cots_rebaseline", "composition_rebaseline",
     "initial_state_rebaseline", "local_retention", "bleaching_floor", "coral_refit",
-    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2") ||
+    "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2", "cull_place", "ext_chl_yr", "lizfast") ||
     error("Unknown 1991 experiment")
 """
 Insert the next per-date sequence number into an unnumbered run ID,
@@ -115,7 +115,7 @@ const MIGRATION = EXPERIMENT in ("unit_migration_q015", "unit_compat_k2", "secon
     "growth_starvation", "initial_composition", "food_grace", "coral_calibration",
     "joint_coral", "mellin_coral", "bleaching_sensitivity", "cots_rebaseline",
     "composition_rebaseline", "initial_state_rebaseline", "local_retention", "bleaching_floor",
-    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
+    "coral_refit", "lizard_coral", "coral_refit_v2", "initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "coral_thermal", "coral_spread", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2", "cull_place", "ext_chl_yr", "lizfast")
 # Preregistered first-wave initiation screen on the adopted v0.3 domain (2026-10-12):
 # external supply x5 and/or 1991 juvenile preload x5, crossed with none / A / P+A.
 const INITIATION = EXPERIMENT == "initiation"
@@ -198,7 +198,36 @@ const MELLIN = EXPERIMENT == "mellin_coral"
 const DOMAIN_VERSION = get(ENV, "OWEN_1991_DOMAIN_VERSION", "v0.3")
 DOMAIN_VERSION in ("v0.3", "v0.4") || error("OWEN_1991_DOMAIN_VERSION must be v0.3 or v0.4")
 const END_YEAR = DOMAIN_VERSION == "v0.4" ? 2026 : 2024
-const MELLIN_BACKGROUND_CSV = joinpath(ROOT, "sandbox", "data", "derived",
+# Projection to 2100 (2026-10-19, twenty-ninth round; protocol "Preregistered: projection design to 2100").
+# OWEN_1991_PROJECTION=true (experiment lizfast, domain v0.4, dataset corr_w3; default false) runs W-wave-lf04
+# from 1991 to PROJ_END with the projection input set v0.5 (build_projection_inputs.py) swapped into the
+# loaded v0.4 domain: per arm DHW (SSP x GCM), cyclone and chl environment replicate k, external supply
+# scenario and Mellin background to 2100. Arms carry _pj<ssp><gcm 2 digits><supply>_ after _lf04_; supply
+# W = wave_r<k>, M = mean, C = closed, R = repeat. 1991-2026 must replay run 20261019T_51 exactly.
+const PROJECTION = get(ENV, "OWEN_1991_EXPERIMENT", "") == "lizfast" && get(ENV, "OWEN_1991_PROJECTION", "false") == "true"
+const PROJ_DIR = joinpath(ROOT, "sandbox", "data", "derived", "projection_inputs_v0.5")
+const PROJ_END = 2100
+const PROJ_SSPS = split(get(ENV, "OWEN_1991_PROJ_SSPS", "245,585"), ",")
+const PROJ_GCMS = parse.(Int, split(get(ENV, "OWEN_1991_PROJ_GCMS", "1"), ","))
+const PROJ_SUPPLY = split(get(ENV, "OWEN_1991_PROJ_SUPPLY", "W,M,C"), ",")
+const PROJ_SEEDS = parse.(Int, split(get(ENV, "OWEN_1991_PROJ_SEEDS", "1,2,3,4,5"), ","))
+const PROJ_SUPPLY_DIRS = Dict("M" => "mean", "C" => "closed", "R" => "repeat")
+proj_parts(name) = (m = match(r"_pj(\d{3})g(\d{2})([WMCR])_", name); isnothing(m) ? nothing :
+    (ssp="ssp" * m.captures[1], gcm=parse(Int, m.captures[2]), supply=m.captures[3],
+     k=parse(Int, match(r"_s(\d+)_", name).captures[1])))
+proj_supply_dir(supply, k) = joinpath(PROJ_DIR, "supply",
+    supply == "W" ? "wave_r$(lpad(k, 2, '0'))" : PROJ_SUPPLY_DIRS[supply], "annual_forcing")
+if PROJECTION
+    DOMAIN_VERSION == "v0.4" || error("OWEN_1991_PROJECTION needs OWEN_1991_DOMAIN_VERSION=v0.4")
+    get(ENV, "OWEN_1991_COTS_DATASET", "") == "owen_global_2018_2023_corr_w3" ||
+        error("OWEN_1991_PROJECTION needs OWEN_1991_COTS_DATASET=owen_global_2018_2023_corr_w3")
+    isfile(joinpath(PROJ_DIR, "metadata.json")) || error("Missing projection input set $(PROJ_DIR)")
+    all(s -> s in ("119", "126", "245", "370", "585"), PROJ_SSPS) || error("Unknown SSP in OWEN_1991_PROJ_SSPS")
+    all(s -> s in ("W", "M", "C", "R"), PROJ_SUPPLY) || error("Unknown supply code in OWEN_1991_PROJ_SUPPLY")
+    all(k -> 1 <= k <= 10, PROJ_SEEDS) || error("OWEN_1991_PROJ_SEEDS must lie in 1-10 (built replicates)")
+end
+const MELLIN_BACKGROUND_CSV = PROJECTION ? joinpath(PROJ_DIR, "mellin", "background_mortality.csv") :
+    joinpath(ROOT, "sandbox", "data", "derived",
     "mellin_background_mortality_1991_$(END_YEAR)", "background_mortality.csv")
 mellin_arm_name(slow, fast, kappa) = "mellin_s$(pct3(slow))_f$(pct3(fast))_k$(pct3(kappa))"
 # Preregistered bleaching-response sensitivity (2026-10-13): CoralBlox growth untouched
@@ -315,14 +344,16 @@ const CANDIDATE_ARMS = (("cv2_pnd", 0.015), ("cv2_pick", 0.015), ("cv2_pnd", 0.0
 const CANDIDATE_SEEDS = ((20260930, 90972102), (20261101, 11101), (20261102, 22202),
     (20261103, 33303), (20261104, 44404))
 candidate_seed_pair(name) = CANDIDATE_SEEDS[parse(Int, match(r"_s(\d+)_", name).captures[1])]
+PROJECTION && !all(k -> k <= length(CANDIDATE_SEEDS), PROJ_SEEDS) &&
+    error("Projection seeds beyond $(length(CANDIDATE_SEEDS)) need new seed pairs in CANDIDATE_SEEDS")
 # Observed culling (2026-10-14, close-out C2): working configuration (cv2_pnd, q 0.015, seed
 # pair 1) x {no cull, observed cull with fuzzy site matching sigma 0 / 210 / 420 m}; arms
 # wc_b150_q20_eb_lin_obs015_s1_<cull>_cv2_pnd. The nocull arm replays the candidate W arm.
 const CULLING = EXPERIMENT == "culling"
 const CULL_DIR = joinpath(ROOT, "sandbox", "data", "derived", "cots_cull_removals_lizard_v0_3_v2")
 const CULL_ARMS = ("nocull", "cull000", "cull210", "cull420")
-cull_table(name) = (m = match(r"_cull(\d{3})_", name); isnothing(m) ? nothing :
-    joinpath(CULL_DIR, "removals_sigma$(m.captures[1]).csv"))
+cull_table(name) = occursin("_cullreef_", name) ? joinpath(CULL_DIR, "removals_sigma210.csv") :
+    (m = match(r"_cull(\d{3})_", name); isnothing(m) ? nothing : joinpath(CULL_DIR, "removals_sigma$(m.captures[1]).csv"))
 # Intermediate coral settings (2026-10-14, sixth round): working configuration (cv2_pnd, q 0.015,
 # seed pair 1) x chronic mu {0.03, 0.06, 0.09, 0.12} x bleaching multiplier below 4 DHW
 # {1, 0.5, 0.25}, plus the run-17 coral control; arms wc_b150_q20_eb_lin_obs015_s1_m<mu>_l<scale>_cv2_pnd
@@ -343,7 +374,7 @@ supply_window_spec(name) = (m = match(r"_sw(\d{4})_(\d{4})_x(\d{3})_", name);
 # seed pair 1; replay arm wc_b150_..._t40_chloff (old coral, beta 1.5, low-DHW threshold 4) and
 # new-coral arms wc_b100_..._t60_<chl> (beta 1, threshold 6) with chl in {chloff, mb15, mb30,
 # pb15, pb30} (COTS_LARVAL_SURVIVAL_CSV tables, build_larval_survival_index.py).
-const CHLSURV = EXPERIMENT in ("chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
+const CHLSURV = EXPERIMENT in ("chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2", "cull_place", "ext_chl_yr", "lizfast")
 # External multiplier x supply x chl factorial (2026-10-15, twelfth round): new coral; arms
 # wc_b100_..._t60_e<Ext x10>_<chl>_cv2_pnd with Ext in {1, 2.5, 5} and chl in {chloff, pb30}.
 const EXTCHL = EXPERIMENT in ("ext_chl", "ext_chl2")
@@ -370,7 +401,26 @@ const RECHECK_MU = 0.09
 const INITCULL = EXPERIMENT == "init_cull"
 const INITCULL_A_HALF = Dict("lin" => 0.0, "h10" => 10.0, "h30" => 30.0)
 const INITCULL_CULL = ("", "_cull210")
-const CULL_ON = EXPERIMENT in ("culling", "init_cull")
+# Cull placement (2026-10-19, twenty-third round): W-wave x {no cull, _cull210_ (site-matched), _cullreef_
+# (sigma-210 table, COTS_CULL_ALLOCATION=reef_proportional)}; no-cull arms replay the _wv025 arms of 20261019T_15.
+const CULLPLACE = EXPERIMENT == "cull_place"
+# Chl survival on external supply (2026-10-19, twenty-fourth round): W-wave x {off, _xchl_ =
+# COTS_EXTERNAL_SURVIVAL_CSV (build_external_chl_survival.py)}; off arms replay the _wv025 arms of 20261019T_15.
+const EXTCHLYR = EXPERIMENT == "ext_chl_yr"
+# Lizard 1991 fast-coral test (2026-10-19, twenty-eighth round): W-wave x Lizard fast-cover increment
+# {0, +0.02, +0.04} (absolute, habitable-area fraction; slow coral unchanged); arms carry _lf<pp>_. The
+# 0 arms replay the _wv025 arms of 20261019T_15.
+const LIZFAST = EXPERIMENT == "lizfast"
+# OWEN_1991_LIZFAST_DELTAS (2026-10-19, twenty-ninth round): comma list of increments; the default reproduces run 48.
+const LIZFAST_DELTAS = Tuple(parse.(Float64, split(get(ENV, "OWEN_1991_LIZFAST_DELTAS", "0.02,0.04"), ",")))
+all(d -> 0.0 < d <= 0.06 && isinteger(round(100 * d; digits=6)), LIZFAST_DELTAS) ||
+    error("OWEN_1991_LIZFAST_DELTAS must be whole percentage points in (0, 0.06]")
+lizfast_delta(name) = (m = match(r"_lf(\d{2})_", name); isnothing(m) ? 0.0 : parse(Int, m.captures[1]) / 100)
+const EXTCHLYR_TABLE = joinpath(ROOT, "sandbox", "data", "derived", "external_chl_survival_aprmak", "external_survival.csv")
+# OWEN_1991_SENS_CULL=true (2026-10-19, report figures with culling): every sens arm gets _cullreef_ (observed
+# culls, sigma-210 table, reef-proportional allocation). Default false keeps sens unchanged.
+const SENS_CULL = EXPERIMENT == "sens" && get(ENV, "OWEN_1991_SENS_CULL", "false") == "true"
+const CULL_ON = EXPERIMENT in ("culling", "init_cull", "cull_place") || SENS_CULL
 # Local vs external production diagnostic (2026-10-15, seventeenth round): W + h10 start, no cull, on
 # the face-value layer x Ext {5, 2.5} x local larval-output multiplier {1, 2, 3} on COTS_LARVAL_FECUNDITY
 # x five seed pairs; arms wc_b100_q20_eb_h10_obs015_s<k>_t60_e<50|25>[_f<200|300>]_aprmak_cv2_pnd. The
@@ -411,6 +461,11 @@ wave_table(name) = (m = match(r"_wv(\d{3})$", name); isnothing(m) ? nothing :
 # corr_w3 dataset, the q25 base arms replay run 20261016T_03.
 const SENS = EXPERIMENT == "sens"
 const SENS_Q = parse(Int, get(ENV, "OWEN_1991_SENS_Q", "20"))
+# OWEN_1991_SENS_WAVE=true (2026-10-19, report figures for W-wave): every sens arm gets the _wv025 suffix
+# (wave floor 0.25); base arms then replay the _wv025 arms of 20261019T_15. Default false keeps names.
+const SENS_WAVE = get(ENV, "OWEN_1991_SENS_WAVE", "false") == "true"
+const SENS_SUFFIX = SENS_WAVE ? "_wv025" : ""
+const SENS_CULLTOK = SENS_CULL ? "_cullreef" : ""
 const SENS_PARAMS = SENS_Q == 20 ? ("ext", "mu", "low", "chlb") : ("ext", "mu", "low", "chlb", "q")
 const SENS_FACTORS = (0.75, 1.25)
 sens_factor(name, p) = (m = match(Regex("_sx$(p)(\\d{3})_"), name); isnothing(m) ? 1.0 : parse(Int, m.captures[1]) / 100)
@@ -424,7 +479,7 @@ chl_table(name) = (m = match(r"_(chloff|mb15|mb30|pb15|pb30|amols|aprma|aprmak|a
     haskey(CHLFULL_FILES, m.captures[1]) ? joinpath(CHLFULL_DIR, "larval_survival_$(CHLFULL_FILES[m.captures[1]]).csv") :
     joinpath(CHLSURV_DIR, "larval_survival_$(m.captures[1]).csv"))
 chl_threshold(name) = parse(Int, match(r"_t(\d+)_", name).captures[1]) / 10
-const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2")
+const REBASE_SHARE = EXPERIMENT in ("initial_share", "timing", "candidates", "culling", "coral_mix", "supply_window", "chl_survival", "ext_chl", "ext_chl2", "recheck", "init_cull", "local_ext", "pit_q", "sens", "wave", "bank", "bank2", "cull_place", "ext_chl_yr", "lizfast")
 const SHARE_LEVELS_JSON = joinpath(ROOT, "sandbox", "data", "derived", "initial_fast_share_range", "share_levels.json")
 const SHARE_LEVEL_NAMES = ("min", "q25", "q50", "q75", "max")
 const CV2_MU = 0.12
@@ -622,13 +677,37 @@ scenario[!, :allee_threshold] .= 3.0
 all_years = Int.(domain.env_layer_md.timeframe)
 all_years == collect(1985:END_YEAR) || error("Unexpected historical years for $(DOMAIN_VERSION)")
 keep = findall(>=(1991), all_years)
-years = all_years[keep]
-domain.dhw_scens = ADRIA.DataCube(Float64.(Array(domain.dhw_scens)[keep, :, :]);
-    timesteps=years, sites=domain.loc_ids, scenarios=1:size(domain.dhw_scens, 3))
+years = PROJECTION ? collect(1991:PROJ_END) : all_years[keep]
+hist_dhw = Float64.(Array(domain.dhw_scens)[keep, :, :])
+hist_cyclones = Float64.(Array(domain.cyclone_mortality_scens)[keep, :, :, :])
+# Projection inputs (v0.5): DHW per (SSP, GCM) and cyclone mortality per environment replicate k, both
+# 1991-2100 and asserted equal to the v0.4 cubes in 1991-2026. The DHW cube keeps v0.4's scenario count.
+proj_dhw = PROJECTION ? let cubes = Dict{Tuple{String,Int},Any}()
+    for ssp in PROJ_SSPS
+        raw = ADRIA.YAXArrays.Cube(joinpath(PROJ_DIR, "dhw", "dhw_ssp$(ssp).nc"))
+        collect(raw.time) == collect(1985:PROJ_END) || error("Projection DHW years for ssp$(ssp)")
+        values = Float64.(Array(raw))
+        for g in PROJ_GCMS
+            series = values[findall(>=(1991), collect(raw.time)), :, g]
+            series[1:length(keep), :] == hist_dhw[:, :, 1] || error("Projection DHW ssp$(ssp) g$(g) differs from v0.4 before 2027")
+            cubes[("ssp$(ssp)", g)] = ADRIA.DataCube(repeat(series, 1, 1, size(hist_dhw, 3));
+                timesteps=years, sites=domain.loc_ids, scenarios=1:size(hist_dhw, 3))
+        end
+    end
+    cubes
+end : nothing
+proj_cyclone_base(k) = let
+    raw = Array(ADRIA.load_lizard_cyclone_mortality(joinpath(PROJ_DIR, "env", "cyclone_mortality_r$(lpad(k, 2, '0')).csv"),
+        domain.loc_ids, collect(1985:PROJ_END), ADRIA.functional_group_names()))[7:end, :, :, :]
+    raw[1:length(keep), :, :, :] == hist_cyclones || error("Projection cyclones r$(k) differ from v0.4 before 2027")
+    ADRIA.DataCube(raw; timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
+end
+domain.dhw_scens = PROJECTION ? proj_dhw[("ssp$(PROJ_SSPS[1])", PROJ_GCMS[1])] :
+    ADRIA.DataCube(hist_dhw; timesteps=years, sites=domain.loc_ids, scenarios=1:size(domain.dhw_scens, 3))
 domain.wave_scens = ADRIA.ZeroDataCube(; T=Float64, timesteps=years,
     locs=domain.loc_ids, scenarios=[1])
 # Package-declared cyclone mortality (v0.3), sliced to the run window.
-domain_cyclones = ADRIA.DataCube(Float64.(Array(domain.cyclone_mortality_scens)[keep, :, :, :]);
+domain_cyclones = PROJECTION ? proj_cyclone_base(PROJ_SEEDS[1]) : ADRIA.DataCube(hist_cyclones;
     timesteps=years, locs=domain.loc_ids,
     species=ADRIA.functional_group_names(), scenarios=[1])
 domain.cyclone_mortality_scens = ADRIA.ZeroDataCube(; T=Float64,
@@ -743,6 +822,22 @@ REBASE_LIZCORAL && !all(cube -> all(0.0 .<= Array(cube) .<= 1.0), values(lizcora
 cv2_cyclones = REBASE_SHARE ? ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - CV2_MU);
     timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1]) : nothing
 REBASE_SHARE && !all(0.0 .<= Array(cv2_cyclones) .<= 1.0) && error("cv2 mortality outside [0, 1]")
+# Projection: the cv2 expression (Mellin kappa 5, then chronic mu) on environment replicate k's cyclones.
+proj_cv2_cyclones(base) = let
+    mel = 1.0 .- (1.0 .- Array(base)) .^ REBASE_KAPPA .* (1.0 .- reshape(background,
+        size(background, 1), size(background, 2), 1, 1))
+    cube = ADRIA.DataCube(1.0 .- (1.0 .- mel) .* (1.0 - CV2_MU);
+        timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
+    all(0.0 .<= Array(cube) .<= 1.0) || error("Projection cv2 mortality outside [0, 1]")
+    cube
+end
+with_cots_forcing(d, forcing) = ADRIA.LizardDomain((n == :cots_forcing ? forcing : getfield(d, n)
+    for n in fieldnames(ADRIA.LizardDomain))...)
+proj_cv2_cache = Dict{Int,Any}()
+proj_forcing_cache = Dict{Tuple{String,Int},Any}()
+base_cots_forcing = domain.cots_forcing
+PROJECTION && (Array(proj_cv2_cyclones(domain_cyclones)) == Array(cv2_cyclones) ||
+    error("Projection cv2 expression does not reproduce cv2_cyclones"))
 # Same expression as cv2 / run 17 ("wc"), with mu varied.
 coralmix_cyclones = CORALMIX || CANDIDATES || RECHECK || SENS ? Dict(mu => ADRIA.DataCube(1.0 .- (1.0 .- Array(mellin_cyclones[REBASE_KAPPA])) .* (1.0 - mu);
     timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
@@ -959,13 +1054,29 @@ treatments = EXPERIMENT == "initialization" ? [
     # Numerical diagnostic: archived control with a_F moved by one Float64 ulp.
     (name="ulp_perturbed_control", alpha=0.015, coral="inherited_2023", initial="cohort_full"),
 ] : SENS ? [
-    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50$(SENS_CULLTOK)_aprmak_cv2_pnd$(SENS_SUFFIX)", alpha=0.015,
         coral="observed_composition", initial="cohort_full") for k in eachindex(CANDIDATE_SEEDS)];
-    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_sx$(par)$(pct3(f))_aprmak_cv2_pnd", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50$(SENS_CULLTOK)_sx$(par)$(pct3(f))_aprmak_cv2_pnd$(SENS_SUFFIX)", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
      for par in SENS_PARAMS for f in SENS_FACTORS for k in eachindex(CANDIDATE_SEEDS)];
-    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50_aprmak_cv2_pnd_sh$(pct3(f))", alpha=0.015,
+    [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50$(SENS_CULLTOK)_aprmak_cv2_pnd_sh$(pct3(f))$(SENS_SUFFIX)", alpha=0.015,
         coral="observed_composition", initial="cohort_full") for f in SENS_FACTORS for k in eachindex(CANDIDATE_SEEDS)]
+] : PROJECTION ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50_lf04_pj$(ssp)g$(lpad(g, 2, '0'))$(sup)_aprmak_cv2_pnd_wv025",
+        alpha=0.015, coral="observed_composition", initial="cohort_full")
+    for ssp in PROJ_SSPS for g in PROJ_GCMS for sup in PROJ_SUPPLY for k in PROJ_SEEDS
+] : LIZFAST ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50$(d == 0 ? "" : "_lf$(lpad(round(Int, 100 * d), 2, '0'))")_aprmak_cv2_pnd_wv025",
+        alpha=0.015, coral="observed_composition", initial="cohort_full")
+    for d in (0.0, LIZFAST_DELTAS...) for k in eachindex(CANDIDATE_SEEDS)
+] : EXTCHLYR ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50$(x)_aprmak_cv2_pnd_wv025", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for x in ("", "_xchl") for k in eachindex(CANDIDATE_SEEDS)
+] : CULLPLACE ? [
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50$(c)_aprmak_cv2_pnd_wv025", alpha=0.015,
+        coral="observed_composition", initial="cohort_full")
+    for c in ("", "_cull210", "_cullreef") for k in eachindex(CANDIDATE_SEEDS)
 ] : BANK || BANK2 ? [
     (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50$(jb)_aprmak_cv2_pnd$(wv)", alpha=0.015,
         coral="observed_composition", initial="cohort_full")
@@ -1171,7 +1282,7 @@ initial_paths = EXPERIMENT == "initialization" ? Dict(
     "idw_alpha150_cohort_full" => make_initial_state(0.150, "alpha150_cohort_full"; cohort_multiplier=1.0),
 ) : EXPERIMENT == "ulp_noise_floor" ? Dict(
     "ulp_perturbed_control" => make_initial_state(0.015, "alpha015_cohort_full"; cohort_multiplier=1.0)
-) : INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? let
+) : INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || LIZFAST ? let
     # lin reproduces the recheck state file (same name and inversion).
     states = Dict(inv => make_initial_state(0.015, "alpha015_cohort_full_eb_$(inv)"; cohort_multiplier=1.0,
             cpue=eb_surface, a_half=a_half) for (inv, a_half) in INITCULL_A_HALF)
@@ -1490,7 +1601,7 @@ for t in run_treatments
     external_multiplier = COLLAPSE || GROWTH || COMPOSITION || GRACE || CORAL || JOINT || MELLIN || BLEACH || REBASE ||
         (V3RUN && (startswith(t.name, "ext5") || startswith(t.name, "both"))) ?
         EXTERNAL_MULTIPLIER : 1.0
-    (EXTCHL || RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2) && (external_multiplier = parse(Int, match(r"_e(\d+)_", t.name).captures[1]) / 10)
+    (EXTCHL || RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || LIZFAST) && (external_multiplier = parse(Int, match(r"_e(\d+)_", t.name).captures[1]) / 10)
     SENS && (external_multiplier *= sens_factor(t.name, "ext"))
     predation_capacity = COMPOSITION ? composition_arm_q(t.name) :
         REBASE ? parse(Float64, match(r"_q(\d+)", t.name).captures[1]) :
@@ -1566,7 +1677,7 @@ for t in run_treatments
     if SENS && sens_factor(t.name, "low") != 1.0
         ENV["ADRIA_BLEACHING_LOW_DHW_SCALE"] = string(CV2_LOW_DHW_SCALE * sens_factor(t.name, "low"))
     end
-    if (WAVE || BANK || BANK2) && !isnothing(wave_table(t.name))
+    if (WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || SENS || LIZFAST) && !isnothing(wave_table(t.name))
         ENV["COTS_SETTLEMENT_MODIFIER_CSV"] = wave_table(t.name)
     else
         delete!(ENV, "COTS_SETTLEMENT_MODIFIER_CSV")
@@ -1581,6 +1692,36 @@ for t in run_treatments
     else
         delete!(ENV, "COTS_CULL_REMOVALS_CSV")
     end
+    if EXTCHLYR && occursin("_xchl_", t.name)
+        ENV["COTS_EXTERNAL_SURVIVAL_CSV"] = EXTCHLYR_TABLE
+    else
+        delete!(ENV, "COTS_EXTERNAL_SURVIVAL_CSV")
+    end
+    if CULL_ON && occursin("_cullreef_", t.name)
+        ENV["COTS_CULL_ALLOCATION"] = "reef_proportional"
+    else
+        delete!(ENV, "COTS_CULL_ALLOCATION")
+    end
+    if PROJECTION
+        # Projection inputs for this arm (protocol, "Preregistered: projection design to 2100").
+        pj = proj_parts(t.name)
+        isnothing(pj) && error("Projection arm lacks a _pj token: $(t.name)")
+        domain.dhw_scens = proj_dhw[(pj.ssp, pj.gcm)]
+        domain.cyclone_mortality_scens = get!(proj_cv2_cache, pj.k) do
+            proj_cv2_cyclones(proj_cyclone_base(pj.k))
+        end
+        ENV["COTS_LARVAL_SURVIVAL_CSV"] = joinpath(PROJ_DIR, "env", "larval_survival_r$(lpad(pj.k, 2, '0')).csv")
+        # cots_forcing is a const field: rebuild the domain object around the projection forcing.
+        global domain = with_cots_forcing(domain, get!(proj_forcing_cache, (pj.supply, pj.k)) do
+            f = ADRIA.load_cots_connectivity_forcing(proj_supply_dir(pj.supply, pj.k), domain.loc_ids)
+            # The adapter returns zero external supply for a missing year: require full coverage.
+            f.outbreak_years == collect(1991:PROJ_END) || error("Projection supply $(pj.supply) does not cover 1991-$(PROJ_END)")
+            f.external_outbreak_potential[:, 1:36, :] == base_cots_forcing.external_outbreak_potential[:, 1:36, :] &&
+                f.external_outbreak_pelagic[:, 1:36, :] == base_cots_forcing.external_outbreak_pelagic[:, 1:36, :] ||
+                error("Projection supply $(pj.supply) differs from corr_w3 before 2027")
+            f
+        end)
+    end
     scenario[!, :m3] .= EXPERIMENT == "crash_factorial" &&
         occursin("mortality030", t.name) ? 0.30 : archived_m3
     push!(setup_marks, ("env_scenario_cols", time()))
@@ -1594,6 +1735,19 @@ for t in run_treatments
          composition.cover) : baseline_cover
     if TROUGH && startswith(t.name, "bgeo")
         initial_cover = initial_cover .* reshape(Float64.(.!geomorphic_k.zero), 1, :)
+    end
+    if LIZFAST && lizfast_delta(t.name) > 0.0
+        # Raise 1991 fast cover at every Lizard site by delta (absolute), scaling the fast classes; slow unchanged.
+        delta = lizfast_delta(t.name)
+        labels = String.(collect(domain.init_coral_cover.species))
+        fast_rows = [any(startswith(label, g * "_") for g in FAST_GROUP_NAMES) for label in labels]
+        initial_cover = copy(initial_cover)
+        for site in mapping["Lizard Island Reef"].indices
+            fast = sum(initial_cover[fast_rows, site])
+            fast > 0.0 || error("Lizard site $(site) has no fast coral to scale")
+            initial_cover[fast_rows, site] .*= (fast + delta) / fast
+            sum(initial_cover[:, site]) <= 1.0 || error("Lizard site $(site) cover exceeds 1 after the fast increment")
+        end
     end
     if BENTHIC_CYCLONE && (startswith(t.name, "ktotal") || startswith(t.name, "kmapped"))
         # Sites the benthic map gives k = 0 (floored for ADRIA) start with no coral.
@@ -1697,7 +1851,18 @@ for t in run_treatments
             requested = isnothing(cull_table(t.name)) ? zeros(size(removed)) :
                 ADRIA.load_cots_cull_removals(cull_table(t.name), domain.loc_ids, years)
             size(requested) == size(removed) || error("Cull request and log dimensions differ")
-            all(removed .<= requested .+ 1e-9) || error("Applied removals exceed requests")
+            if get(ENV, "COTS_CULL_ALLOCATION", "site") == "reef_proportional"
+                # Reef allocation moves removals between a reef's sites; check reef totals.
+                reef_ids = string.(domain.loc_data.GBRMPA_ID)
+                for r in unique(reef_ids), idx in axes(removed, 1), kk in 1:4
+                    sites_r = findall(==(r), reef_ids)
+                    a_r = cull_site_area_ha[sites_r]
+                    sum(removed[idx, kk, sites_r] .* a_r) <= sum(requested[idx, kk, sites_r] .* a_r) * (1 + 1e-9) + 1e-9 ||
+                        error("Applied removals exceed reef requests")
+                end
+            else
+                all(removed .<= requested .+ 1e-9) || error("Applied removals exceed requests")
+            end
             scopes = [("domain", collect(eachindex(domain.loc_ids)));
                       [(target.model, mapping[target.model].indices) for target in TARGETS]]
             for (scope, sites) in scopes, (idx, year) in enumerate(years)
@@ -1883,6 +2048,8 @@ delete!(ENV, "COTS_DIAGNOSTIC_GRAZING_OFF_END_YEAR")
 delete!(ENV, "COTS_LAGGED_ADULT_HAZARD")
 delete!(ENV, "COTS_SETTLEMENT_MODIFIER_CSV")
 delete!(ENV, "COTS_JUVENILE_STARVATION_BANK")
+delete!(ENV, "COTS_CULL_ALLOCATION")
+delete!(ENV, "COTS_EXTERNAL_SURVIVAL_CSV")
 delete!(ENV, "COTS_HAZARD_FOOD_COUPLED")
 delete!(ENV, "COTS_HAZARD_MAX")
 delete!(ENV, "ADRIA_RNG_SEED")
@@ -2076,8 +2243,8 @@ metadata = Dict(
     ) : "not tested",
     "chl_survival_screen" => CHLSURV ? Dict(
         "switch" => "COTS_LARVAL_SURVIVAL_CSV (unset = established path); multiplier on site larval production before dispersal",
-        "tables" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ?
-            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in (INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? ("aprmak",) : ("aprmak", "aprma"))) :
+        "tables" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || LIZFAST ?
+            Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in (INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || LIZFAST ? ("aprmak",) : ("aprmak", "aprma"))) :
             EXPERIMENT == "ext_chl2" ?
             Dict(v => Dict("path" => chl_table("_$(v)_cv2_"), "sha256" => file_sha256(chl_table("_$(v)_cv2_"))) for v in EXTCHL_VARIANTS if v != "chloff") :
             Dict(v => Dict("path" => joinpath(CHLSURV_DIR, "larval_survival_$(v).csv"),
@@ -2088,12 +2255,41 @@ metadata = Dict(
             "parameters" => Dict("ext" => "external multiplier 5 x f", "mu" => "chronic coral mortality $(CV2_MU) x f",
                 "low" => "low-DHW bleaching scale $(CV2_LOW_DHW_SCALE) x f", "chlb" => "chl slope b 3 x f (tables $(SENS_CHL_DIRS))",
                 "sh" => "initial fast shares (pnd set) x f, capped at $(SHARE_CAP)"),
-            "factors" => collect(SENS_FACTORS), "base_Q" => SENS_Q,
+            "factors" => collect(SENS_FACTORS), "base_Q" => SENS_Q, "wave_suffix" => SENS_SUFFIX, "cull_token" => SENS_CULLTOK,
             "Q" => SENS_Q == 20 ? "covered by 20261016T_02 (q15 / q25)" : "Q $(SENS_Q) x f (_sxq<f>_)",
             "chl_tables_sha256" => Dict(string(f) => file_sha256(joinpath(ROOT, "sandbox", "data", "derived", d, "larval_survival_ap_rma_k.csv"))
                 for (f, d) in SENS_CHL_DIRS),
             "replay" => SENS_Q == 20 ? "base arms must replay the q20 arms of 20261016T_02_pit_q_w2_1991_v1" :
                 "base arms must replay the q$(SENS_Q) arms of the pit_q run on the same COTS dataset (corr_w3: 20261016T_03_pit_q_w3_1991_v1)",
+        ) : "not tested",
+        "lizfast" => LIZFAST ? Dict(
+            "change" => "1991 fast cover (tabular/corymbose Acropora, corymbose non-Acropora) at every Lizard Island Reef site raised by delta (absolute habitable-area fraction); slow unchanged",
+            "deltas" => collect(LIZFAST_DELTAS), "base" => "W-wave (_wv025), culling off",
+            "replay" => "0 arms must replay the _wv025 arms of 20261019T_15_wave_w3_q25_1991_v1",
+        ) : "not tested",
+        "projection" => PROJECTION ? Dict(
+            "protocol" => "crash_mechanism_protocol.md, Preregistered: projection design to 2100 (2026-10-19)",
+            "years" => [1991, PROJ_END], "input_set" => PROJ_DIR,
+            "input_set_metadata_sha256" => file_sha256(joinpath(PROJ_DIR, "metadata.json")),
+            "ssps" => collect(PROJ_SSPS), "gcm_indices" => PROJ_GCMS, "supply" => collect(PROJ_SUPPLY), "seeds" => PROJ_SEEDS,
+            "gcm_names" => let s = CSV.read(joinpath(PROJ_DIR, "dhw", "dhw_scenarios.csv"), DataFrame)
+                Dict("ssp$(x)_g$(g)" => only(s[(s.ssp .== "ssp$(x)") .& (s.scenario .== g), :gcm]) for x in PROJ_SSPS for g in PROJ_GCMS)
+            end,
+            "per_arm" => "_pj<ssp><gcm><supply>_: DHW dhw_ssp<ssp>.nc scenario <gcm>; cyclones and chl env replicate k = seed; " *
+                "supply W = wave_r<k>, M = mean, C = closed, R = repeat; Mellin background 2027+ = expected loss",
+            "replay" => "1991-2026 must equal the _lf04_ arms of 20261019T_51_lizfast_power_1991_v1 exactly",
+        ) : "not run",
+        "ext_chl_yr" => EXTCHLYR ? Dict(
+            "switch" => "COTS_EXTERNAL_SURVIVAL_CSV on _xchl_ arms: external pelagic supply x year multiplier (area-weighted domain mean of aprmak)",
+            "table" => EXTCHLYR_TABLE, "table_sha256" => file_sha256(EXTCHLYR_TABLE),
+            "base" => "W-wave (W-next + _wv025); culling off",
+            "replay" => "off arms must replay the _wv025 arms of 20261019T_15_wave_w3_q25_1991_v1",
+        ) : "not tested",
+        "cull_place" => CULLPLACE ? Dict(
+            "base" => "W-wave: W-next (Q 25, h10, Ext x5, corr_w3) + wave floor 0.25 (_wv025)",
+            "placement" => "_cull210_: site-matched sigma 210 m (COTS_CULL_ALLOCATION unset = site); _cullreef_: same table, COTS_CULL_ALLOCATION=reef_proportional",
+            "table_sha256" => file_sha256(cull_table("_cull210_")),
+            "replay" => "no-cull arms must replay the _wv025 arms of 20261019T_15_wave_w3_q25_1991_v1",
         ) : "not tested",
         "bank2" => BANK2 ? Dict(
             "switch" => "COTS_JUVENILE_STARVATION_BANK=true on _sb_ arms (COTSMod starvation_bank; pit and gradual Allee kept)",
@@ -2143,7 +2339,7 @@ metadata = Dict(
             "chl_index_metadata_sha256" => file_sha256(joinpath(dirname(CHLK_TABLE), "metadata.json")),
             "replay" => "wc_b100_q20_eb_lin_obs015_s1_t60_e50_aprma_cv2_pnd must replay the same arm of 20261015T_22 / _23 (same COTS dataset)",
         ) : "not tested",
-        "external_multiplier" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 ? "per arm _e<Ext x10>_ (x5)" : EXTCHL ? "per arm _e<Ext x10>_ in $(collect(EXTCHL_EXT)) (overrides x$(EXTERNAL_MULTIPLIER))" : "x$(EXTERNAL_MULTIPLIER)",
+        "external_multiplier" => RECHECK || INITCULL || LOCALEXT || PITQ || SENS || WAVE || BANK || BANK2 || CULLPLACE || EXTCHLYR || LIZFAST ? "per arm _e<Ext x10>_ (x5)" : EXTCHL ? "per arm _e<Ext x10>_ in $(collect(EXTCHL_EXT)) (overrides x$(EXTERNAL_MULTIPLIER))" : "x$(EXTERNAL_MULTIPLIER)",
         "replay" => "wc_b150_..._t40_chloff_cv2_pnd must replay the v0.4 smoke run of the same COTS dataset (20261015T_06 / _07)",
         "cots_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "ecosystem", "cots.jl")),
         "scenario_jl_sha256" => file_sha256(joinpath(ROOT, "ADRIA", "src", "scenario.jl")),

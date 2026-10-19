@@ -8,7 +8,11 @@ A_half = 0 is the frozen linear model and is scored exactly as the runner does
 (fixed_observation_scale = q on adults), so it must reproduce the stored losses.
 Simulations are not rerun; only the observation mapping changes.
 
-Usage: julia --project=sandbox rescore_detectability.jl [--q=<q>] <output_dir> <run_dir>:<arm,arm,...> ...
+Usage: julia --project=sandbox rescore_detectability.jl [--q=<q>] [--power=<a>,<b>[;<a>,<b>]] <output_dir> <run_dir>:<arm,arm,...> ...
+
+`--power` (protocol 2026-10-19, twenty-ninth round) replaces the saturating A_half grid with power-law forms
+CPUE = a * A^b (A adults/ha). The linear control (A_half = 0, q) is kept; the k-th power form is stored with
+`a_half = -k` and described in the `obs_form` column, so the G2' evaluator groups it unchanged.
 
 `--q` replaces the frozen q = 0.015 (e.g. the Pratchett 2005 paired fits, 2026-10-14); the
 exact-replay check of the A_half = 0 control then does not apply and is recorded as such.
@@ -39,7 +43,14 @@ const Q = let flag = filter(a -> startswith(a, "--q="), ARGS)
     isempty(flag) ? Q_FROZEN : parse(Float64, split(only(flag), "=")[2])
 end
 0.0 < Q < 1.0 || error("q must lie in (0, 1)")
-const A_HALF = (0.0, 1.0, 3.0, 10.0, 30.0)
+const POWER = let flag = filter(a -> startswith(a, "--power="), ARGS)
+    isempty(flag) ? Tuple{Float64,Float64}[] :
+        [Tuple(parse.(Float64, split(f, ","))) for f in split(split(only(flag), "=")[2], ";")]
+end
+all(((a, b),) -> a > 0.0 && b > 0.0, POWER) || error("--power needs positive a and b")
+const A_HALF = isempty(POWER) ? (0.0, 1.0, 3.0, 10.0, 30.0) : (0.0, (-Float64(k) for k in eachindex(POWER))...)
+obs_form(a_half) = a_half == 0.0 ? "linear q=$(Q)" : a_half < 0.0 ?
+    (p = POWER[round(Int, -a_half)]; "power a=$(p[1]) b=$(p[2])") : "saturating A_half=$(a_half)"
 const OBS = joinpath(ROOT, "sandbox", "data", "reef_cots.csv")
 const DIVER_TARGETS = joinpath(ROOT, "sandbox", "data", "derived", "density_targets_2020s", "targets_reef_year.csv")
 const DIVER = if isfile(DIVER_TARGETS)
@@ -56,17 +67,18 @@ const TARGETS = Dict("Lizard Island Reef" => "Lizard Isles",
     "Eyrie Reef" => "Eyrie Reef")
 
 detected_cpue(adults, a_half) = a_half == 0.0 ? Q .* adults :
+    a_half < 0.0 ? POWER[round(Int, -a_half)][1] .* adults .^ POWER[round(Int, -a_half)][2] :
     Q .* adults .* adults ./ (adults .+ a_half)
 
 function main(args)
-    args = filter(a -> !startswith(a, "--q="), args)
+    args = filter(a -> !startswith(a, "--q=") && !startswith(a, "--power="), args)
     length(args) >= 2 || error("Usage: rescore_detectability.jl <output_dir> <run_dir>:<arms> ...")
     out = abspath(args[1])
     isfile(joinpath(out, "detectability_scores.csv")) && error("Refusing to overwrite $out")
     mkpath(out)
     raw_obs = CSV.read(OBS, DataFrame)
     scores = DataFrame(run=String[], treatment=String[], reef_name=String[],
-        observation_treatment=String[], a_half=Float64[],
+        observation_treatment=String[], a_half=Float64[], obs_form=String[],
         loss=Float64[], stored_frozen_loss=Float64[], sim_peak_years=String[],
         sim_peak_heights_cpue=String[], matched_peaks=Int[], obs_peak_years=String[],
         peak_count_penalty=Float64[], loss_v2=Float64[], score_v2_primary=Bool[],
@@ -118,7 +130,7 @@ function main(args)
                     obs_years[keep19], obs19[treatment]; fixed_observation_scale=scale)
                 v2_19 = score_v2_loss(reef, score19.total_loss, score19.peak_count_penalty,
                     score19.sim_peak_years, score19.obs_peak_years)
-                push!(scores, (basename(run_dir), arm, reef, treatment, a_half, score.total_loss, only(frozen),
+                push!(scores, (basename(run_dir), arm, reef, treatment, a_half, obs_form(a_half), score.total_loss, only(frozen),
                     join(score.sim_peak_years, ';'), join(round.([p.value for p in peaks]; digits=5), ';'),
                     score.n_matched_peaks, join(score.obs_peak_years, ';'), score.peak_count_penalty,
                     score_v2_loss(reef, score.total_loss, score.peak_count_penalty,
@@ -140,7 +152,9 @@ function main(args)
     CSV.write(joinpath(out, "detectability_series.csv"), series)
     metadata = Dict(
         "status" => "observation_sensitivity_not_promoted",
-        "observation_model" => "CPUE = q * A * A / (A + A_half); A_half = 0 is the frozen linear model",
+        "observation_model" => isempty(POWER) ? "CPUE = q * A * A / (A + A_half); A_half = 0 is the frozen linear model" :
+            "power forms CPUE = a * A^b stored as a_half = -k (obs_form column); A_half = 0 is the frozen linear model",
+        "power_forms_a_b" => [collect(p) for p in POWER],
         "score_v2" => "loss_v2 / score_v2_primary columns (crash_mechanism_protocol.md, frozen score v2, 2026-10-14)",
         "q_cots_tow_per_adult_ha" => Q, "a_half_adults_ha" => collect(A_HALF),
         "control_max_abs_loss_delta" => Q == Q_FROZEN ? replay : "not applicable (q override $(Q))",

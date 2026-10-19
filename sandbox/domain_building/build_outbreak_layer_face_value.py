@@ -18,7 +18,10 @@ Inputs: sandbox/data/gbrPredsAdj_20262408.csv + gbrPreds2026Adj_20262408.csv (or
 sandbox/data/derived/outbreak_layer_corrected_2018_2026/gbrPredsCorrected_1991_2026.csv.
 Output (licensed inputs, git-ignored): sandbox/data/derived/outbreak_layer_face_value_x5_2018_2026/.
 
-    python build_outbreak_layer_face_value.py [--ext 5] [--weight 1] [--output <dir>]
+--corrected (added 2026-10-19, twenty-fifth round) selects the corrected layer CSV (default: the binary
+layer above; e.g. the graded layer from build_corrected_outbreak_layer.py --graded).
+
+    python build_outbreak_layer_face_value.py [--ext 5] [--weight 1] [--corrected <csv>] [--output <dir>]
 """
 
 from __future__ import annotations
@@ -46,13 +49,13 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def main(ext: float, out: Path, weight: float = 1.0) -> None:
+def main(ext: float, out: Path, weight: float = 1.0, corrected: Path = CORRECTED) -> None:
     if not 0.0 <= weight <= ext:
         raise ValueError("weight must lie in [0, ext]")
     if out.exists():
         raise FileExistsError(f"Refusing to overwrite {out}")
     orig = pd.concat([pd.read_csv(p)[["year", "reefName", "outbrProb", "x", "y"]] for p in ORIGINAL], ignore_index=True)
-    corr = pd.read_csv(CORRECTED)[["year", "reefName", "outbrProb"]]
+    corr = pd.read_csv(corrected)[["year", "reefName", "outbrProb"]]
     for name, d in (("original", orig), ("corrected", corr)):
         if d.duplicated(["year", "reefName"]).any():
             raise ValueError(f"Duplicate reef-years in the {name} layer")
@@ -73,7 +76,7 @@ def main(ext: float, out: Path, weight: float = 1.0) -> None:
     meta = {"status": "derived_input_not_promoted", "ext": ext, "weight": weight,
             "formula": "P* = P_orig + weight (P_corr - P_orig) / ext",
             "gbr_mean_probability_by_year": json.loads(summary.round(4).to_json(orient="index")),
-            "inputs": {str(p.relative_to(ROOT)): sha256(p) for p in [*ORIGINAL, CORRECTED]},
+            "inputs": {str(p.relative_to(ROOT)): sha256(p) for p in [*ORIGINAL, corrected]},
             "script_sha256": sha256(Path(__file__)), "outputs": {path.name: sha256(path)}}
     (out / "metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(summary.round(4).to_string())
@@ -84,5 +87,6 @@ if __name__ == "__main__":
     parser.add_argument("--ext", type=float, default=5.0)
     parser.add_argument("--weight", type=float, default=1.0)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--corrected", type=Path, default=CORRECTED)
     a = parser.parse_args()
-    main(a.ext, a.output.resolve(), a.weight)
+    main(a.ext, a.output.resolve(), a.weight, a.corrected.resolve())

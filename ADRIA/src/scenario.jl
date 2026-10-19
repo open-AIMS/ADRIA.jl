@@ -1479,12 +1479,29 @@ function run_model(
         cots_separated_recruitment || error("COTS_SETTLEMENT_MODIFIER_CSV requires COTS_SEPARATED_RECRUITMENT=true")
         load_cots_settlement_modifier(cots_settlement_modifier_csv, domain.loc_ids)
     end
+    # Opt-in year-specific survival multiplier on external pelagic supply (regional chl proxy).
+    # Unset = established path.
+    cots_external_survival_csv = get(ENV, "COTS_EXTERNAL_SURVIVAL_CSV", "")
+    cots_external_survival = isempty(cots_external_survival_csv) ? nothing :
+        load_cots_external_survival(cots_external_survival_csv, cots_calendar_years)
     cots_cull_csv = get(ENV, "COTS_CULL_REMOVALS_CSV", "")
     cots_cull = if isempty(cots_cull_csv)
         nothing
     else
         cots_enabled || error("COTS_CULL_REMOVALS_CSV requires ADRIA_COTS_ENABLED=true")
         load_cots_cull_removals(cots_cull_csv, domain.loc_ids, cots_calendar_years)
+    end
+    # Cull allocation: "site" (default) applies the table's site requests; "reef_proportional"
+    # pools each reef's requested count and allocates it to the reef's sites by COTS present.
+    cots_cull_allocation = get(ENV, "COTS_CULL_ALLOCATION", "site")
+    cots_cull_allocation in ("site", "reef_proportional") ||
+        error("COTS_CULL_ALLOCATION must be site or reef_proportional")
+    cots_cull_groups, cots_cull_areas = if cots_cull_allocation == "reef_proportional"
+        isnothing(cots_cull) && error("COTS_CULL_ALLOCATION=reef_proportional requires COTS_CULL_REMOVALS_CSV")
+        reef_ids = string.(domain.loc_data.GBRMPA_ID)
+        [findall(==(r), reef_ids) for r in unique(reef_ids)], Float64.(domain.loc_data.area)
+    else
+        nothing, nothing
     end
     cots_external_outbreak_production > 0.0 &&
         !any(in(cots_forcing.outbreak_years), cots_calendar_years) && error(
@@ -2229,11 +2246,13 @@ function run_model(
         end
 
         # COTS predation mortality (operates on relative cover)
-        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :pre)
+        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :pre;
+            groups=cots_cull_groups, areas=cots_cull_areas)
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
-        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post)
+        isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post;
+            groups=cots_cull_groups, areas=cots_cull_areas)
         if !isnothing(cots_larval_survival)
             apply_cots_larval_survival!(cots_models, @view(cots_larval_survival[tstep, :]))
             Ycots_larval_survival[tstep, :] .= @view(cots_larval_survival[tstep, :])
@@ -2303,6 +2322,9 @@ function run_model(
                 pelagic_supply .*= supply_factor
             end
             !cots_apply_larval_survival && (pelagic_supply = potential_supply)
+            # Not in place: pelagic_supply may alias potential_supply.
+            isnothing(cots_external_survival) ||
+                (pelagic_supply = pelagic_supply .* cots_external_survival[tstep])
             apply_external_larval_supply!(
                 cots_models, potential_supply, pelagic_supply
             )

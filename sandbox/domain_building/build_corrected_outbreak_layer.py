@@ -18,7 +18,12 @@ inverse-distance weighting within R_KM, shrunk toward zero:
 so a single observation at distance R contributes half its residual and reefs beyond R are
 unchanged. Corrected p = clamp(p + r_hat, 0, 1). Years before 2018 are copied unchanged.
 
-    python build_corrected_outbreak_layer.py [--output <dir>]
+--graded (lead's decision, 2026-10-19, twenty-fifth round; default off reproduces the binary layer)
+replaces the binary indicator by I = min(1, D / 15), with D the SALAD density where surveyed, else
+the cull catch converted by the SALAD anchor D = 7.874 x CPUE^0.549 (>= 2 h bottom time). Build-up
+reefs (1-15 COTS/ha) then count in proportion instead of as zero.
+
+    python build_corrected_outbreak_layer.py [--output <dir>] [--graded]
 """
 
 from __future__ import annotations
@@ -69,7 +74,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return 2 * 6371.0 * np.arcsin(np.sqrt(a))
 
 
-def main(out: Path) -> None:
+def main(out: Path, graded: bool = False) -> None:
     if out.exists():
         raise FileExistsError(f"Refusing to overwrite {out}")
     preds = pd.concat([pd.read_csv(PREDS), pd.read_csv(PREDS_2026)[["year", "reefName", "outbrProb", "x", "y"]]],
@@ -87,14 +92,18 @@ def main(out: Path) -> None:
          .reset_index().rename(columns={"ReefLabel": "reef_id", "report_year": "year"}))
     c = c[c.hours >= MIN_HOURS]
     c["cpue_hr"] = c.culled / c.hours
-    c["indicator"] = (c.cpue_hr >= C15).astype(float)
+    c["density_ha"] = ANCHOR_C * c.cpue_hr ** ANCHOR_K
+    c["indicator"] = (np.minimum(1.0, c.density_ha / DENSITY_THRESHOLD) if graded
+                      else (c.cpue_hr >= C15).astype(float))
     c["source"] = "cull"
     salad = pd.read_csv(TARGETS)
     salad = salad[salad.target_source.eq("SALAD") & salad.report_year.isin(YEARS)]
-    s_rows = [{"reef_id": rid, "year": int(r.report_year), "indicator": float(r.salad_density_ha >= DENSITY_THRESHOLD),
+    s_rows = [{"reef_id": rid, "year": int(r.report_year),
+               "indicator": (min(1.0, float(r.salad_density_ha) / DENSITY_THRESHOLD) if graded
+                             else float(r.salad_density_ha >= DENSITY_THRESHOLD)),
                "source": "SALAD", "density_ha": float(r.salad_density_ha)}
               for r in salad.itertuples(index=False) for rid in SALAD_IDS[r.target_reef]]
-    obs = pd.concat([pd.DataFrame(s_rows), c[["reef_id", "year", "indicator", "source", "cpue_hr"]]], ignore_index=True)
+    obs = pd.concat([pd.DataFrame(s_rows), c[["reef_id", "year", "indicator", "source", "cpue_hr", "density_ha"]]], ignore_index=True)
     obs = obs.sort_values("source", key=lambda s: s.map({"SALAD": 0, "cull": 1})).drop_duplicates(["reef_id", "year"])
     obs = obs.merge(preds[["year", "reef_id", "outbrProb", "x", "y"]], on=["reef_id", "year"], how="inner")
     obs["residual"] = obs.indicator - obs.outbrProb
@@ -124,10 +133,13 @@ def main(out: Path) -> None:
                .join(obs.groupby("year").agg(n_obs=("indicator", "size"), n_outbreak=("indicator", "sum"))))
     meta = {"status": "derived_input_not_promoted",
             "licence": "inputs internal/licensed; outputs git-ignored, never published",
-            "indicator": f"SALAD density >= {DENSITY_THRESHOLD}/ha, else cull CPUE >= {C15:.3f}/diver-hour (anchor {ANCHOR_C} x CPUE^{ANCHOR_K}) with >= {MIN_HOURS} h",
+            "indicator": (f"graded: min(1, D / {DENSITY_THRESHOLD}), D = SALAD density, else {ANCHOR_C} x cull CPUE^{ANCHOR_K} (>= {MIN_HOURS} h)"
+                          if graded else
+                          f"SALAD density >= {DENSITY_THRESHOLD}/ha, else cull CPUE >= {C15:.3f}/diver-hour (anchor {ANCHOR_C} x CPUE^{ANCHOR_K}) with >= {MIN_HOURS} h"),
+            "graded": graded,
             "interpolation": f"IDW 1/d^2 within {R_KM} km, shrinkage w0 = 1/{R_KM}^2; clamp [0, 1]; years {YEARS.start}-{YEARS.stop - 1}",
             "inputs": {p.name: sha256(p) for p in (PREDS, PREDS_2026, CSIRO, TARGETS)},
-            "observed_reef_years": int(len(obs)), "observed_outbreak_reef_years": int(obs.indicator.sum()),
+            "observed_reef_years": int(len(obs)), "observed_indicator_sum": float(obs.indicator.sum()),
             "northern_mean_probability": json.loads(summary.reset_index().to_json(orient="records")),
             "script_sha256": sha256(Path(__file__)),
             "outputs": {f.name: sha256(f) for f in sorted(out.iterdir()) if f.suffix == ".csv"}}
@@ -139,4 +151,6 @@ def main(out: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT)
-    main(parser.parse_args().output.resolve())
+    parser.add_argument("--graded", action="store_true")
+    a = parser.parse_args()
+    main(a.output.resolve(), a.graded)

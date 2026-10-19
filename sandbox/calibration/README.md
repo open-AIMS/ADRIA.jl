@@ -2674,3 +2674,43 @@ python sandbox/calibration/audit_1991_supply_window.py <run> <rescore> <gate>
 julia sandbox/calibration/test_score_v3.jl
 & C:/Users/smatthew/AppData/Local/miniconda3/python.exe sandbox/domain_building/extract_dhw_2025_2026.py
 ```
+
+### Lizard +0.04 adoption, round-29 tests and the 2100 projection set-up (2026-10-19)
+
+The working configuration is **W-wave-lf04**: arm `wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_lf04_aprmak_cv2_pnd_wv025`. Protocol: "Lead's decision (2026-10-19, twenty-ninth round)" onwards.
+
+**Tests 1–3: reproduce** (PowerShell; base miniconda Python for the `.py` scripts):
+```powershell
+$env:OWEN_1991_EXPERIMENT='lizfast'; $env:OWEN_1991_LIZFAST_DELTAS='0.04,0.06'
+$env:OWEN_1991_DOMAIN_VERSION='v0.4'; $env:OWEN_1991_COTS_DATASET='owen_global_2018_2023_corr_w3'; $env:OWEN_1991_EXTRA_REEFS='true'
+$env:OWEN_1991_RUN_ID='20261019T_lizfast_power_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl          # run 51
+julia --project=sandbox sandbox/calibration/rescore_detectability.jl "--power=2.835e-5,2.822;1.487e-3,1.402" <out> <run 51>:<arms>   # 52
+python sandbox/calibration/evaluate_gate_g2prime.py <out> <rescore> --trough-reefs "Lizard Island Reef" "MacGillivray Reef"     # 53, 55
+python sandbox/calibration/audit_1991_lizfast_power.py <run 51> <rescore 52> <gate 53>
+python sandbox/calibration/analyse_rhis_fast_cover.py      # test 2 (licensed source; output git-ignored)
+```
+
+**Projection inputs (1991–2100).** No domain copy:
+```powershell
+python sandbox/domain_building/build_projection_inputs.py --replicates 10     # sandbox/data/derived/projection_inputs_v0.5
+julia --project=sandbox sandbox/calibration/test_projection_inputs.jl         # 179 checks: 1991-2026 equal v0.4, coverage to 2100
+```
+
+**Projection run.** Opt-in on the `lizfast` experiment. The defaults shown are the pilot design; GCM index 1 is CNRM_ESM2_1 (see `dhw/dhw_scenarios.csv`):
+```powershell
+$env:OWEN_1991_EXPERIMENT='lizfast'; $env:OWEN_1991_PROJECTION='true'; $env:OWEN_1991_LIZFAST_DELTAS='0.04'
+$env:OWEN_1991_PROJ_SSPS='245,585'; $env:OWEN_1991_PROJ_GCMS='1'; $env:OWEN_1991_PROJ_SUPPLY='W,M,C'; $env:OWEN_1991_PROJ_SEEDS='1,2,3,4,5'
+$env:OWEN_1991_DOMAIN_VERSION='v0.4'; $env:OWEN_1991_COTS_DATASET='owen_global_2018_2023_corr_w3'; $env:OWEN_1991_EXTRA_REEFS='true'
+$env:OWEN_1991_RUN_ID='20261019T_projection_pilot_1991_v1'
+julia --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_projection_pilot.py <run>     # replay vs run 51, supply checks, flags, metrics, figure
+```
+
+Supply codes:
+- `W`: resampled 15-year waves, replicate = seed;
+- `M`: 1991–2026 mean;
+- `C`: closed after 2026;
+- `R`: repeat of 2012–26.
+
+Each seed k also selects environment replicate k: cyclone and chl years drawn jointly from 1993–2024.
