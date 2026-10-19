@@ -4569,3 +4569,668 @@ The replay arm reproduces run 22 / 23 exactly (0.0) and gives the same G2′ ver
    - **Original layer:** flat at about 3/ha through 2020–26 at Lizard (targets 6–9). There is no build-up at Eyrie.
    - **Corrected layer:** tracks the 2020–25 build-up at Lizard, North Direction and Eyrie, then overshoots in 2026: 40–55/ha at Lizard, MacGillivray and North Direction, against targets of 5–7. The observed 2025 → 2026 densities fall at Lizard (9.1 → 5.0) and North Direction (10.6 → 7.2).
    - Culling is off in these runs. Direct removals on Lizard's main reef were about 1 COTS/ha/yr in 2024–26, too small to explain the gap alone. Several nearby reefs were culled at 10–70 COTS/ha/yr (e.g. 15-028, 15-084, 15-071c, 14-163), which would reduce larval supply reaching the calibration reefs.
+
+
+## Lead's decisions (2026-10-15, fifteenth round)
+
+1. **Test observed culling on W before the promotion gates** (W × 5 seeds × both layers, cull on vs off).
+2. **Promotion-gate definitions for screened candidates agreed:**
+   - **held-out years:** redo the screening choices on the 1992–2012 fit only, check W is still chosen, and report 2013–26;
+   - **leave one reef out:** the same, dropping one calibration reef at a time;
+   - **±25% sensitivity:** on W, 5 seeds.
+3. **New test: an elevated 1991 starting density.** The lead notes that the model starts well below its own inter-wave level ("it's not like COTS came from nowhere"). Start nearer trough-like densities and check whether the 1990s peaks come forward.
+4. Work up to the re-check was committed first (`9f6a252e`).
+
+**Prior evidence.** The initial-state re-baseline (2026-10-13, old coral, β 1.5, before shares, new coral and chl) found the start barely shaped first-wave timing or height, and a large North Direction seed (7.6/ha) grazed its coral early and delayed its wave. The model has changed substantially since, so the test is repeated on W.
+
+
+## Preregistered starting density × observed culling (2026-10-15, fifteenth round)
+
+**Hypotheses.**
+- **Start.** In 1989–91 the calibration reefs held an inter-outbreak remnant population that manta tows under-detect at low density. Reading the 1989–91 tows with the same low-density detection curve used by the G2′ observation model raises the start to trough-like densities (about 2–6 adults/ha, around the 3/ha Allee scale). Local production can then begin before external supply arrives, so the 1990s onset and peak come earlier.
+- **Culling.** The observed cull removals (2002–2026; 21,000–23,000 COTS domain-wide in each of 2025 and 2026) reduce adults where they are applied and larval output from heavily culled source reefs. This should lower the corrected layer's 2026 overshoot.
+
+**Change.** No model change. New runner experiment `init_cull` on W (new coral, β 1, ×0.25 below 6 DHW; 1990s-corrected chl `aprmak`; Ext×5; Q 20; q 0.015; v0.4 to 2026):
+- **start inversion** of the `eb` 1989–91 surface:
+  - `lin`: `A = C / q` (current);
+  - `h10`, `h30`: `A = (C/q + sqrt((C/q)² + 4·A½·C/q)) / 2` with `A½` 10 or 30;
+  - juvenile and subadult preloads keep the 6:3:1 ratio;
+- **culling:** off, or on with the observed removals at σ 210 m (`removals_sigma210.csv`; pre-spawning culls before the COTS step, post-spawning culls after it);
+- × 5 seed pairs × both outbreak layers, giving 30 arms per layer;
+- arm names `wc_b100_q20_eb_<lin|h10|h30>_obs015_s<k>_t60_e50[_cull210]_aprmak_cv2_pnd`.
+
+**Approximate reef-mean starting adults/ha** (from the 1991 seeds; the runner reports the exact values):
+
+| Reef | `lin` | `h10` | `h30` |
+| --- | --- | --- | --- |
+| Lizard | 0.47 | about 2.3 | about 4 |
+| MacGillivray | 0.35 | about 2 | about 3.5 |
+| North Direction | 0.82 | about 3 | about 5 |
+
+**Controls.** The `lin`, no-cull arms carry the exact names of the run 28 / 29 W arms and must replay all five seeds exactly (trajectories, flows, mechanisms).
+
+**Expected.**
+- `h10` / `h30`: adults ≥ 3/ha 1–2 years earlier; first-wave peak year earlier by 0–1 years, most at North Direction (observed 1995) and MacGillivray (1996); larger 1990s peaks.
+  - Risk: early coral depletion at North Direction (as on 2026-10-13), giving a smaller or later first wave.
+  - Little effect after 2000.
+- Culling: no effect before 2002; small effects 2012–16; lower 2025–26 adults on the corrected layer; lower diver error if the 2026 overshoot falls.
+
+**Read-out** (audit `audit_1991_init_cull.py`):
+- seed mean and range of v3, the manta part and the diver error;
+- G2′ passes at `A½ 30` (10 reported), with the trough gated on Lizard and MacGillivray;
+- per reef: start adults, first-wave onset (≥ 3/ha), peak year and height, and the mean absolute first-peak-year error against the observed raw peaks (Lizard 1998, MacGillivray 1996, North Direction 1995);
+- 2025–26 model ÷ target;
+- removals requested vs applied (unmet fraction) for the calibration reefs and the domain.
+
+**Decision rules (fixed before running):**
+1. **Start.** An elevated start is recommended to the lead only if all of these hold:
+   - it passes G2′ at `A½ 30` in ≥ 4/5 seeds on both layers;
+   - its seed-mean v3 is no more than 0.5 worse than `lin`;
+   - it reduces the mean absolute first-peak-year error.
+2. **Culling.** Report its effect on the 2020s diver error and the 2026 overshoot. As in run 20261014T_42, an unmet fraction above 25% on a calibration reef limits interpretation, and the result goes to the lead.
+3. **Interaction.** Only reported. The start acts in the 1990s and culling from 2002, so little interaction is expected.
+
+
+## Starting density × observed culling results (2026-10-15)
+
+**Runs and evaluations:**
+- runs 20261015T_36 (original layer) and _37 (corrected layer): 30 arms each, no failures;
+- re-scores 38 / 40 (control replay delta 0.0);
+- G2′ in 39 / 41, trough gated on Lizard and MacGillivray;
+- audit: [`runs/20261015T_37_.../init_cull_audit.json`](runs/20261015T_37_init_cull_corrected_1991_v1/init_cull_audit.json) and `init_cull.png` (`audit_1991_init_cull.py`).
+
+All ten `lin`, no-cull arms replay runs 28 / 29 exactly (0.0).
+
+**Start** (no cull; seed means; both layers are identical before 2018):
+
+| Start | Lizard / MacGillivray / North Direction start (adults/ha) | First-peak year (observed 1998 / 1996 / 1995) | First-peak height (adults/ha) | Mean first-peak-year error | v3 (orig / corr) | G2′ `A½ 30` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `lin` | 0.47 / 0.35 / 0.82 | 1997.0 / 1997.6 / 1997.2 | 30 / 46 / 71 | 1.60 y | 12.29 / 11.54 | 5/5, 5/5 |
+| `h10` | 2.41 / 2.05 / 3.30 | 1996.8 / 1997.2 / 1996.8 | 25 / 39 / 66 | 1.40 y | 12.11 / 11.37 | 5/5, 5/5 |
+| `h30` | 3.98 / 3.42 / 5.39 | 1996.0 / 1996.6 / 1995.8 | 19 / 33 / 46 | 1.13 y | 13.14 / 12.40 | 4/5, 4/5 |
+
+- **`h10` meets all three preregistered rules:** G2′ 5/5 on both layers; v3 −0.17; peak-year error −0.2 y.
+  - Paired by seed: v3 is lower in 4 of 5 seeds, and the peak-year error is lower or equal in every seed.
+  - Onset (≥ 3/ha) comes a year earlier at North Direction (1993) and MacGillivray.
+- **`h30` fails the v3 rule (+0.86)** although its timing is best.
+  - In seed 2, North Direction loses its first wave entirely (its large start grazes the coral early, as on 2026-10-13), and the v3 for Lizard and North Direction doubles. G2′ fails in that seed.
+  - It also moves Lizard's peak earlier than observed (1996 vs 1998).
+- **Trade-off:** a higher start brings first waves earlier but makes them smaller. Effects vanish after about 2000 (wave-4 and wave-5 peaks within a few percent).
+
+**Culling** (σ 210 m, against no cull):
+
+| | Original layer | Corrected layer |
+| --- | --- | --- |
+| v3 change (seed mean, `lin`) | +0.76 | +0.32 |
+| Diver-error change | +0.43 | +0.14 |
+| Lizard 2026 model ÷ target | 0.97 → 0.82 | 7.9 → 7.6 |
+| North Direction 2026 | 1.13 → 0.95 | 7.2 → 6.9 |
+| Unmet removals 2022–26: Lizard / Eyrie / domain | 34% / 82% / 73% | 6% / 57% / 51% |
+| Unmet removals 2012–16: Lizard / North Direction / domain | 3% / 21% / 57% | 3% / 21% / 57% |
+
+- **Culling worsens the fit on both layers and barely touches the 2026 overshoot.**
+- The preregistered limit is triggered: unmet removals exceed 25% at Eyrie (both layers) and at Lizard (original layer). On the original layer the model holds too few COTS at the cull sites for the removals to be taken.
+
+**Source of the 2026 overshoot (corrected layer).** It is external supply, not local build-up. At Lizard, external settlement (W, seed 1) runs 14–20 recruits/ha per year in 2024–26 on the original layer, but 60, 133 and 148 on the corrected layer. North Direction shows the same: 86, 163, 179 against 22–30.
+- These are the years of the heaviest culling nearby, so the cull-informed correction raises outbreak probability most there, and Ext×5 then multiplies it.
+- Recruits settled in 2024–25 mature into the 2026 adults.
+
+**Status.** Nothing is promoted. The decisions go to the lead:
+1. adopt the `h10` start into W;
+2. keep culling off in calibration;
+3. how to treat the corrected layer's 2024–26 external supply.
+
+
+## Lead's decisions (2026-10-15, sixteenth round) and the external-supply clarification
+
+**Decisions:**
+1. **Adopt the `h10` start into W.** The 1989–91 `eb` surface is inverted with the low-density detection curve at `A½ = 10`.
+2. **Culling stays off in calibration for now,** but it is the most important management lever, so the model must be made to work with it. Open item: the model must hold the COTS that were actually culled; unmet removals were 57–82% at Eyrie in 2022–26.
+3. **Corrected layer:** carry both layers as a bracket for now, and test option (b), where the ×5 boost is not applied to the part of the supply added by the diver/cull correction.
+
+**Clarification: where external larvae come from** (diagnostic `analyse_external_sources.py`; outputs in the git-ignored `sandbox/data/derived/external_supply_sources/`).
+- The recomputed boundary matches the dataset files ADRIA reads (max relative difference 8e-16).
+
+**What the code does:**
+- **External supply comes only from reefs that are not among the 113 modelled domain reefs.** For each domain reef `i` and year `y`, the builder sums over every non-domain GBR reef `j` with RME area and survival data: `B[i, y] = Σ_j C[j→i] · A_j / A_i · s_j · P_j(y)`.
+  - `C`: Owen connectivity for the hydrodynamic year drawn that year (seeded);
+  - `A`: habitable area;
+  - `s`: RME larval survival;
+  - `P`: predicted probability that manta CPUE > 0.22.
+- ADRIA multiplies `B` by the outbreak production constant × Ext (×5) and adds the result as settling recruits.
+- **The predictions are never used for the 113 domain reefs.** Their COTS are simulated. Internal supply (between domain reefs) comes from simulated densities through the same connectivity matrices.
+- **The corrected layer** adds IDW-spread residuals (within 50 km) from SALAD and from GBR-wide cull dives to every GBR reef's predicted probability. It changes supply only through the non-domain reefs.
+
+**"External" does not mean far away.**
+- The 113 modelled reefs are a subset of the reefs in the area. 24 unmodelled reefs lie inside the footprint of the 113 (their convex hull), including **Lizard Island Reef (North West), 14-116a, 2.4 km from Lizard**, and Nymph Reef (23 km). These reefs are boundary sources driven by the predictions, not by simulated dynamics.
+- The modelled reefs reach 118 km from Lizard.
+- Of Lizard's outbreak-free connection weight, 9% comes from within 50 km, 56% from within 100 km and 92% from within 200 km. The strongest connections run from reefs to the north-west (14-0xx, 50–100 km) and to the south (15-0xx–16-0xx, 100–200 km).
+- Unmodelled reefs inside the footprint supply 0–30% of a calibration reef's external larvae (e.g. Lizard: 25% in 1995, 8% in 2005, 20% in 2012, 18–20% in 2025). The rest comes from beyond the footprint, almost all within 200 km. Sources beyond 500 km are negligible.
+
+**External supply dominates settlement at Ext×5.** Share of settling recruits from external supply (W, seed mean; the remainder is internal, own-reef retention or background):
+
+| Reef | 1992–2000 | 2001–11 | 2012–16 | 2017–21 | 2022–26, original / corrected |
+| --- | --- | --- | --- | --- | --- |
+| Lizard | 73% | 71% | 87% | 76–79% | 63% / 74% |
+| MacGillivray | 67% | 60% | 84% | 62–67% | 55% / 70% |
+| North Direction | 72% | 70% | 88% | 80% | 64% / 74% |
+| Eyrie | 85% | 84% | 92% | 87–91% | 76% / 86% |
+
+At Ext×1 the local share was much higher (Lizard 2019–26: 78% local against 33% at ×5; run 20261015T_15).
+
+**What drives the 2025–26 overshoot on the corrected layer.** The top Lizard sources in 2025 are Endeavour (15-089, 123 km), U/N 15-077 (100 km), Batt (16-029, 196 km), Pickersgill (15-093, 134 km) and Evening (15-095, 138 km). The correction raises their predicted outbreak probabilities from 0.01–0.04 to 0.41–0.98 (heavily culled reefs between Cooktown and Port Douglas). The top 5 sources then carry 57% of Lizard's external supply, against 29% on the original layer. MacGillivray, North Direction and Eyrie share the same southern sources.
+
+**Implication for option (b).** Because `B` is linear in `P`, (b) can be built without any model change, by a new derived prediction layer `P* = P_orig + (P_corr − P_orig) / 5`. Under Ext×5 this gives `5·P_orig + (P_corr − P_orig)`: the manta-based predictions keep the ×5 boost, and the diver/cull correction enters at face value. `P*` stays within [0, 1].
+
+
+## Preregistered face-value correction, option (b) (2026-10-15, sixteenth round)
+
+**Question (lead):** how large is the double count when the ×5 external boost multiplies the diver/cull-corrected part of the outbreak layer?
+
+**Input** (no model change):
+- `build_outbreak_layer_face_value.py` builds `P* = P_orig + (P_corr − P_orig) / 5` (`sandbox/data/derived/outbreak_layer_face_value_x5_2018_2026/`).
+- `build_lizard_cots_connectivity_owen.py` builds v0.4 dataset `owen_global_2018_2023_facevalue` from it, with the same policies as the other two layers.
+- **Checks, all passed:**
+  - the external boundary equals `B_orig + (B_corr − B_orig)/5` for every reef, year and hydrodynamic year (max relative difference 2e-14);
+  - every other forcing file (internal connectivity, survival, site map, external supply coefficients) is byte-identical to the original dataset;
+  - years before 2018 are unchanged.
+
+**Arms:** W with the adopted `h10` start, no cull, × 5 seed pairs on the face-value layer. This uses runner experiment `init_cull` with `OWEN_1991_ARM_FILTER='eb_h10_obs015_s\d_t60_e50_aprmak_cv2_pnd'`. The comparators are the same arms on the original and corrected layers (runs 36 / 37).
+
+**Expected:**
+- 2024–26 external settlement at Lizard falls from about 60 / 133 / 148 (corrected) toward 20–40 recruits/ha;
+- the 2026 overshoot falls from about 7.8× to roughly 1.5–3× target;
+- the 2020–25 build-up is weaker than on the corrected layer but stronger than on the original;
+- the diver error lies between the two layers;
+- nothing changes before 2018.
+
+**Read-out:** the seed mean and range of v3, the manta part and the diver error; G2′ (trough on Lizard and MacGillivray); 2022–26 model ÷ target per calibration reef; external settlement 2022–26. Diagnostic only; nothing is adopted without the lead.
+
+
+## Face-value correction, option (b): results (2026-10-15)
+
+**Run and evaluations:**
+- run 20261015T_42 (face-value layer, W + `h10`, no cull, 5 seeds, no failures);
+- re-score 43, G2′ 44 (trough on Lizard and MacGillivray);
+- audit [`facevalue_audit.json`](runs/20261015T_42_facevalue_h10_1991_v1/facevalue_audit.json) and `facevalue.png` (`audit_1991_facevalue.py`);
+- comparators: the same arms in runs 36 / 37.
+
+| Layer | v3 (seed mean, range) | Manta part | Diver error | G2′ `A½ 30` |
+| --- | --- | --- | --- | --- |
+| Original | 12.11 (11.08–13.12) | 6.73 | 3.59 | 5/5 |
+| **Face value (b)** | **11.64 (10.71–12.71)** | 6.73 | 3.28 | 5/5 |
+| Corrected | 11.37 (10.16–12.27) | 6.73 | 3.09 | 5/5 |
+
+Paired by seed, face value lies between the two layers in 4 of 5 seeds (best of all in seed 1).
+
+**Adults/ha, seed mean (target in brackets):**
+
+| Reef | 2022 | 2023 | 2024 | 2025 | 2026 |
+| --- | --- | --- | --- | --- | --- |
+| Lizard, original / **face value** / corrected | 3.3 / **3.3** / 3.9 (8.3) | 3.2 / **3.6** / 6.3 (6.0) | 3.0 / **3.9** / 9.7 (8.6) | 2.9 / **4.9** / 17.4 (9.1) | 4.9 / **10.7** / 44.0 (5.0) |
+| North Direction | 3.2 / **3.3** / 3.4 (3.7) | 4.3 / **4.5** / 6.0 (2.5) | 4.8 / **5.5** / 9.2 (12.8) | 5.0 / **6.5** / 14.4 (10.6) | 8.3 / **15.5** / 57.4 (7.2) |
+| Eyrie | 1.5 / **1.8** / 3.7 (16.9) | 1.6 / **2.3** / 7.0 (45.2) | 1.7 / **2.9** / 11.1 (16.3) | 1.6 / **3.6** / 17.1 (12.2) | 2.2 / **5.6** / 28.9 (34.0) |
+
+External settlement at Lizard (recruits/ha) in 2024 / 2025 / 2026: original 11 / 15 / 14; face value 21 / 33 / 33; corrected 62 / 104 / 112.
+
+**Findings.**
+1. **The double count is large.** Most of the corrected layer's 2020s build-up and of its 2026 overshoot comes from applying ×5 to the diver/cull correction.
+   - At face value, Lizard 2026 falls from 44 to 10.7 adults/ha, about 75% of the corrected layer's excess over the original.
+   - External settlement in 2024–26 falls to about a third.
+2. **At face value the 2020s build-up is mostly missing.** Lizard, North Direction and Eyrie stay well below the 2022–25 targets, then rise late and overshoot in 2026 (about 2×).
+   - Eyrie reaches 2–6/ha against 12–45.
+   - The shape is consistent with supply arriving too late: settlers need about two years to mature, so the observed 2022–24 build-up needs recruitment in about 2019–22, where the correction is small.
+3. Face value is intermediate on v3 (11.64), best on the Lizard diver error (0.53 vs 0.58 / 0.67), and passes G2′ in 5/5 seeds.
+
+
+## Self-recruitment: why it is low (2026-10-15)
+
+**Lead's question:** is low self-recruitment coming from the connectivity layer, or from a parameter we set? Diagnostic `analyse_self_recruitment.py`; outputs in the git-ignored `sandbox/data/derived/self_recruitment_diagnostic/`.
+
+**Two different things:**
+
+**(1) Own-reef self-recruitment is set by the hydrodynamic layer alone.** In COTSMod (separated recruitment), own-reef settlement = own larval output × the Owen diagonal `C[i, i]` × settlement. No parameter scales it: the immigration scalar and settlement probability are 1, and the settlement gate is the food/condition gate. Values (mean of 2018–22 hydrodynamic years):
+
+| Reef | Own larvae returning to the reef | Settling on any GBR reef | Settling on the 113 domain reefs |
+| --- | --- | --- | --- |
+| Lizard (3 units combined; single units 0.2%) | 0.33% | 16% | 7.1% |
+| MacGillivray | 0.07% | 15% | 7.0% |
+| North Direction | 0.06% | 15% | 7.9% |
+| Eyrie | 0.33% | 17% | 5.0% |
+
+- The earlier retention screen (2026-10-13) raised Lizard's retention up to 90% of its surviving larvae (source-conserving) and changed Lizard's first wave by only +3%.
+
+**(2) The low local share of settlers (external 60–90%) comes mainly from parameters, not connectivity.** If every reef produced the same larvae per hectare, the connectivity alone gives each calibration reef's arrivals as:
+
+| Reef | Self | Other domain reefs | External reefs |
+| --- | --- | --- | --- |
+| Lizard | 2.1% | 74% | 24% |
+| MacGillivray | 0.3% | 83% | 17% |
+| North Direction | 0.2% | 79% | 21% |
+| Eyrie | 3.6% | 59% | 37% |
+
+- So the hydrodynamics say **the domain itself should supply about two-thirds to four-fifths of the larvae.** External supply dominates in the model because of the production asymmetry:
+  - **Local:** 37.9 pre-pelagic recruits per adult per year, further reduced by body condition², the gradual Allee term (×0.37 at 1/ha, ×0.64 at 15/ha) and the Ricker term.
+  - **External:** an outbreak reef at P = 1 produces 2,798 recruits/ha/yr, the output of about 74 adults/ha at full condition and no Allee reduction. Ext×5 makes it about 369 adults/ha. At P = 0.5 that is still about 185 adults/ha.
+  - Domain reefs between waves hold 2–8 adults/ha.
+- The external production constant was matched in an earlier screen (`matched_boundary_pre_pelagic_ha_year`) and migrated with the density unit (k ≈ 19.6); Ext×5 is the lead's working assumption (2026-10-12).
+
+**Implication.** The model's local dynamics are under-weighted by the size of the external boundary term, not by the hydrodynamic connectivity. Option (b) shows that removing the double count leaves the 2020s build-up short. Together, these point to local (domain) production rather than more external supply as the missing source. This is consistent with the lead's initiation-region hypothesis. A labelled diagnostic could test it: lower Ext with higher local fecundity, or the external production constant re-derived as an outbreak density (e.g. 15–50 adults/ha) instead of the matched value.
+
+
+## Lead's decisions (2026-10-15, seventeenth round)
+
+1. **The face-value layer (`owen_global_2018_2023_facevalue`) is the main outbreak layer.** The original layer is kept as the low case, and the corrected layer as a labelled high case only.
+2. **Run the local-vs-external production diagnostic** (below).
+
+
+## Preregistered local vs external production diagnostic (2026-10-15, seventeenth round)
+
+**Hypothesis (lead's initiation-region view).** The hydrodynamics give the domain 59–83% of each calibration reef's arrivals under equal production. The model nonetheless relies on external supply because an outbreaking non-domain reef counts as about 74 adults/ha (×5 ≈ 369/ha), while domain reefs produce 37.9 recruits per adult. Shifting weight from external to local production should let local build-up, recruitment years ahead of the peak, start the 2020s outbreak earlier with less external supply.
+
+**Change.** No model change. New runner experiment `local_ext` on W + `h10` start, no cull, face-value layer, v0.4 to 2026:
+- external boost Ext {×5, ×2.5};
+- × local larval output multiplier on `COTS_LARVAL_FECUNDITY` {×1, ×2, ×3};
+- × 5 seed pairs, giving 30 arms;
+- arm names `wc_b100_q20_eb_h10_obs015_s<k>_t60_e<50|25>[_f<200|300>]_aprmak_cv2_pnd` (no `_f` token at ×1).
+
+The multiplier scales potential larvae only; the Allee, Ricker, condition and settlement terms are unchanged. **Labelled diagnostic.** Local output per adult is a calibrated, not measured, value, so nothing is adopted without evidence and the lead's decision.
+
+**Control.** The Ext×5, ×1 arms carry the run 42 names and must replay them exactly.
+
+**Expected:**
+- **Local output ×2–3 at Ext×5:** larger and earlier local build-up in all waves; overshoot risk in waves 3–4 (manta part worsens); the 2022–25 build-up arrives earlier and the 2026 overshoot grows.
+- **Ext×2.5 at ×1:** as in run 20261015T_22, a later 1990s wave and G2′ failures.
+- **Ext×2.5 with ×2–3:** local output partly replaces external supply. The 1990s onset may partly recover; the local share of settlers rises.
+- **The key comparison:** whether any Ext×2.5 arm matches or beats Ext×5 ×1 on v3 and passes G2′.
+
+**Read-out** (audit `audit_1991_local_ext.py`):
+- seed mean and range of v3, the manta part and the diver error;
+- G2′ at `A½ 30` (trough on Lizard and MacGillivray);
+- per reef: wave-3/4/5 onset (≥ 3/ha), peak year and height;
+- 2022–26 adults against targets;
+- local (domain-produced) share of settlers by period.
+
+
+## Local vs external production diagnostic: results (2026-10-15)
+
+**Run and evaluations:**
+- run 20261015T_45 (30 arms, face-value layer, no failures);
+- re-score 46, G2′ 47 (trough on Lizard and MacGillivray);
+- audit [`local_ext_audit.json`](runs/20261015T_45_local_ext_facevalue_1991_v1/local_ext_audit.json) and `local_ext.png` (`audit_1991_local_ext.py`).
+
+The Ext×5 ×1 arms replay run 42 exactly (0.0).
+
+| Ext | Local output | v3 (seed mean, range) | Manta part | Diver error | G2′ `A½ 30` | First-peak-year error | Lizard domain share of settlers 2019–26 | Lizard 2024 / 2025 / 2026 ÷ target |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ×5 | ×1 | **11.64** (10.71–12.71) | 6.73 | 3.28 | **5/5** | 1.40 y | 25% | 0.47 / 0.55 / 2.0 |
+| ×5 | ×2 | 13.13 | 7.65 | 3.65 | 4/5 | 1.27 y | 42% | 0.62 / 0.79 / 3.2 |
+| ×5 | ×3 | 14.71 | 8.80 | 3.93 | 1/5 | 1.20 y | 52% | 0.71 / 0.99 / 4.5 |
+| ×2.5 | ×1 | 15.26 | 8.88 | 4.26 | 0/5 | 2.93 y | 40% | 0.42 / 0.37 / 0.9 |
+| ×2.5 | ×2 | 15.72 | 9.47 | 4.16 | 1/5 | 2.40 y | 55% | 0.58 / 0.55 / 1.7 |
+| ×2.5 | ×3 | 16.00 | 9.95 | 4.03 | 0/5 | 1.67 y | 64% | 0.68 / 0.72 / 2.7 |
+
+v3 is worse than Ext×5 ×1 in every seed for every other arm.
+
+**Findings.**
+1. **More local production does not bring the 2020s build-up forward; it amplifies it after it starts.**
+   - The 2022–25 deficit narrows only slightly (Lizard 2024: 0.47 → 0.71 of target).
+   - The 2026 overshoot grows (2.0 → 4.5×).
+   - Wave-4 peaks fall and wave-3 peaks rise; the manta part worsens.
+   - Local output does not substitute for external supply in the 1990s either: at Ext×2.5 the first peaks stay late (Lizard about 1998–99, North Direction 1998).
+   - Eyrie stays at 0.05–0.4 of target in every arm.
+2. **The binding constraint in 2019–23 is the juvenile predator pit, not larval supply.**
+   - At Lizard (W, seed 1, face value), 10–40 recruits/ha settle each year in 2020–23. About 59% survive their first year into subadults.
+   - Each year the pit (`Q` = 20 COTS/ha/yr, removal `Q·J/(J + Q)`) eats 54–57% of subadults, background mortality takes about 31%, and only 12–15% mature: about 1 adult/ha/yr.
+   - Adults hold at about 4/ha until juveniles swamp the pit (2026: pit share 36%).
+   - In 2015–18 the limit is starvation instead (coral 5–8%, food survival 0.06–0.09).
+   - This is why the double-counted corrected layer appeared to work: its supply swamped the pit.
+3. `Q` = 20 was chosen in the predation-capacity grid (2026-10-12) and re-checked in the timing experiment (`Q` {10, 15, 20}, 2026-10-14) under older configurations (old coral, no chl, v0.3). It keeps the inter-wave troughs low (G2′ component 4), so lowering it trades trough fit for the 2020s build-up.
+
+**Status.** Labelled diagnostic, nothing adopted. Local output stays ×1 and Ext stays ×5. Next for the lead: re-check the predator-pit capacity on the current configuration (W + `h10`, face-value layer).
+
+
+## Lead's decisions (2026-10-16, eighteenth round)
+
+1. **Re-check the predator-pit capacity `Q`** on the current configuration.
+2. **Consider a weaker corrected layer.** The CPUE-to-density conversion behind the correction may be too strong: cull CPUE reflects densities before culling, not what was left to reproduce. A partly reduced correction might let COTS build up without overshooting, and culling, once implemented, should mediate the rest.
+
+
+## Preregistered predator-pit capacity × correction weight (2026-10-16, eighteenth round)
+
+**Hypotheses:**
+- The juvenile predator pit (`Q` 20) is the binding constraint on the 2019–23 build-up (it eats 54–57% of Lizard subadults a year). A weaker pit lets moderate supply build up sooner.
+- A correction weight between face value and fully boosted gives enough supply without the overshoot.
+- Both act on the same build-up, so they are crossed.
+
+**Correction weight `w`.**
+- `build_outbreak_layer_face_value.py` gains `--weight w`: `P_w = P_orig + w·(P_corr − P_orig)/5`, so supply under Ext×5 = `5·P_orig + w·(P_corr − P_orig)`.
+  - The default (`w` = 1) reproduces the face-value layer exactly (checked).
+  - `w` = 5 would reproduce the fully boosted corrected layer.
+- New v0.4 datasets `owen_global_2018_2023_corr_w2` and `_corr_w3`. The boundary identity holds (max relative difference 2e-14), and all other forcing files are byte-identical to the original dataset.
+
+**Arms.** Runner experiment `pit_q`:
+- W + `h10` start, no cull, local output ×1, Ext×5;
+- × `Q` {10, 15, 20, 25} COTS/ha/yr × 5 seed pairs;
+- arms `wc_b100_q<Q>_eb_h10_obs015_s<k>_t60_e50_aprmak_cv2_pnd`;
+- run once per dataset: face value (`w` 1), `corr_w2`, `corr_w3`. That is 60 arms.
+
+**Control.** The `Q` 20 arms on the face-value dataset must replay run 42 exactly.
+
+**Expected:**
+- **Lower `Q`:**
+  - more subadults mature, so adults rise earlier in 2020–23 and the 2022–25 deficit shrinks;
+  - higher inter-wave densities (G2′ trough risk at Lizard and MacGillivray);
+  - larger wave peaks (manta part may worsen);
+  - a larger 2026 overshoot.
+- **Higher `w`:** more 2022–26 supply, an earlier build-up and a larger 2026 overshoot; no change before 2018.
+- A combination such as `Q` 15 with `w` 2 may reach the 2022–25 targets with a modest 2026 overshoot.
+
+**Read-out** (audit `audit_1991_pit_q.py`):
+- per (`w`, `Q`): seed mean and range of v3, the manta part and the diver error;
+- G2′ passes at `A½ 30` (trough on Lizard and MacGillivray), with the model inter-wave CPUE at Lizard and MacGillivray against the bound;
+- 2022–26 adults against targets at Lizard, North Direction, MacGillivray and Eyrie;
+- the share of subadults eaten by the pit at Lizard, 2020–23.
+
+**Selection rule (fixed before running).** A combination is recommended only if all of these hold:
+- it passes G2′ at `A½ 30` in ≥ 4/5 seeds;
+- its seed-mean v3 is lower than the current configuration (`w` 1, `Q` 20: 11.64);
+- its diver error is lower.
+
+Among the qualifiers, prefer the smallest change from `Q` 20 and `w` 1. Culling remains off; the 2026 overshoot is read in that light.
+
+
+## Predator-pit capacity × correction weight: results (2026-10-16)
+
+**Runs and evaluations:**
+- runs 20261016T_01 / _02 / _03 (`w` 1 / 2 / 3; 20 arms each, no failures);
+- re-scores 04 / 06 / 08, G2′ 05 / 07 / 09 (trough on Lizard and MacGillivray);
+- audit [`pit_q_audit.json`](runs/20261016T_01_pit_q_w1_1991_v1/pit_q_audit.json) and `pit_q.png` (`audit_1991_pit_q.py`).
+
+The `Q` 20 arms on the face-value dataset replay run 42 exactly (0.0).
+
+| `w` | `Q` | v3 (seed mean) | Manta part | Diver error | G2′ `A½ 30` | Lizard 2023 / 2024 / 2025 / 2026 ÷ target | Eyrie 2025 ÷ target | Qualifies |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 10 | 13.24 | 8.13 | 3.41 | 4/5 | 0.80 / 0.67 / 0.86 / 3.2 | 0.50 | no |
+| 1 | 15 | 11.70 | 6.75 | 3.30 | 5/5 | 0.74 / 0.56 / 0.68 / 2.5 | 0.39 | no |
+| **1** | **20** | **11.64** (current) | 6.73 | 3.28 | 5/5 | 0.63 / 0.47 / 0.55 / 2.0 | 0.32 | — |
+| 1 | 25 | 11.53 | 6.48 | 3.37 | 5/5 | 0.59 / 0.41 / 0.47 / 1.6 | 0.27 | no |
+| 2 | 15 | 11.48 | 6.75 | 3.16 | 5/5 | 0.82 / 0.69 / 0.98 / 4.0 | 0.63 | yes |
+| **2** | **20** | **11.36** | 6.73 | 3.09 | 5/5 | 0.70 / 0.59 / 0.82 / 3.4 | 0.53 | **yes** |
+| 2 | 25 | 11.19 | 6.48 | 3.14 | 5/5 | 0.65 / 0.51 / 0.69 / 2.8 | 0.45 | yes |
+| 3 | 15 | 11.42 | 6.75 | 3.12 | 5/5 | 0.89 / 0.83 / 1.31 / 5.7 | 0.91 | yes |
+| 3 | 20 | 11.26 | 6.73 | 3.02 | 5/5 | 0.76 / 0.72 / 1.12 / 4.9 | 0.77 | yes |
+| 3 | 25 | **11.01** | 6.48 | 3.02 | 5/5 | 0.70 / 0.63 / 0.96 / 4.2 | 0.67 | yes |
+
+The `w` 2 and 3 rows at `Q` 10 match the `w` 1 pattern (v3 about 13.1–13.2, G2′ 4/5).
+
+**Findings.**
+1. **Lowering the pit capacity does not fix the 2020s.** `Q` 10 halves the capacity but only lowers the share of Lizard subadults eaten in 2020–23 from 56% to 50%. It lifts Lizard 2022–25 by 15–40%, but:
+   - the manta part worsens (6.73 → 8.13): the 2010s wave ends early and MacGillivray sits above its 2020–25 targets;
+   - seed 2 collapses (v3 17.5) and fails G2′.
+   - `Q` 25 is slightly better than 20 on v3 (−0.1 to −0.25, through the manta part) but slows the 2020s build-up.
+   - **Correction to the previous section:** the pit is a large sink, but not the single binding constraint. The 2022 deficit at Lizard (model about 3.5–4 against 8.3) is unchanged in every arm; it reflects the few recruits of 2019–20, after starvation in 2015–18.
+2. **A stronger correction weight improves the fit consistently.** Paired by seed at `Q` 20, `w` 3 beats `w` 1 in all 5 seeds, and `w` 2 in 4.
+   - `w` 3 brings Lizard 2023–25 close to target (0.76 / 0.72 / 1.12) and Eyrie from 0.32 to 0.77 of target in 2025.
+   - The 2026 overshoot grows (Lizard 2.0 → 3.4 → 4.9×), with culling still off.
+3. **Under the preregistered rule** (≥ 4/5 G2′, and v3 and diver error both below `w` 1 `Q` 20), the qualifiers are `w` {2, 3} × `Q` {15, 20, 25}. The rule's smallest change from the current configuration is **`w` 2, `Q` 20** (v3 11.36, diver error 3.09). The lowest v3 is `w` 3, `Q` 25 (11.01).
+
+**Status.** Nothing is adopted. Correction weight `w` 2 (or 3) with `Q` 20 goes to the lead.
+
+
+## Lead's decisions (2026-10-16, nineteenth round)
+
+1. **Adopt correction weight `w` 2** (`owen_global_2018_2023_corr_w2`) as the main outbreak layer, with `w` 3 as a sensitivity. Predator-pit `Q` stays 20.
+2. **Re-check observed culling first**, then the promotion gates.
+3. **Refresh the LTMP manta tables.** There are new manta-tow data for the Lizard sector; check `COTS-Coral-OutcomesV2/R/aims_api.R` first, then refresh.
+4. **Extend the calibration set:**
+   - **Martin and Linnet reefs:** the 2020s increase shows up in manta tows there.
+   - **Yonge, Carter and No Name reefs:** these almost never have COTS; check the model can reproduce that absence.
+
+
+## Preregistered cull re-check on the `w` 2 layer (2026-10-16, nineteenth round)
+
+**Question.** With more COTS in the 2020s (`w` 2), can the model now take the observed cull removals, and do they bring the 2026 overshoot down? In run 20261015T_36 / _37, 57–82% of Eyrie's 2022–26 removals were unmet.
+
+**Arms.** Runner experiment `init_cull` with `OWEN_1991_ARM_FILTER='eb_h10_obs015_s\d_t60_e50_(cull210_)?aprmak_cv2_pnd'` on dataset `owen_global_2018_2023_corr_w2`:
+- W + `h10`, `Q` 20, Ext×5;
+- culling {off, observed σ 210 m} × 5 seed pairs = 10 arms.
+
+**Control.** The no-cull arms must replay the `Q` 20 arms of run 20261016T_02 exactly.
+
+**Expected:**
+- unmet removals on the calibration reefs fall below the 2026-10-15 levels;
+- 2025–26 adults fall where culls are heavy (Eyrie, and the reefs near Lizard);
+- the 2026 overshoot shrinks but does not vanish (direct removals on Lizard's main reef are about 1 COTS/ha/yr).
+
+**Read-out:** as `audit_1991_init_cull.py`, plus unmet removals by reef. Scoring waits for the decision on the refreshed LTMP tables (the score uses manta observations).
+
+
+## LTMP refresh (2026-10-16 / 19)
+
+**Source:** COTS-Coral-OutcomesV2 `scripts/01_download_aims_ltmp.R` (client `R/aims_api.R`), snapshot `data/raw/aims-ltmp/2026-10-16`. It is identical, table for table, to the 2026-10-15 snapshot.
+
+**Builder:** `domain_building/refresh_ltmp_tables.py` writes `sandbox/data/reef_cots.csv` and `reef_manta.csv` in the existing layout. The previous tables are archived (hash-checked) under `sandbox/data/archive_ltmp/0d8871dd90a5/` and `839d857a5c02/`. Report: `sandbox/data/derived/ltmp_refresh_2026-10-16/`.
+
+**COTS surveys:**
+- 2,863 existing surveys are unchanged (year, tows, counts);
+- 297 added;
+- 5 removed, all Hope Reef (Burdekin): 2 renamed to "Hope Reef (19046)", 3 dropped by AIMS (1989–91).
+
+The additions are new Lizard-sector surveys from April and Sept–Oct 2026, plus back-filled histories for reefs newly in the AIMS list. The Sept–Oct 2026 surveys carry AIMS reporting year 2027:
+
+| Reef | COTS/tow (late 2026) |
+| --- | --- |
+| Linnet | 0.51 |
+| Martin | 0.35 |
+| North Direction | 0.12 |
+| MacGillivray | 0.06 |
+| Helsdon | 0.06 |
+| Lizard | 0.02 |
+| Yonge, Carter, No Name | 0 |
+
+**Coral (manta, AIMS modelled):** all estimates were re-fitted by AIMS. At the calibration and candidate reefs the changes are ≤ 0.006 cover; elsewhere up to 0.06. 21 rows were removed elsewhere, none at calibration or candidate reefs.
+
+**Check:** re-scoring run 42 with the refreshed table reproduces run 43 exactly (run 20261019T_01). The score uses manta reporting years 1992–2024 (v3: to 2021), so no existing score changes. Reporting year 2027 lies beyond the model's end year (2026).
+
+
+## Cull re-check on the `w` 2 layer: results (2026-10-19)
+
+**Runs:** run 20261016T_10 (10 arms, no failures); re-score 20261019T_02; G2′ 03; audit `cull_w2_audit.json` (`audit_1991_cull_w2.py`). The no-cull arms replay run 20261016T_02 exactly (0.0).
+
+| | No cull | Culling (σ 210 m) |
+| --- | --- | --- |
+| v3 (seed mean) | 11.36 | 11.90 (worse in all 5 seeds) |
+| Diver error | 3.09 | 3.38 |
+| G2′ `A½ 30` | 5/5 | 5/5 |
+| Lizard 2024 / 2025 / 2026 adults/ha (targets 8.6 / 9.1 / 5.0) | 5.1 / 7.5 / 18.7 | 4.5 / 6.6 / 17.2 |
+| Eyrie 2023 / 2025 (targets 45 / 12) | 3.2 / 6.4 | 2.4 / 5.2 |
+| Unmet removals 2022–26: Lizard / Eyrie / domain | — | 15% / 69% / 61% |
+
+**Finding.** The model's 2020s build-up is about two years late, so culling still fails:
+- observed culls removed COTS from dense 2022–24 populations that the model does not yet hold;
+- in the model, culling deepens the 2022–25 shortfall;
+- the model's surge comes in 2025–26, after the observed population had been culled down, and culling there removes only about 1 COTS/ha/yr on Lizard.
+
+Making culling work requires the build-up to arrive on time. Culling stays off in calibration.
+
+
+## Preregistered extra reefs (2026-10-19, nineteenth round)
+
+**Change.** Runner switch `OWEN_1991_EXTRA_REEFS=true` writes `trajectories_extra.csv` and `flows_extra.csv` for Martin (14-123), Linnet (14-126), Yonge (14-138), Carter (14-137) and No Name (14-139), all already domain reefs. Default off; existing outputs are unchanged. Report-only, not part of any score.
+
+**Run.** Experiment `pit_q` with `OWEN_1991_ARM_FILTER='wc_b100_q20_'` (W + `h10`, `Q` 20, 5 seeds) on `corr_w2` (main) and `corr_w3` (sensitivity), with extra reefs on.
+
+**Control.** `trajectories.csv`, `flows.csv` and `mechanisms.csv` must replay the same arms of runs 20261016T_02 / _03 exactly.
+
+**Read-out** (`audit_1991_extra_reefs.py`), against LTMP manta by reporting year. Model detected CPUE uses q 0.015, linear and with the `A½ 30` low-density detection curve.
+- **Martin and Linnet:** wave peak years and heights (observed 1996–99 and 2013, then 0.35 / 0.51 in late 2026, reporting year 2027, beyond the model's 2026 end); the 2022–26 level (observed 0.03–0.10).
+- **Yonge, Carter and No Name:** model years with detected CPUE ≥ 0.22, max detected CPUE, and mean adults (observed max ≤ 0.01 COTS/tow over 35 years).
+
+**Expected.** Martin and Linnet behave like the calibration reefs. The absence reefs are a real test: they receive the same external supply rules, so false outbreaks there would point to supply or habitat assumptions.
+
+
+## Extra reefs: results (2026-10-19)
+
+**Runs:**
+- runs 20261019T_04 (`corr_w2`) and _05 (`corr_w3`): 5 arms each, no failures;
+- audit [`extra_reefs_audit.json`](runs/20261019T_04_extra_reefs_w2_1991_v1/extra_reefs_audit.json) and `extra_reefs.png` (`audit_1991_extra_reefs.py`).
+
+The standard outputs replay runs 20261016T_02 / _03 exactly (0.0), so the switch does not alter the model.
+
+**Absence reefs (Yonge, Carter, No Name; observed ≤ 0.01 COTS/tow in 30–35 surveys since 1986):**
+
+| | Yonge | Carter | No Name |
+| --- | --- | --- | --- |
+| Model 1990s peak, adults/ha (year) | 23 (2001) | 32 (2002) | 22 (2000) |
+| Model 2014 peak, adults/ha | 20 | 19 | 16 |
+| Max detected COTS/tow (`A½ 30` / linear) | 0.15 / 0.35 | 0.25 / 0.49 | 0.14 / 0.33 |
+| 2022–26 adults/ha | 0.2–2.2 | 0.6–3.2 | 0.2–1.8 |
+
+- **The model produces false outbreaks on all three in the 1990s and 2014 waves.** It matches their 2020s absence.
+- Nothing in the model distinguishes them from outbreak reefs:
+  - **settlement** (W, `w` 2) of 32–51 recruits/ha/yr, similar to Martin's 39–43 and 59–76% external;
+  - **coral** 17–26%, similar.
+- **Chlorophyll does not distinguish them either:** median wet-season p90, in-water scale 2003–26, is 0.35–0.47 µg/L, against North Direction 0.23, MacGillivray 0.30, Martin 0.55 and Linnet 0.67.
+  - The anomaly form used in the model removes between-reef differences in any case.
+
+**Outbreak reefs (Martin, Linnet):**
+- Wave timing is about right: model 1990s peak 2000 / 1998 (observed 1998–99 / 1998); 2014 (observed 2013).
+- Detected heights are low (`A½ 30` max 0.25 / 0.31 against observed 0.46–0.97).
+- 2022–26: model 2–10 adults/ha (detected 0.003–0.04) against observed 0.03–0.10; then 0.35 / 0.51 in the late-2026 surveys (reporting year 2027, beyond the model's end).
+- `w` 3 raises Martin and Linnet in 2023–26 by about 30–50%.
+
+**Status.** Report-only; nothing is scored or adopted. The false outbreaks on the never-COTS reefs are a structural gap: the model has no reef-level property that keeps them free. The ecological explanation goes to the lead.
+
+
+## Lead's decisions (2026-10-19, twentieth round)
+
+1. **Never-COTS reefs.** Most likely a connectivity issue keeping COTS at bay, plus strong wave exposure on the eastern flank. Check the wave data (GBR ReefGuidance processed rasters: wave height and period) and the in-water logger chl out there, in case the satellite series obscures lower levels.
+2. **Run the promotion checks,** noting that a way must still be found to bring the 2020s outbreak earlier. The lead suspects slow coral dominance (recovery of fast-growing coral) in this CoralBlox calibration and asks for that behaviour to be examined.
+
+
+## Never-COTS reefs: data checks (2026-10-19)
+
+Diagnostic `analyse_never_cots_reefs.py`; outputs in the git-ignored `sandbox/data/derived/never_cots_diagnostic/`.
+
+| | Yonge / Carter / No Name | Outbreak reefs (Martin, Linnet, Lizard units, MacGillivray, North Direction, Eyrie) |
+| --- | --- | --- |
+| Wave power index (Hs² Tp) at the most exposed site | **15.0 / 14.1 / 16.1** (80–85th domain percentile) | 2.4–5.7 (5th–43rd) |
+| Mean peak wave period Tp | **7.0–7.2 s** | 4.3–5.4 s |
+| Mean Hs (reef, area-weighted) | 0.65–0.71 m | 0.49–0.80 m |
+| In-water chl, nearest LTCMP station, median 1992–2009 | **0.13 µg/L** (Cod Hole, 2–9 km) | 0.21–0.23 µg/L |
+| Satellite in-water-equivalent p90 (2003–26) | 0.35–0.47 | 0.19–0.67 |
+| Larval arrivals per ha under equal production (domain percentile) | 0.11–0.16 (41st–55th) | 0.04–0.29 (4th–78th) |
+| Arrivals from domain reefs / external | 80–85% / 12–15% | 53–85% / 15–43% |
+
+(Linnet lies in a gap between the two wave rasters.)
+
+**Findings.**
+1. **Wave exposure separates them clearly.** Their exposed flanks receive ocean swell (Tp about 7 s), with wave power 3–6× that of the outbreak reefs' most exposed sites.
+2. **In-water chl separates them clearly; the satellite series inverts it.**
+   - The outer-shelf Cod Hole stations average 0.13 µg/L, about 40% below the mid-shelf Lizard-area stations, and below the Fabricius larval-development range.
+   - The satellite-derived values rank these reefs higher, which is likely optically shallow water or bottom reflectance on the ribbon reefs.
+3. **Reef-scale connectivity does not separate them.** Under equal production they receive mid-range larval arrivals, mostly from other domain reefs; Martin (an outbreak reef) receives fewer.
+   - In the model their settlers come from simulated domain outbreaks, so a supply-side explanation would need lower survival of larvae travelling in low-chl outer-shelf water, not lower hydrodynamic connection.
+
+**Implications (for the lead):**
+- **Waves:** a post-settlement or habitat effect of wave exposure, such as reduced settlement or juvenile survival on exposed reef, would be a new reef-level mechanism, evidence-based on these rasters.
+- **Chlorophyll:** the absolute larval-survival form fed by in-water-calibrated chl would suppress production from, and survival in, outer-shelf water. That needs an outer-shelf correction to the satellite series, since the current one inverts the cross-shelf gradient.
+
+
+## Preregistered promotion checks (2026-10-19, twentieth round)
+
+**Configuration under test (W-current):** W shares, `h10` start, `Q` 20, Ext×5, new coral (β 1, ×0.25 below 6 DHW, μ 0.12), chl `aprmak` (b 3), `owen_global_2018_2023_corr_w2`, culling off, q 0.015, score v3.
+
+**Gate 5: ±25% sensitivity, one parameter at a time, 5 seeds.**
+- **Parameters:**
+  - Ext 3.75 / 6.25;
+  - chronic μ 0.09 / 0.15;
+  - low-DHW bleaching scale 0.1875 / 0.3125;
+  - chl slope b 2.25 / 3.75 (new tables from `build_larval_survival_index_corrected.py --b`, whose default reproduces the b 3 table exactly);
+  - initial fast shares ×0.75 / ×1.25 (capped at 0.9);
+  - `Q` 15 / 25, already run (20261016T_02).
+- **Runner experiment `sens`:** 55 arms, including 5 base arms that must replay 20261016T_02 `Q` 20 exactly.
+- **Pass rule:** each perturbation passes G2′ (`A½ 30`, trough on Lizard and MacGillivray) in ≥ 4/5 seeds, and its seed-mean v3 is no more than 1.0 above the base (11.36). The result is "not confined to a narrow region" if every perturbation passes. Failures are reported with the qualitative change.
+
+**Gates 4a / 4b: held-out years and leave-one-reef-out (re-scoring existing runs; no new model runs).**
+- **Held-out years:** for each screening decision in the current chain, recompute the loss on the fit window only (manta 1992–2012) and the check window (manta 2013–2021 plus diver 2020–26). The decisions are: starting state (runs 36 / 37), correction weight × `Q` (runs 20261016T_01–03), and Ext × local output (run 45).
+  - **Pass:** the chosen option ranks first, or within the seed spread of first, on the fit window, and does not rank last on the check window.
+- **Leave-one-reef-out:** the same decisions re-ranked with each calibration reef dropped from the summed v3.
+  - **Pass:** the chosen option stays first or within the seed spread for every dropped reef.
+
+**Coral dominance (lead's hypothesis).** Diagnostic, in parallel: model fast-coral share and total cover at the calibration reefs 2015–26 against LTMP photo-transect composition (Acroporidae and Pocilloporidae share) from the 2026-10-16 snapshot.
+
+
+## Promotion checks: results (2026-10-19)
+
+### Gate 5: ±25% sensitivity
+
+Run 20261019T_06 (55 arms, no failures); re-score 10, G2′ 11; audit [`sens_audit.json`](runs/20261019T_06_sens_w2_1991_v1/sens_audit.json) and `sens.png` (`audit_1991_sens.py`). The base arms replay run 20261016T_02 exactly (0.0). Base v3 is 11.36.
+
+| Parameter | ×0.75: Δv3, G2′ | ×1.25: Δv3, G2′ | Notes |
+| --- | --- | --- | --- |
+| Pit capacity `Q` (15 / 25) | +0.12, 5/5 ✓ | −0.17, 5/5 ✓ | Lower `Q` gives earlier, larger 2020s build-up |
+| External multiplier (3.75 / 6.25) | +0.81, 4/5 ✓ | **+1.28, 5/5 ✗** | ×1.25: one seed collapses (v3 17.5); 2026 overshoot grows |
+| Chronic coral mortality μ (0.09 / 0.15) | +0.75, **3/5 ✗** | **−0.50**, 4/5 ✓ | Higher μ fits better (manta part 6.73 → 6.22) |
+| Low-DHW bleaching scale | 0.00, 5/5 ✓ | 0.00, 5/5 ✓ | Not identified by these data |
+| Chl slope b (2.25 / 3.75) | +0.03, 5/5 ✓ | 0.00, 5/5 ✓ | Changes the 2026 level only |
+| Initial fast shares | −0.10, 5/5 ✓ | +0.73, 5/5 ✓ | |
+
+**Gate 5 fails on 2 of 12 perturbations** (Ext ×1.25 on v3; μ ×0.75 on G2′). The result is not confined to a knife edge, but it is sensitive to more external supply and to lower background coral mortality. Peak years in the 1990s move by at most about 0.8 y across all perturbations.
+
+### Gates 4a / 4b: held-out years and leave-one-reef-out
+
+`rescore_holdout.jl` re-scores with the frozen functions on truncated windows. Its full-window self-check reproduces the stored v3 manta part exactly (0.0; run 20261019T_07). Held-out scores: run 08. Gate audit: run 09 (`audit_promotion_gates.py`).
+
+"Within the seed spread of first" is made operational, after the preregistration, as: the paired seed difference from the first-ranked option is positive in fewer than 4 of 5 seeds.
+
+| Decision (chosen) | 4a: fit 1992–2012 rank | 4a: check 2013–26 rank | 4b: rank with each reef dropped | Verdict |
+| --- | --- | --- | --- | --- |
+| Ext ×5, local ×1 (`e50_f100`) | 2 of 6 (within spread) | 2 of 6 | 1 for every reef | **pass** |
+| Start `h10` (both layers) | 2 of 3 (within spread) | 2 of 3 | 1, except without North Direction (2 of 3; `lin` better in 4/5 seeds) | **marginal**: its advantage is mostly North Direction's earlier 1990s wave |
+| Correction weight `w` 2, `Q` 20 | 4 of 12 (`Q` 25 better in 4/5 seeds) | 8 of 12 | 4–6 of 12; `w` 3 `Q` 25 (or `Q` 15) first | **fail** |
+
+The fit window ranks only `Q` (`w` acts from 2018), and favours `Q` 25. On the full v3 and every leave-one-out, `w` 3 with `Q` 25 (v3 11.01) ranks first. The earlier selection rule picked `w` 2 `Q` 20 as the "smallest change", not as the best, and these gates do not support that preference.
+
+### Coral dominance (lead's hypothesis)
+
+Diagnostic `analyse_coral_dominance.py` (outputs in run 20261016T_02: `coral_dominance.*`). It compares the model fast share (fast / total coral) with LTMP 9 m photo-transect (*Acropora* + Pocilloporidae) / hard coral.
+
+| Reef | Model fast share 2019 / 2021 / 2023 | Observed 2019 / 2021 / 2023 | Model total cover 2021 | Manta HC 2021 |
+| --- | --- | --- | --- | --- |
+| Lizard | 0.25 / 0.55 / 0.65 | 0.13 / 0.23 / 0.45 | 0.22 | 0.13 |
+| MacGillivray | 0.26 / 0.59 / 0.69 | 0.11 / 0.20 / 0.30 | 0.23 | 0.19 |
+| North Direction | 0.27 / 0.30 / 0.47 | 0.27 / 0.58 / 0.59 | 0.15 | **0.50** |
+
+(Model cover is a fraction of habitable area; manta cover is a fraction of reef surface.)
+
+**Finding.** Fast-coral dominance is **not** slow at Lizard or MacGillivray: the model's fast share recovers faster and higher than observed, and food survival is 1.0 from 2021. North Direction's recovery is much too slow in the model (observed manta HC 0.50 and fast share 0.58 in 2021). Before 2016 the model strips fast coral harder than observed (2013 share 0.02–0.10 against about 0.32). So slow coral recovery does not explain the late 2020s build-up at Lizard; it may contribute at North Direction.
+
+### Status
+
+W-current is **not promoted**. It fails gate 4 on the correction-weight × `Q` choice and gate 5 on two perturbations, with the late 2020s build-up and the never-COTS false outbreaks as known structural gaps. Decisions go to the lead.
+
+
+## Coral dominance: correction (2026-10-19)
+
+**Error.** The coral-dominance section above estimated observed fast cover as the photo-transect fast share × *manta* hard coral, and stated the API photo data were group-level only. That is wrong: `HARD CORAL` rows with `purpose == "COMPOSITION"` carry taxa in `reefpage_category` (the lead had pointed this out before). Manta (reef-wide, shallow) and 9 m photo transects differ greatly at North Direction: hard coral 0.50 against 0.11 in 2021.
+
+**Fix:**
+- `refresh_ltmp_tables.py --photo` refreshed `sandbox/data/reef_photo_transect.csv` from the 2026-10-16 snapshot. It adds mainly 2026; the previous copy is archived; revisions at our reefs are ≤ 0.024 cover.
+- `analyse_coral_dominance.py` (version 2) now compares like with like: photo hard coral (`GROUP_LEVEL`) and photo *Acropora* + Pocilloporidae (`COMPOSITION`).
+- Outputs `coral_dominance_photo.*` in run 20261016T_02; version 1 outputs `coral_dominance.*` are kept and superseded.
+
+| Reef | Model fast cover 2019 / 2021 / 2023 / 2025 | Photo fast cover 2019 / 2021 / 2023 / 2025 | Model / photo fast share 2021 |
+| --- | --- | --- | --- |
+| Lizard | 0.026 / 0.12 / 0.21 / 0.17 | 0.008 / 0.023 / 0.093 / 0.057 | 0.55 / 0.22 |
+| MacGillivray | 0.027 / 0.14 / 0.23 / 0.19 | 0.011 / 0.027 / 0.053 / 0.064 | 0.59 / 0.20 |
+| North Direction | 0.034 / 0.044 / 0.093 / 0.14 | 0.017 / 0.061 / 0.069 / 0.073 | 0.30 / 0.56 |
+
+(Model cover is a fraction of habitable area; photo cover is a fraction of the 9 m transect.)
+
+**Corrected finding.** There is no evidence of slow fast-coral recovery in the model:
+- at Lizard and MacGillivray model fast cover recovers earlier and 2–5× higher than observed;
+- at North Direction it is close (0.04–0.12 against 0.06–0.11 in 2021–24); the previous "far too slow" statement is withdrawn.
+
+Before 2016 the model strips fast coral harder than observed (2013 share 0.02–0.10 against 0.12–0.32). Food therefore does not explain the late 2020s build-up.

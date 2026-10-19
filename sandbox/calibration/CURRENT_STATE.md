@@ -8,9 +8,7 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here (2026-10-15, after the candidate re-check):** read the protocol sections **"1990s chlorophyll peak correction: result"** and **"Candidate re-check results"** (end of `crash_mechanism_protocol.md`). Done: 1990s chl correction (k 0.346) and the candidate re-check (only W retained; corrected layer overshoots 2026). Waiting on the lead: whether to turn observed culling on before the promotion gates, and how to define held-out years / leave-one-reef-out for screened (not optimised) candidates. Then:
-1. promotion gates on W (held-out years, leave-one-reef-out, ±25% sensitivity);
-2. metadata/docs and `candidates/candidates.toml`.
+**Resume here (2026-10-19, twentieth round done):** read the protocol sections **"Never-COTS reefs: data checks"** and **"Promotion checks: results"**. W-current (h10, Q 20, w 2) is not promoted: gates favour w 3 / Q 25; gate 5 fails on Ext ×1.25 and μ 0.09. Waiting on the lead: adopt w 3 / Q 25; a wave-exposure (and/or in-water chl) mechanism for the never-COTS reefs; next step on the late 2020s build-up (coral dominance is not slow at any calibration reef; photo-transect comparison, protocol "Coral dominance: correction").
 
 Ext×5 stays for all years (no 1990s-only boost).
 
@@ -19,7 +17,7 @@ Ext×5 stays for all years (no 1990s-only boost).
 - **New coral:** β 1, bleaching ×0.25 below 6 DHW, μ 0.12, growth and tolerance spread untouched.
 - **Chl larval survival:** p90 anomaly, RMA, b 3, cap 5, with the 1993–2002 segment scaled by k 0.346 (`aprmak`, `build_larval_survival_index_corrected.py`).
 - **Domain:** v0.4 (1985–2026).
-- **Outbreak layer:** original or corrected (both carried).
+- **Outbreak layer:** face value (`owen_global_2018_2023_facevalue`, main); original (low case); corrected (labelled high case).
 - **Score:** v3.
 
 **Read in this order:**

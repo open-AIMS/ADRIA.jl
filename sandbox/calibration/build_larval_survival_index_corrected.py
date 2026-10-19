@@ -14,7 +14,11 @@ which brings the 1996 and 1999 peaks in line with the 2011 and 2024 satellite pe
 Satellite-era rows (2003-2026) are unchanged and must reproduce the uncorrected ap_rma
 table exactly (checked). Multiplier = min(5, exp(3 log_anom_p90)); 1 where missing (1991-92).
 
-    python build_larval_survival_index_corrected.py [--output <dir>] [--figure <png>]
+    python build_larval_survival_index_corrected.py [--output <dir>] [--figure <png>] [--b 3]
+
+--b (added 2026-10-19 for the +/-25% sensitivity gate; default 3 reproduces the table) sets the
+anomaly slope in min(5, exp(b x anomaly)). For b != 3 the satellite-era control compares against
+min(5, exp(b x uncorrected anomaly)) instead of the b = 3 table.
 """
 
 from __future__ import annotations
@@ -48,7 +52,7 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main(out: Path, figure: Path) -> None:
+def main(out: Path, figure: Path, b: float = B) -> None:
     if out.exists():
         raise FileExistsError(f"Refusing to overwrite {out}")
     idx = pd.read_csv(INDEX, dtype={"RME_UNIQUE_ID": str})
@@ -66,14 +70,19 @@ def main(out: Path, figure: Path) -> None:
     rma["p90_iw_corrected"] = rma.gm_p90 * np.exp(rma.log_anom_p90)
     rma["k"] = np.where(early, k, 1.0)
 
-    values = rma.set_index(["RME_UNIQUE_ID", "year"]).log_anom_p90.map(lambda a: float(np.minimum(CAP, np.exp(B * a))))
+    values = rma.set_index(["RME_UNIQUE_ID", "year"]).log_anom_p90.map(lambda a: float(np.minimum(CAP, np.exp(b * a))))
     grid = pd.MultiIndex.from_product([sites.site_id, list(YEARS)], names=["site_id", "year"]).to_frame(index=False)
     grid = grid.merge(sites[["site_id", "UNIQUE_ID"]], on="site_id")
     m = pd.Series([values.get((u, y), np.nan) for u, y in zip(grid.UNIQUE_ID, grid.year)], dtype=float)
     table = grid.assign(multiplier=np.where(np.isfinite(m), m, 1.0))[["site_id", "year", "multiplier"]]
 
     # Control: satellite-era and missing years reproduce the uncorrected ap_rma table exactly.
-    old = pd.read_csv(UNCORRECTED, dtype={"site_id": str}, float_precision="round_trip")
+    if b == B:
+        old = pd.read_csv(UNCORRECTED, dtype={"site_id": str}, float_precision="round_trip")
+    else:
+        unc = rma.set_index(["RME_UNIQUE_ID", "year"]).log_anom_p90_uncorrected.map(lambda a: float(np.minimum(CAP, np.exp(b * a))))
+        mu = pd.Series([unc.get((u, y), np.nan) for u, y in zip(grid.UNIQUE_ID, grid.year)], dtype=float)
+        old = grid.assign(multiplier=np.where(np.isfinite(mu), mu, 1.0))[["site_id", "year", "multiplier"]]
     both = table.merge(old, on=["site_id", "year"], suffixes=("", "_old"), validate="one_to_one")
     if len(both) != len(table) or len(old) != len(table):
         raise ValueError("Site x year grid differs from the uncorrected table")
@@ -90,7 +99,7 @@ def main(out: Path, figure: Path) -> None:
 
     reef_new = values.groupby(level="year").median()
     reef_old = rma.set_index(["RME_UNIQUE_ID", "year"]).log_anom_p90_uncorrected \
-                  .map(lambda a: float(np.minimum(CAP, np.exp(B * a)))).groupby(level="year").median()
+                  .map(lambda a: float(np.minimum(CAP, np.exp(b * a)))).groupby(level="year").median()
     med_new = rma.groupby("year").log_anom_p90.median()
     sd = {"1993_2002_uncorrected": float(med.loc[INWATER_YEARS[0]:INWATER_YEARS[1]].std()),
           "1993_2002_corrected": float(med_new.loc[INWATER_YEARS[0]:INWATER_YEARS[1]].std()),
@@ -126,7 +135,7 @@ def main(out: Path, figure: Path) -> None:
     meta = {"status": "derived_input_not_promoted", "k": k,
             "k_definition": f"mean domain-median p90 log anomaly {PEAKS_SATELLITE} / mean {PEAKS_1990S} (RMA)",
             "applied_to": f"log_anom_p90, RMA conversion, seasons {INWATER_YEARS[0]}-{INWATER_YEARS[1]}, both signs",
-            "domain_median_anomaly_sd": sd, "cap": CAP, "b": B,
+            "domain_median_anomaly_sd": sd, "cap": CAP, "b": b,
             "control_satellite_era_max_abs_delta": control_max_abs,
             "reef_median_multiplier": {"uncorrected": reef_old.round(3).to_dict(), "corrected": reef_new.round(3).to_dict()},
             "inputs": {str(p.relative_to(ROOT)): sha256(p) for p in (INDEX, UNCORRECTED, SITES)},
@@ -142,5 +151,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--figure", type=Path, default=DEFAULT_FIG)
+    parser.add_argument("--b", type=float, default=B)
     a = parser.parse_args()
-    main(a.output.resolve(), a.figure.resolve())
+    main(a.output.resolve(), a.figure.resolve(), a.b)
