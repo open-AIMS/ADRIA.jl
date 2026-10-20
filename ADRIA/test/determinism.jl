@@ -60,7 +60,7 @@ end
         n_locs = dom.coral_growth.n_locs
         n_groups = dom.coral_growth.n_groups
         n_sizes = dom.coral_growth.n_sizes
-        edges = ADRIA.bin_edges(; unit=:m)
+        edges = ADRIA.bin_edges(; unit=:m).data
         make_fgs() = [
             ADRIA.FunctionalGroup.(
                 eachrow(edges[:, 1:(end - 1)]),
