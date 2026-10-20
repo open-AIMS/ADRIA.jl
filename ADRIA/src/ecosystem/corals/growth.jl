@@ -601,30 +601,36 @@ function settler_DHW_tolerance!(
     n_locs = length(locs)
 
     # Use Breeder's equation to calculate mean heat tolerance of offspring for each loc/grp
-    fecund_size_mask = sum(fecundity_per_m²; dims=1)[1, :] .> 0.0
-    fecund_idx = findall(fecund_size_mask)
+    # Reproductive size classes differ between functional groups
+    fecund_idx_per_group = [findall(fecundity_per_m²[grp, :] .> 0.0) for grp in groups]
+    max_n_fecund = maximum(length, fecund_idx_per_group)
     c_mean_settlers = zeros(n_groups, n_locs)       # will be the next c_mean_t[:,1,:]
 
-    # Cache for settlers c_mean for each functional group
-    c_mean_per_group::Vector{Float64} = zeros(Float64, n_groups)
-    # Cache for cover-proportion weights (reused each iteration to avoid reallocating)
-    w_buf::Vector{Float64} = zeros(Float64, length(fecund_idx))
+    # Caches for the offspring c_mean and the cover-proportion weights of the reproductive
+    # size classes (reused each iteration to avoid reallocating)
+    c_mean_per_size_buf::Vector{Float64} = zeros(Float64, max_n_fecund)
+    w_buf::Vector{Float64} = zeros(Float64, max_n_fecund)
 
     pos_settlers_loc_idx = findall(vec(sum(settlers; dims=1)) .> 0)
     for loc in pos_settlers_loc_idx
         for grp in groups
+            fecund_idx = fecund_idx_per_group[grp]
+            isempty(fecund_idx) && continue
+
             @views cover_col = C_cover_t[grp, fecund_idx, loc]
             cover_sum = sum(cover_col)
             (cover_sum == 0) ? continue : 0
 
-            w_buf .= cover_col ./ cover_sum
-            w = StatsBase.weights(w_buf)
-            @views c_mean_per_group .= breeders.(
+            w_view = @view w_buf[1:length(fecund_idx)]
+            c_mean_per_size = @view c_mean_per_size_buf[1:length(fecund_idx)]
+            w_view .= cover_col ./ cover_sum
+            w = StatsBase.weights(w_view)
+            @views c_mean_per_size .= breeders.(
                 c_mean_t_1[grp, fecund_idx, loc],
                 c_mean_t[grp, fecund_idx, loc],
                 h²
             )
-            c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_group, w)
+            c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_size, w)
         end
     end
 
