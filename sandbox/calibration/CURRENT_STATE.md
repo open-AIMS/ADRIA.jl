@@ -8,7 +8,15 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here (2026-10-19, twenty-ninth round):** the working configuration is now **W-wave-lf04**: W-wave plus Lizard 1991 fast cover +0.04. Arm `wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_lf04_aprmak_cv2_pnd_wv025`; runner experiment `lizfast` with `OWEN_1991_LIZFAST_DELTAS=0.04`.
+**Resume here (2026-10-21, thirtieth round):**
+- Culling is on in projections, and the opt-in projection mechanisms M1–M5 are in ADRIA: forward effort cull, 2026 reset, coral-coupled outside supply, thermal acclimation and outside coral larvae. See the protocol from "Lead's decisions (2026-10-21, thirtieth round)".
+- Stage A screen: run 20261021T_03 (`audit_projection_screen.py`).
+- Stage B ensemble: runs 20261021T_04–08, one per GCM (`OWEN_1991_PROJ_DESIGN=ensembleB`); complete, audited in run 20261021T_09.
+- **Lead agreed (round 31):** downward-only reset; thermal acclimation scenarios in the ensemble; outside larvae out; preregister and test the source-reef cull discount; domain-level outputs. **Next:** implement these and rerun the ensemble.
+- **Report figures (W-wave-lf04 calibration; culling projections to 2050):** `sandbox/data/derived/calibration_report_figures/2026-10-21_wwave_lf04/` (runs 20261021T_10/11; `plot_projection_culling_2050.py`).
+- **Julia note:** run with `--pkgimages=no` while the ADRIA package-image DLL in `~/.julia/compiled` is locked (EACCES).
+
+**Previous pointer (2026-10-19, twenty-ninth round):** the working configuration is now **W-wave-lf04**: W-wave plus Lizard 1991 fast cover +0.04. Arm `wc_b100_q25_eb_h10_obs015_s<k>_t60_e50_lf04_aprmak_cv2_pnd_wv025`; runner experiment `lizfast` with `OWEN_1991_LIZFAST_DELTAS=0.04`.
 - **Recommended tests done** (run 20261019T_51; protocol "Round-29 tests: results"):
   - the power-law manta observation selects no larger share and fails regionally;
   - +0.06 reaches Pratchett's density but fails the G2′ trough test;

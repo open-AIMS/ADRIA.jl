@@ -6236,3 +6236,315 @@ Ranges over the four calibration reefs of seed means; full table in `projection_
   - (c) thermal adaptation and outside coral larval supply for projections;
   - (d) forward-cull scenarios (task 6);
   - (e) seed pairs 6–10 for the full ensemble (10 GCMs × 4 SSPs × 4 supply × 10 seeds = 1,600 arms, about 10 h).
+
+
+## Lead's decisions (2026-10-21, thirtieth round)
+
+1. **2026 overshoot:**
+   - Run a 2026 reset as a paired factor.
+   - Review the earlier attempts to dampen the overshoot and report what might be needed.
+   - Culling is **on** in projections: observed removals to 2026, then forward culling, with a simple effort multiplier spread across the domain.
+2. **Outside supply** is coupled to projected regional coral.
+3. **Thermal adaptation and outside coral larval supply** become part of the main model as opt-in switches, run as scenarios first to measure their impact.
+4. **Forward culling** has three levels (none, recent effort, targeted) plus effort multipliers ×1.5, ×2 and ×3 on current effort.
+5. **Ensemble:** 5 climate models × the two middle SSPs (SSP2-4.5, SSP3-7.0) × 5 seeds.
+6. **Observation:** keep the linear q 0.015.
+
+
+## Review: earlier attempts to dampen the 2026 overshoot (2026-10-21)
+
+Model adults in 2026 (W-wave-lf04, run 51, seed means) are Lizard 23.6, MacGillivray 21.6, North Direction 30.1 and Eyrie 13.7 adults/ha. The diver/cull targets are 5.0, 2.5 (2025), 7.2 and 34.0. Eyrie is the one reef under target. The pipeline of juveniles settled in 2024–26 then gives the 2027–31 projected outbreak (protocol, "Projection set-up and pilot: results").
+
+| Lever (date, run) | Effect on the 2026 overshoot | Why not adopted |
+| --- | --- | --- |
+| Correction layer: face value / `w`2 / `w`3 / binary vs graded (2026-10-15 to 19) | The overshoot scales with the correction weight. Face value has almost none, but the 2020s build-up is then missing. Graded `w`0.5 lowers it. | The 2020s targets (Eyrie 17–45/ha) need the correction; one regional supply cannot fit Eyrie and MacGillivray together |
+| ×5 not applied to the correction part (option (b), 2026-10-15; now the `corr_w3` form) | Reduced it from about 7.8× to about 1.5–3× the target | Adopted. The residual is the present overshoot. |
+| Observed culling, site-matched then reef-proportional (2026-10-15, 10-19, run 24) | Lizard 23.6 → 21.8 | Lizard's 2024–26 culls are about 0.5–0.7/ha/yr, against a 20/ha excess. Culls elsewhere hit COTS the model does not yet hold. |
+| Chl survival on outside supply (run 27) | +40–50% (2024 anomaly 1.78) | Wrong direction |
+| Local larval output ×2–3 (run 20261015T_45) | Larger | Wrong direction |
+| Outside supply ×0.75 (gate 5, run 46) | Lower | Damps every wave, not just 2024–26 |
+| Juvenile banks (runs 18, 21) | Not aimed at it; delay releases | Failed on other grounds |
+
+**Diagnosis.** The excess is supplied from outside in 2024–26.
+- The diver/cull correction raises outbreak probability most at the heavily culled sources near Lizard: Endeavour, U/N 15-077, Batt, Pickersgill and Evening (2026-10-15).
+- The correction reads cull catch rates as outbreak density. Those reefs were being culled, so their larval output was lower than their pre-cull density implies. The correction double counts: it raises their probability because COTS were found there, but it ignores that divers removed them.
+
+**What might be needed** (not yet preregistered; for the lead):
+1. **Source-side cull discount.** Reduce `P_j(y)` for outside source reefs by the fraction of their population removed by the control programme. The CSIRO cull sheet covers outside reefs too.
+   - This is the ecologically direct fix: culled sources spawn less.
+   - It acts in 2022–26, where the overshoot is, and leaves the 1990s and 2010s unchanged (little culling then).
+2. **2026 reset (data assimilation).** It rescales the model state to the 2025–26 diver/cull densities. It must rescale **juveniles as well as adults**, or the 2027–31 outbreak survives (pilot: the 2028 MacGillivray peak is the same with outside supply removed). The reset is preregistered below as a paired factor.
+3. **Effort-based culling.** Catch per unit effort rises steeply with density (`D = 7.874 × CPUE^0.549`, so CPUE ∝ D^1.82). At the model's 2026 densities, observed 2025–26 effort would remove far more than the observed counts. A forward effort cull from 2027 (preregistered below) therefore damps the pipeline outbreak, as a real programme would.
+4. Longer term: an outside boundary that is itself culled and modelled (handover options 1 and 3).
+
+
+## Preregistered: projection mechanisms and scenarios (2026-10-21, thirtieth round)
+
+All are opt-in. With every switch unset, the model and the pilot replay exactly. Pure tests go in `test_projection_mechanisms.jl`.
+
+### M1. Forward effort culling (`COTS_CULL_EFFORT_CSV`)
+
+1. **Hypothesis.** A control programme's removals depend on diver effort and on COTS density. Recent effort, scaled or retargeted, can be projected without prescribing removals.
+2. **Change** (ADRIA adapter `cots.jl`; applied from `COTS_CULL_EFFORT_START_YEAR`, here 2027).
+   - **Effort table:** `reef_id, hours_per_year` (diver-hours: summed dive bottom time). It is built by `build_cull_effort.py` from the CSIRO cull sheet as the mean of reporting years 2023–2025 per domain reef. That is the "recent effort"; the 2026 reporting year is partial.
+   - Each year, half the effort is applied before spawning and half after.
+   - **Per reef and phase:**
+     - adult density `D = Σ N_adult·area / Σ area` (COTS ha⁻¹ of site area);
+     - catch rate `CPUE = min((D / 7.874)^(1/0.549), CPUE_max)`, the SALAD–cull anchor inverted;
+     - removals `R = min(stock, H × CPUE)`, allocated to sites in proportion to adults × area (reef-proportional, as for observed culls).
+     - Adults only: divers take COTS of about 15 cm or more.
+   - **Modes:**
+     - `fixed`: reef-specific recent hours × multiplier;
+     - `targeted`: the domain total of recent hours × multiplier, reallocated each phase to reefs with `D ≥ 3 adults/ha` in proportion to their stock; no culling when no reef qualifies.
+   - **Multiplier:** `COTS_CULL_EFFORT_MULTIPLIER` (1, 1.5, 2, 3).
+3. **Units and bounds.**
+   - Hours are diver-hours per year. The anchor is `D = 7.874 × CPUE^0.549` (2026-10-14; SALAD–cull pairs, n 21).
+   - `CPUE_max` 20 COTS/h, just above the largest observed reef-year catch rate in the domain (South Direction 2012: 17.0/h). It stops the extrapolated power law from removing implausible numbers at very high model densities.
+   - The targeting threshold of 3 adults/ha is a management trigger, not the biological Allee threshold, although the value is the same.
+4. **Observed culls to 2026** stay as in the calibration's culling option: `removals_sigma210.csv`, reef-proportional. From 2027 only effort culling applies.
+5. **Expected.** The 2027–31 pipeline outbreak falls where effort is concentrated (Lizard, Eyrie, MacGillivray, North Direction, Martin). `targeted` concentrates effort where outbreaks are. Multipliers give diminishing returns as density falls, because CPUE falls steeply.
+6. **Failure / rollback.** Removals larger than stock (impossible by construction) are tested. Switch off = no forward culling.
+
+### M2. 2026 state reset (`COTS_STATE_RESET_CSV`)
+
+1. **Purpose.** Data assimilation, not a mechanism: start the projection from observed 2025–26 densities.
+2. **Change.**
+   - **Table:** `site_id, group, year, target_adults_ha` (`build_reset_targets.py`).
+   - At the start of the timestep after `year` (here 2026 → applied before the 2027 step), each group's area-weighted adult density is rescaled to its target by factor `f`. Juveniles are rescaled by the same `f` (`COTS_STATE_RESET_JUVENILES=true`, default true), because the model's whole 2024–26 cohort is inflated by the same supply error.
+   - **Sites outside the groups:** `COTS_STATE_RESET_OTHERS = median` (scaled by the median `f` of the groups, default) or `none`.
+   - The 2026 output row is unchanged, because the reset acts after it.
+3. **Targets:** the diver-anchored targets (`targets_reef_year.csv`, recorded SALAD density or cull-converted), latest year ≤ 2026 per reef: Lizard, MacGillivray, North Direction, Eyrie, Martin and South Direction where present.
+4. **Sensitivity in the screen:** juveniles not rescaled.
+
+### M3. Coral-coupled outside supply (`COTS_EXTERNAL_CORAL_COUPLING_START_YEAR`)
+
+1. **Hypothesis.** Outside source reefs share the domain's climate, so their outbreak output falls when coral (food) is lost.
+2. **Change.** From the start year (2027), outside outbreak supply (potential and pelagic) is multiplied by `g = min(1, C_dom(t−1) / C_ref)`.
+   - `C_dom` is the domain-mean coral cover (area-weighted over habitable area) at the end of the previous step.
+   - `C_ref` is its mean over the years before the start year in the same run (1991–2026). It is self-referencing, with no external constant.
+   - Capped at 1, so supply never exceeds the resampled history.
+3. **Proxy.** The domain stands in for its source region. It does not represent culling or recovery at the sources.
+
+### M4. Thermal acclimation (`ADRIA_THERMAL_ACCLIMATION_RATE`, DHW yr⁻¹)
+
+1. **Hypothesis.** Coral heat tolerance can rise through acclimation or symbiont change beyond the selection already modelled. Natural adaptation (heritability 0.3, ceiling +24 DHW) is already on.
+2. **Change.** From `ADRIA_THERMAL_ACCLIMATION_START_YEAR` (2027), every coral group and size class gains `rate` DHW of mean tolerance per year, under the existing ceiling.
+3. **Scenario levels:**
+   - **0.05 DHW/yr:** about 40% of the SSP2-4.5 warming rate at Lizard (mean DHW 2.3 → 11.3 over 2026–2090, about 0.12 DHW/yr);
+   - **0.12 DHW/yr:** matching that pace.
+   - Labelled scenarios, not evidence-based estimates.
+
+### M5. Outside coral larval supply (`ADRIA_EXTERNAL_CORAL_LARVAE_FRACTION`)
+
+1. **Hypothesis.** The domain receives coral larvae from the wider region, which lets it recover from local collapse.
+2. **Change** (`growth.jl` `settler_cover` gains an optional external larval density; default none).
+   - From `ADRIA_EXTERNAL_CORAL_LARVAE_START_YEAR` (2027), every habitable site receives `fraction ×` the domain-mean larval density per group (larvae m⁻²), averaged over the years before the start year in the same run. It is added before settlement, so the existing density-dependent recruitment applies.
+3. **Levels:** 0.1 and 0.5 (labelled scenarios). Constant, so not climate-coupled.
+
+### Stage A: scenario screen (pilot GCM, before the ensemble)
+
+- **Setting:** CNRM_ESM2_1 × SSP2-4.5 / SSP3-7.0 × 5 seeds; supply `W`.
+- **Base arm:** coupling M3 on, observed culls to 2026, forward cull `fixed` × 1, no reset.
+- **One at a time:**
+  - M3 off;
+  - reset (adults + juveniles);
+  - reset (adults only);
+  - forward cull none, `targeted` × 1, `fixed` × 3;
+  - thermal 0.05 and 0.12;
+  - larvae 0.1 and 0.5.
+- That is 11 arms × 2 × 5 = 110 runs.
+- **Controls:**
+  - all culling arms replay one another in 1991–2026;
+  - a no-projection `lizfast` + culling run (new `OWEN_1991_LIZFAST_CULL=true`) gives the 1991–2026 control;
+  - an extra arm with every new switch off and culling off replays pilot run 58 (`W`) exactly.
+- **Readouts:** the pilot metrics; removals by reef and year (effort cull); reset factors; coupling factor `g` by year; coral and outbreak changes against base by period.
+
+### Stage B: ensemble
+
+- **Climate:** 5 GCMs = every other model by mean corrected 2081–2100 DHW over SSP2-4.5 and SSP3-7.0 (ranks 1, 3, 5, 7, 9): MPI-ESM1-2-HR, MIROC6, CNRM-ESM2-1, EC-Earth3-Veg and UKESM1-0-LL (indices 7, 5, 1, 2, 10). × SSP2-4.5, SSP3-7.0 × 5 seeds.
+- **Factors:** supply `W` with M3 × reset {off, on} × cull {none; `fixed` × 1, 1.5, 2, 3; `targeted` × 1, 1.5, 2, 3} = 900 runs (about 6 h).
+- **Coral scenarios:** M4 and M5 enter the ensemble only after the lead has seen stage A.
+
+
+## Projection mechanisms and stage A screen: results (2026-10-21)
+
+### Built (all opt-in; unset = established path)
+
+- **ADRIA adapter (`cots.jl`):**
+  - M1: `load_cots_cull_effort`, `cots_cull_cpue`, `targeted_cull_hours`, `effort_cull_requests`, `apply_cots_effort_cull!`;
+  - M2: `load_cots_state_reset`, `apply_cots_state_reset!` (scales adults with their age profile and large adults; recruits and juveniles optionally);
+  - M3: `cots_external_coral_factor`.
+- **`scenario.jl`:** the switches `COTS_CULL_EFFORT_*`, `COTS_STATE_RESET_*`, `COTS_EXTERNAL_CORAL_COUPLING_START_YEAR`, `ADRIA_THERMAL_ACCLIMATION_*` and `ADRIA_EXTERNAL_CORAL_LARVAE_*`. New result fields: `cots_external_coral_factor_log` and `cots_reset_log`.
+- **`growth.jl`:** `settler_cover(...; external_larvae=nothing)`.
+- **No COTSMod change**; removals use `COTSMod.apply_removals!`.
+- **Tests:**
+  - `test_projection_mechanisms.jl`: 35/35;
+  - existing adapter tests: cull allocation 12/12, external survival 4/4, bleaching floor 13/13;
+  - parse 43/43 + 4/4.
+- **Builders:**
+  - `build_cull_effort.py`: recent effort 2023–25 = 3,733 diver-hours/yr over 36 domain reefs. Most effort is at Martin (500), 15-084 (496) and Eyrie (435); Lizard 14-116d gets 156; MacGillivray and North Direction get little.
+  - `build_reset_targets.py`: targets Lizard 4.97 (2026), MacGillivray 2.51 (2025), North Direction 7.19 (2026), Eyrie 34.0 (2026), Martin 8.68 (2025, cull-converted), South Direction 23.1 (2026).
+- **Runner:**
+  - `OWEN_1991_LIZFAST_CULL` (culling control);
+  - `OWEN_1991_PROJ_DESIGN` = pilot / screenA / ensembleB, with arm tokens `_cullreef`, `_fc{N|F|T}<m>`, `_xc`, `_rs{AJ|AO}`, `_ta<r>` and `_cl<f>`;
+  - outputs `projection_log.csv` (coupling factor) and `projection_reset.csv`;
+  - the cull check is limited to observed years in projections.
+- **Audit:** `audit_projection_screen.py`.
+
+### Runs
+
+- **Run 20261021T_01:** lizfast + culling control, 5 arms.
+  - Observed culls barely change 2026: Lizard 23.6 → 21.8, North Direction 30.1 → 28.3, Eyrie 13.7 → 11.1 adults/ha.
+  - Unmet requests 2022–26: Eyrie 30%, domain 45%.
+- **Run 20261021T_02 (stage A v1): superseded.** Forward culling removed about 10⁻⁴ of the intended numbers: site areas were passed in m² where ha are needed (`loc_data.area` is m²).
+  - Fixed: `scenario.jl` divides by 1e4, and the docstrings state ha.
+  - Reset and coupling results from that run are unaffected (area enters them only as weights). It is kept as a failed evaluation.
+- **Run 20261021T_03 (stage A v2):** 120 arms, no failures. Audit `screen_audit.json`, `screen_effects.csv`, `screen_metrics.csv` and `screen_<ssp>_{cots,coral}.png`.
+  - Julia was run with `--pkgimages=no`: the ADRIA package-image DLL in the user depot became unreadable (EACCES, apparently locked by another process). Replays confirm identical results.
+
+### Pass checks
+
+| Check | Result |
+| --- | --- |
+| Control arms = pilot run 58 over 1991–2100 (25 table comparisons) | **0.0** |
+| Culling arms = culling control run 01 over 1991–2026 (550) | **0.0** |
+| Culling arms identical to one another before 2027 (550) | **0.0** |
+| Forward removals plausible | recent effort ×1 removes about 19,000 COTS/yr domain-wide in 2027–31 (observed 2025: 23,448; 2023–25 mean 12,656) |
+
+### Effects (CNRM, seed means, four calibration reefs: Eyrie / Lizard / MacGillivray / North Direction)
+
+**Peak adults 2027–31 (adults/ha):**
+
+| Scenario | SSP2-4.5 | SSP3-7.0 |
+| --- | --- | --- |
+| Control (no culling, uncoupled) | 44 / 45 / 81 / 69 | 48 / 72 / 109 / 107 |
+| No forward culling (coupled, observed culls to 2026) | 38 / 42 / 71 / 68 | 46 / 71 / 106 / 104 |
+| **Base:** recent effort ×1, coupled | 26 / 37 / 65 / 55 | 30 / 61 / 95 / 95 |
+| Recent effort ×3 | 14 / 29 / 55 / 34 | 16 / 47 / 76 / 73 |
+| Targeted ×1 | 35 / 39 / 63 / 61 | 43 / 64 / 92 / 94 |
+| Reset, adults + juveniles | **90** / 32 / 50 / 45 | **94** / 56 / 76 / **105** |
+| Reset, adults only | 30 / 34 / 65 / 51 | 34 / 59 / 93 / 109 |
+| Uncoupled supply | 30 / 39 / 70 / 55 | 32 / 61 / 96 / 95 |
+
+**Coral:**
+- Forward culling raises 2027–50 mean coral by at most 0.01–0.02 (×3 against none).
+- Coupling adds 0.01–0.02 in 2027–50, removes about 2 years below 0.05 in 2051–75 under SSP2-4.5 and 3–6 under SSP3-7.0, and keeps 2076–2100 at 0.01 rather than 0.00.
+- **Thermal acclimation:**
+  - 0.05/yr: −1 to −2.4 years below 0.05 in 2051–75;
+  - 0.12/yr: −5 to −6 years under SSP2-4.5 and −2 to −3 under SSP3-7.0, with 2051–75 coral 0.05–0.09 against 0.03–0.06.
+  - Neither prevents collapse after 2075.
+- **Outside coral larvae** (10% and 50% of the historical domain larval density) change nothing material: ≤ 0.4 years, coral ±0.00.
+
+**Coupling factor** (outside supply × domain coral / 1991–2026 mean):
+
+| Period | SSP2-4.5 | SSP3-7.0 |
+| --- | --- | --- |
+| 2027–50 | 0.64 | 0.52 |
+| 2051–75 | 0.22 | 0.27 |
+| 2076–2100 | 0.06 | 0.01 |
+
+**Reset factors** (same with or without juveniles):
+
+| Reef | Mean factor | Range |
+| --- | --- | --- |
+| Lizard | 0.25 | 0.16–0.37 |
+| MacGillivray | 0.13 | 0.09–0.19 |
+| North Direction | 0.28 | 0.18–0.42 |
+| Eyrie | **3.2** | 2.1–4.0 |
+| Martin | 1.5 | — |
+| South Direction | **16.6** | 1–47 |
+| Other reefs (median) | 0.88 | — |
+
+### Findings
+
+1. **Heat sets the century-scale outcome.** Under CNRM, every COTS lever changes 2027–50 coral by at most about 0.02 and does not change the post-2050 collapse. Thermal acclimation at 0.12 DHW/yr delays the collapse by about 5 years (SSP2-4.5).
+2. **Culling works where effort goes.**
+   - Recent effort ×1 cuts the 2027–31 pipeline peak by 8–33% against no forward culling: most at Eyrie (−32%), which gets the most effort, and 8–19% elsewhere.
+   - ×3 roughly halves the peaks.
+   - Targeted ×1 removes about twice as many COTS domain-wide, but less on these four reefs, because it chases outbreaks on other reefs.
+   - Coral gains are small because each removed cohort is quickly replaced by outside and internal supply. Real control programmes report a similar pattern.
+3. **The 2026 reset needs a decision.**
+   - Downward factors (Lizard ×0.25, MacGillivray ×0.13, North Direction ×0.28) lower the pipeline peak on Lizard and MacGillivray by 8–24% with juveniles, but hardly at all with adults only. The overshoot is in the juveniles, as diagnosed.
+   - The upward factors seed new outbreaks: Eyrie ×3.2 gives 90 adults/ha in 2028, and South Direction ×17 (model 0.5–20/ha against 23/ha surveyed) seeds North Direction's 2028–29 peak under SSP3-7.0.
+   - Options: downward-only reset; cap the factor (e.g. ≤ 2); or accept it as the data say. The South Direction target is a single 2026 SALAD survey of 2.8 ha.
+4. **Outside coral larvae are not the limit.** With severe heat (≥ 8 DHW) in most years after 2060, recruits die before reaching cover. Supply does not limit late-century recovery in this model; survival does. M5 can stay as a switch, but it changes nothing at these levels.
+5. **Coupled supply** removes the stationary-supply artefact found in the pilot: late-century outbreaks stop, and coral is no longer held at exactly 0 by outside COTS.
+
+### Status
+
+- Stage B ensemble (5 GCMs × SSP2-4.5 / 3-7.0 × 5 seeds × reset {off, on} × 9 cull levels; coupling on; coral scenarios off) launched as five runs, one per GCM.
+- **Lead decisions:**
+  - the reset form (finding 3);
+  - whether thermal acclimation enters the ensemble (finding 1);
+  - whether to drop outside larvae (finding 4);
+  - the source-side cull discount for the 2024–26 supply (review item 1).
+
+
+## Stage B ensemble: results (2026-10-21)
+
+**Runs:** 20261021T_04–08, one per GCM (MPI-ESM1-2-HR, MIROC6, CNRM-ESM2-1, EC-Earth3-Veg, UKESM1-0-LL), each SSP2-4.5 / SSP3-7.0 × 5 seeds × reset {off, on} × 9 cull levels. That is 900 arms, coupled outside supply, coral scenarios off; `--pkgimages=no`. Audit: run 20261021T_09 (`audit_projection_ensemble.py`: `ensemble_summary.csv`, `ensemble_reefmean.csv`, `ensemble_ssp245.png`, `ensemble_ssp370.png`).
+
+**Checks:** no failures; every arm equals the culling control (run 01) over 1991–2026 (**0.0**).
+
+### Ensemble medians
+
+Over 5 GCMs × 5 seeds; mean of the four calibration reefs; no reset.
+
+| | SSP2-4.5: no forward cull | recent ×1 | recent ×3 | targeted ×1 | SSP3-7.0: no forward cull | recent ×1 | recent ×3 | targeted ×1 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Years in outbreak 2027–50 | 8.75 | 7.5 | 5.5 | 8.0 | 6.5 | 6.0 | 4.75 | 6.25 |
+| Peak adults 2027–31 (/ha) | 63 | 51 | 36 | 55 | 74 | 59 | 42 | 65 |
+| Mean coral 2027–50 | 0.160 | 0.169 | 0.174 | 0.166 | 0.124 | 0.130 | 0.139 | 0.129 |
+| Mean coral 2051–75 | 0.100 | 0.101 | 0.102 | 0.101 | 0.043 | 0.043 | 0.042 | 0.043 |
+| Years coral < 0.05, 2051–75 | 6.0 | 5.75 | 5.75 | 5.75 | 17.0 | 17.0 | 16.75 | 17.0 |
+| Domain removals 2027–50 (COTS) | 0 | 213,000 | 487,000 | 528,000 | 0 | 196,000 | 436,000 | 441,000 |
+
+**Mean coral by GCM** (no reset, no forward cull; 2027–50 / 2051–75 / 2076–2100):
+
+| GCM | SSP2-4.5 | SSP3-7.0 |
+| --- | --- | --- |
+| EC-Earth3 | 0.18 / 0.16 / 0.05 | 0.13 / 0.03 / 0.00 |
+| MPI | 0.16 / 0.10 / 0.10 | 0.16 / 0.04 / 0.01 |
+| MIROC6 | 0.15 / 0.14 / 0.04 | 0.14 / 0.07 / 0.02 |
+| CNRM | 0.16 / 0.04 / 0.01 | 0.12 / 0.06 / 0.00 |
+| UKESM | 0.08 / 0.01 / 0.00 | 0.07 / 0.01 / 0.00 |
+
+### Findings
+
+1. **The climate model and scenario dominate.**
+   - Under SSP2-4.5, coral in 2051–75 ranges from 0.01 (UKESM) to 0.16 (EC-Earth3). The pilot's collapse under CNRM sits in the lower part of the ensemble.
+   - Under SSP3-7.0, all five models are below 0.08 by 2051–75 and at or below 0.02 by 2076–2100.
+2. **Culling reduces outbreaks in proportion to effort, with small coral gains.**
+   - Recent effort ×1 / ×3 cut the years in outbreak in 2027–50 by 14% / 37% (SSP2-4.5) and the 2027–31 peak by 19% / 42%.
+   - Coral gains are +0.009 / +0.014 in 2027–50 and nothing after 2050 (about 0.001 coral-years per 1,000 COTS removed).
+3. **Targeted culling** removes about 2.5× more COTS domain-wide than recent effort but helps the four calibration reefs less, because effort moves to outbreaks elsewhere. The outputs hold the calibration and extra reefs only, so its domain-wide benefit is not yet measured. A domain-level output (adults and coral over all sites) is needed to judge it.
+4. **The 2026 reset** lowers years in outbreak (SSP2-4.5, no cull: 8.75 → 7.25) but raises the mean 2027–31 peak (63 → 69; SSP3-7.0: 74 → 90). That is the upward Eyrie and South Direction factors seen in stage A. The reset's form remains a lead decision.
+
+### Status
+
+The ensemble is complete; nothing is promoted. Lead decisions:
+- reset form;
+- thermal acclimation in the ensemble;
+- dropping outside coral larvae;
+- the source-side cull discount;
+- a domain-level output for culling strategy comparisons.
+
+
+## Lead's decisions (2026-10-21, thirty-first round)
+
+All five recommendations from the stage B results are agreed:
+1. **Reset:** downward only. Reefs whose model density is below the target are not scaled up.
+2. **Thermal acclimation** (0.05 and 0.12 DHW/yr) enters the ensemble as labelled scenarios.
+3. **Outside coral larvae:** the switch is kept but left out of the ensemble (no effect in stage A).
+4. **Source-reef cull discount:** preregister and test, as the direct fix for the 2024–26 supply overshoot.
+5. **Domain-level outputs** (adults, coral and outbreak years over all sites), so targeted culling can be judged domain-wide.
+
+Also requested: updated calibration report figures for W-wave-lf04, and projections to 2050 showing the effect of culling.
+
+**Report figures (2026-10-21)** are in the git-ignored `sandbox/data/derived/calibration_report_figures/2026-10-21_wwave_lf04/`:
+- `calibration/`: `plot_calibration_report.py` on the new `sens` runs with `OWEN_1991_SENS_LIZFAST=true` (opt-in; arms get `_lf04`). Run 20261021T_10 has culling off; run 20261021T_11 has observed culls, reef-proportional.
+- `projections_2050/`: `plot_projection_culling_2050.py` on stage B runs 04–08 (no reset):
+  - `proj1_cots_coral_2050_ssp245` / `_ssp370`: adults and coral to 2050 for no forward culling, recent effort ×1 and ×3, and targeted ×1, at Lizard, MacGillivray, North Direction, Eyrie and Martin;
+  - `proj2_culling_effects_2027_2050`: all nine cull levels, both SSPs;
+  - `culling_effects_2027_2050.csv`.
+- The 2020s diver/cull densities and the effort data are licensed: check permissions before publication.

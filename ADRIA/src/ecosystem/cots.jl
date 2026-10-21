@@ -9,6 +9,8 @@ const CotsPreyMap = COTSMod.COTSPreyMap
 const CotsPreyState = COTSMod.COTSPreyState
 const CotsHuman = COTSMod.COTSHuman
 const CotsState = COTSMod.COTSState
+# Last projection-start reset applied by run_scenario (protocol 2026-10-21, M2); nothing when off.
+const COTS_RESET_LOG = Ref{Any}(nothing)
 
 struct COTSConnectivityForcing
     years::Vector{Int}
@@ -567,6 +569,166 @@ function apply_cots_cull!(cots_models::CotsState, requests::Array{Float64,3},
     removed_log[tstep, k + 1, :] .= adults
     return nothing
 end
+
+"""
+    load_cots_cull_effort(path, group_ids) -> Vector{Float64}
+
+Opt-in forward effort culling (`COTS_CULL_EFFORT_CSV`; crash_mechanism_protocol.md, 2026-10-21,
+M1). Columns `reef_id, hours_per_year` (diver-hours yr^-1, summed dive bottom time). Returns
+hours aligned with `group_ids` (the reef id of each cull group); reefs absent from the table get 0.
+Unknown reefs or invalid hours are errors.
+"""
+function load_cots_cull_effort(path::AbstractString, group_ids::AbstractVector{<:AbstractString})::Vector{Float64}
+    isfile(path) || error("Missing COTS cull effort CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:reef_id => String))
+    all(in(names(table)), ["reef_id", "hours_per_year"]) ||
+        error("COTS cull effort CSV needs columns reef_id, hours_per_year")
+    lookup = Dict(String(id) => g for (g, id) in enumerate(group_ids))
+    hours = zeros(Float64, length(group_ids))
+    for row in eachrow(table)
+        g = get(lookup, row.reef_id, 0)
+        g == 0 && error("COTS cull effort reef $(row.reef_id) is not a domain reef")
+        h = Float64(row.hours_per_year)
+        isfinite(h) && h >= 0.0 || error("COTS cull effort hours must be finite and non-negative")
+        hours[g] += h
+    end
+    return hours
+end
+
+"""Catch per diver-hour at adult density `D` (COTS ha^-1): the SALAD-cull anchor
+`D = c * CPUE^k` inverted, capped at `cpue_max` (COTS h^-1)."""
+cots_cull_cpue(D::Real; c::Real=7.874, k::Real=0.549, cpue_max::Real=20.0)::Float64 =
+    D > 0.0 ? min((Float64(D) / c)^(1.0 / k), Float64(cpue_max)) : 0.0
+
+"""Reef stock (COTS) and mean adult density (COTS ha^-1 of site area) per cull group.
+`areas` must be site areas in ha: stock = sum(N_adult [COTS ha^-1] x area [ha])."""
+function cots_group_stock(cots_models::CotsState, groups::AbstractVector{<:AbstractVector{Int}},
+    areas::AbstractVector{<:Real})::Tuple{Vector{Float64},Vector{Float64}}
+    stock = [sum(cots_models[s].N[3] * areas[s] for s in sites; init=0.0) for sites in groups]
+    area = [sum(Float64(areas[s]) for s in sites; init=0.0) for sites in groups]
+    return stock, [a > 0.0 ? x / a : 0.0 for (x, a) in zip(stock, area)]
+end
+
+"""
+    targeted_cull_hours(cots_models, total_hours, groups, areas; threshold_ha) -> Vector{Float64}
+
+`targeted` mode: `total_hours` reallocated to groups whose adult density is at least
+`threshold_ha`, in proportion to their stock. No group qualifies -> all zeros.
+"""
+function targeted_cull_hours(cots_models::CotsState, total_hours::Real,
+    groups::AbstractVector{<:AbstractVector{Int}}, areas::AbstractVector{<:Real};
+    threshold_ha::Real=3.0)::Vector{Float64}
+    stock, density = cots_group_stock(cots_models, groups, areas)
+    eligible = density .>= threshold_ha
+    total = sum(stock[eligible]; init=0.0)
+    total > 0.0 || return zeros(Float64, length(groups))
+    return [eligible[g] ? Float64(total_hours) * stock[g] / total : 0.0 for g in eachindex(groups)]
+end
+
+"""
+    effort_cull_requests(cots_models, hours, groups, areas; c, k, cpue_max) -> Vector{Float64}
+
+Adult removal requests (COTS ha^-1 per site) for one phase: each group removes
+`min(stock, hours * cpue(D))` COTS, allocated to its sites in proportion to adults x area.
+`areas` are site areas in ha (removals are absolute counts of COTS).
+"""
+function effort_cull_requests(cots_models::CotsState, hours::AbstractVector{<:Real},
+    groups::AbstractVector{<:AbstractVector{Int}}, areas::AbstractVector{<:Real};
+    c::Real=7.874, k::Real=0.549, cpue_max::Real=20.0)::Vector{Float64}
+    length(hours) == length(groups) || throw(DimensionMismatch("effort hours and groups must match"))
+    stock, density = cots_group_stock(cots_models, groups, areas)
+    out = zeros(Float64, length(cots_models))
+    for (g, sites) in enumerate(groups)
+        (hours[g] > 0.0 && stock[g] > 0.0) || continue
+        removed = min(stock[g], Float64(hours[g]) * cots_cull_cpue(density[g]; c=c, k=k, cpue_max=cpue_max))
+        for s in sites
+            out[s] = removed * cots_models[s].N[3] / stock[g]
+        end
+    end
+    return out
+end
+
+"""Apply one phase of forward effort culling (adults only) and add the removals to
+`removed_log[tstep, k + 1, :]` (k = 1 pre, 3 post), after any observed culls."""
+function apply_cots_effort_cull!(cots_models::CotsState, hours::AbstractVector{<:Real},
+    groups, areas, removed_log::Array{Float64,3}, tstep::Int, phase::Symbol; kwargs...)::Nothing
+    phase in (:pre, :post) || throw(ArgumentError("phase must be :pre or :post"))
+    requests = effort_cull_requests(cots_models, hours, groups, areas; kwargs...)
+    _, adults = COTSMod.apply_removals!(cots_models, zeros(Float64, length(requests)), requests)
+    removed_log[tstep, phase == :pre ? 2 : 4, :] .+= adults
+    return nothing
+end
+
+"""
+    load_cots_state_reset(path, loc_ids) -> (year, groups, targets, labels)
+
+Opt-in projection-start reset (`COTS_STATE_RESET_CSV`; protocol 2026-10-21, M2). Columns
+`site_id, group, year, target_adults_ha`; one year for the whole table; each group has one target.
+"""
+function load_cots_state_reset(path::AbstractString, loc_ids::AbstractVector{<:AbstractString})
+    isfile(path) || error("Missing COTS state reset CSV: $path")
+    table = CSV.read(path, DataFrame; types=Dict(:site_id => String, :group => String))
+    all(in(names(table)), ["site_id", "group", "year", "target_adults_ha"]) ||
+        error("COTS state reset CSV needs columns site_id, group, year, target_adults_ha")
+    years = unique(Int.(table.year))
+    length(years) == 1 || error("COTS state reset CSV must hold a single year")
+    sites = Dict(String(id) => loc for (loc, id) in enumerate(loc_ids))
+    labels = unique(String.(table.group))
+    groups, targets = Vector{Int}[], Float64[]
+    for label in labels
+        rows = table[table.group .== label, :]
+        target = unique(Float64.(rows.target_adults_ha))
+        length(target) == 1 && isfinite(target[1]) && target[1] >= 0.0 ||
+            error("COTS state reset group $label needs one finite non-negative target")
+        locs = [get(sites, id, 0) for id in rows.site_id]
+        any(iszero, locs) && error("COTS state reset group $label has a site outside the domain")
+        push!(groups, locs)
+        push!(targets, target[1])
+    end
+    length(unique(vcat(groups...))) == sum(length, groups) || error("COTS state reset groups overlap")
+    return only(years), groups, targets, labels
+end
+
+"""Scale one location's COTS state: adults (with age profile and large adults) by `f_adult`,
+recruits and juveniles (N[1], N[2]) by `f_juvenile`."""
+function scale_cots_state!(model, f_adult::Real, f_juvenile::Real)::Nothing
+    model.N[3] *= f_adult
+    isempty(model.adult_ages) || (model.adult_ages .*= f_adult)
+    model.large_adults *= f_adult
+    model.N[1] *= f_juvenile
+    model.N[2] *= f_juvenile
+    return nothing
+end
+
+"""
+    apply_cots_state_reset!(cots_models, groups, targets, areas; juveniles=true, others=:median)
+        -> (factors, other_factor)
+
+Rescale each group's area-weighted adult density to its target (factor `f = target / current`;
+`f = 1` where the group holds no adults). Juveniles take the same factor when `juveniles`.
+Locations outside every group take the median group factor (`others = :median`) or 1 (`:none`).
+"""
+function apply_cots_state_reset!(cots_models::CotsState, groups::AbstractVector{<:AbstractVector{Int}},
+    targets::AbstractVector{<:Real}, areas::AbstractVector{<:Real};
+    juveniles::Bool=true, others::Symbol=:median)
+    others in (:median, :none) || throw(ArgumentError("others must be :median or :none"))
+    _, density = cots_group_stock(cots_models, groups, areas)
+    factors = [d > 0.0 ? Float64(t) / d : 1.0 for (t, d) in zip(targets, density)]
+    for (sites, f) in zip(groups, factors), s in sites
+        scale_cots_state!(cots_models[s], f, juveniles ? f : 1.0)
+    end
+    other = others == :median && !isempty(factors) ? median(factors) : 1.0
+    grouped = Set(vcat(groups...))
+    for loc in eachindex(cots_models)
+        loc in grouped || scale_cots_state!(cots_models[loc], other, juveniles ? other : 1.0)
+    end
+    return factors, other
+end
+
+"""Coral-coupled outside supply factor (protocol 2026-10-21, M3): `min(1, current / reference)`;
+1 when the reference is not positive."""
+cots_external_coral_factor(current::Real, reference::Real)::Float64 =
+    reference > 0.0 ? clamp(Float64(current) / Float64(reference), 0.0, 1.0) : 1.0
 
 function apply_cots_initial_state!(models::CotsState, state::AbstractMatrix{<:Real})
     size(state) == (length(models), 3) || error("COTS initial-state dimensions differ")

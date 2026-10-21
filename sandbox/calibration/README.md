@@ -2714,3 +2714,41 @@ Supply codes:
 - `R`: repeat of 2012–26.
 
 Each seed k also selects environment replicate k: cyclone and chl years drawn jointly from 1993–2024.
+
+
+### Projection mechanisms, stage A screen and stage B ensemble (2026-10-21)
+
+Protocol: "Lead's decisions (2026-10-21, thirtieth round)" onwards. ADRIA opt-in switches (unset = established path):
+
+| Switch | Purpose |
+| --- | --- |
+| `COTS_CULL_EFFORT_CSV`, `_START_YEAR`, `_MODE` (`fixed` / `targeted`), `_MULTIPLIER`, `_THRESHOLD_HA` (3), `COTS_CULL_CPUE_MAX` (20) | forward effort culling (M1) |
+| `COTS_STATE_RESET_CSV`, `COTS_STATE_RESET_JUVENILES` (true), `COTS_STATE_RESET_OTHERS` (`median` / `none`) | projection-start reset (M2) |
+| `COTS_EXTERNAL_CORAL_COUPLING_START_YEAR` | coral-coupled outside supply (M3) |
+| `ADRIA_THERMAL_ACCLIMATION_RATE`, `_START_YEAR` | thermal acclimation (M4) |
+| `ADRIA_EXTERNAL_CORAL_LARVAE_FRACTION`, `_START_YEAR` | outside coral larvae (M5) |
+
+```powershell
+julia --project=sandbox sandbox/calibration/test_projection_mechanisms.jl          # 35 checks
+python sandbox/calibration/build_cull_effort.py                                  # recent effort 2023-25 (licensed source)
+python sandbox/calibration/build_reset_targets.py                                # 2026 reset targets
+# 1991-2026 culling control (run 20261021T_01)
+$env:OWEN_1991_EXPERIMENT='lizfast'; $env:OWEN_1991_LIZFAST_DELTAS='0.04'; $env:OWEN_1991_LIZFAST_CULL='true'; $env:OWEN_1991_ARM_FILTER='_lf04_'
+# plus OWEN_1991_DOMAIN_VERSION=v0.4, OWEN_1991_COTS_DATASET=owen_global_2018_2023_corr_w3, OWEN_1991_EXTRA_REEFS=true
+# Stage A (run 20261021T_03) and stage B (runs 20261021T_04-08, one per GCM index 7, 5, 1, 2, 10)
+$env:OWEN_1991_PROJECTION='true'; $env:OWEN_1991_PROJ_DESIGN='screenA'   # or 'ensembleB'
+$env:OWEN_1991_PROJ_SSPS='245,370'; $env:OWEN_1991_PROJ_GCMS='1'; $env:OWEN_1991_PROJ_SUPPLY='W'; $env:OWEN_1991_PROJ_SEEDS='1,2,3,4,5'
+julia --pkgimages=no --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_projection_screen.py <stage A run> <culling control run>
+python sandbox/calibration/audit_projection_ensemble.py <out dir> <stage B runs...>
+```
+
+Arm tokens after `_pj<ssp>g<gcm><supply>`:
+- `_cullreef`: observed culls to 2026;
+- `_fcN` / `_fcF<m×100>` / `_fcT<m×100>`: forward cull none / fixed / targeted;
+- `_xc`: coupled outside supply;
+- `_rsAJ` / `_rsAO`: reset, adults + juveniles / adults only;
+- `_ta<rate×100>`: thermal acclimation;
+- `_cl<fraction×100>`: outside coral larvae.
+
+`--pkgimages=no` works around a locked ADRIA package-image DLL in `~/.julia/compiled`. Results are identical (replays 0.0).

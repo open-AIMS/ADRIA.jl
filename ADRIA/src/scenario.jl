@@ -985,6 +985,25 @@ function run_model(
     # Hard ceiling: tolerance cannot increase more than HEAT_UB DHW-weeks above initial values
     c_mean_tol_ceil = c_mean_t .+ HEAT_UB
 
+    # Projection coral switches (crash_mechanism_protocol.md, 2026-10-21). Unset = established path.
+    # M4: mean DHW tolerance of every group and size class rises by `rate` DHW-weeks per year from
+    # the start year, under the HEAT_UB ceiling. M5: from the start year every habitable location
+    # receives `fraction` x the domain-mean larval density per group of the earlier years.
+    thermal_acclimation_rate = parse(Float64, get(ENV, "ADRIA_THERMAL_ACCLIMATION_RATE", "0.0"))
+    thermal_acclimation_start = parse(Int, get(ENV, "ADRIA_THERMAL_ACCLIMATION_START_YEAR", "0"))
+    ext_coral_fraction = parse(Float64, get(ENV, "ADRIA_EXTERNAL_CORAL_LARVAE_FRACTION", "0.0"))
+    ext_coral_start = parse(Int, get(ENV, "ADRIA_EXTERNAL_CORAL_LARVAE_START_YEAR", "0"))
+    coral_calendar_years = Int.(domain.env_layer_md.timeframe[1:tf])
+    thermal_acclimation_rate >= 0.0 && ext_coral_fraction >= 0.0 ||
+        error("Thermal acclimation rate and external coral larvae fraction must be non-negative")
+    (thermal_acclimation_rate == 0.0 || thermal_acclimation_start >= 1000) &&
+        (ext_coral_fraction == 0.0 || ext_coral_start >= 1000) &&
+        (thermal_acclimation_rate == 0.0 && ext_coral_fraction == 0.0 || all(>=(1000), coral_calendar_years)) ||
+        error("Coral projection switches need a calendar start year and a calendar-year timeframe")
+    ext_coral_sum = zeros(Float64, n_groups)  # domain-mean larvae m^-2 per group, summed over years
+    ext_coral_n = Ref(0)
+    ext_coral_larvae = ext_coral_fraction > 0.0 ? zeros(Float64, n_groups, n_locs) : nothing
+
     # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE seeding.
     # Used as the reference base for a_adapt enhancement (c_mean_reference).
     # Storing the post-seeding state would cause a_adapt to compound year-over-year,
@@ -1503,6 +1522,48 @@ function run_model(
     else
         nothing, nothing
     end
+    # Projection switches (crash_mechanism_protocol.md, 2026-10-21). Unset = established path.
+    # M1 forward effort culling: reef diver-hours x multiplier ("fixed") or the domain total
+    # reallocated to outbreak reefs ("targeted"), from COTS_CULL_EFFORT_START_YEAR.
+    cots_cull_effort_csv = get(ENV, "COTS_CULL_EFFORT_CSV", "")
+    cots_reset_csv = get(ENV, "COTS_STATE_RESET_CSV", "")
+    # Reef groups (GBRMPA reef id) and site areas, read only when a switch needs them.
+    cots_reef_labels, cots_reef_groups, cots_site_areas =
+        isempty(cots_cull_effort_csv) && isempty(cots_reset_csv) ? (nothing, nothing, nothing) : let
+            ids = string.(domain.loc_data.GBRMPA_ID)
+            labels = unique(ids)
+            # loc_data.area is m^2; effort culling needs ha (COTS ha^-1 x ha = COTS).
+            labels, [findall(==(r), ids) for r in labels], Float64.(domain.loc_data.area) ./ 1e4
+        end
+    cots_cull_effort = if isempty(cots_cull_effort_csv)
+        nothing
+    else
+        cots_enabled || error("COTS_CULL_EFFORT_CSV requires ADRIA_COTS_ENABLED=true")
+        load_cots_cull_effort(cots_cull_effort_csv, cots_reef_labels)
+    end
+    cots_effort_start = parse(Int, get(ENV, "COTS_CULL_EFFORT_START_YEAR", "0"))
+    cots_effort_multiplier = parse(Float64, get(ENV, "COTS_CULL_EFFORT_MULTIPLIER", "1.0"))
+    cots_effort_mode = get(ENV, "COTS_CULL_EFFORT_MODE", "fixed")
+    cots_effort_mode in ("fixed", "targeted") || error("COTS_CULL_EFFORT_MODE must be fixed or targeted")
+    cots_effort_threshold = parse(Float64, get(ENV, "COTS_CULL_EFFORT_THRESHOLD_HA", "3.0"))
+    cots_effort_cpue_max = parse(Float64, get(ENV, "COTS_CULL_CPUE_MAX", "20.0"))
+    isnothing(cots_cull_effort) || (cots_effort_start > 0 && cots_effort_multiplier >= 0.0) ||
+        error("COTS_CULL_EFFORT_CSV needs COTS_CULL_EFFORT_START_YEAR > 0 and a non-negative multiplier")
+    # M2 projection-start reset (data assimilation) after the table's year.
+    cots_reset = if isempty(cots_reset_csv)
+        nothing
+    else
+        cots_enabled || error("COTS_STATE_RESET_CSV requires ADRIA_COTS_ENABLED=true")
+        load_cots_state_reset(cots_reset_csv, domain.loc_ids)
+    end
+    cots_reset_juveniles = get(ENV, "COTS_STATE_RESET_JUVENILES", "true") == "true"
+    cots_reset_others = Symbol(get(ENV, "COTS_STATE_RESET_OTHERS", "median"))
+    COTS_RESET_LOG[] = nothing
+    # M3 coral-coupled outside supply: factor min(1, domain coral / its pre-start mean).
+    cots_coral_coupling_start = parse(Int, get(ENV, "COTS_EXTERNAL_CORAL_COUPLING_START_YEAR", "0"))
+    cots_coral_weights = cots_coral_coupling_start > 0 ? Float64.(location_k(domain)) .* Float64.(domain.loc_data.area) : nothing
+    cots_coral_reference = Float64[]  # domain coral before the start year
+    cots_coral_factor_log = fill(NaN, tf)
     cots_external_outbreak_production > 0.0 &&
         !any(in(cots_forcing.outbreak_years), cots_calendar_years) && error(
             "Evidence-derived outbreak supply has no calendar-year overlap; " *
@@ -1678,6 +1739,11 @@ function run_model(
             end
         end
 
+        # M4 (opt-in): annual rise in mean DHW tolerance, under the HEAT_UB ceiling.
+        if thermal_acclimation_rate > 0.0 && coral_calendar_years[tstep] >= thermal_acclimation_start
+            c_mean_t .= min.(c_mean_t .+ thermal_acclimation_rate, c_mean_tol_ceil)
+        end
+
         # Snapshot juvenile tolerance after natural adaptation, before seeding modifies it.
         # This is the correct baseline for a_adapt enhancement: using the post-seeding state
         # here would cause the enhancement to compound each deployment year.
@@ -1705,6 +1771,14 @@ function run_model(
 
         # habitable_areas_view = @view habitable_areas[:, habitable_locs]
 
+        # M5 (opt-in): outside larvae from the start year at `fraction` x the earlier domain mean.
+        ext_larvae_t = nothing
+        if !isnothing(ext_coral_larvae) && coral_calendar_years[tstep] >= ext_coral_start
+            ext_coral_n[] > 0 || error("ADRIA_EXTERNAL_CORAL_LARVAE_START_YEAR leaves no reference years")
+            ext_coral_larvae[:, habitable_locs] .= ext_coral_fraction .* ext_coral_sum ./ ext_coral_n[]
+            ext_larvae_t = ext_coral_larvae
+        end
+
         # Recruitment represents additional cover, relative to total location area
         # Recruitment/settlement occurs after the full moon in October/November
         @views recruitment[:, habitable_loc_idxs] .=
@@ -1716,10 +1790,17 @@ function run_model(
                 sim_params.max_larval_density,
                 basal_area_per_settler,
                 potential_settlers;
-                rng=rng
+                rng=rng,
+                external_larvae=ext_larvae_t
             )[
                 :, habitable_loc_idxs
             ] ./ habitable_areas[:, habitable_loc_idxs]
+        if !isnothing(ext_coral_larvae) && coral_calendar_years[tstep] < ext_coral_start
+            # Reference: habitable-area-weighted domain-mean larval density per group.
+            ext_coral_sum .+= vec(sum(@view(potential_settlers[:, habitable_locs]) .*
+                habitable_loc_areas'; dims=2)) ./ sum(habitable_loc_areas)
+            ext_coral_n[] += 1
+        end
 
         # Reset fecundity scope before next run
         fec_scope .= 0.0
@@ -2245,14 +2326,32 @@ function run_model(
             clamp!(C_cover_t, 0.0, 1.0)
         end
 
+        # M2: rescale the state left by the reset year before this year's processes.
+        if !isnothing(cots_reset) && cots_calendar_years[tstep] == cots_reset[1] + 1
+            factors, other = apply_cots_state_reset!(cots_models, cots_reset[2], cots_reset[3],
+                cots_site_areas; juveniles=cots_reset_juveniles, others=cots_reset_others)
+            COTS_RESET_LOG[] = (year=cots_reset[1], groups=cots_reset[4], factors=factors, other=other,
+                juveniles=cots_reset_juveniles)
+        end
+        # M1: this year's effort per reef (half before spawning, half after).
+        cots_effort_on = !isnothing(cots_cull_effort) && cots_calendar_years[tstep] >= cots_effort_start
+        cots_effort_hours(phase_models) = cots_effort_mode == "fixed" ?
+            0.5 * cots_effort_multiplier .* cots_cull_effort :
+            targeted_cull_hours(phase_models, 0.5 * cots_effort_multiplier * sum(cots_cull_effort),
+                cots_reef_groups, cots_site_areas; threshold_ha=cots_effort_threshold)
+
         # COTS predation mortality (operates on relative cover)
         isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :pre;
             groups=cots_cull_groups, areas=cots_cull_areas)
+        cots_effort_on && apply_cots_effort_cull!(cots_models, cots_effort_hours(cots_models),
+            cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :pre; cpue_max=cots_effort_cpue_max)
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
         isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post;
             groups=cots_cull_groups, areas=cots_cull_areas)
+        cots_effort_on && apply_cots_effort_cull!(cots_models, cots_effort_hours(cots_models),
+            cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :post; cpue_max=cots_effort_cpue_max)
         if !isnothing(cots_larval_survival)
             apply_cots_larval_survival!(cots_models, @view(cots_larval_survival[tstep, :]))
             Ycots_larval_survival[tstep, :] .= @view(cots_larval_survival[tstep, :])
@@ -2317,6 +2416,20 @@ function run_model(
                 cots_external_outbreak_production
             )
             supply_factor = cots_supply_window_factor(cots_supply_window, calendar_year)
+            if cots_coral_coupling_start > 0
+                # M3: domain coral at the end of the previous step (relative to habitable area).
+                prev = vec(sum(@view(C_cover[tstep - 1, :, :, :]); dims=(1, 2)))
+                c_dom = sum(prev .* cots_coral_weights) / sum(cots_coral_weights)
+                if calendar_year < cots_coral_coupling_start
+                    push!(cots_coral_reference, c_dom)
+                else
+                    isempty(cots_coral_reference) &&
+                        error("COTS_EXTERNAL_CORAL_COUPLING_START_YEAR leaves no reference years")
+                    g = cots_external_coral_factor(c_dom, mean(cots_coral_reference))
+                    cots_coral_factor_log[tstep] = g
+                    supply_factor *= g
+                end
+            end
             if supply_factor != 1.0
                 potential_supply .*= supply_factor
                 pelagic_supply .*= supply_factor
@@ -2469,6 +2582,8 @@ function run_model(
         cots_forcing_year=Ycots_forcing_year,
         cots_calendar_year=cots_calendar_years,
         cots_culled_log=Ycots_culled,
-        cots_larval_survival_log=Ycots_larval_survival
+        cots_larval_survival_log=Ycots_larval_survival,
+        cots_external_coral_factor_log=cots_coral_factor_log,
+        cots_reset_log=COTS_RESET_LOG[]
     )
 end

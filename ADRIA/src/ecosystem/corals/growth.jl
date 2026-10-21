@@ -839,7 +839,8 @@ function settler_cover(
     β::V,
     basal_area_per_settler::V,
     potential_settlers::T;
-    rng::AbstractRNG=Random.GLOBAL_RNG
+    rng::AbstractRNG=Random.GLOBAL_RNG,
+    external_larvae::Union{Nothing,AbstractMatrix{Float64}}=nothing
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
@@ -852,6 +853,10 @@ function settler_cover(
 
     # Efficient Dense * Sparse multiplication
     mul!(potential_settlers, fec_scope, conn)
+
+    # Opt-in larvae arriving from outside the domain (larvae/m², groups x locations;
+    # crash_mechanism_protocol.md, 2026-10-21, M5). Added before settlement.
+    isnothing(external_larvae) || (potential_settlers .+= external_larvae)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2

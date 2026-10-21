@@ -108,7 +108,7 @@ def peak_table(model: pd.Series, obs: pd.Series, windows) -> list[dict]:
     return rows
 
 
-def main(run: Path, out: Path, cull_run: Path | None = None) -> None:
+def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = "W-wave") -> None:
     if out.exists():
         raise FileExistsError(f"Refusing to overwrite {out}")
     traj = pd.read_csv(run / "trajectories.csv")
@@ -166,7 +166,7 @@ def main(run: Path, out: Path, cull_run: Path | None = None) -> None:
     for ax in axes[:, 0]:
         ax.set_ylabel("COTS per manta tow")
     axes[0, 0].legend(frameon=False, fontsize=7.5, loc="upper right")
-    fig.suptitle("Calibration reefs: COTS (manta-tow equivalent), W-wave", x=0.01, ha="left", fontsize=11, fontweight="bold")
+    fig.suptitle(f"Calibration reefs: COTS (manta-tow equivalent), {model_label}", x=0.01, ha="left", fontsize=11, fontweight="bold")
     fig.tight_layout()
     save(fig, "fig1_cots_calibration_reefs")
 
@@ -218,7 +218,7 @@ def main(run: Path, out: Path, cull_run: Path | None = None) -> None:
     for ax in axes[:, 0]:
         ax.set_ylabel("COTS per manta tow")
     axes[0, 0].legend(frameon=False, fontsize=7.5, loc="upper right")
-    fig.suptitle("Additional reefs (not used in fitting): COTS (manta-tow equivalent), W-wave", x=0.01, ha="left",
+    fig.suptitle(f"Additional reefs (not used in fitting): COTS (manta-tow equivalent), {model_label}", x=0.01, ha="left",
                  fontsize=11, fontweight="bold")
     fig.tight_layout()
     save(fig, "fig3_cots_additional_reefs")
@@ -265,5 +265,6 @@ if __name__ == "__main__":
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--cull-run", type=Path, default=None)
+    parser.add_argument("--model-label", default="W-wave", help="model name in figure titles (e.g. W-wave-lf04)")
     a = parser.parse_args()
-    main(a.run.resolve(), a.output.resolve(), a.cull_run.resolve() if a.cull_run else None)
+    main(a.run.resolve(), a.output.resolve(), a.cull_run.resolve() if a.cull_run else None, a.model_label)
