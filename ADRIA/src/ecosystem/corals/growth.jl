@@ -247,7 +247,8 @@ end
         eff_dhw::Vector{Float64},
         stdev::AbstractMatrix{Float64},
         dist_t::AbstractArray{Float64,3},
-        prop_mort::SubArray{Float64}
+        prop_mort::SubArray{Float64};
+        mean_tol_update_method::Symbol=:blend
     )::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
@@ -270,6 +271,13 @@ Baird et al., [4].
 - `prop_mort` : Cache to store records of bleaching mortality (stores mortalities for
     t-1 and t)
 - `n_sizes` : Number of size classes within each functional group
+- `mean_tol_update_method` : How the mean tolerance of a bleached size class is updated.
+    - `:blend` (default): average of the pre-bleaching mean and the survivors' mean,
+      weighted by the number of individuals before and after bleaching, i.e.
+      `(μ + (1 - m) * μ_surv) / (2 - m)` for mortality fraction `m`. Damps the large
+      first-event jump of `:legacy`.
+    - `:legacy`: the survivors' mean replaces the mean, and is re-used as the centre of
+      the (re-truncated) distribution at the next bleaching event.
 
 # References
 1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
@@ -308,8 +316,11 @@ function bleaching_mortality!(
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
     bleach_dhw::SubArray{Float64},
-    tol_ceil::AbstractArray{Float64,3}
+    tol_ceil::AbstractArray{Float64,3};
+    mean_tol_update_method::Symbol=:blend
 )::Nothing
+    mean_tol_update_method in (:blend, :legacy) ||
+        throw(ArgumentError("Unknown mean_tol_update_method: $mean_tol_update_method"))
     n_groups, n_sizes, _ = size(cover)
 
     # New evidence that all size classes bleach
@@ -374,8 +385,11 @@ function bleaching_mortality!(
                     #
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
-                    dist_t[grp, sc, loc] = truncated_normal_mean(
+                    μ_surv::Float64 = truncated_normal_mean(
                         μ, stdev[grp, sc], max(HEAT_LB, eff_dhw[loc]), μ_ceil
+                    )
+                    dist_t[grp, sc, loc] = new_mean_heat_stress_tolerance(
+                        μ, μ_surv, mort_pop; mean_tol_update_method
                     )
 
                     # Update population
@@ -386,6 +400,32 @@ function bleaching_mortality!(
     end
 
     return nothing
+end
+
+"""
+    new_mean_heat_stress_tolerance(
+        μ::Float64, μ_surv::Float64, mort_pop::Float64; mean_tol_update_method::Symbol
+    )::Float64
+
+Mean heat stress tolerance of a size class after a bleaching event.
+
+# Arguments
+- `μ` : Mean tolerance before bleaching
+- `μ_surv` : Mean tolerance of the survivors (truncated-normal mean)
+- `mort_pop` : Fraction of the population lost to bleaching
+- `mean_tol_update_method` : `:legacy` returns `μ_surv`; `:blend` returns the mean of `μ` and
+    `μ_surv` weighted by the number of individuals before and after bleaching.
+"""
+function new_mean_heat_stress_tolerance(
+    μ::Float64, μ_surv::Float64, mort_pop::Float64; mean_tol_update_method::Symbol
+)::Float64
+    return if mean_tol_update_method === :legacy
+        μ_surv
+    elseif mean_tol_update_method === :blend
+        (μ + (1.0 - mort_pop) * μ_surv) / (2.0 - mort_pop)
+    else
+        throw(ArgumentError("Unknown mean_tol_update_method: $mean_tol_update_method"))
+    end
 end
 
 """
