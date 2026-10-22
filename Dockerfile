@@ -2,7 +2,7 @@
 ARG SANDBOX_FROM="adria-dev"
 
 # See https://hub.docker.com/_/julia for valid versions.
-ARG JULIA_VERSION="1.11.7"
+ARG JULIA_VERSION="1.12.6"
 
 #------------------------------------------------------------------------------
 # internal-base build target: julia with OS updates and an empty @adria
@@ -219,11 +219,18 @@ RUN mkdir -p /sysimage && \
 # Lean production image for simulation jobs (EC2 Batch / ECS).
 # The sysimage is baked in; `using ADRIA` cold-starts in ~3 s instead of ~75 s.
 #
-# The sysimage .so must be present at build/sim/adria_sim.so in the build
-# context before running docker build. Two ways to place it there:
+# The sysimage .so, plus its .so.version sidecar (the exact Julia version it
+# was compiled with, written by build/sim/make.jl), must be present at
+# build/sim/adria_sim.so[.version] in the build context before running docker
+# build. Two ways to place them there:
 #   1. CI pipeline: download from S3 (see .github/workflows/BuildDockerImage.yml)
-#   2. Manual: build with --target sysimage-builder-sim, extract the .so, copy
-#      it to build/sim/adria_sim.so, then build this target.
+#   2. Manual: build with --target sysimage-builder-sim, extract the .so and
+#      .so.version, copy both to build/sim/, then build this target.
+#
+# The build below fails fast if adria_sim.so.version doesn't match this
+# image's `julia --version` — sysimages are tied to an exact Julia build, so
+# a mismatch here would otherwise only surface as a runtime failure to load
+# the sysimage.
 #
 # Build:
 #   docker build --target adria-sim-runtime -t adria/sim:latest .
@@ -239,6 +246,17 @@ COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
 # Sysimage pre-built externally (CI: downloaded from S3; manual: extracted from
 # sysimage-builder-sim). Place at build/sim/adria_sim.so before docker build.
 COPY build/sim/adria_sim.so /sysimage/adria_sim.so
+COPY build/sim/adria_sim.so.version /sysimage/adria_sim.so.version
+
+# Fail the build if the sysimage was compiled with a different Julia version
+# than this image ships, rather than only discovering the mismatch when the
+# container starts (see comment above at the top of this build target).
+RUN JULIA_ACTUAL="$(julia -e 'print(VERSION)')" && \
+    JULIA_EXPECTED="$(cat /sysimage/adria_sim.so.version)" && \
+    if [ "$JULIA_ACTUAL" != "$JULIA_EXPECTED" ]; then \
+        echo "ERROR: adria_sim.so was built with Julia $JULIA_EXPECTED but this image runs Julia $JULIA_ACTUAL" >&2; \
+        exit 1; \
+    fi
 
 ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
 
@@ -256,7 +274,8 @@ ENTRYPOINT ["julia", "-J", "/sysimage/adria_sim.so", "--project=@adria"]
 # adria-analysis-runtime build target
 #
 # Lean production image for analysis workloads (ECS Fargate / long-lived EC2).
-# Requires build/analysis/adria_analysis.so in the build context.
+# Requires build/analysis/adria_analysis.so and its adria_analysis.so.version
+# sidecar (written by build/analysis/make.jl) in the build context.
 #
 # Build:
 #   docker build --target adria-analysis-runtime -t adria/analysis:latest .
@@ -265,6 +284,17 @@ FROM internal-base AS adria-analysis-runtime
 
 COPY --from=adria-dev ${JULIA_DEPOT_PATH} ${JULIA_DEPOT_PATH}
 COPY build/analysis/adria_analysis.so /sysimage/adria_analysis.so
+COPY build/analysis/adria_analysis.so.version /sysimage/adria_analysis.so.version
+
+# Fail the build if the sysimage was compiled with a different Julia version
+# than this image ships, rather than only discovering the mismatch when the
+# container starts.
+RUN JULIA_ACTUAL="$(julia -e 'print(VERSION)')" && \
+    JULIA_EXPECTED="$(cat /sysimage/adria_analysis.so.version)" && \
+    if [ "$JULIA_ACTUAL" != "$JULIA_EXPECTED" ]; then \
+        echo "ERROR: adria_analysis.so was built with Julia $JULIA_EXPECTED but this image runs Julia $JULIA_ACTUAL" >&2; \
+        exit 1; \
+    fi
 
 ENV JULIA_CPU_TARGET="x86_64;haswell;skylake;skylake-avx512;tigerlake"
 

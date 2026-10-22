@@ -17,13 +17,14 @@ function sample_cf(
     cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
     spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
-    # Unguided scenarios only
+    # Counterfactual scenarios only
     guided_col = spec_df.fieldname .== :guided
     spec_df[guided_col, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
         [-1 -1 -1 (-1.0, -1.0) true]
 
-    # Remove intervention scenarios as an option
-    deactivate_interventions(spec_df)
+    # Pre-sampling resolution: fix all intervention/strategy/criteria columns
+    # to their CF constants. Supersedes the old deactivate_interventions call.
+    _resolve_conditional_spec!(spec_df, (guided=-1.0,))
 
     return sample(spec_df, n, sample_method)
 end

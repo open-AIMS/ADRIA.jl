@@ -3,21 +3,7 @@ push!(LOAD_PATH, "../src/")
 using Documenter, DocumenterVitepress, Literate, ADRIA, ADRIAanalysis
 
 # Generate documentation pages from Literate sources
-usage_dir = joinpath(@__DIR__, "src", "usage")
-for name in [
-    "getting_started",
-    "loading_results",
-    "scenario_runs",
-    "scenario_discovery",
-    "analysis",
-    "cookbook"
-]
-    Literate.markdown(
-        joinpath(usage_dir, "$(name).jl"),
-        usage_dir;
-        flavor=Literate.DocumenterFlavor()
-    )
-end
+include("literate.jl")
 
 makedocs(;
     sitename="ADRIA.jl",
@@ -41,7 +27,8 @@ makedocs(;
             joinpath("usage", "scenario_runs.md"),
             joinpath("usage", "scenario_discovery.md"),
             joinpath("usage", "analysis.md"),
-            joinpath("usage", "cookbook.md")
+            joinpath("usage", "cookbook.md"),
+            joinpath("usage", "exporting_to_rme.md")
         ],
         "Architecture" => [
             joinpath("architecture", "architecture.md"),
@@ -85,7 +72,7 @@ if Sys.iswindows()
     end
 end
 
-deploydocs(;
+DocumenterVitepress.deploydocs(;
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",

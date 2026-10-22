@@ -32,7 +32,7 @@ using ADRIAviz.viz
         # Antipodal points (opposite sides of Earth, ~20015 km)
         # Use points not exactly at poles to avoid singularities
         d_antipodal = _haversine_km(0.0, 45.0, 180.0, -45.0)
-        @test isapprox(d_antipodal, 14142; atol=100)  # Great circle distance
+        @test isapprox(d_antipodal, 20015; atol=100)  # Great circle distance
     end
 
     @testset "Nice Scale Bar Length" begin
@@ -72,7 +72,7 @@ using ADRIAviz.viz
             reef_siteid=[10, 20, 30],
             site_id=[1, 2, 3]
         )
-        @test_logs (:warn,) ids_ambig = _get_site_ids(df_ambiguous)
+        ids_ambig = @test_logs (:warn,) _get_site_ids(df_ambiguous)
         @test length(ids_ambig) == 3
 
         # Test fallback to row indices when no site_id columns present
@@ -83,7 +83,7 @@ using ADRIAviz.viz
 
     @testset "MapDecorationData Structure" begin
         # Test that MapDecorationData can be created and accessed
-        places = [(name="Test", lon=150.0, lat=-20.0)]
+        places = [(name="Test", lon=150.0, lat=-20.0, population=1000)]
         deco = MapDecorationData(
             places, 50, 0.45, 145.0, -25.0,
             [145.0, 155.0], [-25.0, -15.0]
@@ -104,12 +104,13 @@ using ADRIAviz.viz
         places = ADRIAviz.viz.GBR_COASTAL_PLACES
         @test length(places) > 0
 
-        # Each entry should be a 3-tuple of (name, lon, lat)
+        # Each entry should be a 4-tuple of (name, lon, lat, population)
         for place in places
-            @test length(place) == 3
+            @test length(place) == 4
             @test isa(place[1], String)  # name
             @test isa(place[2], Number)  # lon
             @test isa(place[3], Number)  # lat
+            @test isa(place[4], Number)  # population
 
             # Check reasonable coordinate ranges for Australia
             @test place[2] > 140 && place[2] < 155  # Longitude

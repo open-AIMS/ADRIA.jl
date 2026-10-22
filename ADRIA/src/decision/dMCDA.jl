@@ -128,6 +128,23 @@ function identify_within_depth_bounds(
 end
 
 """
+    build_decay(plan_horizon::Int64, projection_confidence::Float64; α::Float64=0.99)::Vector{Float64}
+
+Per-timestep decay vector weighting environmental projections by lead time, for
+use with `weighted_projection`. `α` is the per-step base decay rate (unchanged
+default). `projection_confidence` (0.0-1.0) sets `exponent = 2.0 -
+projection_confidence`: 0.0 gives exponent 2.0 (steep decay, historical
+default), 1.0 gives exponent 1.0 (mild decay). `plan_horizon` controls the
+window length (vector length), not decay shape.
+"""
+function build_decay(
+    plan_horizon::Int64, projection_confidence::Float64; α::Float64=0.99
+)::Vector{Float64}
+    exponent = 2.0 - projection_confidence
+    return α .^ (1:(plan_horizon + 1)) .^ exponent
+end
+
+"""
     weighted_projection(
         env_data::AbstractMatrix{Float64}, tstep::Int64, planning_horizon::Int64,
         decay::AbstractVector{Float64}, timeframe::Int64
@@ -239,10 +256,11 @@ corals and are within the desired depth range.
 If no depth range is provided, then simply selects from reefs with available space.
 
 # Arguments
-- `n_iv_locs` : Number of locations to seed
+- `n_iv_locs` : Number of intervention locations to select
 - `k_area` : Coral habitable available at each location (`k` value) in either relative or
              absolute units.
 - `depth` : vector of location ids found to be within desired depth range
+- `rng` : random number generator used for the selection
 
 # Returns
 Matrix, Name/IDs of selected locations, and their indices
@@ -251,28 +269,30 @@ function unguided_selection(
     location_ids,
     n_iv_locs::Int64,
     k_area::Vector{Float64},
-    depth::BitVector
+    depth::BitVector;
+    rng::AbstractRNG=Random.GLOBAL_RNG
 )::Vector{<:Union{Symbol,String,Int64}}
     # Filter down to location ids to be considered
     candidate_locs = findall((k_area .> 0.0) .& depth)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
 
-    sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
+    sel = StatsBase.sample(rng, candidate_locs, s_iv_locs; replace=false)
 
     return location_ids[sel]
 end
 function unguided_selection(
     location_ids,
     n_iv_locs::Int64,
-    k_area::Vector{Float64}
+    k_area::Vector{Float64};
+    rng::AbstractRNG=Random.GLOBAL_RNG
 )::Vector{<:Union{Symbol,String,Int64}}
     # Filter down to location ids to be considered
     candidate_locs = findall(k_area .> 0.0)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
 
-    sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
+    sel = StatsBase.sample(rng, candidate_locs, s_iv_locs; replace=false)
 
     return location_ids[sel]
 end

@@ -81,7 +81,9 @@ jobs:
         id: cache
         uses: actions/cache@v4
         with:
-          path: build/${{ matrix.target }}/adria_${{ matrix.target }}.so
+          path: |
+            build/${{ matrix.target }}/adria_${{ matrix.target }}.so
+            build/${{ matrix.target }}/adria_${{ matrix.target }}.so.version
           key:  sysimage-${{ matrix.target }}-${{ needs.compute-hash.outputs.combined_hash }}
 
       # ── Julia setup (only when cache misses or force-rebuild) ──────────────
@@ -89,7 +91,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
         uses: julia-actions/setup-julia@v2
         with:
-          version: '1.11.5'
+          version: '1.12.6'
 
       - name: Cache Julia depot
         if: steps.cache.outputs.cache-hit != 'true' || inputs.force_rebuild
@@ -145,10 +147,19 @@ jobs:
 manifest-hash=${{ needs.compute-hash.outputs.manifest_hash }},\
 src-hash=${{ needs.compute-hash.outputs.src_hash }}"
 
+          # .version sidecar (exact Julia build used to compile the sysimage;
+          # written by build/<target>/make.jl) -- required by the Dockerfile's
+          # adria-*-runtime stages before they'll COPY the .so in.
+          aws s3 cp "build/${TARGET}/${ARTIFACT}.version" \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${S3_KEY}.version"
+
           # Atomic pointer update: copy within S3 (no re-upload)
           aws s3 cp \
             "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${S3_KEY}" \
             "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${LATEST_KEY}"
+          aws s3 cp \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${S3_KEY}.version" \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/${LATEST_KEY}.version"
 
           echo "S3_KEY=${S3_KEY}" >> "$GITHUB_STEP_SUMMARY"
 
@@ -185,6 +196,9 @@ src-hash=${{ needs.compute-hash.outputs.src_hash }}"
           aws s3 cp \
             "s3://${{ env.S3_SYSIMAGE_BUCKET }}/sysimages/${TARGET}/${HASH}/adria_${TARGET}.so" \
             "build/${TARGET}/adria_${TARGET}.so"
+          aws s3 cp \
+            "s3://${{ env.S3_SYSIMAGE_BUCKET }}/sysimages/${TARGET}/${HASH}/adria_${TARGET}.so.version" \
+            "build/${TARGET}/adria_${TARGET}.so.version"
 
       # Resolve image tags: <sha>, <semver-tag-if-present>, latest
       - name: Resolve image tags
@@ -208,15 +222,13 @@ src-hash=${{ needs.compute-hash.outputs.src_hash }}"
         with:
           context: .
           file: Dockerfile
-          # Use the pre-built sysimage; skip the in-tree builder stages
+          # Use the pre-built sysimage; skip the in-tree builder stages.
+          # The .so and .so.version are already in build/<target>/ from the
+          # S3 download above; the runtime stage COPYs them straight from the
+          # build context (see Dockerfile adria-*-runtime stages) and fails
+          # the build if the .version sidecar doesn't match this image's
+          # Julia -- no build-arg needed, the paths are fixed in the Dockerfile.
           target: adria-${{ matrix.target }}-runtime
-          # Override the COPY --from=sysimage-builder-* with a build-context
-          # injection:  the .so is already in build/<target>/ from S3 download.
-          # The Dockerfile runtime stage accepts it via COPY from the context:
-          #   COPY build/<target>/adria_<target>.so /sysimage/adria_<target>.so
-          # (See Dockerfile adria-*-runtime stages)
-          build-args: |
-            SYSIMAGE_SRC=build/${{ matrix.target }}/adria_${{ matrix.target }}.so
           tags: ${{ steps.tags.outputs.tags }}
           push: true
           # Layer cache stored in ECR to accelerate rebuilds

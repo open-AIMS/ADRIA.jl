@@ -1,109 +1,112 @@
 """
-    MCCriteriaWeights <: DecisionWeights
+    LvMCriteriaWeights <: DecisionWeights
 
-Criteria weights for moving corals (MC) intervention.
+Criteria weights for larval methods intervention.
 """
-Base.@kwdef struct MCCriteriaWeights <: DecisionWeights
-    mc_heat_stress::Param = Factor(
+Base.@kwdef struct LvMCriteriaWeights <: DecisionWeights
+    iv_LvM_heat_stress::Param = Factor(
         0.9;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.8, 1.0),
         direction=minimum,
-        name="MC Heat Stress",
+        name="Larval Methods Heat Stress",
         description="Importance of avoiding heat stress. Prefer locations with lower heat stress."
     )
-    mc_wave_stress::Param = Factor(
+    iv_LvM_wave_stress::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="MC Wave Stress",
+        name="Larval Methods Wave Stress",
         description="Prefer locations with higher wave activity."
     )
-    mc_in_connectivity::Param = Factor(
+    iv_LvM_in_connectivity::Param = Factor(
         0.5;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
         direction=maximum,
-        name="MC Incoming Connectivity",
+        name="Larval Methods Incoming Connectivity",
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
-    mc_out_connectivity::Param = Factor(
+    iv_LvM_out_connectivity::Param = Factor(
         0.80;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
         direction=maximum,
-        name="MC Outgoing Connectivity",
+        name="Larval Methods Outgoing Connectivity",
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
-    mc_depth::Param = Factor(
+    iv_LvM_depth::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.8, 1.0),
         direction=maximum,
-        name="MC Depth",
+        name="Larval Methods Depth",
         description="Give preference to deeper locations for coral deployments."
     )
-    mc_coral_cover::Param = Factor(
+    iv_LvM_coral_cover::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
-        name="MC Coral Cover",
+        name="Larval Methods Coral Cover",
         description="Preference locations with lower coral cover (higher available space)."
     )
-    mc_cluster_diversity::Param = Factor(
+    iv_LvM_cluster_diversity::Param = Factor(
         0.7;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
-        name="MC Cluster Diversity",
+        name="Larval Methods Cluster Diversity",
         description="Prefer locations from clusters that are under-represented."
     )
-    mc_geographic_separation::Param = Factor(
+    iv_LvM_geographic_separation::Param = Factor(
         0.8;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
-        name="MC Geographic Separation",
+        name="Larval Methods Geographic Separation",
         description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
     )
 end
 
 """
-    MCPreferences <: DecisionPreference
+    LvMPreferences <: DecisionPreference
 
-Preference type specific for moving corals interventions to allow specific routines.
+Preference type specific for larval methods interventions to allow
+specific routines.
 """
-struct MCPreferences <: DecisionPreference
+struct LvMPreferences <: DecisionPreference
     names::Vector{Symbol}
     weights::Vector{Float64}
     directions::Vector{Function}
 end
 
-function MCPreferences(dom, params::YAXArray)::MCPreferences
-    w::DataFrame = component_params(dom.model, MCCriteriaWeights)
-    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
+function LvMPreferences(dom, params::YAXArray)::LvMPreferences
+    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
+    # Strip the `iv_LvM_` prefix (2 segments) to recover the bare criterion name
+    # (e.g. `heat_stress`) so it matches the generic kwargs used in `setup_guided_intervention`.
+    cn = Symbol[Symbol(join(split(string(cn), "_")[3:end], "_")) for cn in w.fieldname]
 
-    return MCPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
+    return LvMPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
-function MCPreferences(dom, params...)::MCPreferences
-    w::DataFrame = component_params(dom.model, MCCriteriaWeights)
+function LvMPreferences(dom, params...)::LvMPreferences
+    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
     for (k, v) in params
         w[w.fieldname .== k, :val] .= v
     end
 
-    return MCPreferences(w.fieldname, w.val, w.direction)
+    return LvMPreferences(w.fieldname, w.val, w.direction)
 end
-function MCPreferences(dom)
-    w::DataFrame = component_params(dom.model, MCCriteriaWeights)
-    return MCPreferences(w.fieldname, w.val, w.direction)
+function LvMPreferences(dom)
+    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
+    return LvMPreferences(w.fieldname, w.val, w.direction)
 end

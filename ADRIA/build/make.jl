@@ -9,10 +9,11 @@ elseif Sys.isapple()
 else
     "so"
 end
+
 sysimage_fn = "ADRIA_sysimage.$(sysimage_ext)"
 if "dev" in ARGS
     @info "Adding dev packages"
-    dev_pkgs = ["Revise", "Infiltrator", "Statistics", "Plots", "GR", "GR_jll"]
+    dev_pkgs = ["Revise", "Infiltrator"]
     Pkg.add(dev_pkgs)
 
     sysimage_fn = "ADRIA_sysimage_dev.$(sysimage_ext)"

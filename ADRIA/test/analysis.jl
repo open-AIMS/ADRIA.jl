@@ -18,7 +18,7 @@ end
 Makie.inline!(false)
 
 """Test larger scenario run with figure creation"""
-function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
+function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; rnd_seed=1)
     # Visualize results (in terms of absolute coral cover)
     tac = ADRIA.metrics.total_absolute_cover(rs)
     rsv = ADRIA.metrics.relative_shelter_volume(rs)
@@ -40,11 +40,12 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
             :dhw_scenario,
             :wave_scenario,
             :guided,
-            :N_seed_TA,
-            :N_seed_CA,
-            :fogging,
-            :SRM,
-            :a_adapt
+            :mcda_method,
+            :iv_CAq_N_TA,
+            :iv_CAq_N_CA,
+            :iv_Fog,
+            :iv_Shd,
+            :iv_CAq_a_adapt
         ]
     )
 
@@ -131,7 +132,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # Bands represent the 95% confidence interval derived from the number of conditioning
     # points, the default for which is ten (i.e., 10 samples).
     # Due to the limited sample size, care should be taken when interpreting the figure.
-    foi = [:dhw_scenario, :wave_scenario, :guided]
+    foi = [:dhw_scenario, :wave_scenario, :guided, :mcda_method]
     Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
     ADRIA.viz.convergence(Si_conv, foi)
 
@@ -245,7 +246,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     # Select only desired features
     fields_iv =
         ADRIA.component_params(
-            rs, [Intervention, FogCriteriaWeights, SeedCriteriaWeights]
+            rs, [Intervention, FogCriteriaWeights, CAqCriteriaWeights]
         ).fieldname
 
     # Use SIRUS algorithm to extract rules
@@ -287,10 +288,10 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame; seed=1)
     foi = [
         :dhw_scenario,
         :wave_scenario,
-        :N_seed_TA,
-        :N_seed_CA,
-        :fogging,
-        :SRM
+        :iv_CAq_N_TA,
+        :iv_CAq_N_CA,
+        :iv_Fog,
+        :iv_Shd
     ]
 
     tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)

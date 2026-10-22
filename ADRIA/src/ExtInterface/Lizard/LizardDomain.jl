@@ -1,12 +1,12 @@
 using CSV, DataFrames, ModelParameters
-using ADRIA: SimConstants, Domain, GDF, EnvLayer, CoralGrowth, YAXArray, ZeroDataCube, DataCube, Model, EnvironmentalLayer, Intervention, Coral, GrowthAcceleration, CotsParams, COTSConnectivityForcing, adjust_sampling_bounds, load_env_data, load_initial_cover, location_connectivity, load_cots_connectivity_forcing, distance_matrix, nearest_neighbor_distances
+using ADRIA: SimConstants, Domain, GDF, EnvLayer, CoralGrowth, YAXArray, ZeroDataCube, DataCube, Model, EnvironmentalLayer, Intervention, Coral, GrowthAcceleration, DepthAttenuation, CotsParams, COTSConnectivityForcing, adjust_sampling_bounds, load_env_data, load_initial_cover, location_connectivity, load_cots_connectivity_forcing, distance_matrix, nearest_neighbor_distances
 using ADRIA.decision:
     DecisionThresholds,
     DecisionWeights,
     DepthThresholds,
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights,
-    MCCriteriaWeights
+    LvMCriteriaWeights
 
 mutable struct LizardDomain <: Domain
     const name::String
@@ -27,10 +27,10 @@ mutable struct LizardDomain <: Domain
     wave_scens::YAXArray
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}
 
-    seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
-    fog_target_locations::Vector{String}
-    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
-    shade_target_locations::Vector{String}
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    Fog_target_locations::Vector{String}
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    Shd_target_locations::Vector{String}
 
     model::Model
     sim_constants::SimConstants
@@ -226,9 +226,9 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
     end
 
     criteria_weights = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -244,6 +244,7 @@ function load_domain(::Type{LizardDomain}, path::String, rcp::String)::LizardDom
         criteria_weights...,
         Coral(),
         GrowthAcceleration(),
+        DepthAttenuation(),
         CotsParams()
     ))
 

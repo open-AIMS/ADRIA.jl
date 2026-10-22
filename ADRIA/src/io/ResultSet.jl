@@ -3,7 +3,7 @@ using Dates: now
 using Zarr
 
 using Setfield: @set!
-using DataFrames: DataFrame
+using DataFrames: DataFrame, colmetadata!
 using ADRIA: Domain, EnvLayer
 
 const CONNECTIVITY = "connectivity"
@@ -46,9 +46,9 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,D5,D6,DF} <: ResultSet
     # raw::AbstractArray
     outcomes::D2
     ranks::A
-    mc_log::B  # Number of individuals deployed per functional group per location
-    seed_log::B  # Number of individuals deployed per functional group per location
-    shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
+    iv_LvM_log::B  # Number of individuals deployed per functional group per location
+    iv_CAq_log::B  # Number of individuals deployed per functional group per location
+    iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
     cots_pop_log::D5     # COTS population: (timesteps, age_class, locations, scenarios)
@@ -72,7 +72,7 @@ end
 Load shading log from a Zarr log group, handling both the new combined format
 (`shading_log`) and old stores that kept `fog` and `shade` as separate arrays.
 """
-function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
+function _load_Shd_log(log_set::Zarr.ZGroup)::YAXArray
     if haskey(log_set, "shading_log")
         arr = log_set["shading_log"]
         ax_names = Symbol.(Tuple(arr.attrs["structure"]))
@@ -98,6 +98,26 @@ function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
     )
 end
 
+"""
+    _tag_inputs_metadata!(inputs::DataFrame, model_spec::DataFrame)::DataFrame
+
+Tag each column of `inputs` that has a matching entry (by `fieldname`) in `model_spec`
+with `"ptype"` and `"label"` column metadata (sourced from `model_spec`'s `ptype` and
+`name` columns respectively). Uses `style=:note` so the metadata survives `copy()` and
+column-/row-subsetting operations performed by downstream analysis code.
+"""
+function _tag_inputs_metadata!(inputs::DataFrame, model_spec::DataFrame)::DataFrame
+    for row in eachrow(model_spec)
+        col = row.fieldname
+        if hasproperty(inputs, col)
+            colmetadata!(inputs, col, "ptype", row.ptype; style=:note)
+            colmetadata!(inputs, col, "label", row.name; style=:note)
+        end
+    end
+
+    return inputs
+end
+
 function ResultSet(
     input_set::AbstractArray,
     env_layer_md::EnvLayer,
@@ -111,6 +131,9 @@ function ResultSet(
     model_spec::DataFrame
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
+
+    _tag_inputs_metadata!(inputs_used, model_spec)
+
     return ADRIAResultSet(
         input_set.attrs["name"],
         string(rcp),
@@ -130,7 +153,7 @@ function ResultSet(
         model_spec,
         outcomes,
         map(Float64, _rankings_data(log_set["rankings"])),
-        let arr = log_set["moving_corals"]
+        let arr = log_set["larval_methods"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,
@@ -141,7 +164,7 @@ function ResultSet(
                 )
             )
         end,
-        let arr = log_set["seed"]
+        let arr = log_set["coral_aquaculture"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
                 Float64,
@@ -152,7 +175,7 @@ function ResultSet(
                 )
             )
         end,
-        map(Float64, _load_shading_log(log_set)),
+        map(Float64, _load_Shd_log(log_set)),
         let arr = log_set["coral_dhw_log"]
             ax = Symbol.(Tuple(arr.attrs["structure"]))
             map(
@@ -330,9 +353,9 @@ function combine_results(result_sets...)::ResultSet
         zip(
             [
                 :ranks,
-                :mc_log,
-                :seed_log,
-                :shading_log,
+                :iv_LvM_log,
+                :iv_CAq_log,
+                :iv_Shd_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log,
                 :cots_pop_log,
@@ -342,10 +365,10 @@ function combine_results(result_sets...)::ResultSet
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :locations),
-                size(rs1.seed_log, :coral_id),
-                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id),
+                size(rs1.iv_CAq_log, :timesteps),
+                size(rs1.iv_CAq_log, :locations),
+                size(rs1.iv_CAq_log, :coral_id),
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
                 batch_size
             )
         )...
@@ -374,7 +397,7 @@ function combine_results(result_sets...)::ResultSet
         for i = 1:n_rs
             rs_scen_len =
                 isnothing(src[i]) ?
-                size(result_sets[i].seed_log, :scenarios) : size(src[i], ndims(src[i]))
+                size(result_sets[i].iv_CAq_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
                 n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
             end
@@ -672,4 +695,29 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
         println("$(fn) : $(getfield(rs.env_layer_md, fn))")
     end
+end
+
+"""
+    _show_external_resultset(io::IO, rs::ResultSet; count_label::String, count::Int, n_locs::Int)::Nothing
+
+Shared `Base.show` body for the external-model result-set interfaces (`RMEResultSet`,
+`CScapeResultSet`). `count_label`/`count` describe the interface-specific scenario count.
+"""
+function _show_external_resultset(
+    io::IO, rs::ResultSet; count_label::String, count::Int, n_locs::Int
+)::Nothing
+    print(
+        io,
+        """
+        Name: $(rs.name)
+
+        Results stored at: $(rs.env_layer_md.dpkg_path)
+
+        RCP(s) represented: $(rs.RCP)
+        $(count_label): $(count)
+        Number of locations: $(n_locs)
+        Timesteps: $(rs.env_layer_md.timeframe)
+        """
+    )
+    return nothing
 end

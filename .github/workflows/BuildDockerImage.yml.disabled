@@ -1,8 +1,9 @@
 name: Build Docker Image
 
-# Downloads pre-built sysimage .so files from S3, then builds and pushes
-# sim and analysis Docker images to ECR. Does NOT build sysimages in CI
-# (that takes 35-45 min per variant and is done manually by engineers).
+# Downloads pre-built sysimage .so files (plus their .so.version sidecars,
+# see build/sim/make.jl and build/analysis/make.jl) from S3, then builds and
+# pushes sim and analysis Docker images to ECR. Does NOT build sysimages in
+# CI (that takes 35-45 min per variant and is done manually by engineers).
 #
 # Required GitHub secrets:
 #   AWS_ACCOUNT_ID           - 12-digit AWS account number
@@ -57,10 +58,17 @@ jobs:
 
       - name: Download sysimage .so from S3
         run: |
+          # Key layout must match the "Upload sysimage to S3" step in
+          # BuildSysimage.yml (the workflow that actually produces these):
+          #   sysimages/<target>/<combined-hash>/<artifact>
+          #   sysimages/<target>/latest/<artifact>
           PREFIX=${{ github.event.inputs.sysimage_hash || 'latest' }}
           aws s3 cp \
-            s3://adria-sysimages/linux/${{ matrix.variant }}/${PREFIX}/${{ matrix.so_name }} \
+            s3://adria-sysimages/sysimages/${{ matrix.variant }}/${PREFIX}/${{ matrix.so_name }} \
             ${{ matrix.so_dest }}
+          aws s3 cp \
+            s3://adria-sysimages/sysimages/${{ matrix.variant }}/${PREFIX}/${{ matrix.so_name }}.version \
+            ${{ matrix.so_dest }}.version
 
       - name: Check Manifests are committed
         run: git ls-files --error-unmatch Manifest.toml ADRIAviz/Manifest.toml ADRIAanalysis/Manifest.toml

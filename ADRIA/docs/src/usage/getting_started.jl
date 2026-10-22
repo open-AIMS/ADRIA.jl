@@ -86,75 +86,59 @@
 # ```
 #
 # Load data for a spatial domain. See [Loading a Domain](@ref) for more details:
-#
-# ```julia
-# using ADRIA
-#
-# dom = ADRIA.load_domain("path to domain data package directory", "<RCP>")
-# ```
-#
+
+using ADRIA
+
+dom = ADRIA.load_domain("path to domain data package directory", "<RCP>")
+
 # Generate scenarios based on available environmental data layers and model parameters. The
 # number of scenarios should be a power of two. See [Generating scenarios](@ref) for more
 # details:
-#
-# ```julia
-# num_scenarios = 128
-# scens = ADRIA.sample(dom, num_scenarios)
-# ```
-#
+
+num_scenarios = 128
+scens = ADRIA.sample(dom, num_scenarios)
+
 # Run sampled scenarios for one or more RCPs. This may take a while:
-#
-# ```julia
-# rcp_45 = "45"
-# rs = ADRIA.run_scenarios(dom, scens, rcp_45)
-# ```
-#
+
+rcp_45 = "45"
+rs = ADRIA.run_scenarios(dom, scens, rcp_45)
+
 # Or run scenarios across several RCPs:
-#
-# ```julia
-# rcps = ["45", "60", "85"]
-# rs = ADRIA.run_scenarios(dom, scens, rcps)
-# ```
-#
+
+rcps = ["45", "60", "85"]
+rs = ADRIA.run_scenarios(dom, scens, rcps)
+
 # It is also possible to load previously run scenarios. See [Running scenarios](@ref) for
 # more details:
-#
-# ```julia
-# rs = ADRIA.load_results("path to results")
-# ```
-#
+
+rs = ADRIA.load_results("path to results")
+
 # Extract some metric for analysis (e.g., the total absolute cover for each site and
 # timestep):
-#
-# ```julia
-# s_tc = ADRIA.metrics.scenario_total_cover(rs)
-# ```
-#
+
+s_tc = ADRIA.metrics.scenario_total_cover(rs)
+
 # Use ADRIAviz to plot the results. Load the package and activate the Plotly backend before
 # calling any `ADRIA.viz.*` function:
-#
-# ```julia
-# using ADRIA, ADRIAviz, PlotlyBase
-# ADRIAviz.activate("plotly")
-#
-# fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel => "Absolute Cover"))
-# ADRIA.viz.savefig(fig, "scenarios.html")
-# ```
-#
+
+using ADRIA, ADRIAviz, PlotlyBase
+ADRIAviz.activate("plotly")
+
+fig = ADRIA.viz.scenarios(rs, s_tc; axis_opts=Dict(:ylabel => "Absolute Cover"))
+ADRIA.viz.savefig(fig, "scenarios.html")
+
 # For extended analysis, load ADRIAanalysis alongside ADRIA:
-#
-# ```julia
-# using ADRIA, ADRIAanalysis
-#
-# # Cluster scenarios by temporal behaviour
-# tac = ADRIA.metrics.scenario_total_cover(rs)
-# clusters = scenario_clusters(tac)
-#
-# # Sensitivity analysis (PAWN method)
-# scens = ADRIA.param_table(rs)
-# Si = pawn(scens, vec(mean(tac; dims=(:timesteps, :locations))), ADRIA.component_params(dom))
-# ```
-#
+
+using ADRIA, ADRIAanalysis
+
+## Cluster scenarios by temporal behaviour
+tac = ADRIA.metrics.scenario_total_cover(rs)
+clusters = scenario_clusters(tac)
+
+## Sensitivity analysis (PAWN method)
+scens = ADRIA.param_table(rs)
+Si = pawn(scens, vec(mean(tac; dims=(:timesteps, :locations))), ADRIA.component_params(dom))
+
 # See [Analysis](@ref) for further examples of analysis and plots.
 #
 # ## Shared package depot paths

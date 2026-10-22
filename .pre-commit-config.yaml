@@ -3,4 +3,5 @@ repos:
     rev: v2.5.1  # pin to match CI (Format.yml)
     hooks:
       - id: julia-formatter
+        language: system  # use system Julia + global env; avoids project-level conflicts
         files: '\.jl$'  # only run on Julia source files

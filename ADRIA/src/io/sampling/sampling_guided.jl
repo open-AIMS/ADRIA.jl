@@ -24,5 +24,9 @@ function sample_guided(
         spec_df[!, :is_constant] .= spec_df[!, :lower_bound] .== spec_df[!, :upper_bound]
     end
 
+    # Pre-sampling resolution: top-level guided split only (within-guided
+    # dependencies remain in _apply_transforms! as they require sampled values)
+    _resolve_conditional_spec!(spec_df, (guided=1.0,))
+
     return sample(spec_df, n, sample_method)
 end

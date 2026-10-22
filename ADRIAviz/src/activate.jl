@@ -44,7 +44,8 @@ function activate(backend::Symbol)
         @warn "PlotlyKaleido is not installed — `ADRIA.viz.savefig` will not be available.\n" *
             "To enable static export: pkg> add PlotlyKaleido"
     else
-        Base.require(_KALEIDO_PKG_ID)
+        kaleido = Base.require(_KALEIDO_PKG_ID)
+        Base.invokelatest(kaleido.start)
     end
 
     return nothing

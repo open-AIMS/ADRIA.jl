@@ -63,10 +63,10 @@ end
 # Probably need a ClusterGrowthAcceleration as well
 function _growth_acceleration_struct(field_defs::OrderedDict)::Nothing
     s = IOBuffer()
-    write(s, "Base.@kwdef struct GrowthAcceleration{P} <: EcoModel\n")
+    write(s, "Base.@kwdef struct GrowthAcceleration <: EcoModel\n")
 
     for (f, v) in field_defs
-        write(s, "$(f)::P = $(v)\n")
+        write(s, "$(f)::Param = $(v)\n")
     end
 
     write(s, "end")

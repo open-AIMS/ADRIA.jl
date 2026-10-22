@@ -1,8 +1,6 @@
 [deps]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 
 [compat]
-CairoMakie = "0.12"
 PackageCompiler = "2"
 julia = "1.11"

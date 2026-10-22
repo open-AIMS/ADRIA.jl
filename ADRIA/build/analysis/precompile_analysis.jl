@@ -6,16 +6,14 @@
 
 using ADRIA
 using ADRIAviz
-using CairoMakie           # triggers ADRIAvizMakieExt
+using PlotlyBase           # triggers ADRIAvizPlotlyExt
+using PlotlyKaleido        # triggers ADRIAvizPlotlyKaleidoExt (ADRIA.viz.savefig)
 
 using ADRIAanalysis
-using Bootstrap
-using Clustering
-using HypothesisTests
-using DataEnvelopmentAnalysis
+using Statistics
 
 # ── Simulation fixture (needed to produce a ResultSet for analysis) ─────────
-const FIXTURE_DIR = joinpath(dirname(dirname(@__DIR__)), "test", "data", "Test_domain")
+const FIXTURE_DIR = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 
 if isdir(FIXTURE_DIR)
     ENV["ADRIA_DEBUG"] = "false"
@@ -25,34 +23,43 @@ if isdir(FIXTURE_DIR)
     rs = ADRIA.run_scenarios(dom, p_df, "45")
 
     # ── Metrics ─────────────────────────────────────────────────────────────
-    tc = ADRIA.metrics.scenario_total_cover(rs)
     ADRIA.metrics.scenario_relative_cover(rs)
 
-    # ── Clustering (generic Clustering.jl call; ADRIAanalysis wraps these) ──
-    data_mat = rand(Float64, 10, 32)
-    km = kmeans(data_mat, 3; maxiter=20)
-    _ = km.assignments
+    metric_fns = [
+        ADRIA.metrics.scenario_total_cover, ADRIA.metrics.scenario_absolute_shelter_volume
+    ]
+    outcomes = ADRIA.metrics.scenario_outcomes(rs, metric_fns)
+    tc = outcomes[:, :, 1]
+    s_tac = dropdims(mean(tc; dims=:timesteps); dims=:timesteps)
+    s_sv = dropdims(mean(outcomes[:, :, 2]; dims=:timesteps); dims=:timesteps)
 
-    hc = hclust(pairwise(Distances.Euclidean(), data_mat); linkage=:ward)
-    cutree(hc; k=3)
+    # ── Clustering (ADRIA.analysis wraps Clustering.jl + Distances.jl) ───────
+    ADRIA.analysis.cluster_scenarios(outcomes, 3)
 
-    # ── Bootstrap ───────────────────────────────────────────────────────────
-    bs = bootstrap(mean, rand(Float64, 100), BasicSampling(200))
-    confint(bs, BasicConfInt(0.95))
+    # ── RSA (ADRIAanalysis wraps HypothesisTests.jl) ─────────────────────────
+    fs = ADRIAanalysis.feature_set(rs)
+    ADRIAanalysis.rsa(fs, s_tac)
 
-    # ── HypothesisTests ─────────────────────────────────────────────────────
-    x, y = rand(Float64, 50), rand(Float64, 50)
-    pvalue(MannWhitneyUTest(x, y))
-    pvalue(KruskalWallisTest(x, y))
+    # ── Counterfactual delta + bootstrap CI (ADRIAanalysis wraps Bootstrap.jl) ──
+    p_cf = ADRIA.sample_cf(dom, 8)
+    rs_cf = ADRIA.run_scenarios(dom, p_cf, "45")
+    ADRIAanalysis.counterfactual_delta(
+        rs, rs_cf,
+        r -> dropdims(
+            mean(ADRIA.metrics.scenario_total_cover(r); dims=:timesteps);
+            dims=:timesteps
+        );
+        bootstrap_n=200
+    )
 
-    # ── DEA ─────────────────────────────────────────────────────────────────
-    X = rand(Float64, 5, 10)
-    Y = rand(Float64, 2, 10)
-    dea(X, Y)
+    # ── DEA (ADRIAanalysis wraps DataEnvelopmentAnalysis.jl) ─────────────────
+    cost = rand(Float64, length(s_tac))
+    ADRIAanalysis.data_envelopment_analysis(cost, hcat(s_tac, s_sv))
 
     # ── Plotting ─────────────────────────────────────────────────────────────
-    fig = ADRIAviz.ADRIA_outcomes(rs)
-    save(joinpath(tempdir(), "_adria_precompile_analysis.png"), fig)
+    PlotlyKaleido.start()
+    p = ADRIA.viz.scenarios(rs.inputs, tc)
+    ADRIA.viz.savefig(p, joinpath(tempdir(), "_adria_precompile_analysis.png"))
 
     delete!(ENV, "ADRIA_DEBUG")
     @info "Analysis precompile fixture executed successfully"

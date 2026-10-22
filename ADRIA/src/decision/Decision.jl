@@ -1,5 +1,6 @@
 module decision
 
+using Random
 using StatsBase
 using YAXArrays
 using ADRIA:
@@ -29,10 +30,10 @@ include("strategies/strategies.jl")
 
 export
     # Intervention preferences
-    SeedPreferences,
+    CAqPreferences,
     FogPreferences,
-    MCPreferences,
-    # SRMPreferences,
+    LvMPreferences,
+    # ShdPreferences,
     # Helper Methods
     decision_matrix,
     filter_criteria,
@@ -41,6 +42,7 @@ export
     unguided_selection,
     decision_frequency,
     weighted_projection,
+    build_decay,
     identify_within_depth_bounds,
     summary_stat_env,
     mcda_methods,
@@ -49,9 +51,9 @@ export
     is_reactive,
     is_periodic,
     is_decision_year,
-    build_seed_strategy,
-    build_fog_strategy,
-    build_mc_strategy,
+    build_CAq_strategy,
+    build_Fog_strategy,
+    build_LvM_strategy,
     build_state,
     filter_candidate_locations,
     PeriodicStrategy,

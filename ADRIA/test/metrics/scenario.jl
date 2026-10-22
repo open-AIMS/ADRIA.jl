@@ -4,7 +4,7 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-@testset "scenario.jl" begin
+@testset "Scenario-based metrics" begin
     _test_covers::Vector{YAXArray{Float64,5}} = mock_covers()
     _k_area::Vector{Float64} = k_area()
 
@@ -98,6 +98,30 @@ end
         #     ce = metrics.coral_evenness(rltc)
         #     test_metric(metrics.scenario_evenness, (ce,))
         # end
+    end
+
+    @testset "years_above_threshold" begin
+        # 2D dispatch (timesteps × scenarios)
+        src = metrics.scenario_relative_cover(TEST_RS)
+        test_metric(metrics.years_above_threshold, (src,))
+
+        # 3D dispatch (timesteps × locations × scenarios)
+        rc = metrics.relative_cover(TEST_RS)
+        test_metric(metrics.years_above_threshold, (rc,))
+
+        # Correctness: known counts for 2D input
+        data = DataCube(
+            [
+                0.2 0.6 0.0;
+                0.6 0.6 0.0;
+                0.4 0.6 0.0;
+                0.8 0.6 0.0
+            ];
+            timesteps=1:4,
+            scenarios=1:3
+        )
+        result = metrics.years_above_threshold(data; threshold=0.5)
+        @test Array(result) == [2, 4, 0]
     end
 
     # TODO Helper functions

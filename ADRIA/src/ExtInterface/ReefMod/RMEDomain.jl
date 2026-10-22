@@ -12,7 +12,7 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights
 
 abstract type AbstractReefModDomain <: Domain end
@@ -40,10 +40,10 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
     sim_constants::SimConstants
@@ -70,7 +70,7 @@ function _standardize_cluster_ids!(spatial_data::DataFrame)::Nothing
 end
 
 """
-    _manual_id_corrections!(spatial_data::DataFrame)::Nothing
+    _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::Nothing
 
 Manual corrections to ensure correct alignment of reefs by their order.
 """
@@ -106,7 +106,7 @@ function _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::N
 end
 
 """
-    load_domain(::Type{RMEDomain}, fn_path::String, RCP::String; timeframe::Tuple{Int64, Int64}=(2022, 2100))::RMEDomain
+    load_domain(::Type{RMEDomain}, fn_path::String, RCP::String; timeframe::Union{Nothing,Tuple{Int64,Int64}}=nothing, force_single_reef::Bool=false, force_single_reef_id::String="", single_reef_total_area::Float64=1_000_000.0, single_reef_k::Float64=0.5, calib_params_fn::String="")::RMEDomain
 
 Load a ReefMod Engine dataset.
 
@@ -114,11 +114,16 @@ Load a ReefMod Engine dataset.
 - `RMEDomain` : DataType
 - `fn_path` : path to ReefMod Engine dataset
 - `RCP` : Representative Concentration Pathway scenario ID
-- `timeframe` : Timeframe for simulations to be run. Defaults to (2022, 2100)
+- `timeframe` : Timeframe for simulations to be run. Defaults to the full range available
+in the dataset.
 - `force_single_reef` : If true use a single reef dataset with user defined total and
 habitable areas.
+- `force_single_reef_id` : `UNIQUE_ID` of the reef to use when `force_single_reef` is
+`true`. Defaults to the first reef in the dataset.
 - `single_reef_total_area` : Reef total area in m² to be used when `force_single_reef` is `true`.
-- `single_reef_k` : Reef k ∈ [0.0, 1.0] ro be used when `force_single_reef` is `true`.
+- `single_reef_k` : Reef k ∈ [0.0, 1.0] to be used when `force_single_reef` is `true`.
+- `calib_params_fn` : path to a CoralBlox calibration NetCDF. If empty or missing, ADRIA
+default coral and growth acceleration parameters are used.
 
 # Returns
 RMEDomain
@@ -131,7 +136,8 @@ function load_domain(
     force_single_reef::Bool=false,
     force_single_reef_id::String="",
     single_reef_total_area::Float64=1_000_000.0,
-    single_reef_k::Float64=0.5
+    single_reef_k::Float64=0.5,
+    calib_params_fn::String=""
 )::RMEDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
 
@@ -282,9 +288,9 @@ function load_domain(
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -296,12 +302,17 @@ function load_domain(
         )
     end
 
+    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+        calib_params_fn
+    )
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
         criteria_weights...,
-        Coral(),
-        GrowthAcceleration(),
+        coral_instance,
+        growth_accel_instance,
+        depth_atten_instance,
         CotsParams()
     ))
 
@@ -382,7 +393,7 @@ function _data_folder_path(data_path, target_folder_name; file_extension="csv")
 end
 
 """
-    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
+    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String; timeframe::Union{Nothing,Tuple{Int,Int}}=nothing)::YAXArray
 
 Loads ReefMod DHW data as a datacube.
 
@@ -390,7 +401,8 @@ Loads ReefMod DHW data as a datacube.
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `rcp` : RCP identifier
-- `timeframe` : range of years to represent.
+- `timeframe` : range of years to represent. Defaults to the full range available in the
+data files.
 
 # Returns
 YAXArray[timesteps, locs, scenarios]
@@ -510,7 +522,7 @@ function load_connectivity(
 end
 
 """
-    load_connectivity_csv(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String})::YAXArray
+    load_connectivity_csv(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}; force_single_reef::Union{Nothing,Vector{Int64}}=nothing)::YAXArray
 
 Loads the average connectivity from connectivity `csv` files. To load the binary version
 of the connectivity files refer to `load_connectivity`.
@@ -519,6 +531,7 @@ of the connectivity files refer to `load_connectivity`.
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
+- `force_single_reef` : indices of the locations to subset the connectivity matrix to.
 
 # Returns
 YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locations`).
@@ -608,6 +621,7 @@ end
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
+- `loc_data` : table of location data, used to convert cover to be relative to `k` area
 
 # Returns
 YAXArray[locs, species]
@@ -682,22 +696,19 @@ function load_initial_cover(
 end
 
 """
-    switch_RCPs!(d::RMEDomain, RCP::String)::Domain
+    switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
 
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
-    @set! d.RCP = RCP
+    d.RCP = RCP
     data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
 
     timeframe::Tuple{Int64,Int64} = (
         d.env_layer_md.timeframe[1],
         d.env_layer_md.timeframe[end]
     )
-    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
-
-    # Cyclones are not RCP-specific?
-    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
+    d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
 
     return d
 end

@@ -17,6 +17,7 @@ using .viz:
     outcome_title, outcome_label, set_plot_opts!,
     OPT_TYPE, DEFAULT_OPT_TYPE,
     _time_labels, _calc_gridsize, set_typography_defaults!, timesteps,
+    _outcome_mask, _empirical_cdf,
     _loc_id_col, _get_site_ids, _site_ids, _haversine_km, _nice_length, validate_extent,
     GBR_COASTAL_PLACES, CoastalPlace, MapDecorationData, compute_map_decorations
 
@@ -26,6 +27,7 @@ export GBR_COASTAL_PLACES, CoastalPlace, MapDecorationData, compute_map_decorati
 export outcome_title, outcome_label, set_plot_opts!
 export OPT_TYPE, DEFAULT_OPT_TYPE
 export _time_labels, _calc_gridsize, set_typography_defaults!, timesteps
+export _outcome_mask, _empirical_cdf
 
 # Re-export theme and analysis helpers
 export COLORS, labels

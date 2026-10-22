@@ -12,12 +12,15 @@ import QuasiMonteCarlo: SobolSample, OwenScramble
 using ADRIA: model_spec, component_params
 using .decision: mcda_normalize
 
+include("sampling_dependencies.jl")
+include("sampling_transforms.jl")
 include("sampling_interface.jl")
 include("sampling_cf.jl")
 include("sampling_unguided.jl")
 include("sampling_guided.jl")
 include("sampling_interventions.jl")
 include("sampling_balanced.jl")
+include("sampling_stratified.jl")
 
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
@@ -95,7 +98,7 @@ function sample(
     n_samples::Int64,
     sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    if contains(string(sample_method), "SobolSample") && !ispow2(n_samples)
+    if sample_method isa SobolSample && !ispow2(n_samples)
         throw(
             DomainError(
                 n_samples, "`n_samples` must be a power of 2 when using the Sobol' sampler"
@@ -119,10 +122,14 @@ function sample(
         isa(err, InexactError) ? error(err_msg) : rethrow(err)
     end
 
+    # QuasiMonteCarlo's OwenScramble crashes for d=1 (produces a 0×1 bits array).
+    # Sample a second, discarded dimension so the requested scrambling is retained.
+    n_dims = sample_method isa SobolSample ? max(n_vary_params, 2) : n_vary_params
+
     # Create uniformly distributed samples for uncertain parameters
-    samples_tmp = QMC.sample(
-        n_samples, zeros(n_vary_params), ones(n_vary_params), sample_method
-    )
+    samples_tmp = QMC.sample(n_samples, zeros(n_dims), ones(n_dims), sample_method)[
+        1:n_vary_params, :
+    ]
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
     samples_tmp = _quantile_scale(vary_dists, samples_tmp)
@@ -135,8 +142,8 @@ function sample(
     samples[:, const_mask] .= Float64.(spec.val[const_mask])'
     samples[:, vary_mask] .= samples_tmp
 
-    # Ensure unguided scenarios do not have superfluous factor combinations
-    return adjust_samples(spec, DataFrame(samples, spec.fieldname))
+    # Apply post-sampling reparameterisation and conditional zeroing
+    return _apply_transforms!(spec, DataFrame(samples, spec.fieldname))
 end
 
 """
@@ -161,15 +168,18 @@ function sample_selection(
         [
             EnvironmentalLayer,
             Intervention,
-            SeedCriteriaWeights,
+            CAqCriteriaWeights,
             FogCriteriaWeights,
-            MCCriteriaWeights,
+            LvMCriteriaWeights,
             DepthThresholds
         ]
     )
 
     # Only sample guided intervention scenarios
     _adjust_guided_lower_bound!(subset_spec, 1)
+
+    # Pre-sampling resolution for guided regime (top-split only)
+    _resolve_conditional_spec!(subset_spec, (guided=1.0,))
 
     # Create and fill scenario spec
     # Only Intervention, EnvironmentalLayer and CriteriaWeights factors are perturbed,

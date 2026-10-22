@@ -2,7 +2,7 @@
 
 ADRIA: Adaptive Dynamic Reef Intervention Algorithms.
 
-[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases) [![DOI](https://zenodo.org/badge/483052659.svg)](https://zenodo.org/badge/latestdoi/483052659)
+[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases) [![DOI](https://img.shields.io/badge/DOI-10.25845%2FE9VT--4G35-blue.svg)](https://doi.org/10.25845/E9VT-4G35)
 
 [![Documentation](https://img.shields.io/badge/docs-stable-blue)](https://open-aims.github.io/ADRIA.jl/stable/) [![Documentation](https://img.shields.io/badge/docs-dev-blue)](https://open-aims.github.io/ADRIA.jl/dev/)
 

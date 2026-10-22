@@ -21,10 +21,14 @@ function tsa() end
 function tsa!() end
 function rsa() end
 function rsa!() end
+function rsa_cdf() end
+function rsa_cdf!() end
 function convergence() end
 function convergence!() end
 function outcome_map() end
 function outcome_map!() end
+function stratified_rsa() end
+function stratified_rsa!() end
 
 # Clustering
 function clustered_scenarios() end
