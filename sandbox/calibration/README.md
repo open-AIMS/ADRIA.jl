@@ -2752,3 +2752,45 @@ Arm tokens after `_pj<ssp>g<gcm><supply>`:
 - `_cl<fraction×100>`: outside coral larvae.
 
 `--pkgimages=no` works around a locked ADRIA package-image DLL in `~/.julia/compiled`. Results are identical (replays 0.0).
+
+
+### Report figures with fit statistics, 2020s build-up study and outside-reef culling (2026-10-21/22)
+
+All commands run from the repository root, with base miniconda Python for `.py` and `julia --pkgimages=no --project=sandbox` for `.jl`. Shared runner settings:
+```powershell
+$env:OWEN_1991_EXPERIMENT='lizfast'; $env:OWEN_1991_DOMAIN_VERSION='v0.4'; $env:OWEN_1991_EXTRA_REEFS='true'; $env:OWEN_1991_LIZFAST_DELTAS='0.04'
+```
+
+**Calibration report figures (W-wave-lf04, with bias / MAE / Pearson / Spearman in every panel).**
+1. Run `sens` with `OWEN_1991_EXPERIMENT='sens'`, `OWEN_1991_SENS_WAVE='true'`, `OWEN_1991_SENS_Q='25'`, `OWEN_1991_SENS_LIZFAST='true'` and `OWEN_1991_COTS_DATASET='owen_global_2018_2023_corr_w3'`, with `OWEN_1991_SENS_CULL` false (run 20261021T_10) and true (run 11).
+2. Then:
+```powershell
+python sandbox/calibration/plot_calibration_report.py --run <run 10> --cull-run <run 11> --output <new dir> --model-label W-wave-lf04
+python sandbox/calibration/plot_projection_culling_2050.py <new dir> <stage B runs 20261021T_04-08>
+```
+
+**2020s build-up study** (runs 20261022T_01–03, one per outbreak layer):
+```powershell
+python sandbox/domain_building/build_projection_inputs.py --dataset owen_global_2018_2023_corr_w05_graded --supply-only
+python sandbox/domain_building/build_projection_inputs.py --dataset owen_global_2018_2023 --supply-only
+$env:OWEN_1991_PROJECTION='true'; $env:OWEN_1991_PROJ_DESIGN='buildup'; $env:OWEN_1991_PROJ_END='2030'
+$env:OWEN_1991_PROJ_SSPS='245'; $env:OWEN_1991_PROJ_GCMS='1'; $env:OWEN_1991_PROJ_SUPPLY='W'; $env:OWEN_1991_PROJ_SEEDS='1,2,3,4,5'
+$env:OWEN_1991_COTS_DATASET='owen_global_2018_2023_corr_w3'   # or _corr_w05_graded, or owen_global_2018_2023
+julia --pkgimages=no --project=sandbox sandbox/calibration/run_1991_initialization_test.jl
+python sandbox/calibration/audit_buildup_2020s.py <out dir> --C <run> --G <run> --O <run>
+```
+- Arms: `_cullreef_xc` (observed inside culls only) and `_cullreef_xe<E|L><F|T><m×10>_xc`.
+- Extra inside effort runs 2020–25 (E) or 2026–30 (L), deployed on the recent pattern (F) or targeted (T), at 0.5–32 × 3,733 diver-hours/yr.
+
+**Outside-reef culling** (runs 20261022T_04–15):
+```powershell
+python sandbox/domain_building/build_outside_cull_discount.py      # sandbox/data/derived/projection_inputs_v0.5_outside_cull
+$env:OWEN_1991_PROJ_OUTSIDE_CULL='B'   # B observed to 2025; K carried on 2026-30; D doubled 2020-30; L doubled 2026-30
+# then the build-up study settings above; arms gain _oc<code>
+python sandbox/calibration/audit_buildup_2020s.py <out dir> --C <run> --G <run> --O <run> --scenario-label "..." --control-replay-before 2002
+python sandbox/calibration/compare_outside_cull_2020s.py <out dir> --audits none=<dir> B=<dir> K=<dir> D=<dir> L=<dir> --runs none=<C>,<G>,<O> B=...
+```
+
+New ADRIA opt-in switches:
+- `COTS_CULL_EFFORT_END_YEAR` (last year of forward effort culling);
+- result field `cots_effort_hours_log` (diver-hours deployed per year).

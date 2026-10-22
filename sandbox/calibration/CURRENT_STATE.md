@@ -8,7 +8,28 @@ This is the single entry point for resuming work, in this chat or a new one. It 
 
 Nothing here is promoted to the ADRIA default model.
 
-**Resume here (2026-10-21, thirtieth round):**
+**Resume here (2026-10-22, thirty-third round).** Read the write-up `WRITEUP_2026-10-22_projections_and_culling.md` first. Then read the protocol from "Lead's request (2026-10-22, thirty-second round)" to the end.
+
+- **Model:** W-wave-lf04 (not promoted). Projection runner: experiment `lizfast` with `OWEN_1991_PROJECTION=true`. Commands are in the README section "Projection mechanisms ..." and in the write-up's reproduction section.
+- **Done since round 30:**
+  - Report figures for the W-wave-lf04 calibration now carry bias, MAE, Pearson r and Spearman ρ in every panel: `calibration_report_figures/2026-10-22_wwave_lf04_fit_statistics/`.
+  - Culling projections to 2050: `2026-10-21_wwave_lf04/projections_2050/`.
+  - 2020s build-up study (runs 20261022T_01–03; `2026-10-22_buildup_2020s/`).
+  - Outside-reef cull scenarios (runs 20261022T_04–15; `2026-10-22_outside_cull_2020s/`).
+- **Key results:**
+  - The model's 2020s breach is the 2026 surge from juveniles settled out of 2024–26 outside supply.
+  - Extra adult culling inside the domain in 2020–25 cannot stop that surge, even at 32× recent effort.
+  - Stopping breaches in 2027–30 needs 16–32× recent inside effort.
+  - Outside culling at the recorded scale changes the build-up by at most 4%.
+- **Next (lead's proposal, not started):** COTS-suitable habitat basis for culling. The lead has suitability layers; ask where they are and how they were made. Then:
+  1. diagnostic share s per site;
+  2. opt-in suitable-area basis for culls and the outside discount;
+  3. dive-site cascade allocation;
+  4. decide on larval export.
+- **Still open from round 31:** downward-only reset, thermal acclimation scenarios in the ensemble, and domain-level outputs (agreed, not implemented). The source-reef discount is now implemented (`build_outside_cull_discount.py`).
+- **Julia:** run with `--pkgimages=no`. The ADRIA package-image DLL in `~/.julia/compiled` was locked (EACCES).
+
+**Previous pointer (2026-10-21, thirtieth round):**
 - Culling is on in projections, and the opt-in projection mechanisms M1–M5 are in ADRIA: forward effort cull, 2026 reset, coral-coupled outside supply, thermal acclimation and outside coral larvae. See the protocol from "Lead's decisions (2026-10-21, thirtieth round)".
 - Stage A screen: run 20261021T_03 (`audit_projection_screen.py`).
 - Stage B ensemble: runs 20261021T_04–08, one per GCM (`OWEN_1991_PROJ_DESIGN=ensembleB`); complete, audited in run 20261021T_09.

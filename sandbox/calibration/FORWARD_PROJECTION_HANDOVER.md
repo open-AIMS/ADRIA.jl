@@ -154,6 +154,26 @@ Settlement at the calibration reefs is mostly external supply, and its timing co
 7. Run a small pilot (1 GCM, 2 SSPs, 3 supply scenarios, 5 seeds), audit it, log it, then scale up.
 8. Separately, scope option 3 (RME boundary): a 1991–2026 RME hindcast against `gbrPredsAdj`.
 
+### Progress (2026-10-21/22, rounds 30-33)
+
+Details are in `WRITEUP_2026-10-22_projections_and_culling.md` and in the protocol from "Lead's decisions (2026-10-21, thirtieth round)".
+
+- **Culling is on in projections.** Observed removals run to 2026, then forward effort culling: none, recent effort or targeted, each at ×1 to ×3.
+  - Also added: a 2026 reset factor, coral-coupled outside supply, thermal-acclimation and outside-coral-larvae switches (all opt-in ADRIA switches).
+- **Ensemble done:** 5 climate models × SSP2-4.5 / SSP3-7.0 × 5 seeds × reset × 9 cull levels (runs 20261021T_04–08).
+- **Report figures:**
+  - calibration figures with fit statistics;
+  - culling projections to 2050;
+  - 2020s build-up study;
+  - outside-reef culling scenarios (`sandbox/data/derived/calibration_report_figures/2026-10-2*`).
+- **Task 6** (forward culling adapter) and the **source-reef cull discount** (`build_outside_cull_discount.py`) are done.
+- **Open:**
+  - COTS-suitable habitat basis for culling (lead's proposal);
+  - downward-only reset;
+  - thermal-acclimation scenarios in the ensemble;
+  - domain-level outputs;
+  - RME boundary scoping (task 8).
+
 ### Progress (2026-10-19, round 29)
 
 1. Done: the replay control is reproduced (run 20261019T_51: 0 = run 15, +0.04 = run 48, exactly).

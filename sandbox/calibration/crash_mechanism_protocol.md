@@ -6730,3 +6730,53 @@ Recorded at launch, before the results were read.
    - The median culled outside reef loses about 1% of its population per year (mean 5–22%; 40–90% only on a few heavily culled reefs, mostly in the 18-, 20- and 21- reef ranges, far south of Lizard).
    - Observed outside culls lower outside supply to Lizard, Eyrie and MacGillivray by at most 2% in any year, and doubled effort by at most 4%.
    - **Expected:** small differences from the no-discount runs.
+
+
+## Outside-reef culling scenarios: results (2026-10-22)
+
+**Runs:** 20261022T_04–15. Scenario B is runs 04–06 (C, G, O); K is 07–09; D is 10–12; L is 13–15. 145 arms each, no failures.
+
+**Audits:** per scenario in `sandbox/data/derived/calibration_report_figures/2026-10-22_outside_cull_2020s/scenario_{B,K,D,L}/` (the build-up figures and tables, same layouts), and the cross-scenario comparison in `.../comparison/` (`compare_outside_cull_2020s.py`: `outside1_trajectories_2018_2030`, `outside2_success_vs_inside_effort`, `outside_cull_comparison.csv`).
+
+**Checks:**
+- controls equal the culling control before 2002, the first discounted year;
+- early arms equal their controls before 2020, and late arms before 2026 (all 0.0);
+- no forward inside effort outside its window.
+
+### Highest adults/ha on the five reefs, no extra inside effort
+
+Seed medians.
+
+| Outbreak layer | Years | No discount | Observed to 2025 (B) | Carried on 2026–30 (K) | Doubled 2020–30 (D) | Doubled 2026–30 (L) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Current | 2026 | 30.9 | 29.8 | 29.8 | 29.2 | 29.8 |
+| Current | 2027–30 | 80.0 | 78.3 | 77.9 | 76.7 | 77.6 |
+| Graded 0.5 | 2026 | 25.4 | 24.8 | 24.8 | 24.5 | 24.8 |
+| Graded 0.5 | 2027–30 | 57.1 | 56.6 | 56.5 | 55.8 | 56.4 |
+| Original | 2026 | 6.0 | 6.0 | 6.0 | 5.9 | 6.0 |
+| Original | 2027–30 | 29.1 | 29.0 | 28.9 | 28.7 | 28.8 |
+
+**Extra inside effort needed** (14.7/ha; ≥ 4 of 5 seeds) is unchanged by any outside scenario, with one exception. Under graded 0.5 with outside effort doubled in 2020–30, early targeted inside effort succeeds at 16× instead of 32×. Everywhere else, late inside effort still needs 16× (G, O) or 32× (C).
+
+### Findings
+
+1. **Outside culling at the recorded scale changes the 2020s build-up by at most 4%.**
+   - In the cull records, a typical culled outside reef loses about 1% of its estimated adult population per year.
+   - Large removals (40–90%) are on a few reefs far south of Lizard, which supply little of Lizard's larvae.
+   - Even doubled effort lowers outside larval supply to Lizard, Eyrie and MacGillivray by at most 4% in any year.
+2. **So outside culling, as represented, is not what holds back the build-up in the model.** The surge after 2026 comes from the size of the supply from unculled or lightly culled source reefs, together with the model's 2024–26 cohort.
+3. **The estimate is conservative.** The fraction culled divides removals by the whole habitable reef area. Culling concentrates on COTS-suitable habitat, so the true fraction removed is larger. The same applies inside the domain (lead's point, below).
+
+### Lead's point for the next round: COTS-suitable habitat (discussion, not implemented)
+
+- Model COTS densities are calibrated to manta, SALAD and cull densities, which are measured in COTS-suitable habitat. But numbers of animals are computed with three different areas:
+  - whole site area: cull conversion, cull allocation, effort stock;
+  - coral-habitable area: larval export;
+  - RME non-sand area: outside discount.
+- If only a share s of the habitat is suitable, the model population is too large by 1/s. Every cull (inside, forward and outside) then removes too small a fraction, by the same factor; s of 0.2–0.4 would mean 2.5–5×.
+- **Proposed** (to preregister):
+  - (1) a diagnostic computing s per site from the lead's suitability layers, and the culled fraction under that basis;
+  - (2) an opt-in suitable-area basis for culling and the outside discount;
+  - (3) cull removals assigned to the dive's site, with a nearest-site cascade (within the reef and a distance cap) when the model holds too few COTS there;
+  - (4) then decide whether larval export moves to the same basis, which needs a calibration re-check.
+- **Open questions for the lead:** how the layers were made and whether they derive from COTS observations; whether they cover outside reefs; the overlap with the reef-level wave modifier; and adult versus settlement habitat.
