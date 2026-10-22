@@ -206,12 +206,30 @@ const END_YEAR = DOMAIN_VERSION == "v0.4" ? 2026 : 2024
 # W = wave_r<k>, M = mean, C = closed, R = repeat. 1991-2026 must replay run 20261019T_51 exactly.
 const PROJECTION = get(ENV, "OWEN_1991_EXPERIMENT", "") == "lizfast" && get(ENV, "OWEN_1991_PROJECTION", "false") == "true"
 const PROJ_DIR = joinpath(ROOT, "sandbox", "data", "derived", "projection_inputs_v0.5")
-const PROJ_END = 2100
+# OWEN_1991_PROJ_END (2026-10-22): last simulated year (inputs cover 2100; default 2100).
+const PROJ_FILE_END = 2100
+const PROJ_END = parse(Int, get(ENV, "OWEN_1991_PROJ_END", "2100"))
+2027 <= PROJ_END <= PROJ_FILE_END || error("OWEN_1991_PROJ_END must lie in 2027-2100")
 const PROJ_SSPS = split(get(ENV, "OWEN_1991_PROJ_SSPS", "245,585"), ",")
 const PROJ_GCMS = parse.(Int, split(get(ENV, "OWEN_1991_PROJ_GCMS", "1"), ","))
 const PROJ_SUPPLY = split(get(ENV, "OWEN_1991_PROJ_SUPPLY", "W,M,C"), ",")
 const PROJ_SEEDS = parse.(Int, split(get(ENV, "OWEN_1991_PROJ_SEEDS", "1,2,3,4,5"), ","))
 const PROJ_SUPPLY_DIRS = Dict("M" => "mean", "C" => "closed", "R" => "repeat")
+# Outbreak layers with a projection supply continuation (2026-10-22): corr_w3 in the main input set, the others
+# from build_projection_inputs.py --supply-only (projection_inputs_v0.5_supply_<dataset>).
+const PROJ_DATASETS = ("owen_global_2018_2023_corr_w3", "owen_global_2018_2023_corr_w05_graded", "owen_global_2018_2023")
+# Outside-reef cull discount (2026-10-22, thirty-third round): OWEN_1991_PROJ_OUTSIDE_CULL = B (observed outside culls to
+# 2025), K (+ recent outside effort 2026-30), D (doubled 2020-30) or L (doubled 2026-30) selects the discounted supply from
+# build_outside_cull_discount.py; arms carry _oc<code> after the supply letter. Unset = undiscounted supply (as before).
+const PROJ_OUTSIDE_CULL = get(ENV, "OWEN_1991_PROJ_OUTSIDE_CULL", "")
+PROJ_OUTSIDE_CULL in ("", "B", "K", "D", "L") || error("OWEN_1991_PROJ_OUTSIDE_CULL must be B, K, D or L")
+const PROJ_OC_DIR = joinpath(ROOT, "sandbox", "data", "derived", "projection_inputs_v0.5_outside_cull")
+const PROJ_OC_FIRST_YEAR = isempty(PROJ_OUTSIDE_CULL) ? 9999 :
+    Int(match(r"\"first_discount_year\": (\d+)", read(joinpath(PROJ_OC_DIR, "metadata.json"), String)).captures[1] |> x -> parse(Int, x))
+proj_supply_root() = !isempty(PROJ_OUTSIDE_CULL) ?
+    joinpath(PROJ_OC_DIR, get(ENV, "OWEN_1991_COTS_DATASET", ""), PROJ_OUTSIDE_CULL, "supply") :
+    get(ENV, "OWEN_1991_COTS_DATASET", "") == "owen_global_2018_2023_corr_w3" ? joinpath(PROJ_DIR, "supply") :
+    joinpath(ROOT, "sandbox", "data", "derived", "projection_inputs_v0.5_supply_$(get(ENV, "OWEN_1991_COTS_DATASET", ""))", "supply")
 proj_parts(name) = (m = match(r"_pj(\d{3})g(\d{2})([WMCR])_", name); isnothing(m) ? nothing :
     (ssp="ssp" * m.captures[1], gcm=parse(Int, m.captures[2]), supply=m.captures[3],
      k=parse(Int, match(r"_s(\d+)_", name).captures[1])))
@@ -228,7 +246,11 @@ const PROJ_EXTRAS = PROJ_DESIGN == "pilot" ? [""] :
         PROJ_BASE * "_ta05", PROJ_BASE * "_ta12", PROJ_BASE * "_cl10", PROJ_BASE * "_cl50"] :
     PROJ_DESIGN == "ensembleB" ? ["_cullreef_$(c)_xc$(r)" for r in ("", "_rsAJ")
         for c in ("fcN", "fcF100", "fcF150", "fcF200", "fcF300", "fcT100", "fcT150", "fcT200", "fcT300")] :
-    error("OWEN_1991_PROJ_DESIGN must be pilot, screenA or ensembleB")
+    PROJ_DESIGN == "buildup" ? ["_cullreef_xc"; ["_cullreef_xe$(w)$(d)$(lpad(m, 3, '0'))_xc" for w in ("E", "L")
+        for d in ("F", "T") for m in (5, 10, 20, 40, 80, 160, 320)]] :
+    error("OWEN_1991_PROJ_DESIGN must be pilot, screenA, ensembleB or buildup")
+# 2020s build-up study (2026-10-22): extra effort _xe<window><deployment><m x10>; E = 2020-2025, L = 2026-2030.
+const PROJ_EXTRA_WINDOWS = Dict("E" => (2020, 2025), "L" => (2026, 2030))
 const PROJ_CULL_EFFORT_CSV = joinpath(ROOT, "sandbox", "data", "derived", "cull_effort_lizard_v1", "effort_recent_2023_2025.csv")
 const PROJ_RESET_CSV = joinpath(ROOT, "sandbox", "data", "derived", "reset_targets_2026", "reset_targets.csv")
 const PROJ_START = 2027
@@ -238,13 +260,15 @@ proj_options(name) = (
     coupled=occursin("_xc_", name),
     reset=(m = match(r"_rs(AJ|AO)_", name); isnothing(m) ? nothing : m.captures[1]),
     thermal=(m = match(r"_ta(\d{2})_", name); isnothing(m) ? 0.0 : parse(Int, m.captures[1]) / 100),
-    larvae=(m = match(r"_cl(\d{2})_", name); isnothing(m) ? 0.0 : parse(Int, m.captures[1]) / 100))
-proj_supply_dir(supply, k) = joinpath(PROJ_DIR, "supply",
+    larvae=(m = match(r"_cl(\d{2})_", name); isnothing(m) ? 0.0 : parse(Int, m.captures[1]) / 100),
+    extra=(m = match(r"_xe(E|L)(F|T)(\d{3})_", name); isnothing(m) ? nothing :
+        (window=PROJ_EXTRA_WINDOWS[m.captures[1]], mode=m.captures[2], mult=parse(Int, m.captures[3]) / 10)))
+proj_supply_dir(supply, k) = joinpath(proj_supply_root(),
     supply == "W" ? "wave_r$(lpad(k, 2, '0'))" : PROJ_SUPPLY_DIRS[supply], "annual_forcing")
 if PROJECTION
     DOMAIN_VERSION == "v0.4" || error("OWEN_1991_PROJECTION needs OWEN_1991_DOMAIN_VERSION=v0.4")
-    get(ENV, "OWEN_1991_COTS_DATASET", "") == "owen_global_2018_2023_corr_w3" ||
-        error("OWEN_1991_PROJECTION needs OWEN_1991_COTS_DATASET=owen_global_2018_2023_corr_w3")
+    get(ENV, "OWEN_1991_COTS_DATASET", "") in PROJ_DATASETS ||
+        error("OWEN_1991_PROJECTION needs OWEN_1991_COTS_DATASET in $(PROJ_DATASETS)")
     isfile(joinpath(PROJ_DIR, "metadata.json")) || error("Missing projection input set $(PROJ_DIR)")
     all(s -> s in ("119", "126", "245", "370", "585"), PROJ_SSPS) || error("Unknown SSP in OWEN_1991_PROJ_SSPS")
     all(s -> s in ("W", "M", "C", "R"), PROJ_SUPPLY) || error("Unknown supply code in OWEN_1991_PROJ_SUPPLY")
@@ -716,10 +740,10 @@ hist_cyclones = Float64.(Array(domain.cyclone_mortality_scens)[keep, :, :, :])
 proj_dhw = PROJECTION ? let cubes = Dict{Tuple{String,Int},Any}()
     for ssp in PROJ_SSPS
         raw = ADRIA.YAXArrays.Cube(joinpath(PROJ_DIR, "dhw", "dhw_ssp$(ssp).nc"))
-        collect(raw.time) == collect(1985:PROJ_END) || error("Projection DHW years for ssp$(ssp)")
+        collect(raw.time) == collect(1985:PROJ_FILE_END) || error("Projection DHW years for ssp$(ssp)")
         values = Float64.(Array(raw))
         for g in PROJ_GCMS
-            series = values[findall(>=(1991), collect(raw.time)), :, g]
+            series = values[findall(t -> 1991 <= t <= PROJ_END, collect(raw.time)), :, g]
             series[1:length(keep), :] == hist_dhw[:, :, 1] || error("Projection DHW ssp$(ssp) g$(g) differs from v0.4 before 2027")
             cubes[("ssp$(ssp)", g)] = ADRIA.DataCube(repeat(series, 1, 1, size(hist_dhw, 3));
                 timesteps=years, sites=domain.loc_ids, scenarios=1:size(hist_dhw, 3))
@@ -729,7 +753,7 @@ proj_dhw = PROJECTION ? let cubes = Dict{Tuple{String,Int},Any}()
 end : nothing
 proj_cyclone_base(k) = let
     raw = Array(ADRIA.load_lizard_cyclone_mortality(joinpath(PROJ_DIR, "env", "cyclone_mortality_r$(lpad(k, 2, '0')).csv"),
-        domain.loc_ids, collect(1985:PROJ_END), ADRIA.functional_group_names()))[7:end, :, :, :]
+        domain.loc_ids, collect(1985:PROJ_FILE_END), ADRIA.functional_group_names()))[7:(PROJ_END - 1984), :, :, :]
     raw[1:length(keep), :, :, :] == hist_cyclones || error("Projection cyclones r$(k) differ from v0.4 before 2027")
     ADRIA.DataCube(raw; timesteps=years, locs=domain.loc_ids, species=ADRIA.functional_group_names(), scenarios=[1])
 end
@@ -1093,7 +1117,7 @@ treatments = EXPERIMENT == "initialization" ? [
     [(name="wc_b100_q$(SENS_Q)_eb_h10_obs015_s$(k)_t60_e50$(SENS_LFTOK)$(SENS_CULLTOK)_aprmak_cv2_pnd_sh$(pct3(f))$(SENS_SUFFIX)", alpha=0.015,
         coral="observed_composition", initial="cohort_full") for f in SENS_FACTORS for k in eachindex(CANDIDATE_SEEDS)]
 ] : PROJECTION ? [
-    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50_lf04_pj$(ssp)g$(lpad(g, 2, '0'))$(sup)$(extra)_aprmak_cv2_pnd_wv025",
+    (name="wc_b100_q25_eb_h10_obs015_s$(k)_t60_e50_lf04_pj$(ssp)g$(lpad(g, 2, '0'))$(sup)$(isempty(PROJ_OUTSIDE_CULL) ? "" : "_oc" * PROJ_OUTSIDE_CULL)$(extra)_aprmak_cv2_pnd_wv025",
         alpha=0.015, coral="observed_composition", initial="cohort_full")
     for ssp in PROJ_SSPS for g in PROJ_GCMS for sup in PROJ_SUPPLY for extra in PROJ_EXTRAS for k in PROJ_SEEDS
 ] : LIZFAST ? [
@@ -1447,7 +1471,7 @@ culls = DataFrame(treatment=String[], scope=String[], year=Int[],
     requested_post_juveniles=Float64[], requested_post_adults=Float64[],
     removed_pre_juveniles=Float64[], removed_pre_adults=Float64[],
     removed_post_juveniles=Float64[], removed_post_adults=Float64[])
-projection_log = DataFrame(treatment=String[], year=Int[], external_coral_factor=Float64[])
+projection_log = DataFrame(treatment=String[], year=Int[], external_coral_factor=Float64[], effort_hours=Float64[])
 projection_reset = DataFrame(treatment=String[], reset_after_year=Int[], group=String[], factor=Float64[], juveniles=Bool[])
 cull_site_area_ha = if CULL_ON
     site_table = CSV.read(joinpath(V3, "site_to_reef.csv"), DataFrame; types=Dict(:site_id => String))
@@ -1748,15 +1772,17 @@ for t in run_treatments
         global domain = with_cots_forcing(domain, get!(proj_forcing_cache, (pj.supply, pj.k)) do
             f = ADRIA.load_cots_connectivity_forcing(proj_supply_dir(pj.supply, pj.k), domain.loc_ids)
             # The adapter returns zero external supply for a missing year: require full coverage.
-            f.outbreak_years == collect(1991:PROJ_END) || error("Projection supply $(pj.supply) does not cover 1991-$(PROJ_END)")
-            f.external_outbreak_potential[:, 1:36, :] == base_cots_forcing.external_outbreak_potential[:, 1:36, :] &&
-                f.external_outbreak_pelagic[:, 1:36, :] == base_cots_forcing.external_outbreak_pelagic[:, 1:36, :] ||
-                error("Projection supply $(pj.supply) differs from corr_w3 before 2027")
+            f.outbreak_years == collect(1991:PROJ_FILE_END) || error("Projection supply $(pj.supply) does not cover 1991-$(PROJ_FILE_END)")
+            # Identical to the loaded dataset before 2027, or (outside-cull discount) before its first discounted year.
+            ncheck = min(36, PROJ_OC_FIRST_YEAR - 1991)
+            f.external_outbreak_potential[:, 1:ncheck, :] == base_cots_forcing.external_outbreak_potential[:, 1:ncheck, :] &&
+                f.external_outbreak_pelagic[:, 1:ncheck, :] == base_cots_forcing.external_outbreak_pelagic[:, 1:ncheck, :] ||
+                error("Projection supply $(pj.supply) differs from the loaded dataset before $(1990 + ncheck + 1)")
             f
         end)
         # Projection mechanisms (protocol 2026-10-21, M1-M5): set from the arm's tokens, else cleared.
         po = proj_options(t.name)
-        for key in ("COTS_CULL_EFFORT_CSV", "COTS_CULL_EFFORT_START_YEAR", "COTS_CULL_EFFORT_MODE",
+        for key in ("COTS_CULL_EFFORT_CSV", "COTS_CULL_EFFORT_START_YEAR", "COTS_CULL_EFFORT_END_YEAR", "COTS_CULL_EFFORT_MODE",
                 "COTS_CULL_EFFORT_MULTIPLIER", "COTS_STATE_RESET_CSV", "COTS_STATE_RESET_JUVENILES",
                 "COTS_STATE_RESET_OTHERS", "COTS_EXTERNAL_CORAL_COUPLING_START_YEAR",
                 "ADRIA_THERMAL_ACCLIMATION_RATE", "ADRIA_THERMAL_ACCLIMATION_START_YEAR",
@@ -1768,6 +1794,14 @@ for t in run_treatments
             ENV["COTS_CULL_EFFORT_START_YEAR"] = string(PROJ_START)
             ENV["COTS_CULL_EFFORT_MODE"] = po.cull.mode == "F" ? "fixed" : "targeted"
             ENV["COTS_CULL_EFFORT_MULTIPLIER"] = string(po.cull.mult)
+        end
+        if !isnothing(po.extra)
+            isnothing(po.cull) || error("Arm combines _fc and _xe effort: $(t.name)")
+            ENV["COTS_CULL_EFFORT_CSV"] = PROJ_CULL_EFFORT_CSV
+            ENV["COTS_CULL_EFFORT_START_YEAR"] = string(po.extra.window[1])
+            ENV["COTS_CULL_EFFORT_END_YEAR"] = string(po.extra.window[2])
+            ENV["COTS_CULL_EFFORT_MODE"] = po.extra.mode == "F" ? "fixed" : "targeted"
+            ENV["COTS_CULL_EFFORT_MULTIPLIER"] = string(po.extra.mult)
         end
         if !isnothing(po.reset)
             ENV["COTS_STATE_RESET_CSV"] = PROJ_RESET_CSV
@@ -1914,7 +1948,8 @@ for t in run_treatments
                 ADRIA.load_cots_cull_removals(cull_table(t.name), domain.loc_ids, years)
             size(requested) == size(removed) || error("Cull request and log dimensions differ")
             # Projections: forward effort culls (from PROJ_START) have no requests; check observed years only.
-            check_idx = PROJECTION ? findall(<(PROJ_START), years) : collect(axes(removed, 1))
+            effort_window = parse(Int, get(ENV, "COTS_CULL_EFFORT_START_YEAR", "9999")):parse(Int, get(ENV, "COTS_CULL_EFFORT_END_YEAR", "9999"))
+            check_idx = PROJECTION ? findall(y -> y < PROJ_START && !(y in effort_window), years) : collect(axes(removed, 1))
             if get(ENV, "COTS_CULL_ALLOCATION", "site") == "reef_proportional"
                 # Reef allocation moves removals between a reef's sites; check reef totals.
                 reef_ids = string.(domain.loc_data.GBRMPA_ID)
@@ -1939,7 +1974,7 @@ for t in run_treatments
         end
         if PROJECTION
             for (idx, year) in enumerate(years)
-                push!(projection_log, (t.name, year, result.cots_external_coral_factor_log[idx]))
+                push!(projection_log, (t.name, year, result.cots_external_coral_factor_log[idx], result.cots_effort_hours_log[idx]))
             end
             r = result.cots_reset_log
             if !isnothing(r)

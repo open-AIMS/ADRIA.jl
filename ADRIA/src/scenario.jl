@@ -1542,6 +1542,10 @@ function run_model(
         load_cots_cull_effort(cots_cull_effort_csv, cots_reef_labels)
     end
     cots_effort_start = parse(Int, get(ENV, "COTS_CULL_EFFORT_START_YEAR", "0"))
+    # Optional last year of forward effort culling (2026-10-22); unset = no end.
+    cots_effort_end = parse(Int, get(ENV, "COTS_CULL_EFFORT_END_YEAR", "9999"))
+    cots_effort_end >= cots_effort_start || error("COTS_CULL_EFFORT_END_YEAR precedes the start year")
+    cots_effort_hours_log = zeros(Float64, tf)  # diver-hours deployed per year (both phases)
     cots_effort_multiplier = parse(Float64, get(ENV, "COTS_CULL_EFFORT_MULTIPLIER", "1.0"))
     cots_effort_mode = get(ENV, "COTS_CULL_EFFORT_MODE", "fixed")
     cots_effort_mode in ("fixed", "targeted") || error("COTS_CULL_EFFORT_MODE must be fixed or targeted")
@@ -2334,7 +2338,8 @@ function run_model(
                 juveniles=cots_reset_juveniles)
         end
         # M1: this year's effort per reef (half before spawning, half after).
-        cots_effort_on = !isnothing(cots_cull_effort) && cots_calendar_years[tstep] >= cots_effort_start
+        cots_effort_on = !isnothing(cots_cull_effort) &&
+            cots_effort_start <= cots_calendar_years[tstep] <= cots_effort_end
         cots_effort_hours(phase_models) = cots_effort_mode == "fixed" ?
             0.5 * cots_effort_multiplier .* cots_cull_effort :
             targeted_cull_hours(phase_models, 0.5 * cots_effort_multiplier * sum(cots_cull_effort),
@@ -2343,15 +2348,23 @@ function run_model(
         # COTS predation mortality (operates on relative cover)
         isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :pre;
             groups=cots_cull_groups, areas=cots_cull_areas)
-        cots_effort_on && apply_cots_effort_cull!(cots_models, cots_effort_hours(cots_models),
-            cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :pre; cpue_max=cots_effort_cpue_max)
+        if cots_effort_on
+            hours_pre = cots_effort_hours(cots_models)
+            cots_effort_hours_log[tstep] += sum(hours_pre)
+            apply_cots_effort_cull!(cots_models, hours_pre, cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :pre;
+                cpue_max=cots_effort_cpue_max)
+        end
         apply_cots_predation_diagnostic!(C_cover_t, cots_models, cots_prey_map,
             cots_calendar_years[tstep], cots_grazing_off_years;
             habitable_fraction=cots_habitable_fraction)
         isnothing(cots_cull) || apply_cots_cull!(cots_models, cots_cull, Ycots_culled, tstep, :post;
             groups=cots_cull_groups, areas=cots_cull_areas)
-        cots_effort_on && apply_cots_effort_cull!(cots_models, cots_effort_hours(cots_models),
-            cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :post; cpue_max=cots_effort_cpue_max)
+        if cots_effort_on
+            hours_post = cots_effort_hours(cots_models)
+            cots_effort_hours_log[tstep] += sum(hours_post)
+            apply_cots_effort_cull!(cots_models, hours_post, cots_reef_groups, cots_site_areas, Ycots_culled, tstep, :post;
+                cpue_max=cots_effort_cpue_max)
+        end
         if !isnothing(cots_larval_survival)
             apply_cots_larval_survival!(cots_models, @view(cots_larval_survival[tstep, :]))
             Ycots_larval_survival[tstep, :] .= @view(cots_larval_survival[tstep, :])
@@ -2584,6 +2597,7 @@ function run_model(
         cots_culled_log=Ycots_culled,
         cots_larval_survival_log=Ycots_larval_survival,
         cots_external_coral_factor_log=cots_coral_factor_log,
-        cots_reset_log=COTS_RESET_LOG[]
+        cots_reset_log=COTS_RESET_LOG[],
+        cots_effort_hours_log=cots_effort_hours_log
     )
 end

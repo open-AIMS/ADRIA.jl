@@ -37,6 +37,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.stats import pearsonr, spearmanr
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "sandbox" / "data"
@@ -98,6 +99,55 @@ def draw_cull(ax, b: pd.DataFrame, lo_clip: float | None = None, years=YEARS):
     ax.plot(b.index, c(b["mean"]), color=CLINE, linewidth=2.0, linestyle=(0, (5, 2)), label="culling on: model (seed mean)")
 
 
+def fit_stats(model: pd.Series, obs: pd.Series, threshold: float | None = None, log_offset: float | None = None) -> dict:
+    """Agreement between the model seed mean and observations in matching years (2026-10-22): n, bias
+    (model - obs), MAE, Pearson r, Spearman rho (the four annotated); also relative bias (%), Nash-Sutcliffe
+    efficiency, MAE of log(x + offset) and, with a threshold, outbreak-state skill (true skill statistic)."""
+    pair = pd.concat([model.rename("m"), obs.rename("o")], axis=1, join="inner").dropna()
+    n = len(pair)
+    out = {"n": n}
+    if n < 3:
+        return out | {k: np.nan for k in ("bias", "mae", "pearson", "spearman", "rel_bias_pct", "nse", "log_mae", "tss")}
+    m, o = pair.m.to_numpy(float), pair.o.to_numpy(float)
+    const = np.ptp(m) == 0 or np.ptp(o) == 0
+    out |= {"bias": float(np.mean(m - o)), "mae": float(np.mean(np.abs(m - o))),
+            "pearson": np.nan if const else float(pearsonr(m, o)[0]),
+            "spearman": np.nan if const else float(spearmanr(m, o)[0]),
+            "rel_bias_pct": float(100 * np.mean(m - o) / np.mean(o)) if np.mean(o) > 0 else np.nan,
+            "nse": float(1 - np.sum((m - o) ** 2) / np.sum((o - o.mean()) ** 2)) if np.ptp(o) > 0 else np.nan,
+            "log_mae": float(np.mean(np.abs(np.log(m + log_offset) - np.log(o + log_offset)))) if log_offset else np.nan}
+    if threshold is not None:
+        mo, oo = m >= threshold, o >= threshold
+        hits, misses = np.sum(mo & oo), np.sum(~mo & oo)
+        fa, cn = np.sum(mo & ~oo), np.sum(~mo & ~oo)
+        out["tss"] = (float(hits / (hits + misses) - fa / (fa + cn))
+                      if (hits + misses) > 0 and (fa + cn) > 0 else np.nan)
+    else:
+        out["tss"] = np.nan
+    return out
+
+
+def stat_text(st: dict, compact: bool = False) -> str:
+    if st.get("n", 0) < 3:
+        return f"n={st.get('n', 0)}"
+    signed = lambda v: "-" if not np.isfinite(v) else f"{v:+.2f}"
+    plain = lambda v: "-" if not np.isfinite(v) else f"{v:.2f}"
+    if compact:
+        return (f"n={st['n']} bias {signed(st['bias'])} MAE {plain(st['mae'])}\n"
+                f"     r {plain(st['pearson'])}  \u03c1 {plain(st['spearman'])}")
+    return (f"n={st['n']:<2d} bias {signed(st['bias'])}  MAE {plain(st['mae'])}  "
+            f"r {plain(st['pearson'])}  \u03c1 {plain(st['spearman'])}")
+
+
+def annotate(ax, lines: list[str], loc: str = "upper left"):
+    """Small statistics box drawn in ink colour (text never takes a series colour)."""
+    y0, va = (0.97, "top") if loc.startswith("upper") else (0.03, "bottom")
+    x0, ha = (0.02, "left") if loc.endswith("left") else (0.98, "right")
+    ax.text(x0, y0, "\n".join(lines), transform=ax.transAxes, ha=ha, va=va, fontsize=6.6, color=INK,
+            family="monospace", zorder=10,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="#ffffff", edgecolor=GRID, alpha=0.9))
+
+
 def peak_table(model: pd.Series, obs: pd.Series, windows) -> list[dict]:
     rows = []
     for name, (y0, y1) in windows.items():
@@ -141,6 +191,21 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
     files = []
     windows = {"1990s": (1993, 2003), "2010s": (2008, 2016), "2020s": (2019, 2026)}
     peaks = []
+    stats = []
+
+    def add_stats(figure, reef, observation, model, obsv, cmodel=None, threshold=None, log_offset=None, label="",
+                  compact=False):
+        """Fit statistics for culling off (and on, when a culling run is given); returns the annotation lines."""
+        st = fit_stats(model, obsv, threshold, log_offset)
+        stats.append({"figure": figure, "reef": reef, "observation": observation, "culling": "off", **st})
+        prefix = (label + " ") if label else ""
+        if cmodel is None:
+            return [prefix + stat_text(st, compact)]
+        cst = fit_stats(cmodel, obsv, threshold, log_offset)
+        stats.append({"figure": figure, "reef": reef, "observation": observation, "culling": "on", **cst})
+        if compact:
+            return [f"off {stat_text(st, True)}", f"on  {stat_text(cst, True)}"]
+        return [f"{prefix}cull off: {stat_text(st)}", f"{prefix}cull on:  {stat_text(cst)}"]
 
     def save(fig, stem):
         for ext in ("png", "pdf"):
@@ -163,16 +228,20 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
         ax.set_title(reef, loc="left")
         style(ax)
         peaks += [{"reef": reef, **r} for r in peak_table(b["mean"], o, windows)]
+        cm = cull_bands(ctraj[ctraj.reef_name == reef], "adults_ha", Q)["mean"].loc[YEARS[0]:YEARS[1]] if cull_bands else None
+        annotate(ax, add_stats("fig1", reef, "LTMP manta COTS/tow", b["mean"].loc[YEARS[0]:YEARS[1]], o, cm,
+                               threshold=OUTBREAK, log_offset=0.01), "upper left")
     for ax in axes[:, 0]:
         ax.set_ylabel("COTS per manta tow")
-    axes[0, 0].legend(frameon=False, fontsize=7.5, loc="upper right")
+    h, lab = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=3, frameon=False, fontsize=7.5)
     fig.suptitle(f"Calibration reefs: COTS (manta-tow equivalent), {model_label}", x=0.01, ha="left", fontsize=11, fontweight="bold")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.09, 1, 1))
     save(fig, "fig1_cots_calibration_reefs")
 
     # Figure 2: 2020s densities against diver/cull targets.
     reefs2 = list(CALIB) + ["Martin Reef"]
-    fig, axes = plt.subplots(1, len(reefs2), figsize=(15, 3.6), sharey=True)
+    fig, axes = plt.subplots(1, len(reefs2), figsize=(17, 4.6), sharey=True)
     for ax, reef in zip(axes, reefs2):
         d = traj[traj.reef_name == reef] if reef in CALIB else extra[extra.reef_name == reef]
         b = bands(d, "adults_ha", base, arms).loc[2015:2026]
@@ -187,6 +256,11 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
             tt = t[t.target_source == src]
             ax.scatter(tt.report_year, tt.target_density_ha, s=24, marker=mk, color=TARGET, zorder=5,
                        label="SALAD diver density" if src == "SALAD" else "cull catch converted to density")
+        tv = t.groupby("report_year").target_density_ha.mean()
+        cm = (cull_bands(ctraj[ctraj.reef_name == reef] if reef in CALIB else cextra[cextra.reef_name == reef],
+                         "adults_ha")["mean"].loc[2015:2026] if cull_bands else None)
+        annotate(ax, add_stats("fig2", reef, "diver/cull density (adults/ha)", b["mean"], tv, cm,
+                               threshold=OUTBREAK / Q, log_offset=0.5, compact=True), "lower right")
         ax.set_yscale("log")
         ax.set_ylim(0.1, 300)
         ax.set_xlim(2014.5, 2026.5)
@@ -195,9 +269,11 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
         ax.tick_params(colors=MUTED, labelsize=8)
         ax.set_title(reef, loc="left")
     axes[0].set_ylabel("Adult COTS ha$^{-1}$ (log)")
-    axes[0].legend(frameon=False, fontsize=7, loc="upper left")
-    fig.suptitle("2020s build-up: model adults against diver and cull density estimates", x=0.01, ha="left", fontsize=11, fontweight="bold")
-    fig.tight_layout()
+    h, lab = axes[0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, fontsize=7.5)
+    fig.suptitle("2020s build-up: model adults against diver and cull density estimates (statistics on the linear scale)",
+                 x=0.01, ha="left", fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=(0, 0.14, 1, 1))
     save(fig, "fig2_cots_2020s_density")
 
     # Figure 3: additional reefs.
@@ -212,15 +288,19 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
             o = obs[obs.reef_name == oname].groupby("year").cotsptow.mean()
             ax.scatter(o.index, o.values, s=18, color=OBS, zorder=5, label="LTMP manta tow (mean per survey year)")
             peaks += [{"reef": reef, **r} for r in peak_table(b["mean"], o, windows)]
+            cm = cull_bands(cextra[cextra.reef_name == reef], "adults_ha", Q)["mean"].loc[YEARS[0]:YEARS[1]] if cull_bands else None
+            annotate(ax, add_stats("fig3", reef, "LTMP manta COTS/tow", b["mean"].loc[YEARS[0]:YEARS[1]], o, cm,
+                                   threshold=OUTBREAK, log_offset=0.01), "upper left")
         ax.axhline(OUTBREAK, color=MUTED, linewidth=0.9, linestyle="--", label="outbreak level 0.22 COTS/tow")
         ax.set_title(f"{reef} — {EXTRA_NOTE[reef]}", loc="left")
         style(ax)
     for ax in axes[:, 0]:
         ax.set_ylabel("COTS per manta tow")
-    axes[0, 0].legend(frameon=False, fontsize=7.5, loc="upper right")
+    h, lab = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=3, frameon=False, fontsize=7.5)
     fig.suptitle(f"Additional reefs (not used in fitting): COTS (manta-tow equivalent), {model_label}", x=0.01, ha="left",
                  fontsize=11, fontweight="bold")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.09, 1, 1))
     save(fig, "fig3_cots_additional_reefs")
 
     # Figure 4: coral cover at the calibration reefs.
@@ -235,23 +315,34 @@ def main(run: Path, out: Path, cull_run: Path | None = None, model_label: str = 
                     color=OBS, ecolor=MUTED, elinewidth=0.8, capsize=0, zorder=5, label="LTMP manta hard coral (95% interval)")
         ph = photo[photo.domain_name == oname].groupby("report_year")["median"].mean()
         ax.scatter(ph.index, ph.values, s=22, marker="D", color=TARGET, zorder=6, label="LTMP 9 m photo-transect hard coral")
+        cb = bands(d, "coral_cover", base, arms)["mean"].loc[YEARS[0]:YEARS[1]]
+        ccb = cull_bands(ctraj[ctraj.reef_name == reef], "coral_cover")["mean"].loc[YEARS[0]:YEARS[1]] if cull_bands else None
+        annotate(ax, add_stats("fig4", reef, "LTMP manta hard coral", cb, m.set_index("report_year")["median"], ccb, label="manta")
+                 + add_stats("fig4", reef, "LTMP 9 m photo hard coral", cb, ph, ccb, label="photo"), "upper left")
         ax.set_title(reef, loc="left")
         ax.set_ylim(0, 0.8)
         style(ax)
     for ax in axes[:, 0]:
         ax.set_ylabel("Hard coral cover (fraction)")
-    axes[0, 0].legend(frameon=False, fontsize=7.5, loc="upper right")
+    h, lab = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=3, frameon=False, fontsize=7.5)
     fig.suptitle("Calibration reefs: coral cover (model = fraction of habitable area)", x=0.01, ha="left", fontsize=11, fontweight="bold")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.09, 1, 1))
     save(fig, "fig4_coral_calibration_reefs")
 
     pk = pd.DataFrame(peaks)
     pk.to_csv(out / "peak_timing_summary.csv", index=False)
     files.append(out / "peak_timing_summary.csv")
+    pd.DataFrame(stats).to_csv(out / "fit_statistics.csv", index=False)
+    files.append(out / "fit_statistics.csv")
     meta = {"run": str(run.relative_to(ROOT)), "base_arms": base, "n_arms": len(arms),
             "cull_run": str(cull_run.relative_to(ROOT)) if cull_run is not None else None,
             "uncertainty": {"inner": "min-max over 5 base seed pairs", "outer": "min-max over base + 12 one-at-a-time +/-25% perturbations x 5 seeds (65 runs)"},
             "observation_model": f"simulated CPUE = {Q} x adults/ha (fixed_q0015)",
+            "fit_statistics": "model seed mean vs observations in matching years: n, bias (model - obs), MAE, Pearson r, "
+                              "Spearman rho (annotated); fit_statistics.csv adds relative bias %, Nash-Sutcliffe efficiency, "
+                              "MAE of log(x + offset) (CPUE 0.01, density 0.5) and the true skill statistic for outbreak state "
+                              "(0.22 COTS/tow; 14.7/ha)",
             "data_permissions": "Figure 2 shows values derived from unpublished SALAD and CSIRO cull data; check before publication",
             "inputs": {**{p.name: sha256(p) for p in (OBS_COTS, OBS_MANTA, OBS_PHOTO, TARGETS, run / "trajectories.csv", run / "trajectories_extra.csv")},
                        **({f"cull/{n}": sha256(cull_run / n) for n in ("trajectories.csv", "trajectories_extra.csv")} if cull_run is not None else {})},

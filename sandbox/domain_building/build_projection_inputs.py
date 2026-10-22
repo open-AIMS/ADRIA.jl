@@ -287,6 +287,32 @@ def build_supply(replicates: int, out: Path, report: dict) -> None:
                         "copied_files_sha256": {f.name: sha256(f) for f in FORCING.iterdir()}}
 
 
+def main_supply_only(replicates: int, dataset: str) -> None:
+    """Supply continuation only, for another outbreak layer (protocol 2026-10-22, thirty-second round): same
+    scenarios, year maps and seeds as the corr_w3 input set, written to projection_inputs_v0.5_supply_<dataset>/."""
+    global DATASET, FORCING
+    DATASET = dataset
+    FORCING = V04 / "cots_connectivity" / "datasets" / DATASET / "annual_forcing"
+    if not FORCING.is_dir():
+        raise FileNotFoundError(f"No annual forcing for dataset {dataset}")
+    out = DATA / "derived" / f"projection_inputs_v0.5_supply_{dataset}"
+    if out.exists():
+        raise FileExistsError(f"Refusing to overwrite {out}")
+    out.mkdir(parents=True)
+    report: dict = {"status": "projection_inputs_not_promoted",
+                    "protocol": "crash_mechanism_protocol.md, 2026-10-22 (2020s build-up culling study)",
+                    "replay": "boundary rows <= 2026 copied verbatim from the dataset; year maps and seeds as projection_inputs_v0.5",
+                    "years": [1991, PROJ_END]}
+    build_supply(replicates, out, report)
+    report["inputs"] = {str((FORCING / "external_outbreak_boundary.csv").relative_to(ROOT)):
+                        sha256(FORCING / "external_outbreak_boundary.csv")}
+    report["script_sha256"] = sha256(Path(__file__))
+    report["created"] = datetime.now().isoformat(timespec="seconds")
+    report["outputs"] = {str(q.relative_to(out)).replace("\\", "/"): sha256(q) for q in sorted(out.rglob("*")) if q.is_file()}
+    (out / "metadata.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+    print(json.dumps(report["supply"]["scenarios"]), out)
+
+
 def main(replicates: int) -> None:
     if OUT.exists():
         raise FileExistsError(f"Refusing to overwrite {OUT}")
@@ -319,4 +345,12 @@ def main(replicates: int) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--replicates", type=int, default=10)
-    main(parser.parse_args().replicates)
+    parser.add_argument("--dataset", default=DATASET, help="COTS connectivity dataset (supply-only builds)")
+    parser.add_argument("--supply-only", action="store_true", help="build only the supply continuation for --dataset")
+    args = parser.parse_args()
+    if args.supply_only:
+        main_supply_only(args.replicates, args.dataset)
+    elif args.dataset != "owen_global_2018_2023_corr_w3":
+        raise SystemExit("A full input set is built for corr_w3 only; use --supply-only for other datasets")
+    else:
+        main(args.replicates)

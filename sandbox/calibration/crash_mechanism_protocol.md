@@ -6548,3 +6548,185 @@ Also requested: updated calibration report figures for W-wave-lf04, and projecti
   - `proj2_culling_effects_2027_2050`: all nine cull levels, both SSPs;
   - `culling_effects_2027_2050.csv`.
 - The 2020s diver/cull densities and the effort data are licensed: check permissions before publication.
+
+
+## Lead's request (2026-10-22, thirty-second round) and preregistered 2020s build-up culling study
+
+**Request.** A scenario focused on 2020–2030 and the build-up of the 2020s outbreak:
+1. Run it on the current configuration and on configurations without the dramatic overshoot.
+2. Compare how much **extra** effort would have been needed in 2020–2025 to fully suppress the build-up with how much effort is needed in 2026–2030 to stop COTS breaching the outbreak threshold.
+
+**The lead's choices** (2026-10-22):
+- all three configurations as a bracket;
+- both thresholds;
+- success judged on the four calibration reefs plus Martin;
+- both deployment rules.
+
+### Design
+
+1. **Configurations.** All are W-wave-lf04, with observed culls (reef-proportional) applied in every arm because they happened; they differ only in the outside outbreak layer.
+
+   | Config | Dataset | Seed-mean adults/ha, earlier runs (Lizard 2025 / 2026; North Direction 2026; Eyrie 2026) | Role |
+   | --- | --- | --- | --- |
+   | **C** current | `owen_global_2018_2023_corr_w3` | about 11 / 22; 28; 11 | overshooting |
+   | **G** graded 0.5 | `owen_global_2018_2023_corr_w05_graded` (tagged alternative) | 8.7 / 18; 29; 7 | tracks Lizard to 2025; smaller overshoot |
+   | **O** original | `owen_global_2018_2023` (no diver/cull correction) | about 2.8 / 4.9; 8.3; 2.2 (older W, Q 20) | no overshoot; no 2020s build-up |
+
+   Observed (diver/cull): Lizard 9.1 / 5.0, North Direction 7.2, Eyrie 34.
+
+2. **Extra effort.** This is additional to observed culls: forward effort culling (M1) restricted to a window by a new opt-in `COTS_CULL_EFFORT_END_YEAR` (default: no end).
+   - **Early window E:** 2020–2025. Afterwards, observed 2026 culls only; no forward culling in 2027–30.
+   - **Late window L:** 2026–2030, on top of the observed 2026 culls.
+   - **Deployment:**
+     - **F:** each reef's 2023–25 diver-hours × m;
+     - **T:** the domain total (3,733 h/yr) × m, sent each half-year to reefs at ≥ 3 adults/ha in proportion to their stock.
+   - **Multipliers** m ∈ {0.5, 1, 2, 4, 8, 16, 32}, plus a control with no extra effort.
+   - **Effort deployed** is logged (new ADRIA output `cots_effort_hours_log`, diver-hours per year). In `targeted` mode, hours are not spent when no reef qualifies.
+3. **Years 2027–2030** use the projection inputs: CNRM-ESM2-1 SSP2-4.5 DHW, environment replicate k, resampled-wave supply (replicate k) and coral coupling M3. No reset. Seeds 1–5.
+   - For G and O, the supply continuation is built with `build_projection_inputs.py --dataset <name> --supply-only` into `projection_inputs_v0.5_supply_<dataset>/`. Rows ≤ 2026 are copied verbatim, and year maps and seeds are the same as for corr_w3.
+4. **Runs to 2030** (new `OWEN_1991_PROJ_END`; default 2100). Arms are 3 configs × (control + 2 windows × 2 deployments × 7 m) × 5 seeds = 435.
+5. **Success.**
+   - A reef breaches in a year if adults ≥ threshold. The thresholds are **14.7/ha** (0.22 COTS/tow) and **3/ha**.
+   - **E succeeds** if none of Lizard, MacGillivray, North Direction, Eyrie or Martin breaches in 2020–2026. Breaches in 2027–30 are reported (rebound after the programme stops).
+   - **L succeeds** if none breaches in 2027–2030. 2026 is reported separately, because adults already present before 2026 culling cannot be undone in the same year.
+   - **Required effort:** the smallest m at which ≥ 4 of 5 seeds succeed. It is reported as extra diver-hours per year and in total over the window, and against the realised removals.
+6. **Controls.**
+   - The control arms of C equal the lizfast culling control (run 20261021T_01) over 1991–2026.
+   - The control arms of G and O are new; E arms equal their control before 2020, and L arms equal it before 2026.
+7. **Expected.**
+   - At low density, catch per hour falls steeply (CPUE ∝ D^1.82), and outside supply (60–90% of settlement) is not culled. Suppressing below 3/ha may be impossible at any tested effort.
+   - Early effort works on smaller populations, so it should need fewer hours per year, but it cannot stop later outside supply.
+   - Late effort faces the pipeline and high densities. CPUE is high there but capped at 20/h.
+   - Under O, little or no extra effort is needed at 14.7/ha.
+8. **Limitations.**
+   - Juveniles are not culled.
+   - The CPUE anchor is extrapolated above about 20/ha.
+   - Outside reefs are not culled, which is relevant to the agreed source-reef discount.
+   - Effort is diver bottom time, not vessel days.
+
+
+## Fit statistics on the calibration report figures (2026-10-22)
+
+**Lead's request:** add bias, MAE, Spearman and Pearson correlation to every calibration plot.
+
+**Change:** `plot_calibration_report.py` (reporting only; no model or score change).
+- Every panel shows n, bias (model − observed), MAE, Pearson r and Spearman ρ, for culling off and, with `--cull-run`, culling on.
+- The comparison is the model seed mean against the observations in matching years, exactly as plotted:
+  - figures 1 and 3: LTMP manta COTS/tow, 1992–2026;
+  - figure 2: diver/cull densities, adults/ha;
+  - figure 4: manta and 9 m photo-transect hard coral.
+- `fit_statistics.csv` adds:
+  - relative bias (%);
+  - Nash–Sutcliffe efficiency;
+  - MAE of log(x + offset) (CPUE 0.01; density 0.5, the v3 diver-error form);
+  - the true skill statistic for outbreak state (0.22 COTS/tow; 14.7/ha).
+- Legends moved below the figures.
+- **Output:** `sandbox/data/derived/calibration_report_figures/2026-10-22_wwave_lf04_fit_statistics/` (runs 20261021T_10/11).
+
+**Caveats** (reported to the lead):
+- Pearson r and MAE are dominated by a few outbreak years (Lizard's 1990s peak) and are sensitive to one-year timing offsets.
+- Spearman ρ is less sensitive to outliers but has many tied zero years.
+- Bias and MAE depend on the observation model (q 0.015) and, for coral, on the support mismatch (habitable area against 9 m / manta).
+- n is small for Eyrie (10) and for the 2020s densities (3–7).
+- None of the four measures timing directly; `peak_timing_summary.csv` does.
+
+
+## 2020s build-up culling study: results (2026-10-22)
+
+**Runs:**
+- 20261022T_01 (C, corr_w3), 02 (G, graded 0.5) and 03 (O, original); 145 arms each, to 2030, no failures.
+- Audit and figures in `sandbox/data/derived/calibration_report_figures/2026-10-22_buildup_2020s/` (`audit_buildup_2020s.py`: `buildup1_trajectories_2018_2030`, `buildup2_success_vs_effort`, `buildup3_peak_vs_effort`, `required_effort.csv`, `buildup_arm_metrics.csv`).
+- **Checks:**
+  - C controls equal the culling control (run 01) over 1991–2026;
+  - early arms equal their controls before 2020, and late arms before 2026 (all 0.0);
+  - deployed effort outside each window is 0.
+- **New code:**
+  - ADRIA `COTS_CULL_EFFORT_END_YEAR` and `cots_effort_hours_log`;
+  - `build_projection_inputs.py --dataset --supply-only`;
+  - runner `OWEN_1991_PROJ_END` and design `buildup`, with the three datasets.
+
+### Maximum adults/ha on the five reefs
+
+Seed medians:
+
+| Config | Arm | 2020–25 | 2026 | 2027–30 |
+| --- | --- | --- | --- | --- |
+| C | control (observed culls only) | 9.6 | 30.9 | 80.0 |
+| C | early targeted ×32 | 3.8 | 14.8 | 62.2 |
+| G | control | 12.1 | 25.4 | 57.1 |
+| G | early targeted ×32 | 4.9 | 11.2 | 45.9 |
+| O | control | 6.3 | 6.0 | 29.1 |
+| O | early targeted ×32 | 2.8 | 2.4 | 26.3 |
+
+### Required extra effort
+
+Smallest multiplier of the 2023–25 domain effort (3,733 diver-hours/yr) with ≥ 4/5 seeds never breaching on the five reefs.
+
+| Config | Early (2020–25; judged 2020–26), recent pattern / targeted | Late (2026–30; judged 2027–30), recent pattern / targeted |
+| --- | --- | --- |
+| **14.7/ha** | | |
+| C current | not reached at ×32 (1/5, 2/5 seeds) | ×32 / ×32 (about 119,000 h/yr) |
+| G graded 0.5 | not reached / ×32 | ×16 / ×16 (about 60,000 h/yr) |
+| O original | ×0 / ×0 (no breach) | ×16 / ×32 |
+| **3/ha** | not reached in any config (O at most 2/5) | not reached in any config |
+
+### Findings
+
+1. **The build-up breaches the outbreak level in 2026 and later, not in 2020–25.**
+   - On these five reefs, adults stay below 14.7/ha through 2025 even without extra effort (seed-median maxima 6–12).
+   - The breach is the 2026 surge: juveniles that settled from outside supply in 2024–26 mature then. The surge then grows to 57–80/ha by 2027–30 in C and G, which is the model's overshoot.
+2. **Early adult culling cannot stop the 2026 surge.** At ×32 (about 120,000 extra diver-hours/yr, about 720,000 h over 2020–25), 2020–25 adults fall to 3–5/ha, but 2026 still reaches 11–15/ha (C, G).
+   - Culling adults inside the domain does not reach the juveniles or the outside sources that produce them. Only G with targeted ×32 succeeds.
+   - Early effort's main benefit is lower 2020–25 densities and somewhat smaller 2027–30 peaks (C 80 → 62; G 57 → 46).
+3. **Late effort can stop breaches in 2027–30, at 16–32× recent effort** (about 60,000–120,000 diver-hours/yr, removing about 0.3–1.6 million COTS over 2026–30). Under the overshooting configurations, that effort is set by the model's inflated 2026 cohort.
+4. **The 3/ha threshold is not reachable** at any tested effort: catch per hour collapses at low density (CPUE ∝ D^1.82), and outside supply keeps arriving.
+5. **The original layer (O)** has no 2020s breach, but its resampled projected supply produces a new wave in 2029–30 (controls 29/ha).
+
+### Limitations
+
+- The multiplier grid is coarse (16 → 32).
+- Juveniles and outside reefs are not culled.
+- The CPUE anchor is extrapolated at high density and capped at 20/h.
+- 2027–30 depends on the resampled supply and on the model's overshoot (C, G).
+- Effort is diver bottom time.
+
+### Implication for the lead
+
+In this model, effort at the scale tested cannot prevent the 2020s outbreak if it targets adults on the domain reefs only. Prevention needs the supply side: culling outside source reefs (the agreed source-reef discount is the model counterpart), or culling juveniles.
+
+
+## Lead's request (2026-10-22, thirty-third round): culling outside the domain
+
+**Request.** Culling on reefs outside the domain seems to be what holds the build-up back. Add three scenarios to the 2020s build-up study:
+1. Outside effort carried on through 2026–30.
+2. Outside effort doubled 2020–30.
+3. Outside effort doubled 2026–30 only.
+
+Keep the figure formats of the build-up study.
+
+**Correction to the premise** (reported to the lead). The runs so far had **no** discount for outside culling. The corrected outbreak layers use cull data only to raise the outbreak probability of source reefs where COTS were found, never to lower their larval output for the COTS removed. The agreed source-reef cull discount is built here first.
+
+### Design
+
+Recorded at launch, before the results were read.
+
+1. **Discount.** `build_outside_cull_discount.py` reconstructs each dataset's outside boundary from the Owen matrices and its probability layer. It must equal the stored boundary: maximum relative error 5e-16 for all three datasets. The builder then subtracts each culled source reef's share, `C[j,i]·A_j/A_i·P_j(y)·f_j(y)` (pelagic form: also × survival).
+   - **Fraction culled:** `f = min(0.9, culled / (D × A_j))`, with D = 7.874 × CPUE^0.549 (the SALAD–cull anchor) and A_j the RME habitable area (ha). Reef-years with fewer than 2 diver-hours are not converted.
+   - Dividing by the whole habitable area makes f conservative where culls concentrate on outbreak sites.
+2. **Scenarios** (calendar year = cull reporting year):
+   - **B:** observed outside culls 2002–2025, none after;
+   - **K:** B plus each reef's 2023–25 mean f carried on in 2026–30;
+   - **D:** f doubled (capped at 0.9) in 2020–2030;
+   - **L:** observed to 2025, then 2 × recent f in 2026–30.
+   - Projected years use each replicate's resampled source year for P_j.
+   - Doubling effort doubles f on the assumption that catch per hour stays at its recent level.
+3. **Runs:** the build-up design (3 outbreak layers × control + early/late inside effort × recent/targeted × 0.5–32 × 5 seeds) for each of B, K, D and L. That is 12 runs of 145 arms, with `OWEN_1991_PROJ_OUTSIDE_CULL`; arms carry `_oc<code>`. The no-discount runs 20261022T_01–03 are the reference.
+4. **Checks:**
+   - no failures;
+   - supply identical to the undiscounted dataset before 2002 (asserted by the runner);
+   - each run's control replays the culling control before 2002;
+   - early arms equal their control before 2020, and late arms before 2026.
+5. **Pre-run diagnostic** (from the builder, before simulation):
+   - The median culled outside reef loses about 1% of its population per year (mean 5–22%; 40–90% only on a few heavily culled reefs, mostly in the 18-, 20- and 21- reef ranges, far south of Lizard).
+   - Observed outside culls lower outside supply to Lizard, Eyrie and MacGillivray by at most 2% in any year, and doubled effort by at most 4%.
+   - **Expected:** small differences from the no-discount runs.
