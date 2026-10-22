@@ -34,7 +34,7 @@ end
 @testset "Coral Spec" begin
     coral_params = ADRIA.coral_spec().params
 
-    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(ADRIA.bin_edges())
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(ADRIA.bin_edges().data)
     stored_colony_mean_areas = ADRIA.colony_mean_area(
         coral_params.mean_colony_diameter_m .* 100.0
     )

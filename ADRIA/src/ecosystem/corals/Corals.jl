@@ -2,7 +2,7 @@ using DataFrames, Serialization
 import ModelParameters: Model
 
 # Upper bound offset to use when re-creating critical DHW distributions
-const HEAT_UB = 24.0
+const HEAT_UB = 10.0
 const HEAT_LB = 1.0     # minimum susceptibility threshold
 
 # In-memory cache for coral_spec(). Reset with invalidate_coral_spec_cache!().
@@ -61,7 +61,7 @@ Coral colony diameter bin widths (in meters) as a `YAXArray` with dimensions
 `functional_groups` and `size_classes`.
 """
 function bin_widths()::YAXArray
-    edges = bin_edges(; unit=:m)
+    edges = bin_edges(; unit=:m).data
     widths = edges[:, 2:end] .- edges[:, 1:(end - 1)]
     return DataCube(
         widths;
@@ -89,7 +89,7 @@ Generate colony area data based on Bozec et al., [1].
 """
 function colony_areas()
     # Coral colony diameter bin edges (cm)
-    edges = bin_edges(; unit=:cm)
+    edges = bin_edges(; unit=:cm).data
 
     # Diameters (cm)
     mean_cm_diameters =

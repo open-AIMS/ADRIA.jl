@@ -223,7 +223,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
+    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m).data
 
     _make_fg_buffers() = [
         FunctionalGroup.(
@@ -656,7 +656,7 @@ function run_model(
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    edges = bin_edges()
+    edges = bin_edges().data
     bin_start = edges[:, 1:(end - 1)]
     bin_end = edges[:, 2:end]
     functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
@@ -1050,7 +1050,7 @@ function run_model(
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
-    _bin_edges = bin_edges()
+    _bin_edges = bin_edges().data
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks

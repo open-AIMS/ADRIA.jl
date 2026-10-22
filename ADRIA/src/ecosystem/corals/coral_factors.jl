@@ -137,21 +137,51 @@ function linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
 end
 
 """
-    bin_edges()
+    bin_edges(; unit=:m, version=:calib)::YAXArray
 
-Helper function defining coral colony diameter bin edges. The values are converted from `cm`
-to the desired unit. The default target unit is `cm`.
+Coral colony diameter bin edges as a `YAXArray` with dimensions `functional_groups` and
+`bin_edges`. The values are converted from `cm` to the desired unit.
+The default target unit is `m`.
+If `version==:legacy` returns the original, hand-picked edges.
+If `version==:calib` returns edges derived from EcoRRAP (2021 and 2022) colony diameters:
+a LogNormal was fitted to each functional group, the lowest edge is fixed at 2.5cm, the
+highest edge is the largest observed colony rounded up to a multiple of 10cm, and the
+last size class is fixed at 10cm wide. ADRIA's last size class does not grow, so a narrow
+one avoids stopping large colonies too early. The remaining 6 size classes span 2.5cm to
+the start of the last one, with inner edges that are multiples of 10cm placed so that
+each carries a similar share of the cover (colony area).
+
+Throws ArgumentError if `version` is not supported.
 """
-function bin_edges(; unit=:m)
-    return Matrix(
+function bin_edges(; unit=:m, version=:calib)::YAXArray
+    edges::Matrix{Float64} = if version == :legacy
         [
-            2.5 7.5 12.5 25.0 50.0 80.0 120.0 160.0;
-            2.5 7.5 12.5 20.0 30.0 60.0 100.0 150.0;
-            2.5 7.5 12.5 20.0 30.0 40.0 50.0 60.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0
+            2.5 7.5 12.5 25.0 50.0 80.0 120.0 160.0;    # Tabular Acropora
+            2.5 7.5 12.5 20.0 30.0 60.0 100.0 150.0;    # Corymbose Acropora
+            2.5 7.5 12.5 20.0 30.0 40.0 50.0 60.0;      # Corymbose non-Acropora
+            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0;      # Small massives and encrusting
+            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0       # Large massives
         ]
-    ) .* linear_scale(:cm, unit)
+    elseif version == :calib
+        [
+            2.5 40.0 70.0 90.0 120.0 160.0 200.0 210.0; # Tabular Acropora
+            2.5 20.0 30.0 40.0 50.0 60.0 130.0 140.0;   # Corymbose Acropora
+            2.5 10.0 20.0 30.0 40.0 50.0 80.0 90.0;     # Corymbose non-Acropora
+            2.5 20.0 30.0 40.0 50.0 60.0 70.0 80.0;     # Small massives and encrusting
+            2.5 20.0 30.0 40.0 60.0 90.0 250.0 260.0    # Large massives
+        ]
+    else
+        throw(ArgumentError("Invalid version: $version. Can be one of [:legacy, :calib]."))
+    end
+
+    # `YAXArray` is built directly because `DataCube` is defined after `coral_spec()` first runs
+    return YAXArray(
+        (
+            Dim{:functional_groups}(string.(functional_group_names())),
+            Dim{:bin_edges}(["bin_edge_$i" for i in 1:size(edges, 2)])
+        ),
+        edges .* linear_scale(:cm, unit)
+    )
 end
 
 """
