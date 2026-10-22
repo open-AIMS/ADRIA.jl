@@ -2,7 +2,7 @@ using DataFrames, Serialization
 import ModelParameters: Model
 
 # Upper bound offset to use when re-creating critical DHW distributions
-const HEAT_UB = 24.0
+const HEAT_UB = 10.0
 const HEAT_LB = 1.0     # minimum susceptibility threshold
 
 # In-memory cache for coral_spec(). Reset with invalidate_coral_spec_cache!().
