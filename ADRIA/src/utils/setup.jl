@@ -98,7 +98,9 @@ end
     set_random_seed(param_set)::Nothing
 
 Set the RNG seed from `ENV["ADRIA_RNG_SEED"]`. If unset or `"false"`, derives the seed
-from the sum of all non-RCP parameters in `param_set`.
+from the sum of all non-RCP parameters in `param_set`, excluding the COTS factors
+(`COTS_FACTOR_NAMES`) so that coral-only scenarios keep the seeds they had before the
+COTS component was added.
 
 # Arguments
 - `param_set` : YAXArray of scenario parameter values for a single run.
@@ -106,7 +108,7 @@ from the sum of all non-RCP parameters in `param_set`.
 function set_random_seed(param_set::YAXArray)::AbstractRNG
     rnd_seed_val::Int64 =
         get(ENV, "ADRIA_RNG_SEED", "false") == "false" ?
-        floor(Int64, sum(param_set[Where(x -> x != "RCP")])) : # select everything except RCP
+        floor(Int64, sum(param_set[Where(x -> x != "RCP" && x ∉ COTS_FACTOR_NAMES)])) :
         parse(Int64, ENV["ADRIA_RNG_SEED"])
     return Xoshiro(rnd_seed_val)
 end

@@ -30,3 +30,7 @@ Base.@kwdef struct CotsParams <: EcoModel
     imm_threshold::Param = Factor(0.35; ptype="continuous", dist=TriangularDist, dist_params=(0.1, 0.8, 0.35), name="Immigration Threshold", description="Coral cover fraction below which immigration drops off")
     eta_imm::Param = Factor(2.0; ptype="continuous", dist=TriangularDist, dist_params=(1.0, 5.0, 2.0), name="Immigration Exponent", description="Shape parameter for immigration gating function")
 end
+
+# Names of the COTS factors. The derived per-scenario RNG seed (`set_random_seed`) excludes
+# them, so adding the COTS component does not change the seeds of existing coral scenarios.
+const COTS_FACTOR_NAMES = Set(string.(fieldnames(CotsParams)))

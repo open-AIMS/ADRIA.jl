@@ -142,4 +142,4 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 test = ["Aqua", "InteractiveUtils", "WGLMakie", "GeoMakie", "GraphMakie", "Test", "IterTools"]
 
 [sources]
-COTSMod = {url = "https://github.com/open-AIMS/COTSMod.jl", rev = "ce628611d68321f56ff753a763ff8c1a43c388a6"}
+COTSMod = {url = "https://github.com/open-AIMS/COTSMod.jl", rev = "67754cd71f64e0468f5b1877de1016972bb7e416"}

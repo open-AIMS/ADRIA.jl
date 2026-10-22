@@ -399,7 +399,9 @@ function combine_results(result_sets...)::ResultSet
                 isnothing(src[i]) ?
                 size(result_sets[i].iv_CAq_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
-                n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
+                # Scenarios are the last dimension; the COTS condition log is 3-D
+                lead = ntuple(_ -> Colon(), ndims(n_log) - 1)
+                n_log[lead..., scen_id:(scen_id + rs_scen_len - 1)] = src[i]
             end
             scen_id += rs_scen_len
         end

@@ -376,7 +376,7 @@ function setup_logs(
         Float32,
         cots_pop_dims...;
         name="cots_pop_log",
-        fill_value=0.0,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(cots_pop_dims[1:3]..., batch_size),
@@ -393,7 +393,7 @@ function setup_logs(
         Float32,
         cots_bc_dims...;
         name="cots_condition_log",
-        fill_value=0.0,
+        fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
         chunks=(cots_bc_dims[1:2]..., batch_size),

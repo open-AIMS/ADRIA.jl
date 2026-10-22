@@ -36,6 +36,19 @@ end
 
 @testset "COTS Submodel" begin
 
+    @testset "derived RNG seed ignores COTS factors" begin
+        YA = ADRIA.YAXArrays
+        base_names = ["guided", "eff_dhw_base", "RCP"]
+        base_vals = [1.0, 0.63, 45.0]
+        cots_names = sort(collect(ADRIA.COTS_FACTOR_NAMES))
+        base = ADRIA.DataCube(base_vals; factors=base_names)
+        with_cots = ADRIA.DataCube(vcat(base_vals, fill(7.5, length(cots_names)));
+            factors=vcat(base_names, cots_names))
+        withenv("ADRIA_RNG_SEED" => nothing) do
+            @test rand(ADRIA.set_random_seed(base), 4) == rand(ADRIA.set_random_seed(with_cots), 4)
+        end
+    end
+
     @testset "CotsHuman construction" begin
         p = test_cots_params()
         N = MVector{3, Float64}(0.0, 0.0, 0.5)
