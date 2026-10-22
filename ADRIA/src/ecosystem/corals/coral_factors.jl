@@ -146,8 +146,10 @@ If `version==:legacy` returns the original, hand-picked edges.
 If `version==:calib` returns edges derived from EcoRRAP (2021 and 2022) colony diameters:
 a LogNormal was fitted to each functional group, the lowest edge is fixed at 2.5cm, the
 highest edge is the largest observed colony rounded up to a multiple of 10cm, and the
-inner edges are multiples of 10cm placed so that each size class carries a similar
-share of the cover (colony area).
+last size class is fixed at 10cm wide. ADRIA's last size class does not grow, so a narrow
+one avoids stopping large colonies too early. The remaining 6 size classes span 2.5cm to
+the start of the last one, with inner edges that are multiples of 10cm placed so that
+each carries a similar share of the cover (colony area).
 
 Throws ArgumentError if `version` is not supported.
 """
@@ -162,11 +164,11 @@ function bin_edges(; unit=:m, version=:calib)::YAXArray
         ]
     elseif version == :calib
         [
-            2.5 40.0 60.0 80.0 110.0 130.0 170.0 210.0; # Tabular Acropora
-            2.5 10.0 20.0 30.0 40.0 50.0 60.0 140.0;    # Corymbose Acropora
-            2.5 10.0 20.0 30.0 40.0 50.0 60.0 90.0;     # Corymbose non-Acropora
-            2.5 10.0 20.0 30.0 40.0 50.0 60.0 80.0;     # Small massives and encrusting
-            2.5 20.0 30.0 40.0 50.0 60.0 100.0 260.0    # Large massives
+            2.5 40.0 70.0 90.0 120.0 160.0 200.0 210.0; # Tabular Acropora
+            2.5 20.0 30.0 40.0 50.0 60.0 130.0 140.0;   # Corymbose Acropora
+            2.5 10.0 20.0 30.0 40.0 50.0 80.0 90.0;     # Corymbose non-Acropora
+            2.5 20.0 30.0 40.0 50.0 60.0 70.0 80.0;     # Small massives and encrusting
+            2.5 20.0 30.0 40.0 60.0 90.0 250.0 260.0    # Large massives
         ]
     else
         throw(ArgumentError("Invalid version: $version. Can be one of [:legacy, :calib]."))
