@@ -170,7 +170,7 @@ function load_domain(
         timeframe
     )
 
-    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance = load_calib_params(
         calib_params_fn
     )
 
@@ -180,7 +180,8 @@ function load_domain(
         criteria_weights...,
         coral_instance,
         growth_accel_instance,
-        depth_atten_instance
+        depth_atten_instance,
+        low_dhw_instance
     ))
 
     return ReefModDomain(
