@@ -35,3 +35,7 @@ ADRIAviz/test/Outputs/
 ADRIA/docs/build/
 
 ADRIA/docs/node_modules/
+
+# ADRIA result stores written to the working directory when no config.toml sets an
+# output folder (e.g. Outputs/<domain>__RCPs_45__<timestamp>/)
+Outputs/
