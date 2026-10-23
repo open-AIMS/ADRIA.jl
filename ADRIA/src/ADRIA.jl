@@ -54,6 +54,7 @@ include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/DepthAttenuation.jl")
+include("ecosystem/LowDHWBleaching.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/corals/growth_limits.jl")
@@ -106,7 +107,7 @@ include("viz/viz.jl")
 export
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, create_coral_instance,
-    create_growth_acceleration_instance, Intervention, SimConstants, DepthAttenuation,
+    create_growth_acceleration_instance, Intervention, SimConstants, DepthAttenuation, LowDHWBleaching,
     CAqCriteriaWeights, FogCriteriaWeights, LvMCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
@@ -250,7 +251,8 @@ end
             DepthThresholds(),
             Coral(),
             GrowthAcceleration(),
-            DepthAttenuation()
+            DepthAttenuation(),
+            LowDHWBleaching()
         )
 
         # Factor-fixing write-back path (see `update!` in Domain.jl for why the exact
