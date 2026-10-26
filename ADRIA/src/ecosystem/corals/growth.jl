@@ -308,8 +308,14 @@ function bleaching_mortality!(
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
     bleach_dhw::SubArray{Float64},
-    tol_ceil::AbstractArray{Float64,3}
+    tol_ceil::AbstractArray{Float64,3};
+    low_dhw_reduction::Float64=0.0,
+    low_dhw_threshold::Float64=0.0
 )::Nothing
+    # Optional reduction of bleaching mortality where effective DHW is below
+    # `low_dhw_threshold` (see `LowDHWBleaching`). The defaults leave mortality unchanged.
+    0.0 <= low_dhw_reduction <= 1.0 ||
+        throw(ArgumentError("low_dhw_reduction must lie in [0, 1]"))
     n_groups, n_sizes, _ = size(cover)
 
     # New evidence that all size classes bleach
@@ -353,6 +359,9 @@ function bleaching_mortality!(
                 if affected_pop > 0.0
                     # Depth effect is now handled via effective_dhw_at_depth (see scenario.jl).
                     mort_pop = affected_pop
+                    if low_dhw_reduction > 0.0 && eff_dhw[loc] < low_dhw_threshold
+                        mort_pop *= 1.0 - low_dhw_reduction
+                    end
 
                     # Set values close to 0.0 (e.g., 1e-214) to 0.0
                     # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815

@@ -100,20 +100,46 @@ function _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String
 end
 
 """
+    _low_dhw_bleaching_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+
+Read calibrated low-DHW bleaching values from a NetCDF dataset and return a Dict mapping
+`LowDHWBleaching` struct field names to their calibrated values.
+
+Calibration outputs without a `low_dhw_bleaching` variable return an empty Dict, so the
+ADRIA defaults (no reduction) stand. Values are looked up by their `low_dhw_bleach_param`
+label rather than by position.
+"""
+function _low_dhw_bleaching_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :low_dhw_bleaching in keys(calib_dataset.cubes) || return overrides
+
+    lb = calib_dataset["low_dhw_bleaching"]
+    p_names = string.(collect(DimensionalData.lookup(lb, :low_dhw_bleach_param)))
+    vals = Array(lb)
+
+    for fn in string.(fieldnames(LowDHWBleaching))
+        idx = findfirst(==(fn), p_names)
+        isnothing(idx) || (overrides[fn] = vals[idx])
+    end
+
+    return overrides
+end
+
+"""
     load_calib_params(calib_params_fn::String)
 
-Build the `Coral`, `GrowthAcceleration` and `DepthAttenuation` component instances for a
-domain.
+Build the `Coral`, `GrowthAcceleration`, `DepthAttenuation` and `LowDHWBleaching` component
+instances for a domain.
 
 If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
 values are applied as overrides; otherwise the ADRIA defaults are used.
 
 # Returns
-Tuple of (Coral, GrowthAcceleration, DepthAttenuation)
+Tuple of (Coral, GrowthAcceleration, DepthAttenuation, LowDHWBleaching)
 """
 function load_calib_params(calib_params_fn::String)
     if isempty(calib_params_fn) || !isfile(calib_params_fn)
-        return Coral(), GrowthAcceleration(), DepthAttenuation()
+        return Coral(), GrowthAcceleration(), DepthAttenuation(), LowDHWBleaching()
     end
 
     @info "Loading calibrated coral parameters from $(calib_params_fn)"
@@ -126,6 +152,9 @@ function load_calib_params(calib_params_fn::String)
         ),
         create_depth_attenuation_instance(;
             overrides=_depth_attenuation_calib_overrides(nc_ds)
+        ),
+        create_low_dhw_bleaching_instance(;
+            overrides=_low_dhw_bleaching_calib_overrides(nc_ds)
         )
     )
 end

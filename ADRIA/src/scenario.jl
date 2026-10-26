@@ -1145,6 +1145,10 @@ function run_model(
     eff_dhw_base::Float64 = param_set[At("eff_dhw_base")]
     eff_dhw_mix::Float64 = param_set[At("eff_dhw_mix")]
 
+    # Optional reduction of bleaching mortality at low effective DHW (see `LowDHWBleaching`)
+    low_dhw_bleach_reduction::Float64 = param_set[At("low_dhw_bleach_reduction")]
+    low_dhw_bleach_threshold::Float64 = param_set[At("low_dhw_bleach_threshold")]
+
     # c_mean tolerance of the "natural" population used as the reference for coral aquaculture corals
     # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
@@ -1873,7 +1877,9 @@ function run_model(
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
-            c_mean_tol_ceil
+            c_mean_tol_ceil;
+            low_dhw_reduction=low_dhw_bleach_reduction,
+            low_dhw_threshold=low_dhw_bleach_threshold
         )
 
         # Store current means to be used in future timesteps.

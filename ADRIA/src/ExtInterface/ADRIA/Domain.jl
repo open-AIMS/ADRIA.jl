@@ -45,7 +45,7 @@ mutable struct ADRIADomain <: Domain
 end
 
 """
-    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten)
+    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw)
 
 Wrapper around `ModelParameters.Model` construction so it can be targeted by
 `@compile_workload`.
@@ -66,9 +66,12 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     @nospecialize(dth),
     @nospecialize(coral),
     @nospecialize(growth_accel),
-    @nospecialize(depth_atten)
+    @nospecialize(depth_atten),
+    @nospecialize(low_dhw)
 )::Model
-    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten))
+    return Model((
+        el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw
+    ))
 end
 
 """
@@ -123,7 +126,7 @@ function Domain(
         )
     )
 
-    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
+    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance = load_calib_params(
         calib_params_fn
     )
 
@@ -136,7 +139,8 @@ function Domain(
         DepthThresholds(),
         coral_instance,
         growth_accel_instance,
-        depth_atten_instance
+        depth_atten_instance,
+        low_dhw_instance
     )
 
     return ADRIADomain(
