@@ -101,6 +101,33 @@ function colony_areas()
     return colony_area_mean_cm2, linear_scale.(mean_cm_diameters, :cm, :m)
 end
 
+"""
+    _class_fecundity_m²(lower_cm, upper_cm, a, b, min_area_cm²)::Float64
+
+Larvae produced per m² of coral cover by a size class spanning `lower_cm` to `upper_cm`
+colony diameter. Larvae per colony is `a * area^b / 0.1` (Hall and Hughes 1996) for colonies
+with a basal area of at least `min_area_cm²`, and zero below it.
+
+Colonies are assumed to be uniformly distributed in diameter within the class, as in
+CoralBlox, so the class value is the total larvae over the total cover of the class. This
+avoids a wide class being either fully fecund or not at all depending on where its midpoint
+falls relative to `min_area_cm²`.
+"""
+function _class_fecundity_m²(
+    lower_cm::Float64, upper_cm::Float64, a::Float64, b::Float64, min_area_cm²::Float64
+)::Float64
+    min_diameter_cm = 2.0 * sqrt(min_area_cm² / π)
+    lower_fecund_cm = max(lower_cm, min_diameter_cm)
+    lower_fecund_cm < upper_cm || return 0.0
+
+    # Integrals over diameter of larvae per colony and of colony area (area = π d² / 4)
+    larvae = a * (π / 4)^b / 0.1 / (2b + 1) * (upper_cm^(2b + 1) - lower_fecund_cm^(2b + 1))
+    cover_cm² = π / 12 * (upper_cm^3 - lower_cm^3)
+
+    # cm² to m²
+    return larvae / cover_cm² * 1e4
+end
+
 function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
     bins::Matrix{Float64} = zeros(size(mean_diam)...)
     bins[:, 1] .= mean_diam[:, 1] .* 2
@@ -189,16 +216,17 @@ function _coral_spec_impl()::NamedTuple
     fec_par_b = Float64[1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
     min_colony_area_full_fec = Float64[123.0; 134.0; 134.0; 38.0; 38.0]
 
-    # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
-    # unit is number of larvae per colony
-    colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
-    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
-
-    # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
-
-    # then convert to number of larvae produced per m2
-    fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
+    # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996, in number
+    # of larvae produced per m2. Colonies with area (in cm2) below indicated size are not
+    # fecund (reproductive). Averaged over each size class rather than taken at its midpoint.
+    edges_cm = bin_edges(; unit=:cm).data
+    fec_m² = _class_fecundity_m².(
+        edges_cm[:, 1:(end - 1)],
+        edges_cm[:, 2:end],
+        fec_par_a,
+        fec_par_b,
+        min_colony_area_full_fec
+    )
     params.fecundity = fec_m²'[:]
 
     # Base mortality rate
