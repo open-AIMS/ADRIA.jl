@@ -126,20 +126,45 @@ function _low_dhw_bleaching_calib_overrides(calib_dataset::Dataset)::Dict{String
 end
 
 """
+    _cots_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+
+Read calibrated COTS values from a NetCDF dataset and return a Dict mapping `CotsParams`
+field names to their calibrated values. A file without a `cots` variable returns an empty
+Dict, so the defaults (COTS off) stand. Values are looked up by their `cots_param` label.
+"""
+function _cots_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :cots in keys(calib_dataset.cubes) || return overrides
+
+    cp = calib_dataset["cots"]
+    p_names = string.(collect(DimensionalData.lookup(cp, :cots_param)))
+    vals = Array(cp)
+
+    for fn in string.(fieldnames(CotsParams))
+        idx = findfirst(==(fn), p_names)
+        isnothing(idx) || (overrides[fn] = vals[idx])
+    end
+
+    return overrides
+end
+
+"""
     load_calib_params(calib_params_fn::String)
 
-Build the `Coral`, `GrowthAcceleration`, `DepthAttenuation` and `LowDHWBleaching` component
+Build the `Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching` and
+`CotsParams` component
 instances for a domain.
 
 If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
 values are applied as overrides; otherwise the ADRIA defaults are used.
 
 # Returns
-Tuple of (Coral, GrowthAcceleration, DepthAttenuation, LowDHWBleaching)
+Tuple of (Coral, GrowthAcceleration, DepthAttenuation, LowDHWBleaching, CotsParams)
 """
 function load_calib_params(calib_params_fn::String)
     if isempty(calib_params_fn) || !isfile(calib_params_fn)
-        return Coral(), GrowthAcceleration(), DepthAttenuation(), LowDHWBleaching()
+        return Coral(), GrowthAcceleration(), DepthAttenuation(), LowDHWBleaching(),
+        CotsParams()
     end
 
     @info "Loading calibrated coral parameters from $(calib_params_fn)"
@@ -155,6 +180,7 @@ function load_calib_params(calib_params_fn::String)
         ),
         create_low_dhw_bleaching_instance(;
             overrides=_low_dhw_bleaching_calib_overrides(nc_ds)
-        )
+        ),
+        create_cots_params_instance(; overrides=_cots_calib_overrides(nc_ds))
     )
 end

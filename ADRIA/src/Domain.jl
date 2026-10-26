@@ -148,6 +148,16 @@ function nearest_neighbor_distances(dom::Domain, n_neighbors::Int64)::Vector{Flo
 end
 
 """
+    cots_connectivity(domain::Domain)
+
+Return the source-to-sink connectivity used for COTS larval dispersal. Domains with a
+dedicated `cots_conn` field use it; all others use the coral connectivity.
+"""
+function cots_connectivity(domain::Domain)
+    return hasproperty(domain, :cots_conn) ? domain.cots_conn : domain.conn
+end
+
+"""
     param_table(d::ADRIADomain)::DataFrame
 
 Get model fieldnames and their parameter values.

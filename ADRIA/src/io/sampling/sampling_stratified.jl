@@ -10,7 +10,8 @@ Draw a nested Environment -> Intervention policy -> Deployment strategy sample.
 
 Level 1 (blocking, identical across every regime): `EnvironmentalLayer` factors
 (`dhw_scenario`, `wave_scenario`, `cyclone_mortality_scenario`) and ecological/biological
-factors (`Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching`). `n_env` blocks are drawn once
+factors (`Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching`,
+`CotsParams`). `n_env` blocks are drawn once
 via a space-filling design and reused, unchanged, across every regime and every lever draw
 within that block.
 Biological parameters are blocked here rather than nested under deployment strategy
@@ -75,7 +76,10 @@ function sample_stratified(
     full_spec = _filtered_model_spec(model_spec(d), cb_calib_groups)
     env_fieldnames = component_params(
         d.model,
-        [EnvironmentalLayer, Coral, GrowthAcceleration, DepthAttenuation, LowDHWBleaching]
+        [
+            EnvironmentalLayer, Coral, GrowthAcceleration, DepthAttenuation,
+            LowDHWBleaching, CotsParams
+        ]
     ).fieldname
     env_spec = full_spec[in.(full_spec.fieldname, Ref(env_fieldnames)), :]
 

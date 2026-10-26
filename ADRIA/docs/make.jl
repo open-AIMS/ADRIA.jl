@@ -15,7 +15,8 @@ makedocs(;
         "index.md",
         "Concepts" => [
             joinpath("concepts", "dMCDA.md"),
-            joinpath("concepts", "disturbances.md")
+            joinpath("concepts", "disturbances.md"),
+            joinpath("concepts", "cots.md")
         ],
         "Usage" => [
             joinpath("usage", "getting_started.md"),
