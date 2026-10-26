@@ -69,7 +69,9 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     @nospecialize(depth_atten),
     @nospecialize(low_dhw)
 )::Model
-    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw))
+    return Model((
+        el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw
+    ))
 end
 
 """

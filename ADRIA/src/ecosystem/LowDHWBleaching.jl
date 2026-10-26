@@ -58,7 +58,9 @@ function _low_dhw_bleach_factor(fieldname::Symbol, val::Float64)::Param
     )
 end
 function _low_dhw_bleach_factor(fieldname::Symbol)::Param
-    return _low_dhw_bleach_factor(fieldname, getproperty(LOW_DHW_BLEACH_DEFAULTS, fieldname))
+    return _low_dhw_bleach_factor(
+        fieldname, getproperty(LOW_DHW_BLEACH_DEFAULTS, fieldname)
+    )
 end
 
 """
