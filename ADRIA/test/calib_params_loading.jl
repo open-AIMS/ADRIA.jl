@@ -203,6 +203,10 @@ end
         )
         @test ms_dict["low_dhw_bleach_reduction"] == 0.0
         @test ms_dict["low_dhw_bleach_threshold"] == 0.0
+        # Never sampled by default, so sample() reproduces existing scenarios
+        ms = ADRIA.model_spec(dom)
+        @test all(ms[ms.component .== "LowDHWBleaching", :is_constant])
+        @test all(ADRIA.sample(dom, 4).low_dhw_bleach_reduction .== 0.0)
     end
 
     @testset "Loads by label, not position" begin
@@ -217,8 +221,10 @@ end
         @test overrides["low_dhw_bleach_threshold"] ≈ 6.0
         instance = ADRIA.create_low_dhw_bleaching_instance(; overrides=overrides)
         @test instance.low_dhw_bleach_reduction.val ≈ 0.75
-        @test instance.low_dhw_bleach_reduction.dist_params ==
-            defaults.low_dhw_bleach_reduction.dist_params
+        # Constant at the calibrated value; the full bounds come from the spec
+        @test instance.low_dhw_bleach_reduction.dist_params == [0.75, 0.75]
+        @test instance.low_dhw_bleach_reduction.default_dist_params ==
+            defaults.low_dhw_bleach_reduction.default_dist_params
     end
 
     @testset "Reduction applies only below the threshold" begin
