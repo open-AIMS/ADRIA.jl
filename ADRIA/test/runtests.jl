@@ -58,6 +58,7 @@ tier3 = @testset "Tier 3: Spec & Domain Loads" begin
     @info "Starting Tier 3"
     @time include("spec.jl")
     @time include("sampling.jl")
+    @time include("growth_limits.jl")
     @time include("decisions/mcda.jl")
     @time include("decisions/location_spread.jl")
     @time include("decisions/revisit_cadence.jl")

@@ -314,6 +314,7 @@ function load_domain(
         growth_accel_instance,
         depth_atten_instance
     ))
+    _cap_growth_bounds!(model)
 
     return adjust_sampling_bounds(
         RMEDomain(
