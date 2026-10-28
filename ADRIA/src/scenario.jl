@@ -646,6 +646,7 @@ NamedTuple of collated results
 - `site_ranks` : Array, Log of location rankings
 - `bleaching_mortality` : Array, Log of bleaching DHW (DHW-weeks) per location/group/size class — used as the lower bound of the tolerance distribution in the following timestep
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
+- `coral_dhw_final` : Array, Mean DHW tolerance per group/size class/location (`n_groups × n_sizes × n_locs`) at the end of the run, i.e. after the last timestep's bleaching update. Unlike `coral_dhw_log`, whose row `t` is written before timestep `t`'s bleaching update, this includes the last bleaching update.
 """
 function run_model(
     domain::Domain,
@@ -1964,6 +1965,7 @@ function run_model(
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
-        coral_cover_log=collated_cover_log
+        coral_cover_log=collated_cover_log,
+        coral_dhw_final=copy(c_mean_t)
     )
 end
