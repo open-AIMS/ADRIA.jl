@@ -50,6 +50,11 @@ Base.@kwdef mutable struct SimConstants
 
     # Modified for use in ADRIA
     # max_settler_density::Vector{Float64} = Float64[0.75, 3.75, 3.75, 2.25, 2.25, 2.25]
+    # 2026-10-26: large massives (last entry) was briefly set to 0.694 because its first size
+    # class was 2.5-11 cm (midpoint 6.75 cm vs 3.75 cm in the :legacy edges, so area per
+    # settler rose by 3.24). Reverted to 2.25 once that class became 2.5-5 cm, which matches
+    # the :legacy first class.
+    # max_settler_density::Vector{Float64} = Float64[3.75, 3.75, 2.25, 2.25, 0.694]
     max_settler_density::Vector{Float64} = Float64[3.75, 3.75, 2.25, 2.25, 2.25]
     # max_larval_density::Vector{Float64} = Float64[
     #     12_500.0, 12_500.0, 12_500.0, 12_500.0, 12_500.0, 12_500.0

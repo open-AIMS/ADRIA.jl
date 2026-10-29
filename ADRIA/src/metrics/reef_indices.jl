@@ -17,7 +17,7 @@ See table 1 in reference 1.
 
 # Arguments
 - `ltmp_cover` : LTMP coral cover across all groups
-- `juves` : Abundance of coral juveniles < 5 cm diameter
+- `juves` : Abundance of coral juveniles (size class 2)
 - `sv` : Shelter volume based on coral sizes and abundances
 - `rubble` : Cover of rubble (optional)
 - `rs` : A ResultSet object.

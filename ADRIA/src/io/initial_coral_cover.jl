@@ -79,7 +79,7 @@ end
 Initial cover fraction for each functional group and size class
 """
 function _init_cover_weights()::Matrix{Float64}
-    _bin_edges::Matrix{Float64} = bin_edges(; unit=:cm)
+    _bin_edges::Matrix{Float64} = bin_edges(; unit=:cm).data
 
     # Build distinct LogNormal dists for each functional group
     reef_mod_area_dist::Vector{LogNormal{Float64}} = _reef_mod_area_dist(_bin_edges)

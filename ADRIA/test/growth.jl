@@ -34,7 +34,7 @@ end
 @testset "Coral Spec" begin
     coral_params = ADRIA.coral_spec().params
 
-    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(ADRIA.bin_edges())
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(ADRIA.bin_edges().data)
     stored_colony_mean_areas = ADRIA.colony_mean_area(
         coral_params.mean_colony_diameter_m .* 100.0
     )
@@ -79,6 +79,28 @@ end
     @test any(fec_groups .> 1e8) ||
         "Fecundity is measured in m² and so should be a very large number"
     @test !any(fec_groups .< 0.0) || "Negative fecundity is not allowed"
+end
+
+@testset "Class-averaged fecundity" begin
+    a, b, min_area = 1.03, 1.28, 123.0  # tabular Acropora
+    min_diameter = 2 * sqrt(min_area / π)
+
+    @testset "Class entirely below the size threshold is not fecund" begin
+        @test ADRIA._class_fecundity_m²(2.5, min_diameter - 0.1, a, b, min_area) == 0.0
+    end
+
+    @testset "A narrow class matches the value at its midpoint" begin
+        lower, upper = 100.0, 100.01
+        area_m² = π * (((lower + upper) / 2) / 2)^2 * 1e-4
+        midpoint = a * (area_m² * 1e4)^b / 0.1 / area_m²
+        @test ADRIA._class_fecundity_m²(lower, upper, a, b, min_area) ≈ midpoint rtol = 1e-4
+    end
+
+    @testset "A class straddling the threshold is partly fecund" begin
+        fully_fecund = ADRIA._class_fecundity_m²(5.0, 30.0, a, b, 1e-9)
+        partly_fecund = ADRIA._class_fecundity_m²(5.0, 30.0, a, b, min_area)
+        @test 0.0 < partly_fecund < fully_fecund
+    end
 end
 
 @testset "Recruitment" begin

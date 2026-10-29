@@ -223,7 +223,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
+    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m).data
 
     _make_fg_buffers() = [
         FunctionalGroup.(
@@ -646,6 +646,7 @@ NamedTuple of collated results
 - `site_ranks` : Array, Log of location rankings
 - `bleaching_mortality` : Array, Log of bleaching DHW (DHW-weeks) per location/group/size class — used as the lower bound of the tolerance distribution in the following timestep
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
+- `coral_dhw_final` : Array, Mean DHW tolerance per group/size class/location (`n_groups × n_sizes × n_locs`) at the end of the run, i.e. after the last timestep's bleaching update. Unlike `coral_dhw_log`, whose row `t` is written before timestep `t`'s bleaching update, this includes the last bleaching update.
 """
 function run_model(
     domain::Domain,
@@ -656,7 +657,7 @@ function run_model(
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    edges = bin_edges()
+    edges = bin_edges().data
     bin_start = edges[:, 1:(end - 1)]
     bin_end = edges[:, 2:end]
     functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
@@ -1050,7 +1051,7 @@ function run_model(
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
-    _bin_edges = bin_edges()
+    _bin_edges = bin_edges().data
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks
@@ -1964,6 +1965,7 @@ function run_model(
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
-        coral_cover_log=collated_cover_log
+        coral_cover_log=collated_cover_log,
+        coral_dhw_final=copy(c_mean_t)
     )
 end
