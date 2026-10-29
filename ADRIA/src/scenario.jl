@@ -1012,7 +1012,8 @@ function run_model(
     c_mean_t_1 = copy(c_mean_t)
 
     # Hard ceiling: tolerance cannot increase more than HEAT_UB DHW-weeks above initial values
-    c_mean_tol_ceil = c_mean_t .+ HEAT_UB
+    # (`sim_params.heat_ub`, default HEAT_UB)
+    c_mean_tol_ceil = c_mean_t .+ sim_params.heat_ub
 
     # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE coral aquaculture.
     # Used as the reference base for a_adapt enhancement (c_mean_reference).
@@ -1176,8 +1177,8 @@ function run_model(
     # tolerance enhancement
     c_mean_reference .= c_mean_t[:, 1, :]
 
-    cover_transition_lb = 0.05
-    cover_transition_ub = 0.80
+    cover_transition_lb = sim_params.cover_transition_lb   # default 0.05
+    cover_transition_ub = sim_params.cover_transition_ub   # default 0.80
 
     # Preallocate per-timestep buffers to avoid repeated allocation in the hot loop
     Δcover_loss_proportion = zeros(n_locs)
@@ -1201,7 +1202,8 @@ function run_model(
         # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
         # which recruits are either set to zero or rescaled.
         constrain_recruitment!(
-            recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas
+            recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas;
+            round_threshold=sim_params.recruit_round_threshold
         )
 
         # Settlers from t-1 grow into observable sizes.
@@ -1896,7 +1898,8 @@ function run_model(
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
-            c_mean_tol_ceil
+            c_mean_tol_ceil;
+            heat_lb=sim_params.heat_lb
         )
 
         # Store current means to be used in future timesteps.

@@ -62,4 +62,16 @@ Base.@kwdef mutable struct SimConstants
     max_larval_density::Vector{Float64} = Float64[
         12_500.0, 12_500.0, 12_500.0, 12_500.0, 12_500.0
     ]
+
+    ## Constants that were hard-coded, exposed for sensitivity analysis. The defaults are the
+    ## previous values, so default runs are unchanged.
+    # Ceiling on each class's mean heat tolerance above its initial value (DHW-weeks; HEAT_UB)
+    heat_ub::Float64 = 10.0
+    # Bleaching onset and minimum susceptibility threshold (DHW-weeks; HEAT_LB)
+    heat_lb::Float64 = 1.0
+    # Relative cover below which growth is only accelerated, and above which it is space limited
+    cover_transition_lb::Float64 = 0.05
+    cover_transition_ub::Float64 = 0.80
+    # Relative cover above which recruits are set to zero or rescaled (`constrain_recruitment!`)
+    recruit_round_threshold::Float64 = 0.95
 end

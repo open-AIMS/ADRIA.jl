@@ -317,7 +317,8 @@ function bleaching_mortality!(
     dist_t::AbstractArray{Float64,3},
     bleach_dhw::SubArray{Float64},
     tol_ceil::AbstractArray{Float64,3};
-    mean_tol_update_method::Symbol=:blend
+    mean_tol_update_method::Symbol=:blend,
+    heat_lb::Float64=HEAT_LB
 )::Nothing
     mean_tol_update_method in (:blend, :legacy) ||
         throw(ArgumentError("Unknown mean_tol_update_method: $mean_tol_update_method"))
@@ -332,8 +333,8 @@ function bleaching_mortality!(
     all_sizes = 1:n_sizes
 
     # Potential bleaching locations (skip locations with no heat stress)
-    # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
-    active_locs = findall(eff_dhw .> HEAT_LB)
+    # Use HEAT_LB (heat tolerance distribution lower bound; `heat_lb`) as the bleaching threshold
+    active_locs = findall(eff_dhw .> heat_lb)
 
     # Adjust distributions for each functional group over all locations and size classes
     for loc in active_locs
@@ -356,7 +357,7 @@ function bleaching_mortality!(
                     # Use the previous bleaching DHW as the distribution lower bound,
                     # with HEAT_LB (1.0 DHW-weeks) as the minimum susceptibility threshold
                     eff_dhw[loc], μ, stdev[grp, sc],
-                    max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
+                    max(heat_lb, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
                 )
 
@@ -386,7 +387,7 @@ function bleaching_mortality!(
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     μ_surv::Float64 = truncated_normal_mean(
-                        μ, stdev[grp, sc], max(HEAT_LB, eff_dhw[loc]), μ_ceil
+                        μ, stdev[grp, sc], max(heat_lb, eff_dhw[loc]), μ_ceil
                     )
                     dist_t[grp, sc, loc] = new_mean_heat_stress_tolerance(
                         μ, μ_surv, mort_pop; mean_tol_update_method
