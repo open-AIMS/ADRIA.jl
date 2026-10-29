@@ -1,9 +1,9 @@
 """
-    build_seed_strategy(
+    build_CAq_strategy(
         params::YAXArray, domain::Domain, locations::Vector{String}
     )::DecisionStrategy
 
-Construct appropriate seeding strategy from scenario parameters.
+Construct appropriate coral aquaculture strategy from scenario parameters.
 
 # Arguments
 - `params`: Scenario parameters (either DataFrameRow or YAXArray)
@@ -13,16 +13,16 @@ Construct appropriate seeding strategy from scenario parameters.
 # Returns
 DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 """
-function build_seed_strategy(
+function build_CAq_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_idx = Int64(params[At("seed_strategy")])
-    strategy_params = build_strategy_params("seed", params, domain, locations)
+    strategy_idx = Int64(params[At("iv_CAq_strategy")])
+    strategy_params = build_strategy_params("iv_CAq", params, domain, locations)
     return build_strategy(strategy_type(strategy_idx), strategy_params)
 end
 
 """
-    build_fog_strategy(
+    build_Fog_strategy(
         params::YAXArray, domain::Domain, locations::Vector{String}
     )::DecisionStrategy
 
@@ -36,20 +36,20 @@ Construct appropriate fogging strategy from scenario parameters.
 # Returns
 DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 """
-function build_fog_strategy(
+function build_Fog_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_idx = Int64(params[At("fog_strategy")])
-    strategy_params = build_strategy_params("fog", params, domain, locations)
+    strategy_idx = Int64(params[At("iv_Fog_strategy")])
+    strategy_params = build_strategy_params("iv_Fog", params, domain, locations)
     return build_strategy(strategy_type(strategy_idx), strategy_params)
 end
 
 """
-    build_mc_strategy(
+    build_LvM_strategy(
         params::YAXArray, domain::Domain, locations::Vector{String}
     )::DecisionStrategy
 
-Construct appropriate fogging strategy from scenario parameters.
+Construct appropriate larval methods strategy from scenario parameters.
 
 # Arguments
 - `params`: Scenario parameters (either DataFrameRow or YAXArray)
@@ -59,11 +59,11 @@ Construct appropriate fogging strategy from scenario parameters.
 # Returns
 DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 """
-function build_mc_strategy(
+function build_LvM_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_idx = Int64(params[At("mc_strategy")])
-    strategy_params = build_strategy_params("mc", params, domain, locations)
+    strategy_idx = Int64(params[At("iv_LvM_strategy")])
+    strategy_params = build_strategy_params("iv_LvM", params, domain, locations)
     return build_strategy(strategy_type(strategy_idx), strategy_params)
 end
 
@@ -80,7 +80,7 @@ function build_strategy_params(prefix::String, params::YAXArray, domain::Domain,
         reactive_response_delay=Int64(params[At("reactive_response_delay")]),
         revisit_cadence=Int64(params[At("$(prefix)_revisit_cadence")]),
         min_locations=Int64(
-            params[At(prefix == "mc" ? "mc_min_iv_locations" : "min_iv_locations")]
+            params[At(prefix == "iv_LvM" ? "iv_LvM_min_iv_locations" : "min_iv_locations")]
         )
     )
 end

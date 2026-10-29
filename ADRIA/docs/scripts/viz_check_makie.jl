@@ -87,7 +87,7 @@ function _viz_backend_extras()
     end
 
     check("ranks_plot") do
-        rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+        rank_freq = ADRIA.decision.ranks_to_frequencies(ADRIA.metrics.CAq_ranks(rs))
         ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1)
     end
 end

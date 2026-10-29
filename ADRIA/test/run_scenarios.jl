@@ -18,7 +18,7 @@ function test_small_spec_rs()
 
     # Create scenario spec
     samples = ADRIA.sample(dom, 16)
-    samples[!, :N_seed_TA] .= 500_000.0
+    samples[!, :iv_CAq_N_TA] .= 500_000.0
 
     # Write out scenario spec
     tmp_dir = mktempdir()
@@ -70,9 +70,9 @@ end
     @test size(TEST_RS.inputs, 1) == TEST_N_SAMPLES
     @test TEST_N_SAMPLES == 32
     # Ensure all expected log arrays are present
-    @test !isnothing(TEST_RS.seed_log)
-    @test !isnothing(TEST_RS.mc_log)
-    @test !isnothing(TEST_RS.shading_log)
+    @test !isnothing(TEST_RS.iv_CAq_log)
+    @test !isnothing(TEST_RS.iv_LvM_log)
+    @test !isnothing(TEST_RS.iv_Shd_log)
     @test !isnothing(TEST_RS.coral_dhw_tol_log)
     @test !isnothing(TEST_RS.ranks)
 end

@@ -692,7 +692,7 @@ end
     @testset "3-clause rules are silently filtered (same trace count as without them)" begin
         three_clause = (;
             condition=[
-                ["N_seed_TA", "<", 0.3], ["fogging", "<=", 0.2], ["guided", ">", 1.0]
+                ["iv_CAq_N_TA", "<", 0.3], ["iv_Fog", "<=", 0.2], ["guided", ">", 1.0]
             ]
         )
         mixed = vcat(rules, [three_clause])

@@ -12,7 +12,7 @@ using ADRIA.decision:
     DepthThresholds
 
 using ADRIA.decision:
-    SeedCriteriaWeights,
+    CAqCriteriaWeights,
     FogCriteriaWeights
 
 abstract type AbstractReefModDomain <: Domain end
@@ -40,10 +40,10 @@ mutable struct RMEDomain <: AbstractReefModDomain
     cyclone_mortality_scens::YAXArray{Float64}
 
     # Strategy target locations
-    seed_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for moving corals
-    shade_target_locations::Vector{String}    # locations eligible for shading
+    CAq_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for coral aquaculture
+    Fog_target_locations::Vector{String}   # locations eligible for fogging
+    LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
+    Shd_target_locations::Vector{String}    # locations eligible for shading
 
     model::ModelParameters.Model
     sim_constants::SimConstants
@@ -288,9 +288,9 @@ function load_domain(
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        SeedCriteriaWeights(),
+        CAqCriteriaWeights(),
         FogCriteriaWeights(),
-        MCCriteriaWeights(),
+        LvMCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -314,6 +314,7 @@ function load_domain(
         growth_accel_instance,
         depth_atten_instance
     ))
+    _cap_growth_bounds!(model)
 
     return adjust_sampling_bounds(
         RMEDomain(
@@ -660,7 +661,7 @@ function load_initial_cover(
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
     # species covers into ADRIA's size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
-    bin_edges_area = colony_mean_area(bin_edges(; unit=:cm))
+    bin_edges_area = colony_mean_area(bin_edges(; unit=:cm).data)
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)

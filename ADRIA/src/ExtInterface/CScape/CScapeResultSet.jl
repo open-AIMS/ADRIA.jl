@@ -372,7 +372,7 @@ function _create_inputs_dataframe(
     deployment_area = _default_missing(scenario_spec[Symbol("Deployment area")], 0.0)
     total_corals = Float64.(_default_missing(scenario_spec.TotalCorals, 1.0))
 
-    n_seeded = [0.0, 0.0, 0.0, 0.0, 0.0]
+    iv_CAq_N = [0.0, 0.0, 0.0, 0.0, 0.0]
     taxa_deployed = if ismissing(scenario_spec.species)
         []
     else
@@ -380,10 +380,10 @@ function _create_inputs_dataframe(
             Int64, split(scenario_spec.species, '_')
         )
     end
-    n_seeded[taxa_deployed] .= total_corals / length(taxa_deployed)
+    iv_CAq_N[taxa_deployed] .= total_corals / length(taxa_deployed)
     corals_deployed = Dict(
-        Symbol("N_seed_" * _ft_acronym(ft)) => n_corals
-        for (ft, n_corals) in zip(functional_types, n_seeded)
+        Symbol("iv_CAq_N_" * _ft_acronym(ft)) => n_corals
+        for (ft, n_corals) in zip(functional_types, iv_CAq_N)
     )
 
     enhancement_mean, enhancement_std = parse.(
@@ -447,13 +447,13 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     settle_lb = repeat([0.0], length(settle_names))
     settle_ub = repeat([1.0], length(settle_names))
 
-    # Number of corals seeded
-    seeded_names = filter(factor -> contains(factor, "N_seed_"), factor_names)
-    seeded_readable = human_readable_name.(seeded_names)
-    seeded_names = Symbol.(seeded_names)
-    seeded_ptype = repeat(["continuous"], length(settle_names))
-    seeded_lb = repeat([0.0], length(seeded_names))
-    seeded_ub = repeat([5e7], length(seeded_names))
+    # Number of corals deployed via coral aquaculture
+    CAq_names = filter(factor -> contains(factor, "iv_CAq_N_"), factor_names)
+    CAq_readable = human_readable_name.(CAq_names)
+    CAq_names = Symbol.(CAq_names)
+    CAq_ptype = repeat(["continuous"], length(settle_names))
+    CAq_lb = repeat([0.0], length(CAq_names))
+    CAq_ub = repeat([5e7], length(CAq_names))
 
     # Construct default model spec
     fieldname::Vector{Symbol} = [
@@ -477,7 +477,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         :enhancement_mean,
         :enhancement_std,
         settle_names..., # Corals
-        seeded_names... # Intervention
+        CAq_names... # Intervention
     ]
     descriptions::Vector{String} = [
         "Scenario ID",
@@ -500,7 +500,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         "Artificial thermal tolerance enhancement mean",
         "Artificial thermal tolerance enhancement standard deviation",
         settle_readable...,
-        seeded_readable...
+        CAq_readable...
     ]
     human_names::Vector{String} = [
         "Scenario ID",
@@ -523,7 +523,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         "Enhancement Mean",
         "Enhancement Standard Deviation",
         settle_readable...,
-        seeded_readable...
+        CAq_readable...
     ]
     ptype::Vector{String} = [
         "unordered categorical",
@@ -546,7 +546,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         "continuous",
         "continuous",
         settle_ptype...,
-        seeded_ptype...
+        CAq_ptype...
     ]
     lower_bound::Vector{Float64} = [
         1.0,
@@ -569,7 +569,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         0.0,
         0.0,
         settle_lb...,
-        seeded_lb...
+        CAq_lb...
     ]
     upper_bound::Vector{Float64} = [
         150000.0,
@@ -592,7 +592,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         30.0,
         2.0,
         settle_ub...,
-        seeded_ub...
+        CAq_ub...
     ]
     dist_params::Vector{String} = [
         string((lb, ub)) for (lb, ub) in zip(lower_bound, upper_bound)
@@ -602,7 +602,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         repeat(["Coral"], 9),
         repeat(["Intervention"], 7),
         repeat(["Coral"], length(settle_names)),
-        repeat(["Intervention"], length(seeded_names))
+        repeat(["Intervention"], length(CAq_names))
     )
     is_constant::Vector{Bool} = fill(false, length(component))
     return DataFrame(;

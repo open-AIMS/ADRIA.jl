@@ -108,14 +108,14 @@ using ADRIA: rank_locations
 dom = ADRIA.load_domain("path to domain", "45")
 scens = ADRIA.sample_site_selection(dom, 8)
 
-## Area of seeded corals in m^2
-area_to_seed = 962.11
+## Area of coral aquaculture corals in m^2
+iv_CAq_area = 962.11
 
 ## Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
 ## Use rank_locations to get ranks
-ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
+ranks = rank_locations(dom, scens, sum_cover, iv_CAq_area)
 
 # ## Intervention location selection - summary functions
 
@@ -134,14 +134,14 @@ dom = ADRIA.load_domain("path to Domain files", "RCP")
 ## Select locations for interventions without any model runs
 scens = ADRIA.sample_site_selection(dom, 8)
 
-## Area of seeded corals in m^2
-area_to_seed = 962.11
+## Area of coral aquaculture corals in m^2
+iv_CAq_area = 962.11
 
 ## Initial coral cover matching number of criteria samples
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
 ## Use rank_locations to get ranks
-ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
+ranks = rank_locations(dom, scens, sum_cover, iv_CAq_area)
 
 ## Get frequencies with which each site is selected for each rank
 rank_freq = ranks_to_frequencies(ranks[intervention = 1])
@@ -153,14 +153,14 @@ location_selection_frequency = location_selection_frequencies(ranks[intervention
 sel_score = selection_score(ranks[intervention = 1])
 
 ## Use aggregation function within rank_locations to get direct output
-rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
+rank_frequencies_CAq = rank_locations(
+    dom, scens, sum_cover, iv_CAq_area, ranks_to_frequencies, 1
 )
-rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, location_selection_frequencies, 1
+rank_frequencies_CAq = rank_locations(
+    dom, scens, sum_cover, iv_CAq_area, location_selection_frequencies, 1
 )
-rank_frequencies_seed = rank_locations(
-    dom, scens, sum_cover, area_to_seed, selection_score, 1
+rank_frequencies_CAq = rank_locations(
+    dom, scens, sum_cover, iv_CAq_area, selection_score, 1
 )
 
 ## Example using ADRIA runs
@@ -168,14 +168,14 @@ scens = ADRIA.sample(dom, 8)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
 ## Get frequencies with which each site was selected for each rank
-rank_freq = ranks_to_frequencies(ADRIA.metrics.seed_ranks(rs))
+rank_freq = ranks_to_frequencies(ADRIA.metrics.CAq_ranks(rs))
 
 ## Get selection frequencies for set of runs
 selection_freq = location_selection_frequencies(rs.ranks[intervention = 1])
 
 ## Get selection frequencies over time for unguided runs only
 unguided_freq = location_selection_frequencies(
-    rs.seed_log[scenarios = findall(scens.guided .>= 1)]
+    rs.iv_CAq_log[scenarios = findall(scens.guided .>= 1)]
 )
 
 ## Get selection score for set of runs
@@ -236,7 +236,7 @@ ADRIA.viz.connectivity(dom)
 # ## Selection frequency by intervention type
 #
 # Spatial map showing how often each location was selected, shown as a panel
-# per intervention type (seeding, fogging, shading, moving corals).
+# per intervention type (coral aquaculture, fogging, shading, larval methods).
 
 using ADRIA
 using ADRIAviz
@@ -245,7 +245,7 @@ dom = ADRIA.load_domain("path/to/domain", "45")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-intervention_types = (:seed, :fog, :shade, :mc)
+intervention_types = (:caq, :fog, :Shd, :lvm)
 labels = String[]
 freq_cols = Vector{Float64}[]
 for iv in intervention_types

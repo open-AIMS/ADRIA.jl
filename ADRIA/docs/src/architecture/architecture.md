@@ -52,9 +52,9 @@ Factors in ADRIA are defined across four sub-components:
 
 Each sub-component is represented by a struct with fields for each parameter. The `Intervention`
 sub-component holds parameters that define a given adopted intervention strategy/option: how
-many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
+many (and type of) corals are to be deployed via coral aquaculture, the length of any deployment, the start/end years,
 and so on. When a 5D DHW dataset (containing MCB durations and albedo levels) is loaded, ADRIA
-dynamically populates additional MCB-specific intervention factors (prefixed with `mcb_`).
+dynamically populates additional MCB-specific intervention factors (prefixed with `iv_MCB_`).
 These factors are used in a "Temporal Splicing" approach, where the environmental conditions
 switch between a baseline and a treated slice according to the specified intervention strategy.
 See [Marine Cloud Brightening (MCB) Scenarios](@ref) for more details.
@@ -112,7 +112,7 @@ Combinations of the realized factor values then represent a "scenario".
 
 ### Conditional sampling dependencies
 
-Many model factors only matter under a subset of scenario regimes — seeding deployment
+Many model factors only matter under a subset of scenario regimes — coral aquaculture deployment
 factors have no effect on a counterfactual scenario, and criteria weights have no effect
 unless a `guided` MCDA approach is active. Sampling every factor unconditionally would
 waste sample budget on combinations that can't affect model output, and would dilute

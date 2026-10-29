@@ -334,10 +334,22 @@ relative_loc_taxa_cover = Metric(
 )
 
 """
+    _juvenile_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+
+Size classes counted as juveniles in the juvenile metrics: size class 2 only, for every
+functional group. Returned as an (n_groups, n_sizes) mask, as ADRIAIndicators expects.
+"""
+function _juvenile_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+    is_juvenile = falses(n_groups, n_sizes)
+    is_juvenile[:, 2] .= true
+    return is_juvenile
+end
+
+"""
     relative_juveniles(X::AbstractArray{T,3}, coral_spec::DataFrame)::AbstractArray{T,2} where {T<:Real}
     relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,2}
 
-Juvenile coral cover relative to the location's area.
+Juvenile coral cover (size class 2) relative to the location's area.
 
 # Arguments
 - `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
@@ -348,8 +360,7 @@ function _relative_juveniles(
     X::YAXArray{T,4}
 )::YAXArray{T,2} where {T<:Real}
     dims = (:timesteps, :locations)
-    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
-    is_juvenile[:, 1:2] .= true
+    is_juvenile::BitMatrix = _juvenile_size_classes(size(X, 2), size(X, 3))
     return DataCube(
         ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
     )
@@ -362,8 +373,7 @@ function _relative_juveniles(
         :locations,
         :scenarios
     )
-    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
-    is_juvenile[:, 1:2] .= true
+    is_juvenile::BitMatrix = _juvenile_size_classes(size(X, 2), size(X, 3))
     return DataCube(
         ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
     )
@@ -383,7 +393,7 @@ relative_juveniles = Metric(
     absolute_juveniles(X::AbstractArray{T,3}, coral_spec::DataFrame, k_area::AbstractVector{T})::AbstractArray{T,2} where {T<:Real}
     absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,2}
 
-Juvenile coral cover in m².
+Juvenile coral cover (size class 2) in m².
 
 # Arguments
 - `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
@@ -395,8 +405,7 @@ function _absolute_juveniles(
     X::YAXArray{T}, k_area::AbstractVector{T}
 )::YAXArray where {T<:Real}
     dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
-    is_juvenile::BitMatrix = falses(size(X, 2), size(X, 3))
-    is_juvenile[:, 1:2] .= true
+    is_juvenile::BitMatrix = _juvenile_size_classes(size(X, 2), size(X, 3))
     return DataCube(
         ADRIAIndicators.absolute_juveniles(X.data, is_juvenile, k_area), dims
     )
@@ -443,7 +452,8 @@ n_locations).
 - `max_juvenile_density` : Maximum density of juveniles defaulting to 51.8 juveniles / m²
 
 # Notes
-Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
+Juveniles are size class 2. The maximum density of 51.8 juveniles / m² refers to colonies
+< 5cm diameter, which size class 2 no longer matches exactly.
 See email correspondence
 from: Dr. A Thompson; to: Dr. K. Anthony
 Subject: RE: Max density of juvenile corals on the GBR
@@ -453,8 +463,7 @@ function _juvenile_indicator(
     X::AbstractArray{T}, coral_spec::DataFrame, k_area::Vector{Float64}
 )::AbstractArray{T} where {T<:Real}
     n_groups, n_sizes = size(X)[2:3]
-    is_juvenile::BitMatrix = falses(n_groups, n_sizes)
-    is_juvenile[:, 1:2] .= true
+    is_juvenile::BitMatrix = _juvenile_size_classes(n_groups, n_sizes)
 
     mean_diams = permutedims(
         reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)

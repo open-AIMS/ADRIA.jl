@@ -10,13 +10,13 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 """
 function summarize_env_data(
     data::AbstractArray;
-    mcb_albedo_idx::Int64=1,
-    mcb_duration_idx::Int64=1
+    MCB_albedo_idx::Int64=1,
+    MCB_duration_idx::Int64=1
 )::Array{Float64}
-    if has_mcb_scenarios(data)
-        # Slice to baseline: mcb_duration_idx, mcb_albedo_idx
+    if has_MCB_scenarios(data)
+        # Slice to baseline: MCB_duration_idx, MCB_albedo_idx
         # Optimized order: (timesteps, locations, scenarios, mcb_durations, albedo)
-        baseline_data = data[:, :, :, mcb_duration_idx, mcb_albedo_idx]
+        baseline_data = data[:, :, :, MCB_duration_idx, MCB_albedo_idx]
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
         stats_store = zeros(3, size(baseline_data, 3), size(baseline_data, 2))
@@ -185,7 +185,7 @@ end
 """
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
+Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 
 # Arguments
 - `z_store` : ZArray
@@ -198,20 +198,21 @@ Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
 - `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
   that each batch write lands in exactly one chunk file per array.
 
-Note: This setup relies on hardcoded values for number of species represented and seeded.
+Note: This setup relies on hardcoded values for number of species represented and deployed
+via coral aquaculture.
 """
 function setup_logs(
     z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
 )
-    # Set up logs for location ranks, seed/fog log
+    # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked location
     n_interventions = length(interventions())
     rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, n_interventions, n_scens)  # locations, location id and rank, no. scenarios
-    # tf, no. species to seed, location id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
+    # tf, no. species for coral aquaculture, location id and rank, no. scenarios
+    CAq_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
     # UInt16: integer ranks 0–n_locs (max 3806 << 65535). fill_value=0 (rank 0 = no deployment).
     ranks = zcreate(
@@ -230,47 +231,47 @@ function setup_logs(
         )
     )
 
-    seed_log = zcreate(
+    CAq_log = zcreate(
         Float32,
-        seed_dims...;
-        name="seed",
+        CAq_dims...;
+        name="coral_aquaculture",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., batch_size),
+        chunks=(CAq_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "coral_id", "locations", "scenarios"),
             :unique_loc_ids => unique_loc_ids,
             :units => "individuals",
-            :description => "Number of corals seeded per functional group per location"
+            :description => "Number of corals deployed via coral aquaculture per functional group per location"
         )
     )
-    mc_log = zcreate(
+    LvM_log = zcreate(
         Float32,
-        seed_dims...;
-        name="moving_corals",
+        CAq_dims...;
+        name="larval_methods",
         fill_value=Float32(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., batch_size),
+        chunks=(CAq_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "coral_id", "locations", "scenarios"),
             :unique_loc_ids => unique_loc_ids,
             :units => "individuals",
-            :description => "Number of corals deployed by moving corals (larval method) per functional group per location"
+            :description => "Number of corals deployed via larval methods per functional group per location"
         )
     )
 
-    shading_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
+    Shd_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, 2, n_scens)
     # Float16: DHW-reduction values 0–8, precision ~0.001 DHW at 8 weeks — adequate.
-    shading_log = zcreate(
+    Shd_log = zcreate(
         Float16,
-        shading_dims...;
+        Shd_dims...;
         name="shading_log",
         fill_value=Float16(0),
         fill_as_missing=false,
         path=log_fn,
-        chunks=(shading_dims[1:3]..., batch_size),
+        chunks=(Shd_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "locations", "intervention", "scenarios"),
             :interventions => ["fog", "shade"],
@@ -368,7 +369,7 @@ function setup_logs(
         )
     end
 
-    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log
+    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log
 end
 
 """
@@ -383,11 +384,11 @@ Sets up an on-disk result store.
 ├───env_stats
 ├───inputs
 ├───logs
+│   ├───coral_aquaculture
 │   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
 │   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
-│   ├───moving_corals
+│   ├───larval_methods
 │   ├───rankings
-│   ├───seed
 │   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
 ├───results
@@ -414,7 +415,7 @@ Sets up an on-disk result store.
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (loc_outcomes, relative_taxa_cover, site_ranks, mc_log, seed_log, shading_log,
+domain, (loc_outcomes, relative_taxa_cover, site_ranks, LvM_log, CAq_log, Shd_log,
 coral_dhw_log, coral_cover_log)
 """
 function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::Int=0)::Tuple
@@ -599,9 +600,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 stat_store_names...,
                 conn_names...,
                 :site_ranks,
-                :mc_log,
-                :seed_log,
-                :shading_log,
+                :LvM_log,
+                :CAq_log,
+                :Shd_log,
                 :coral_dhw_log,
                 :coral_cover_log
             ),
@@ -670,8 +671,28 @@ end
     load_results(domain::Domain)::ResultSet
 
 Create interface to a given Zarr result set.
+
+Result sets produced before the intervention-parameter rename (`seed` -> `CAq`,
+`mc` -> `LvM`, `fog` -> `Fog`, `shade`/`SRM` -> `Shd`, `mcb` -> `MCB`, and the
+`iv_<abbrev>_` prefix pass) are not supported -- an `ADRIA_VERSION` older than `0.19.0`
+raises an error rather than attempting to translate old names. Load those result sets
+with an ADRIA version before `0.19.0` instead.
 """
 function load_results(result_loc::String)::ResultSet
+    return _load_results(result_loc)
+end
+function load_results(domain::Domain)::ResultSet
+    return load_results(result_location(domain))
+end
+
+# First ADRIA release using the current intervention-parameter naming (seed -> CAq,
+# mc -> LvM, fog -> Fog, shade/SRM -> Shd, mcb -> MCB, iv_<abbrev>_ prefix pass).
+# Result sets with an older `ADRIA_VERSION` cannot be loaded -- see `_load_results`.
+const _MIN_SUPPORTED_VERSION = v"0.19.0"
+
+_parse_adria_version(v::String)::VersionNumber = VersionNumber(lstrip(v, 'v'))
+
+function _load_results(result_loc::String)::ResultSet
     !isdir(result_loc) ? error("Not a directory: $(result_loc)") : nothing
 
     # Read in results
@@ -687,6 +708,19 @@ function load_results(result_loc::String)::ResultSet
     # Read in logs
     log_set = zopen(joinpath(result_loc, LOG_GRP); fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS); fill_as_missing=false)
+
+    r_vers_id = input_set.attrs["ADRIA_VERSION"]
+    if _parse_adria_version(r_vers_id) < _MIN_SUPPORTED_VERSION
+        error(
+            """
+      This result set was produced with ADRIA $(r_vers_id), which is not compatible \
+      with ADRIA >= $(_MIN_SUPPORTED_VERSION). Intervention parameters were renamed in \
+      $(_MIN_SUPPORTED_VERSION) (seed -> CAq, mc -> LvM, fog -> Fog, shade/SRM -> Shd, \
+      mcb -> MCB), so result sets from earlier versions can no longer be loaded. Use an \
+      ADRIA version older than $(_MIN_SUPPORTED_VERSION) to load this result set instead.
+      """
+        )
+    end
 
     dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
     wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
@@ -708,12 +742,11 @@ function load_results(result_loc::String)::ResultSet
         joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#"
     )
 
+    t_vers_id = "v" * string(pkgversion(@__MODULE__))
+
     # Standardize fieldnames to Symbol
     # TODO: Match all other column data types with original model spec
     model_spec.fieldname .= Symbol.(model_spec.fieldname)
-
-    r_vers_id = input_set.attrs["ADRIA_VERSION"]
-    t_vers_id = "v" * string(pkgversion(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).
@@ -819,9 +852,6 @@ function load_results(result_loc::String)::ResultSet
         loc_data,
         model_spec
     )
-end
-function load_results(domain::Domain)::ResultSet
-    return load_results(result_location(domain))
 end
 
 """
