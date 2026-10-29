@@ -13,7 +13,8 @@ end
 function _with_scale_ub(spec, fn::Symbol, ub::Float64)
     new_spec = copy(spec)
     new_spec[!, :dist_params] = [
-        name == fn ? (dp[1], ub) : dp for (name, dp) in zip(spec.fieldname, spec.dist_params)
+        name == fn ? (dp[1], ub) : dp for
+        (name, dp) in zip(spec.fieldname, spec.dist_params)
     ]
     return new_spec
 end
