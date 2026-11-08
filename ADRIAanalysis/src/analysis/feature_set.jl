@@ -67,6 +67,20 @@ function _iv_event_count(logs::YAXArray)::Vector{Float64}
     return Float64.(sum(any_group_total .> 0; dims=:timesteps).data[:])
 end
 
+"""
+    _iv_unique_locations(logs::YAXArray)::Vector{Float64}
+
+Number of distinct locations that received any deployment (any group, any timestep) over
+the whole run, per scenario: the cumulative spatial footprint. Unlike `n_loc_*_mean`
+(locations per deployment year, set mostly by the minimum-locations lever), this also
+reflects how much the selection rotates between reefs across years (revisit cadence,
+state-responsive criteria such as `iv_CAq_juvenile_share`).
+"""
+function _iv_unique_locations(logs::YAXArray)::Vector{Float64}
+    per_loc_total = sum(logs; dims=(:timesteps, :coral_id))
+    return Float64.(sum(per_loc_total .> 0; dims=:locations).data[:])
+end
+
 # Maps each coral aquaculture-deployable functional group (as named by
 # `ADRIA.functional_group_names()`) to its per-event deployment-target lever. Only 5 of
 # the 6 defined functional groups are currently deployable -- `arborescent_Acropora` has
@@ -153,6 +167,9 @@ Also adds a target-vs-realised comparison for each intervention: `CAq_total_targ
 actually deployed, counted from the log) and `CAq_deployment_delta_M`/
 `LvM_deployment_delta_M` (realised minus target; negative means the plan under-delivered,
 whether from skipped revisits or a deployment throttled by site capacity).
+
+`n_unique_loc_CAq`/`n_unique_loc_LvM` count the distinct locations deployed to over the
+whole run (cumulative footprint), as opposed to `n_loc_*_mean` (per deployment year).
 """
 function feature_set(rs::ResultSet)::DataFrame
     scens = copy(rs.inputs)
@@ -225,6 +242,20 @@ function feature_set(rs::ResultSet)::DataFrame
     colmetadata!(scens, :n_loc_LvM_mean, "ptype", "continuous"; style=:note)
     colmetadata!(
         scens, :n_loc_LvM_mean, "label", "Mean larval methods locations"; style=:note
+    )
+
+    # Cumulative footprint: distinct locations deployed to over the run
+    scens.n_unique_loc_CAq = _iv_unique_locations(rs.iv_CAq_log)
+    scens.n_unique_loc_LvM = _iv_unique_locations(rs.iv_LvM_log)
+    colmetadata!(scens, :n_unique_loc_CAq, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :n_unique_loc_CAq, "label",
+        "Distinct coral aquaculture locations over the run"; style=:note
+    )
+    colmetadata!(scens, :n_unique_loc_LvM, "ptype", "continuous"; style=:note)
+    colmetadata!(
+        scens, :n_unique_loc_LvM, "label",
+        "Distinct larval methods locations over the run"; style=:note
     )
 
     # Replace `depth_offset` with maximum depth
@@ -362,7 +393,8 @@ function feature_set(rs::ResultSet)::DataFrame
     effort_source_cols = filter(
         c -> c in names(scens),
         vcat(
-            ["n_loc_CAq_mean", "n_loc_Fog_mean", "n_loc_LvM_mean"],
+            ["n_loc_CAq_mean", "n_loc_Fog_mean", "n_loc_LvM_mean",
+                "n_unique_loc_CAq", "n_unique_loc_LvM"],
             names(CAq_volume_mean), names(CAq_volume_total_M),
             names(LvM_volume_mean), names(LvM_volume_total_M)
         )
