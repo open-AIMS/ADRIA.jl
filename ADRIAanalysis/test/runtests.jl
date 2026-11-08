@@ -251,4 +251,5 @@ end
     include("test_stratified_rsa.jl")
     include("test_counterfactual_delta.jl")
     include("test_feature_set_metadata.jl")
+    include("test_pawn.jl")
 end
