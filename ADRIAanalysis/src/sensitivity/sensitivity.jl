@@ -117,7 +117,9 @@ function pawn(
     # Preallocate result structures
     X_q = @MVector zeros(S + 1)
     pawn_t = @MArray zeros(S, D)
-    results = @MArray zeros(D, 8)
+    # Plain Matrix, not a static array: the returned YAXArray's data reaches callers, and a
+    # static vector from it (e.g. `vec(Si.data[:, 4])`) breaks Makie >= 0.24.15 plotting.
+    results = zeros(D, 8)
     q_stats = [0.025, 0.5, 0.975]
 
     # Hide warnings from HypothesisTests

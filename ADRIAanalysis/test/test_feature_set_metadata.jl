@@ -35,6 +35,7 @@ else
         candidate_tagged_cols = [
             :dhw_mean, :dhw_stdev, :dhw_complexity,
             :n_loc_CAq_mean, :n_loc_Fog_mean, :n_loc_LvM_mean,
+            :n_unique_loc_CAq, :n_unique_loc_LvM,
             :depth_max,
             :CAq_total_deployed_coral_M, :LvM_total_deployed_coral_M
         ]
@@ -50,6 +51,20 @@ else
         for col in present_tagged_cols
             @test colmetadata(fs, col, "ptype", "MISSING") != "MISSING"
             @test colmetadata(fs, col, "label", "MISSING") != "MISSING"
+        end
+
+        # Cumulative footprint = distinct locations with any deployment, counted
+        # straight from the log (checked before `_filter_constants` can drop it).
+        for (log, col) in
+            ((rs.iv_CAq_log, :n_unique_loc_CAq), (rs.iv_LvM_log, :n_unique_loc_LvM))
+            X = Array(log.data)  # (timesteps, coral_id, locations, scenarios)
+            expected = [
+                count(vec(any(!iszero, X[:, :, :, s]; dims=(1, 2)))) for s in axes(X, 4)
+            ]
+            @test ADRIAanalysis._iv_unique_locations(log) == expected
+            if col in fs_cols
+                @test fs[!, col] == expected
+            end
         end
 
         # At least one CAq_volume_*/LvM_volume_* per-functional-group column

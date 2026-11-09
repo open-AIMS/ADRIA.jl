@@ -399,8 +399,13 @@ Assumes all `val` and `bounds` are to be updated.
 `val` is coerced to `Float64` and each `dist_params` entry to `Vector{Float64}` -- the
 representation `Factor` builds -- so a write never changes any `Param`'s field types.
 Callers must not infer factor discreteness from the stored `val` type; use `ptype`.
+
+Throws an error, leaving the model untouched, if the new bounds would let a coral block skip
+a size class more than the current ones do (see `_validate_growth_limits`).
 """
 function update!(dom::Domain, spec::DataFrame)::Nothing
+    _validate_growth_limits(model_spec(dom), spec)
+
     # `dom.model[:col] = v` rebuilds every `Param` and `Flatten.reconstruct`s the
     # ~430-`Param` component tree, specialising on the `Param` field types. `fix_factor!`
     # / `set_factor_bounds!` / `model_spec` all hand back `dist_params` as tuples, which
