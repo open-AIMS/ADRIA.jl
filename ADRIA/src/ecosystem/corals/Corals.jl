@@ -5,6 +5,20 @@ import ModelParameters: Model
 const HEAT_UB = 24.0
 const HEAT_LB = 1.0     # minimum susceptibility threshold
 
+# Size class treated as juveniles, by both the model run and the juvenile metrics
+const JUVENILE_SIZE_CLASS = 1
+
+"""
+    juvenile_size_classes(n_sizes::Int64)::BitVector
+
+Mask over the `n_sizes` size classes, `true` for those counted as juveniles.
+"""
+function juvenile_size_classes(n_sizes::Int64)::BitVector
+    is_juvenile = falses(n_sizes)
+    is_juvenile[JUVENILE_SIZE_CLASS] = true
+    return is_juvenile
+end
+
 # In-memory cache for coral_spec(). Reset with invalidate_coral_spec_cache!().
 const _CORAL_SPEC_CACHE = Ref{Union{Nothing,NamedTuple}}(nothing)
 
