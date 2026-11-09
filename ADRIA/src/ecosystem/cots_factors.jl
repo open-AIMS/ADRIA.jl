@@ -134,7 +134,33 @@ const COTS_FACTOR_SPECS = (
     starvation_memory_years=(val=0.0, ptype="continuous", dist=TriangularDist,
         dist_params=(0.0, 3.0, 0.0), name="Starvation Memory",
         description="Memory (years) of preferred-coral cover for starvation; 0 = current year."
-    )
+    ),
+
+    # Inputs from the data package (see `CotsInputs`); each is neutral by default
+    separated_recruitment=(val=0, ptype="unordered categorical",
+        dist=CategoricalDistribution, dist_params=(0.0, 1.0),
+        name="Separated Recruitment",
+        description="Settle larvae only through reef-scale dispersal, not locally " *
+                    "(0 = off, 1 = on). Needs annual reef connectivity in the data package."
+    ),
+    larval_fecundity=(val=6.0, ptype="continuous", dist=TriangularDist,
+        dist_params=(1.0, 60.0, 6.0), name="Larval Fecundity",
+        description="Larvae produced per adult before dispersal, with separated recruitment."
+    ),
+    larval_conn_mode=(val=0, ptype="unordered categorical", dist=CategoricalDistribution,
+        dist_params=(0.0, 1.0, 2.0), name="Larval Connectivity Mode",
+        description="COTS larval connectivity: 0 = mean, 1 = annual matrices in turn, " *
+                    "2 = an annual matrix drawn each year."),
+    larval_conn_seed=(val=0, ptype="ordered discrete", dist=DiscreteUniform,
+        dist_params=(0.0, 1.0e9), name="Larval Connectivity Seed",
+        description="Seed of the annual-matrix draws in mode 2."),
+    external_outbreak_production=(val=0.0, ptype="continuous", dist=TriangularDist,
+        dist_params=(0.0, 50000.0, 0.0), name="External Outbreak Production",
+        description="Larval production of outbreaks outside the domain, scaling the " *
+                    "outbreak boundary in the data package. Needs separated recruitment."),
+    initial_state_scale=(val=1.0, ptype="continuous", dist=TriangularDist,
+        dist_params=(0.0, 10.0, 1.0), name="Initial State Scale",
+        description="Multiplier on the starting COTS densities in the data package.")
 )
 
 # Each factor is constant at its value by default (its sampling bounds collapse to the
@@ -195,6 +221,12 @@ Base.@kwdef struct CotsParams <: EcoModel
     preferred_prey_starvation::Param = _cots_factor(:preferred_prey_starvation)
     starvation_preferred_threshold::Param = _cots_factor(:starvation_preferred_threshold)
     starvation_memory_years::Param = _cots_factor(:starvation_memory_years)
+    separated_recruitment::Param = _cots_factor(:separated_recruitment)
+    larval_fecundity::Param = _cots_factor(:larval_fecundity)
+    larval_conn_mode::Param = _cots_factor(:larval_conn_mode)
+    larval_conn_seed::Param = _cots_factor(:larval_conn_seed)
+    external_outbreak_production::Param = _cots_factor(:external_outbreak_production)
+    initial_state_scale::Param = _cots_factor(:initial_state_scale)
 end
 
 # Names of the COTS factors. The derived per-scenario RNG seed (`set_random_seed`) excludes

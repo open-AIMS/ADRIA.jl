@@ -54,6 +54,11 @@ end
         @test inst.allee_threshold.default_dist_params ==
             defaults.allee_threshold.default_dist_params
         @test defaults.cots_on.dist_params == [0.0, 0.0]
+        # Factors for the data package's COTS inputs are neutral by default
+        @test defaults.separated_recruitment.val == 0
+        @test defaults.larval_conn_mode.val == 0
+        @test defaults.external_outbreak_production.val == 0.0
+        @test defaults.initial_state_scale.val == 1.0
     end
 
     @testset "calibrated COTS values load by label" begin
@@ -94,6 +99,13 @@ end
         p1 = ADRIA.cots_runtime_params(ADRIA.DataCube(Float64.(vals); factors=names))
         @test p1.per_capita_consumption
         @test p1.juvenile_predation_capacity == 25.0
+        @test !p1.separated_recruitment
+
+        vals[findfirst(==("separated_recruitment"), names)] = 1.0
+        vals[findfirst(==("larval_fecundity"), names)] = 37.9
+        p2 = ADRIA.cots_runtime_params(ADRIA.DataCube(Float64.(vals); factors=names))
+        @test p2.separated_recruitment
+        @test p2.larval_fecundity == 37.9
     end
 
     @testset "derived RNG seed ignores COTS factors" begin

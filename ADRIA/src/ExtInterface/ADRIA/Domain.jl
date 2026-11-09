@@ -42,6 +42,8 @@ mutable struct ADRIADomain <: Domain
     # Parameters
     model::Model  # core model
     sim_constants::SimConstants
+
+    const cots_inputs::CotsInputs  # optional COTS inputs from the data package
 end
 
 """
@@ -147,7 +149,8 @@ Barrier function to create Domain struct without specifying Intervention, Criter
 or SimConstant parameters, which are constructed internally.
 
 Coral and growth acceleration parameters are taken from `calib_params_fn` when given, and
-default to ADRIA values otherwise.
+default to ADRIA values otherwise. `cots_inputs` holds the optional COTS inputs of the data
+package (see `CotsInputs`); none by default.
 """
 function Domain(
     name::String,
@@ -164,7 +167,8 @@ function Domain(
     DHW::YAXArray,
     wave::YAXArray,
     cyclone_mortality::YAXArray;
-    calib_params_fn::String=""
+    calib_params_fn::String="",
+    cots_inputs::CotsInputs=CotsInputs()
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
     if has_MCB_scenarios(DHW)
@@ -235,7 +239,8 @@ function Domain(
         [(weight=1.0, target_locs=location_ids)],
         location_ids,
         model,
-        sim_constants
+        sim_constants,
+        cots_inputs
     )
 end
 
@@ -382,7 +387,8 @@ function Domain(
         dhw,
         waves,
         cyclone_mortality;
-        calib_params_fn=calib_params_fn
+        calib_params_fn=calib_params_fn,
+        cots_inputs=load_cots_inputs(dpkg_path, connectivity.loc_ids, Int64.(timeframe))
     )
 end
 

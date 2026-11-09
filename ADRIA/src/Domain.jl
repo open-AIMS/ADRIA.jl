@@ -150,10 +150,13 @@ end
 """
     cots_connectivity(domain::Domain)
 
-Return the source-to-sink connectivity used for COTS larval dispersal. Domains with a
-dedicated `cots_conn` field use it; all others use the coral connectivity.
+Return the source-to-sink connectivity used for COTS larval dispersal: the data package's
+`cots_connectivity/` when it has one (see `CotsInputs`), else a dedicated `cots_conn`
+field, else the coral connectivity.
 """
 function cots_connectivity(domain::Domain)
+    conn = cots_inputs(domain).conn
+    isnothing(conn) || return conn
     return hasproperty(domain, :cots_conn) ? domain.cots_conn : domain.conn
 end
 
