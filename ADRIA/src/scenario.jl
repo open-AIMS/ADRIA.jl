@@ -1160,7 +1160,7 @@ function run_model(
 
     # Keeps track of the heat tolerance means of juvenilles to use as a base for thermal
     # tolerance enhancement
-    c_mean_reference .= c_mean_t[:, 1, :]
+    c_mean_reference .= c_mean_t[:, JUVENILE_SIZE_CLASS, :]
 
     cover_transition_lb = 0.05
     cover_transition_ub = 0.80
@@ -1327,7 +1327,7 @@ function run_model(
         # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
         # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
         # here would cause the enhancement to compound each deployment year.
-        c_mean_pre_CAq .= c_mean_t[:, 1, :]
+        c_mean_pre_CAq .= c_mean_t[:, JUVENILE_SIZE_CLASS, :]
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
