@@ -1,7 +1,7 @@
 using StatsBase
 using YAXArrays
 import YAXArrays.DD: At
-using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
+using ADRIA: Factor, DiscreteOrderedUniformDist, component_params, juvenile_size_classes
 
 abstract type DecisionPreference end
 
@@ -331,10 +331,11 @@ be considered informative. Locations below this are given a neutral criteria val
 const JUVENILE_SHARE_MIN_COVER = 0.05
 
 """
-    juvenile_share(C_cover_t::AbstractArray{<:Real,3}; min_cover::Float64=JUVENILE_SHARE_MIN_COVER, n_juvenile_sizes::Int64=2)::Vector{Float64}
+    juvenile_share(C_cover_t::AbstractArray{<:Real,3}; min_cover::Float64=JUVENILE_SHARE_MIN_COVER)::Vector{Float64}
 
 Rank-transformed juvenile share, J / (J + A), for each location, where J is cover in the
-`n_juvenile_sizes` smallest size classes (as in `relative_juveniles`) and A is cover in
+size classes that ADRIA counts as juvenile (`ADRIA.juvenile_size_classes`, i.e.
+`ADRIA.JUVENILE_SIZE_CLASS`, the same definition as `relative_juveniles`) and A is cover in
 the remaining size classes.
 
 Raw shares cluster near 0, so they are replaced by their rank among the given locations,
@@ -345,17 +346,16 @@ locations passed in, so pass only the candidate locations being assessed.
 # Arguments
 - `C_cover_t` : Coral cover relative to habitable area, of shape [groups ⋅ sizes ⋅ locations]
 - `min_cover` : Minimum total cover for a location's share to be ranked
-- `n_juvenile_sizes` : Number of smallest size classes considered juvenile
 
 # Returns
 Criteria values for each location, lower values indicating a smaller juvenile share.
 """
 function juvenile_share(
     C_cover_t::AbstractArray{<:Real,3};
-    min_cover::Float64=JUVENILE_SHARE_MIN_COVER,
-    n_juvenile_sizes::Int64=2
+    min_cover::Float64=JUVENILE_SHARE_MIN_COVER
 )::Vector{Float64}
-    juv_cover = vec(sum(@view(C_cover_t[:, 1:n_juvenile_sizes, :]); dims=(1, 2)))
+    is_juvenile = juvenile_size_classes(size(C_cover_t, 2))
+    juv_cover = vec(sum(@view(C_cover_t[:, is_juvenile, :]); dims=(1, 2)))
     total_cover = vec(sum(C_cover_t; dims=(1, 2)))
 
     scores = fill(0.5, length(total_cover))

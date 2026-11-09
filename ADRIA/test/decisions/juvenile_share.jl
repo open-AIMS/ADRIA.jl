@@ -21,12 +21,14 @@ end
     n_groups, n_sizes = 5, 7
 
     # Cover of shape [groups ⋅ sizes ⋅ locations], relative to habitable area.
-    # Each location gets total cover `tot` with a juvenile (size classes 1-2) share `jsh`.
+    # Each location gets total cover `tot` with a juvenile share `jsh`, where juveniles are
+    # the size classes ADRIA defines as such (`ADRIA.juvenile_size_classes`).
+    is_juv = ADRIA.juvenile_size_classes(n_sizes)
     function make_cover(tot::Vector{Float64}, jsh::Vector{Float64})
         C = zeros(n_groups, n_sizes, length(tot))
         for l in eachindex(tot)
-            C[:, 1:2, l] .= tot[l] * jsh[l] / (n_groups * 2)
-            C[:, 3:end, l] .= tot[l] * (1 - jsh[l]) / (n_groups * (n_sizes - 2))
+            C[:, is_juv, l] .= tot[l] * jsh[l] / (n_groups * count(is_juv))
+            C[:, .!is_juv, l] .= tot[l] * (1 - jsh[l]) / (n_groups * count(.!is_juv))
         end
         return C
     end
