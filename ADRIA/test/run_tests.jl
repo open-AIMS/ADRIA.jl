@@ -34,11 +34,11 @@ const ENV_DIR = joinpath(TEST_DIR, ".testenv")   # shared, prepared once, git-ig
 const LOG_DIR = joinpath(TEST_DIR, "logs")
 
 # Default wall-clock limits in seconds, measured per shard process (the launcher's own
-# environment preparation is not counted). `fast` and `spec` are 5 min as a "something is
+# environment preparation is not counted). `fast` and `spec` are 6 min as a "something is
 # wrong" tripwire; `sim` runs 32 full simulations and needs longer. NB: in CI the job-level
 # `timeout-minutes` (UnitTests.yml) also covers checkout/cache/precompile, so for `fast`
 # and `spec` the job timeout, not this limit, is the effective bound.
-const DEFAULT_LIMITS = Dict("fast" => 300, "spec" => 300, "sim" => 1200)
+const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 360, "sim" => 1200)
 
 limit_for(shard) = parse(
     Float64, get(ENV, "ADRIA_TEST_LIMIT_$(uppercase(shard))_S", string(DEFAULT_LIMITS[shard]))

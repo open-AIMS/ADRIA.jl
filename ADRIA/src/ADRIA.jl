@@ -130,12 +130,13 @@ const COMPAT_DPKG = ["0.8.0"]
 # Precompile-time budgets (seconds). Measured healthy values: model assembly ~4.5 s when
 # the rest of ADRIA is already compiled (domain test) and ~38 s cold in a fresh
 # environment (precompile budget test); `load_domain` + `run_scenarios` ~60-120 s (the
-# run budget below sits at the top of that range, so slow machines may see the warning);
+# run budget below leaves headroom above that range for loaded machines and
+# `--check-bounds=yes`);
 # ~100-150 s for the whole workload. The Flatten specialisation regression this guards
 # against took 357 s in the budget test's cold model assembly. Exceeding a budget prints
 # a loud warning during `Pkg.precompile()`; it never fails the build.
 const _WORKLOAD_BUDGET_MODEL_S = 90.0
-const _WORKLOAD_BUDGET_RUN_S = 120.0
+const _WORKLOAD_BUDGET_RUN_S = 180.0
 const _WORKLOAD_BUDGET_TOTAL_S = 240.0
 
 function _warn_slow_precompile(label::AbstractString, secs::Real, budget::Real)
