@@ -516,8 +516,12 @@ function _apply_transforms!(spec::DataFrame, samples::DataFrame)::DataFrame
         samples[no_wave, :iv_CAq_wave_stress] .= 0.0
     end
 
-    if size(unique(Matrix(samples); dims=1), 1) < nrow(samples)
-        perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(samples)) / nrow(samples))) * 100.0))%"
+    # Count unique rows on the plain matrix. `unique(::DataFrame)` goes through
+    # DataFrames' row grouping, which specialises on an NTuple of every column
+    # (~300 here) and costs ~40 s of compilation per distinct column count.
+    n_unique = size(unique(Matrix(samples); dims=1), 1)
+    if n_unique < nrow(samples)
+        perc = "$(@sprintf("%.3f", (1.0 - (n_unique / nrow(samples))) * 100.0))%"
         @warn "Non-unique samples created: $perc of the samples are duplicates."
     end
 

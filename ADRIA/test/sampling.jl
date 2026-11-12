@@ -372,8 +372,13 @@ end
             # scens[:,collect(factor_fieldnames)] == scens[:,factor_mask]
 
             filt_scens = Matrix(scens[scens.guided .> 0, factor_mask])
-            min_scens, max_scens = vcat.([extrema(x) for x in eachcol(filt_scens)]...)
-            min_bounds, max_bounds = vcat.(extrema.(collect.(bounds_ranges))...)
+            # Avoid `vcat.(extrema_tuples...)`: splatting one argument per factor into a
+            # broadcast compiles an N-ary tuple broadcast whose LLVM (SLP vectorizer) cost
+            # grows super-linearly with N (minutes to hours for ~100+ factors).
+            scen_ext = [extrema(x) for x in eachcol(filt_scens)]
+            min_scens, max_scens = first.(scen_ext), last.(scen_ext)
+            bound_ext = [extrema(collect(b)) for b in bounds_ranges]
+            min_bounds, max_bounds = first.(bound_ext), last.(bound_ext)
 
             err_msg = "Sampled continuous factor is outside of specified new bounds."
             # @test all((max_scens .<= max_bounds) .&& (min_scens .>= min_bounds)) || err_msg
