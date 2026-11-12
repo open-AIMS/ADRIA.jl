@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Opt-in pre-push guard against precompilation-time regressions (we have no CI).
+# Enable once per clone:   git config core.hooksPath .githooks
+# Skip for one push:       SKIP_PRECOMPILE_CHECK=1 git push     (or git push --no-verify)
+#
+# Runs only if the pushed commits touch ADRIA/src, ADRIA/Project.toml or the budget test,
+# so most pushes pay nothing. Takes ~1 min.
+set -euo pipefail
+
+[ "${SKIP_PRECOMPILE_CHECK:-0}" = "1" ] && exit 0
+
+zero=0000000000000000000000000000000000000000
+changed=""
+while read -r _ local_sha _ remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue                 # branch deletion
+    if [ "$remote_sha" = "$zero" ]; then base=$(git merge-base "$local_sha" origin/main 2>/dev/null || echo ""); else base=$remote_sha; fi
+    [ -z "$base" ] && base=$(git rev-list --max-parents=0 "$local_sha" | tail -1)
+    changed+=$'\n'$(git diff --name-only "$base" "$local_sha")
+done
+
+if ! grep -qE '^ADRIA/(src/|Project.toml|test/precompile_budget/)' <<<"$changed"; then
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel)
+echo "pre-push: ADRIA source changed -> checking precompile time budget (~1 min)..."
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+# Throwaway env so the check doesn't touch the user's environments.
+julia --project="$tmp" -e "using Pkg; Pkg.develop(path=\"$root/ADRIA\"); Pkg.add(\"Test\")" >/dev/null
+if ! julia --project="$tmp" "$root/ADRIA/test/precompile_budget/precompile_budget.jl"; then
+    echo >&2
+    echo "pre-push: PRECOMPILE TIME BUDGET EXCEEDED. Push aborted." >&2
+    echo "          Override with SKIP_PRECOMPILE_CHECK=1 only if you understand why." >&2
+    exit 1
+fi
