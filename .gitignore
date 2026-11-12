@@ -39,3 +39,5 @@ ADRIA/docs/node_modules/
 # test launcher artefacts
 ADRIA/test/.testenv/
 ADRIA/test/logs/
+ADRIA/test/outputs/
+ADRIA/test/Outputs/
