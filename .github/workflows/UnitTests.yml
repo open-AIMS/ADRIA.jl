@@ -4,7 +4,11 @@ on:
   push:
     tags:
       - 'v*'
-  # Run in PR when packages updated
+  # Run in PR when packages updated.
+  # NOTE: PRs are only tested when the manifest changes, so ordinary PRs that touch
+  # ADRIA/src do NOT run these jobs (including the precompile budget test in the `fast`
+  # shard); that is only checked on version tags, manual dispatch, manifest changes or
+  # via the opt-in .githooks/pre-push hook. Widening the trigger is a cost decision.
   pull_request:
     paths:
       - 'ADRIA/Manifest-v1.12.toml'
@@ -19,10 +23,13 @@ jobs:
   test:
     name: ${{ matrix.shard }} - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    # Backstop for the whole job (checkout + cache + precompile + tests). This is
-    # a GitHub-side hard limit that still works if the launcher itself is wedged.
-    # The launcher separately enforces a tighter per-shard limit (see
-    # ADRIA/test/run_tests.jl). Raised per shard in the matrix below.
+    # Limit for the whole job (checkout + cache + precompile + tests). This is a
+    # GitHub-side hard limit that still works if the launcher itself is wedged. The
+    # launcher separately enforces a per-shard limit on the test process only (see
+    # ADRIA/test/run_tests.jl): 5 min for fast/spec, which is NOT tighter than the 5 min
+    # job limit here (the job limit also has to cover setup), so for fast/spec the job
+    # timeout is the effective bound; for sim the launcher limit (20 min) is tighter
+    # than the 25 min job limit.
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -54,7 +61,9 @@ jobs:
       - name: Run ${{ matrix.shard }} shard
         run: julia ADRIA/test/run_tests.jl ${{ matrix.shard }}
         env:
-          ADRIA_TEST_COVERAGE: user
+          # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
+          # a plain `--code-coverage=user` would discard precompiled code of all deps.
+          ADRIA_TEST_COVERAGE: adria
       - name: Upload shard logs
         if: always()
         uses: actions/upload-artifact@v4
