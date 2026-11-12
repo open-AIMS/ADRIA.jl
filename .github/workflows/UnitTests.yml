@@ -28,8 +28,8 @@ jobs:
     # launcher separately enforces a per-shard limit on the test process only (see
     # ADRIA/test/run_tests.jl): 6 min for fast/spec, which is NOT tighter than the 6 min
     # job limit here (the job limit also has to cover setup), so for fast/spec the job
-    # timeout is the effective bound; for sim the launcher limit (20 min) is tighter
-    # than the 25 min job limit.
+    # timeout is the effective bound; for sim the launcher limit (10 min) is tighter
+    # than the 12 min job limit.
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -47,7 +47,7 @@ jobs:
           - shard: spec
             timeout: 6
           - shard: sim
-            timeout: 25
+            timeout: 12
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v2

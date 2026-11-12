@@ -38,7 +38,7 @@ const LOG_DIR = joinpath(TEST_DIR, "logs")
 # wrong" tripwire; `sim` runs 32 full simulations and needs longer. NB: in CI the job-level
 # `timeout-minutes` (UnitTests.yml) also covers checkout/cache/precompile, so for `fast`
 # and `spec` the job timeout, not this limit, is the effective bound.
-const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 360, "sim" => 1200)
+const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 360, "sim" => 600)
 
 limit_for(shard) = parse(
     Float64, get(ENV, "ADRIA_TEST_LIMIT_$(uppercase(shard))_S", string(DEFAULT_LIMITS[shard]))
