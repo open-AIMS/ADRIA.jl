@@ -71,6 +71,67 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten))
 end
 
+# The component tuple held by the domain `Model`.
+const _DomainModelParent = Tuple{
+    EnvironmentalLayer,
+    Intervention,
+    CAqCriteriaWeights,
+    FogCriteriaWeights,
+    LvMCriteriaWeights,
+    DepthThresholds,
+    Coral,
+    GrowthAcceleration,
+    DepthAttenuation
+}
+
+"""
+    params(::_DomainModelParent)
+
+Flattened `Param`s of the domain model, in the same order as `Flatten.flatten`.
+
+The default `Flatten.flatten` returns a ~440-element heterogeneous `Tuple`, and every
+ModelParameters operation that maps over it (`Model` setindex/getindex, the `Tables`
+interface behind `DataFrame(model)`, ...) is JIT-specialised on that full type. Each one
+costs seconds to tens of seconds cold. Building the result from a `Vector` makes its
+static type `Tuple{Vararg{Param}}`, so those operations compile once for any length.
+"""
+function _MP.params(obj::_DomainModelParent)::Tuple{Vararg{Param}}
+    v = Param[]
+    for component in obj
+        # `push!` loop, not `append!`: `append!` specialises on `NTuple{331,Param{...}}`.
+        for p in _MP.params(component)
+            push!(v, p)
+        end
+    end
+    return Tuple(v)
+end
+
+# `Model.parent` is an untyped field, so `params(m)` is otherwise a dynamic dispatch whose
+# result type inference cannot see; every caller then specialises on the runtime-concrete
+# ~440-element tuple. Declaring the return type here carries `Tuple{Vararg{Param}}` into
+# `getindex`/`setindex!`/Tables code that calls `params(m)`.
+function _MP.params(m::Model)::Tuple{Vararg{Param}}
+    return _MP.params(Base.parent(m))
+end
+
+# `model[:col] = values` for the domain model. ModelParameters' version `map`s a closure
+# over the ~440-element `Param` tuple and a same-length value tuple, which JIT-specialises
+# per column (~3-7 s cold each for `:val`, `:dist_params`, `:default_dist_params`).
+# A plain loop over a `Vector` compiles once and gives the same result.
+function _MP._setindex(obj::_DomainModelParent, @nospecialize(xs::Tuple), nm::Symbol)
+    lens = Setfield.PropertyLens{nm}()
+    ps = _MP.params(obj)
+    n = length(ps)
+    length(xs) == n ||
+        throw(DimensionMismatch("expected $n values for `$nm`, got $(length(xs))"))
+    newparams = Vector{Any}(undef, n)
+    for i in 1:n
+        par = ps[i]
+        newparams[i] = _MP.rebuild(par, Setfield.set(Base.parent(par), lens, xs[i]))
+    end
+    return _Flatten.reconstruct(obj, newparams, _MP.SELECT, _MP.IGNORE)
+end
+
 """
 Barrier function to create Domain struct without specifying Intervention, Criteria, Coral
 or SimConstant parameters, which are constructed internally.

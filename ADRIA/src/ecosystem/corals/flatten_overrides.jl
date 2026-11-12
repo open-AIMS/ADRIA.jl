@@ -89,11 +89,15 @@ end
 # ---------------------------------------------------------------------------
 function _MP._expandkeys(@nospecialize(pars::Tuple{Vararg{AbstractParam}}))
     isempty(pars) && return pars
-    k1 = keys(first(pars))
+    # Iterate a type-erased `Vector`, never the tuple itself: `enumerate(pars)` /
+    # `for p in pars` over the runtime-concrete ~440-element tuple type were each
+    # JIT-specialised on it (~20 s cold).
+    pv = collect(Any, pars)
+    k1 = keys(pv[1])
     # Fast path: all params already share the same key set.
     uniform = true
-    for p in pars
-        if keys(p) != k1
+    for i in eachindex(pv)
+        if keys(pv[i]) != k1
             uniform = false
             break
         end
@@ -104,12 +108,15 @@ function _MP._expandkeys(@nospecialize(pars::Tuple{Vararg{AbstractParam}}))
     # tuple, which compile a ~440-way specialisation (>10 s cold).  Key order matches the
     # original `union` (first-seen order).
     allkeys_v = Symbol[]
-    for p in pars, k in keys(p)
-        k in allkeys_v || push!(allkeys_v, k)
+    for i in eachindex(pv)
+        for k in keys(pv[i])
+            k in allkeys_v || push!(allkeys_v, k)
+        end
     end
     allkeys = Tuple(allkeys_v)
-    out = Vector{Any}(undef, length(pars))
-    for (i, par) in enumerate(pars)
+    out = Vector{Any}(undef, length(pv))
+    for i in eachindex(pv)
+        par = pv[i]
         vals = Tuple(get(par, key, nothing) for key in allkeys_v)
         out[i] = _MP.rebuild(par, NamedTuple{allkeys}(vals))
     end
