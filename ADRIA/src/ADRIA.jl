@@ -297,6 +297,24 @@ end
     _warn_slow_precompile(
         "Domain model assembly workload", time() - _wl_model_t0, _WORKLOAD_BUDGET_MODEL_S
     )
+
+    # Full `load_domain` on the bundled test data package. Without this the data loading
+    # path (datapackage/CSV/NetCDF/GeoPackage readers, DataFrame handling, connectivity
+    # and `_cap_growth_bounds!`) is JIT-compiled on the first `load_domain` of every
+    # session (~60 s cold). Skipped if the data package is absent (e.g. a stripped
+    # install), and guarded so a failure degrades coverage rather than breaking
+    # `using ADRIA`.
+    let _dpkg = joinpath(pkgdir(@__MODULE__), "test", "data", "Test_domain")
+        if isdir(_dpkg)
+            redirect_stdio(stdout=devnull, stderr=devnull) do
+                try
+                    load_domain(_dpkg, "45")
+                catch err
+                    @debug "compile-workload load_domain failed" err
+                end
+            end
+        end
+    end
     _warn_slow_precompile(
         "Entire ADRIA @compile_workload", time() - _wl_t0, _WORKLOAD_BUDGET_TOTAL_S
     )
