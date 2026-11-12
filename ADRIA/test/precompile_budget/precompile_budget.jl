@@ -1,15 +1,16 @@
 # Regression guard for precompilation time.
 #
 # Background: a Flatten.jl/ModelParameters specialisation blow-up in the domain-model
-# assembly made `@compile_workload` take ~3 minutes (cold JIT ~365 s for the heavy block),
-# turning a fresh `Pkg.precompile()` into a 20-30 minute wait. See
+# assembly made `@compile_workload` take minutes (357 s measured by this test for the
+# cold model-assembly block), turning a fresh `Pkg.precompile()` into a 20-30 minute wait. See
 # `src/ecosystem/corals/flatten_overrides.jl`.
 #
 # The workload hides this cost when it works, so we measure the cold JIT cost directly in
 # a subprocess with ADRIA's workload disabled via a LocalPreferences.toml in a temp copy
 # of the active environment.
-# Healthy: ~15-40 s. Broken: 150-400 s. Budget is deliberately generous (machine variance)
-# but far below the broken value. Override with ADRIA_PRECOMPILE_BUDGET_S.
+# Healthy: ~38 s measured (cold, fresh environment; ~4.5 s once the rest of ADRIA is
+# already compiled). Broken: 357 s measured. The budget is deliberately generous (machine
+# variance) but far below the broken value. Override with ADRIA_PRECOMPILE_BUDGET_S.
 
 using Test
 
@@ -29,6 +30,9 @@ using Test
                 mm = match(r"^(\s*path\s*=\s*)\"([^\"]+)\"$", m)
                 p = expanduser(mm.captures[2])
                 p = isabspath(p) ? p : abspath(joinpath(src_dir, p))
+                # Forward slashes: valid in TOML basic strings on every platform
+                # (backslashes would be read as escapes).
+                p = replace(p, '\\' => '/')
                 return string(mm.captures[1], "\"", p, "\"")
             end
         )
