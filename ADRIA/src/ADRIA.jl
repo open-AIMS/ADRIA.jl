@@ -127,7 +127,38 @@ export CScapeResultSet
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.8.0"]
 
+# Precompile-time budgets (seconds). Measured healthy values: model assembly ~4.5 s when
+# the rest of ADRIA is already compiled (domain test) and ~38 s cold in a fresh
+# environment (precompile budget test); `load_domain` + `run_scenarios` ~60-120 s (the
+# run budget below leaves headroom above that range for loaded machines and
+# `--check-bounds=yes`);
+# ~100-150 s for the whole workload. The Flatten specialisation regression this guards
+# against took 357 s in the budget test's cold model assembly. Exceeding a budget prints
+# a loud warning during `Pkg.precompile()`; it never fails the build.
+const _WORKLOAD_BUDGET_MODEL_S = 90.0
+const _WORKLOAD_BUDGET_RUN_S = 180.0
+const _WORKLOAD_BUDGET_TOTAL_S = 240.0
+
+function _warn_slow_precompile(label::AbstractString, secs::Real, budget::Real)
+    secs <= budget && return nothing
+    bar = "#"^78
+    msg = string(
+        "\n", bar, "\n",
+        "## ADRIA PRECOMPILATION TIME REGRESSION\n",
+        "## ", label, " took ", round(secs; digits=1), " s (budget ", budget, " s).\n",
+        "## Every user's fresh `Pkg.precompile()` is now much slower. Do NOT merge/push\n",
+        "## without investigating. Likely cause: Flatten/ModelParameters specialisation on\n",
+        "## the domain Model (see src/ecosystem/corals/flatten_overrides.jl) or a new\n",
+        "## Model component / Param type. Run test/precompile_budget/precompile_budget.jl.\n",
+        bar, "\n"
+    )
+    printstyled(stderr, msg; color=:light_red, bold=true)
+    @warn "Slow ADRIA precompile workload" label secs budget
+    return nothing
+end
+
 @compile_workload begin
+    _wl_t0 = time()
     # DataCube / ZeroDataCube constructors — covers Dim{:timesteps/:scenarios/:locations} triples
     dc = DataCube(zeros(Float64, 5, 3, 10); timesteps=1:5, scenarios=1:3, locations=1:10)
     ZeroDataCube((:timesteps, :scenarios, :locations), (5, 3, 10))
@@ -163,31 +194,6 @@ const COMPAT_DPKG = ["0.8.0"]
     precompile(ADRIA.update!, (ADRIADomain, DataFrame))
     precompile(ADRIA.fix_factor!, (ADRIADomain, Symbol))
     precompile(ADRIA.fix_factor!, (ADRIADomain, Vector{Symbol}))
-
-    redirect_stdio(stdout=devnull, stderr=devnull) do
-        let
-            n_locs, n_crit = 10, 4
-            loc_names = Symbol.(:loc_, 1:n_locs)
-            crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
-
-            # Non-constant data (all-constant triggers filter_criteria, a separate path)
-            dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
-
-            # Mixed directions: MooraMethod requires at least one min and one max
-            weights = fill(0.25, n_crit)
-            directions = [maximum, maximum, minimum, maximum]
-
-            dp = decision.DecisionPreferences(crit_names, weights, directions)
-            dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
-
-            for method in decision.mcda_methods()
-                try
-                    decision.criteria_aggregated_scores(dp, dm, method)
-                catch
-                end
-            end
-        end
-    end
 
     # Sampling dispatch — synthetic spec covers QMC + Distributions path without file IO
     # let
@@ -232,6 +238,7 @@ const COMPAT_DPKG = ["0.8.0"]
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost
     # shifts to Pkg.precompile() time and interactive first-call is <1 s.
+    _wl_model_t0 = time()
     redirect_stdio(stdout=devnull, stderr=devnull) do
         _arr = ones(Float32, 1, 1, 1)
         _model = _assemble_domain_model(
@@ -266,39 +273,60 @@ const COMPAT_DPKG = ["0.8.0"]
             @debug "compile-workload factor write-back failed" err
         end
     end
+
+    _warn_slow_precompile(
+        "Domain model assembly workload", time() - _wl_model_t0, _WORKLOAD_BUDGET_MODEL_S
+    )
+
+    # `load_domain` and a minimal `run_scenarios` on the bundled test data package.
+    # Without this the data loading path (datapackage/CSV/NetCDF/GeoPackage readers,
+    # DataFrame handling, connectivity, `_cap_growth_bounds!`) and the whole simulation
+    # path (scenario closure, result store/Zarr writes, ...) are JIT-compiled on the
+    # first `load_domain` / `run_scenarios` of every session (~60 s and ~80 s cold).
+    # Skipped if the data package is absent (e.g. a stripped install), and guarded so a
+    # failure degrades coverage rather than breaking `using ADRIA`.
+    _wl_run_t0 = time()
+    _wl_err = nothing
+    let _dpkg = joinpath(pkgdir(@__MODULE__), "test", "data", "Test_domain")
+        if isdir(_dpkg)
+            redirect_stdio(stdout=devnull, stderr=devnull) do
+                try
+                    mktempdir() do _out
+                        # Run from the temp dir so a user's `./config.toml` is not picked
+                        # up by `setup()` / `load_domain`.
+                        cd(_out) do
+                            # `run_scenarios` calls `setup()`, which resets
+                            # ADRIA_OUTPUT_DIR to `./Outputs` (or config.toml) unless
+                            # setup has already run. Run it first, then redirect results
+                            # to the temp dir, so precompiling never writes into the
+                            # user's working directory.
+                            setup()
+                            withenv("ADRIA_OUTPUT_DIR" => _out) do
+                                _dom = load_domain(_dpkg, "45")
+                                _scens = ADRIA.sample(_dom, 4)
+                                run_scenarios(_dom, _scens, "45"; show_progress=false)
+                            end
+                        end
+                    end
+                catch err
+                    _wl_err = err
+                end
+            end
+        end
+    end
+    if _wl_err !== nothing
+        # Reported after the redirect block so it reaches the real stderr.
+        @warn "ADRIA precompile workload for load_domain/run_scenarios failed; " *
+            "the first `load_domain`/`run_scenarios` call in each session will be slow." exception =
+            _wl_err
+    end
+    _warn_slow_precompile(
+        "load_domain + run_scenarios workload", time() - _wl_run_t0, _WORKLOAD_BUDGET_RUN_S
+    )
+
+    _warn_slow_precompile(
+        "Entire ADRIA @compile_workload", time() - _wl_t0, _WORKLOAD_BUDGET_TOTAL_S
+    )
 end
-
-# @compile_workload begin
-#     if !isinteractive()
-#         redirect_stdio(stdout=devnull, stderr=devnull) do
-#             d = load_domain(joinpath(pkgdir(ADRIA), "test", "data", "Test_domain"), "45")
-#             sample(d, 16)
-#         end
-#     end
-
-#     # Cover the MCDA dispatch chain
-#     # let
-#     #     n_locs, n_crit = 10, 4
-#     #     loc_names = Symbol.(:loc_, 1:n_locs)
-#     #     crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
-
-#     #     # Non-constant data (all-constant triggers filter_criteria, a separate path)
-#     #     dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
-
-#     #     # Mixed directions: Moora requires at least one min and one max
-#     #     weights = fill(0.25, n_crit)
-#     #     directions = [maximum, maximum, minimum, maximum]
-
-#     #     dp = decision.DecisionPreferences(crit_names, weights, directions)
-#     #     dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
-
-#     #     for method in decision.mcda_methods()
-#     #         try
-#     #             decision.criteria_aggregated_scores(dp, dm, method)
-#     #         catch
-#     #         end
-#     #     end
-#     # end
-# end
 
 end

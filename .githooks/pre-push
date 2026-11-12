@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Opt-in pre-push guards: (1) JuliaFormatter check (matches CI's Format.yml, v2.5.1) on
+# pushed .jl files; (2) precompilation-time regressions. CI only runs the budget
+# test on tags/manual runs/manifest changes (see .github/workflows/UnitTests.yml), so this
+# catches regressions before they are pushed.
+# Enable once per clone:   git config core.hooksPath .githooks
+# Skip for one push:       SKIP_PRECOMPILE_CHECK=1 git push     (or git push --no-verify)
+#                          (skips both checks; SKIP_FORMAT_CHECK=1 skips only formatting)
+#
+# Runs only if the pushed commits touch ADRIA/src, ADRIA/Project.toml or the budget test,
+# so most pushes pay nothing. When it runs it takes a few minutes (cold precompile of ADRIA
+# without its workload in a throwaway environment plus the cold model-assembly JIT,
+# ~40 s on its own on a warm package depot).
+set -euo pipefail
+
+[ "${SKIP_PRECOMPILE_CHECK:-0}" = "1" ] && exit 0
+
+# Prefer the Julia version the repo commits a manifest for (1.12); fall back to default.
+if julia +1.12 --version >/dev/null 2>&1; then JULIA=(julia +1.12); else JULIA=(julia); fi
+
+zero=0000000000000000000000000000000000000000
+changed=""
+while read -r _ local_sha _ remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue                 # branch deletion
+    if [ "$remote_sha" = "$zero" ]; then base=$(git merge-base "$local_sha" origin/main 2>/dev/null || echo ""); else base=$remote_sha; fi
+    [ -z "$base" ] && base=$(git rev-list --max-parents=0 "$local_sha" | tail -1)
+    if diff_out=$(git diff --name-only "$base" "$local_sha" 2>/dev/null); then
+        changed+=$'\n'$diff_out
+    else
+        # Remote tip not available locally (not fetched): be conservative and run the check.
+        echo "pre-push: cannot diff against $base (not fetched?); running precompile check anyway." >&2
+        changed+=$'\nADRIA/src/'
+    fi
+done
+
+# --- Format check (CI runs JuliaFormatter 2.5.1 over the whole repo) ---
+if [ "${SKIP_FORMAT_CHECK:-0}" != "1" ]; then
+    jl_files=$(sort -u <<<"$changed" | grep -E '\.jl$' || true)
+    root=$(git rev-parse --show-toplevel)
+    # Only files that still exist (deleted files appear in the diff too).
+    existing=()
+    while IFS= read -r f; do [ -n "$f" ] && [ -f "$root/$f" ] && existing+=("$root/$f"); done <<<"$jl_files"
+    if [ "${#existing[@]}" -gt 0 ]; then
+        echo "pre-push: checking formatting of ${#existing[@]} Julia file(s) (JuliaFormatter 2.5.1)..."
+        fmtenv=$(mktemp -d)
+        if ! "${JULIA[@]}" --project="$fmtenv" -e 'using Pkg; Pkg.add(name="JuliaFormatter", version="2.5.1"; io=devnull)' >/dev/null 2>&1; then
+            echo "pre-push: could not install JuliaFormatter (offline?); skipping format check." >&2
+        elif ! "${JULIA[@]}" --project="$fmtenv" -e 'using JuliaFormatter; exit(all(f -> format(f; overwrite=false), ARGS) ? 0 : 1)' "${existing[@]}"; then
+            rm -rf "$fmtenv"
+            echo >&2
+            echo "pre-push: formatting check FAILED (same check as CI). Fix with:" >&2
+            echo "          julia -e 'using JuliaFormatter; format(\".\")'   # JuliaFormatter v2.5.1" >&2
+            echo "          then commit and push again. (SKIP_FORMAT_CHECK=1 to override)" >&2
+            exit 1
+        fi
+        rm -rf "$fmtenv"
+    fi
+fi
+
+if ! grep -qE '^ADRIA/(src/|Project.toml|test/precompile_budget/)' <<<"$changed"; then
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel)
+echo "pre-push: ADRIA source changed -> checking precompile time budget (takes a few minutes)..."
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+# Throwaway env so the check doesn't touch the user's environments.
+"${JULIA[@]}" --project="$tmp" -e "using Pkg; Pkg.develop(path=\"$root/ADRIA\"); Pkg.add(\"Test\")"
+if ! "${JULIA[@]}" --project="$tmp" "$root/ADRIA/test/precompile_budget/precompile_budget.jl"; then
+    echo >&2
+    echo "pre-push: PRECOMPILE TIME BUDGET EXCEEDED. Push aborted." >&2
+    echo "          Override with SKIP_PRECOMPILE_CHECK=1 only if you understand why." >&2
+    exit 1
+fi

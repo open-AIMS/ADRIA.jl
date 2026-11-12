@@ -4,45 +4,80 @@ on:
   push:
     tags:
       - 'v*'
-  # Run in PR when packages updated
+  # Run in PR when packages updated.
+  # NOTE: PRs are only tested when the manifest changes, so ordinary PRs that touch
+  # ADRIA/src do NOT run these jobs (including the precompile budget test in the `fast`
+  # shard); that is only checked on version tags, manual dispatch, manifest changes or
+  # via the opt-in .githooks/pre-push hook. Widening the trigger is a cost decision.
   pull_request:
     paths:
       - 'ADRIA/Manifest-v1.12.toml'
   workflow_dispatch:
 
+# Cancel superseded runs of the same ref so stale pushes don't burn minutes.
+concurrency:
+  group: unittests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: ${{ matrix.shard }} - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    # Limit for the whole job (checkout + cache + precompile + tests). This is a
+    # GitHub-side hard limit that still works if the launcher itself is wedged. The
+    # launcher separately enforces a per-shard limit on the test process only (see
+    # ADRIA/test/run_tests.jl): 6 min for fast/spec, which is NOT tighter than the 6 min
+    # job limit here (the job limit also has to cover setup), so for fast/spec the job
+    # timeout is the effective bound; for sim the launcher limit (10 min) is tighter
+    # than the 12 min job limit.
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - "1.12"
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+        version: ["1.12"]
+        os: [ubuntu-latest]
+        shard: [fast, spec, sim]
+        include:
+          # `timeout-minutes: 6` is the target for the quick shards. It covers the whole
+          # job, so it only holds with a warm depot cache; the first run after a
+          # manifest change will need to rebuild the cache (re-run with a larger value
+          # or via workflow_dispatch). The sim shard runs 32 simulations and needs more.
+          - shard: fast
+            timeout: 6
+          - shard: spec
+            timeout: 6
+          - shard: sim
+            timeout: 12
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
         with:
           cache-name: adria-setup-cache
-      - uses: julia-actions/julia-buildpkg@v1
+      # The launcher prepares one shared test environment, then runs this shard in a
+      # supervised subprocess with a hard per-shard kill limit.
+      - name: Run ${{ matrix.shard }} shard
+        run: julia ADRIA/test/run_tests.jl ${{ matrix.shard }}
+        env:
+          # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
+          # a plain `--code-coverage=user` would discard precompiled code of all deps.
+          ADRIA_TEST_COVERAGE: adria
+      - name: Upload shard logs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          project: ADRIA
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          project: ADRIA
+          name: test-logs-${{ matrix.shard }}
+          path: ADRIA/test/logs/
       - uses: julia-actions/julia-processcoverage@v1
+        if: always()
         with:
           directories: ADRIA/src
       - uses: codecov/codecov-action@v7
+        if: always()
         with:
           verbose: true
           files: lcov.info
+          flags: ${{ matrix.shard }}
           token: ${{ secrets.CODECOV_TOKEN }}

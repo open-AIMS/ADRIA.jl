@@ -1,4 +1,4 @@
-using ADRIA: metrics
+using ADRIA: metrics, YAXArray, DataCube
 
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
