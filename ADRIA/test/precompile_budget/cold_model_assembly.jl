@@ -24,7 +24,8 @@ t = @elapsed begin
         A.DepthThresholds(),
         A.Coral(),
         A.GrowthAcceleration(),
-        A.DepthAttenuation()
+        A.DepthAttenuation(),
+        A.LowDHWBleaching()
     )
     for _ in 1:2
         ms = A.model_spec(model)
