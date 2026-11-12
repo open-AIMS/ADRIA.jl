@@ -55,6 +55,9 @@ function run_with_timeout(cmd::Cmd, limit_s::Real, logfile::AbstractString)
                 println(stderr, "TIMEOUT after $(round(Int, limit_s)) s: killing process group")
                 if Sys.isunix()
                     ccall(:kill, Cint, (Cint, Cint), -getpid(proc), 9)   # whole group
+                elseif Sys.iswindows()
+                    # No process groups: `taskkill /T` kills the whole process tree.
+                    run(ignorestatus(`taskkill /F /T /PID $(getpid(proc))`))
                 end
                 kill(proc, Base.SIGKILL)
                 wait(proc)
