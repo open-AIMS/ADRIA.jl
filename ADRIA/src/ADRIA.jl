@@ -127,11 +127,13 @@ export CScapeResultSet
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.8.0"]
 
-# Precompile-time budgets (seconds). Healthy values are ~10-20 s for the model-assembly
-# block, ~60-120 s for `load_domain` + `run_scenarios`, and ~100-150 s for the whole
-# workload; the Flatten specialisation regression this guards against took ~365 s for
-# the model-assembly block alone. Exceeding a budget prints a loud warning during
-# `Pkg.precompile()`; it never fails the build.
+# Precompile-time budgets (seconds). Measured healthy values: model assembly ~4.5 s when
+# the rest of ADRIA is already compiled (domain test) and ~38 s cold in a fresh
+# environment (precompile budget test); `load_domain` + `run_scenarios` ~60-120 s (the
+# run budget below sits at the top of that range, so slow machines may see the warning);
+# ~100-150 s for the whole workload. The Flatten specialisation regression this guards
+# against took 357 s in the budget test's cold model assembly. Exceeding a budget prints
+# a loud warning during `Pkg.precompile()`; it never fails the build.
 const _WORKLOAD_BUDGET_MODEL_S = 90.0
 const _WORKLOAD_BUDGET_RUN_S = 120.0
 const _WORKLOAD_BUDGET_TOTAL_S = 240.0
@@ -283,27 +285,39 @@ end
     # Skipped if the data package is absent (e.g. a stripped install), and guarded so a
     # failure degrades coverage rather than breaking `using ADRIA`.
     _wl_run_t0 = time()
+    _wl_err = nothing
     let _dpkg = joinpath(pkgdir(@__MODULE__), "test", "data", "Test_domain")
         if isdir(_dpkg)
             redirect_stdio(stdout=devnull, stderr=devnull) do
                 try
                     mktempdir() do _out
-                        # `run_scenarios` calls `setup()`, which resets ADRIA_OUTPUT_DIR
-                        # to `./Outputs` (or config.toml) unless setup has already run.
-                        # Run it first, then redirect results to the temp dir, so
-                        # precompiling never writes into the working directory.
-                        setup()
-                        withenv("ADRIA_OUTPUT_DIR" => _out) do
-                            _dom = load_domain(_dpkg, "45")
-                            _scens = ADRIA.sample(_dom, 4)
-                            run_scenarios(_dom, _scens, "45"; show_progress=false)
+                        # Run from the temp dir so a user's `./config.toml` is not picked
+                        # up by `setup()` / `load_domain`.
+                        cd(_out) do
+                            # `run_scenarios` calls `setup()`, which resets
+                            # ADRIA_OUTPUT_DIR to `./Outputs` (or config.toml) unless
+                            # setup has already run. Run it first, then redirect results
+                            # to the temp dir, so precompiling never writes into the
+                            # user's working directory.
+                            setup()
+                            withenv("ADRIA_OUTPUT_DIR" => _out) do
+                                _dom = load_domain(_dpkg, "45")
+                                _scens = ADRIA.sample(_dom, 4)
+                                run_scenarios(_dom, _scens, "45"; show_progress=false)
+                            end
                         end
                     end
                 catch err
-                    @debug "compile-workload load_domain/run_scenarios failed" err
+                    _wl_err = err
                 end
             end
         end
+    end
+    if _wl_err !== nothing
+        # Reported after the redirect block so it reaches the real stderr.
+        @warn "ADRIA precompile workload for load_domain/run_scenarios failed; " *
+              "the first `load_domain`/`run_scenarios` call in each session will be slow." exception =
+            _wl_err
     end
     _warn_slow_precompile(
         "load_domain + run_scenarios workload", time() - _wl_run_t0, _WORKLOAD_BUDGET_RUN_S
