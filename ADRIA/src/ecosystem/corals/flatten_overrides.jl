@@ -56,6 +56,21 @@ import ModelParameters: AbstractParam
 import ModelParameters as _MP
 
 # ---------------------------------------------------------------------------
+# Type-erased tuple -> Vector{Any}.  `collect(Any, t)` specialises on the concrete
+# (~440-element, heterogeneous) tuple type, ~2.5 s cold per distinct `Param` mix.
+# `@nospecialize` compiles this once; `t[i]` with a runtime index is a plain
+# dynamic lookup.
+# ---------------------------------------------------------------------------
+function _tuple_to_vec(@nospecialize(t::Tuple))
+    n = length(t)
+    v = Vector{Any}(undef, n)
+    for i = 1:n
+        v[i] = t[i]
+    end
+    return v
+end
+
+# ---------------------------------------------------------------------------
 # Fix A: @nospecialize prevents Julia from specialising this identity function
 # on each concrete subtype of Tuple{Vararg{AbstractParam}}.  The return type
 # is therefore Tuple{Vararg{AbstractParam}} regardless of input, which makes
@@ -92,7 +107,7 @@ function _MP._expandkeys(@nospecialize(pars::Tuple{Vararg{AbstractParam}}))
     # Iterate a type-erased `Vector`, never the tuple itself: `enumerate(pars)` /
     # `for p in pars` over the runtime-concrete ~440-element tuple type were each
     # JIT-specialised on it (~20 s cold).
-    pv = collect(Any, pars)
+    pv = _tuple_to_vec(pars)
     k1 = keys(pv[1])
     # Fast path: all params already share the same key set.
     uniform = true
@@ -222,7 +237,8 @@ function _Flatten._reconstruct(
     # heterogeneous ~440-element tuple made each of those compile against that giant type
     # (~170 s cold, mostly `Intervention`).  A `Vector{Any}` gives one cheap, shared
     # specialisation.
-    vdata = data isa Vector{Any} ? data : collect(Any, data)
+    vdata = data isa Vector{Any} ? data :
+            data isa Tuple ? _tuple_to_vec(data) : collect(Any, data)
     @inbounds for i = 1:len
         results[i], n = _Flatten._reconstruct(obj[i], vdata, ft, U, I, n)
     end
