@@ -381,9 +381,9 @@ function _plotly_spatial_gdf(; n_sites::Int=5)
         cy = -18.0 + i * 0.05
         wkt = (
             "POLYGON((" *
-                "$(cx - h) $(cy - h), $(cx + h) $(cy - h), " *
-                "$(cx + h) $(cy + h), $(cx - h) $(cy + h), " *
-                "$(cx - h) $(cy - h)))"
+            "$(cx - h) $(cy - h), $(cx + h) $(cy - h), " *
+            "$(cx + h) $(cy + h), $(cx - h) $(cy + h), " *
+            "$(cx - h) $(cy - h)))"
         )
         return AG.fromWKT(wkt)
     end
