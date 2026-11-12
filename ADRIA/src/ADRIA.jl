@@ -317,7 +317,7 @@ end
     if _wl_err !== nothing
         # Reported after the redirect block so it reaches the real stderr.
         @warn "ADRIA precompile workload for load_domain/run_scenarios failed; " *
-              "the first `load_domain`/`run_scenarios` call in each session will be slow." exception =
+            "the first `load_domain`/`run_scenarios` call in each session will be slow." exception =
             _wl_err
     end
     _warn_slow_precompile(

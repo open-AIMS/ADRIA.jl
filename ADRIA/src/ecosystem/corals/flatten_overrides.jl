@@ -240,9 +240,15 @@ function _Flatten._reconstruct(
     # specialisation.
     # Only convert when needed; anything else is passed through unchanged (the
     # `@generated` path accepts it exactly as before).
-    vdata = data isa Vector{Any} ? data :
-            data isa Tuple ? _tuple_to_vec(data) :
-            data isa AbstractVector ? Vector{Any}(data) : data
+    vdata = if data isa Vector{Any}
+        data
+    elseif data isa Tuple
+        _tuple_to_vec(data)
+    elseif data isa AbstractVector
+        Vector{Any}(data)
+    else
+        data
+    end
     @inbounds for i = 1:len
         results[i], n = _Flatten._reconstruct(obj[i], vdata, ft, U, I, n)
     end

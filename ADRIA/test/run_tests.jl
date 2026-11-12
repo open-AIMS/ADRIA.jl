@@ -41,7 +41,8 @@ const LOG_DIR = joinpath(TEST_DIR, "logs")
 const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 360, "sim" => 600)
 
 limit_for(shard) = parse(
-    Float64, get(ENV, "ADRIA_TEST_LIMIT_$(uppercase(shard))_S", string(DEFAULT_LIMITS[shard]))
+    Float64,
+    get(ENV, "ADRIA_TEST_LIMIT_$(uppercase(shard))_S", string(DEFAULT_LIMITS[shard]))
 )
 
 """Create/refresh the shared test environment once, so concurrent shards don't each
@@ -106,7 +107,10 @@ function run_with_timeout(cmd::Cmd, limit_s::Real, logfile::AbstractString)
         try
             while process_running(proc)
                 if time() - t0 > limit_s
-                    println(stderr, "TIMEOUT after $(round(Int, limit_s)) s: killing process group")
+                    println(
+                        stderr,
+                        "TIMEOUT after $(round(Int, limit_s)) s: killing process group"
+                    )
                     kill_group(proc)
                     wait(proc)
                     return (:timeout, time() - t0)
@@ -146,7 +150,8 @@ function main(args)
     shards = filter(a -> !startswith(a, "--"), args)
     isempty(shards) && (shards = ["fast", "spec", "sim"])
     for s in shards
-        haskey(DEFAULT_LIMITS, s) || error("Unknown shard $(repr(s)); choose from $(collect(keys(DEFAULT_LIMITS)))")
+        haskey(DEFAULT_LIMITS, s) ||
+            error("Unknown shard $(repr(s)); choose from $(collect(keys(DEFAULT_LIMITS)))")
     end
 
     mkpath(LOG_DIR)
@@ -166,7 +171,8 @@ function main(args)
     println("\n", "="^60, "\nADRIA test shards")
     for s in shards
         status, secs = results[s]
-        println(rpad(s, 6), rpad(uppercase(String(status)), 9), round(secs; digits=0), " s  (limit ",
+        println(rpad(s, 6), rpad(uppercase(String(status)), 9), round(secs; digits=0),
+            " s  (limit ",
             round(Int, limit_for(s)), " s)  log: ", joinpath(LOG_DIR, "$s.log"))
     end
     println("="^60)

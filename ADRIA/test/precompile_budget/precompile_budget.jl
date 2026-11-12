@@ -26,7 +26,8 @@ using Test
         src_dir = dirname(src_project)
         manifest_src = Base.project_file_manifest_path(src_project)
         absolutise(txt) = replace(
-            txt, r"(?m)^(\s*(?:path\s*=\s*))\"([^\"]+)\"" => function (m)
+            txt,
+            r"(?m)^(\s*(?:path\s*=\s*))\"([^\"]+)\"" => function (m)
                 mm = match(r"^(\s*path\s*=\s*)\"([^\"]+)\"$", m)
                 p = expanduser(mm.captures[2])
                 p = isabspath(p) ? p : abspath(joinpath(src_dir, p))
