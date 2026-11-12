@@ -302,37 +302,4 @@ end
     )
 end
 
-# @compile_workload begin
-#     if !isinteractive()
-#         redirect_stdio(stdout=devnull, stderr=devnull) do
-#             d = load_domain(joinpath(pkgdir(ADRIA), "test", "data", "Test_domain"), "45")
-#             sample(d, 16)
-#         end
-#     end
-
-#     # Cover the MCDA dispatch chain
-#     # let
-#     #     n_locs, n_crit = 10, 4
-#     #     loc_names = Symbol.(:loc_, 1:n_locs)
-#     #     crit_names = [:in_conn, :out_conn, :heat_stress, :coral_cover]
-
-#     #     # Non-constant data (all-constant triggers filter_criteria, a separate path)
-#     #     dm_data = reshape(range(0.1, 1.0; length=n_locs * n_crit), n_locs, n_crit)
-
-#     #     # Mixed directions: Moora requires at least one min and one max
-#     #     weights = fill(0.25, n_crit)
-#     #     directions = [maximum, maximum, minimum, maximum]
-
-#     #     dp = decision.DecisionPreferences(crit_names, weights, directions)
-#     #     dm = decision.decision_matrix(loc_names, crit_names, Matrix(dm_data))
-
-#     #     for method in decision.mcda_methods()
-#     #         try
-#     #             decision.criteria_aggregated_scores(dp, dm, method)
-#     #         catch
-#     #         end
-#     #     end
-#     # end
-# end
-
 end
