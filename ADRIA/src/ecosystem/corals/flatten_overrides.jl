@@ -9,13 +9,14 @@ many homogeneous fields (`Coral` has 331, `GrowthAcceleration` has 36) the expre
 size grows as O(N), but Julia must *type-infer* each intermediate tuple concatenation step,
 so the total compile cost is O(N²).  For the 9-component domain model tuple assembled
 in `_assemble_domain_model`, the outer `@generated _reconstruct` additionally tries to
-inline all ~427 fields at once, yielding O(427²) ≈ 900 s of cold-start compilation.
+inline all ~440 fields at once, giving O(440²) compile cost (the regression this
+caused was minutes of cold JIT; 357 s measured by the precompile budget test).
 
 ## Solution
 
 Julia dispatches to the *most specific* applicable method first, so adding a concrete
 (non-generated) method for a specific type completely bypasses the `@generated` path with
-no correctness cost.  This file defines four categories of override:
+no correctness cost.  This file defines five categories of override:
 
 - **Fix A** — `_flatten(::Tuple{Vararg{AbstractParam}}, ...)`: identity with
   `@nospecialize`, so the return type is always `Tuple{Vararg{AbstractParam}}` (not the
@@ -216,8 +217,8 @@ end
 # Fix D: Override Flatten._reconstruct for outer Tuple types.
 #
 # The @generated _reconstruct inlines code for ALL fields of ALL components in
-# the tuple (e.g., the 8 domain model components = ~427 params total) ->
-# O(427²) ≈ 900 s compile time.  This override loops over tuple elements and
+# the tuple (e.g., the 9 domain model components = ~440 params total) ->
+# O(440²) compile time (minutes cold).  This override loops over tuple elements and
 # dispatches _reconstruct per component, so each component is compiled
 # independently in O(1) time via its own concrete override above.
 # ---------------------------------------------------------------------------
@@ -231,14 +232,17 @@ function _Flatten._reconstruct(
 ) where {U,I}
     len = length(obj)
     results = Vector{Any}(undef, len)
-    # Type-erase `data`.  Components without a concrete override below (`Intervention`,
+    # Type-erase `data`.  Components without a concrete override above (`Intervention`,
     # the criteria weights, `EnvironmentalLayer`, ...) still go through the `@generated`
     # `_reconstruct`, which specialises on the type of `data`.  Handing it the full
     # heterogeneous ~440-element tuple made each of those compile against that giant type
     # (~170 s cold, mostly `Intervention`).  A `Vector{Any}` gives one cheap, shared
     # specialisation.
+    # Only convert when needed; anything else is passed through unchanged (the
+    # `@generated` path accepts it exactly as before).
     vdata = data isa Vector{Any} ? data :
-            data isa Tuple ? _tuple_to_vec(data) : collect(Any, data)
+            data isa Tuple ? _tuple_to_vec(data) :
+            data isa AbstractVector ? Vector{Any}(data) : data
     @inbounds for i = 1:len
         results[i], n = _Flatten._reconstruct(obj[i], vdata, ft, U, I, n)
     end

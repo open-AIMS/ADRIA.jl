@@ -53,7 +53,7 @@ Wrapper around `ModelParameters.Model` construction so it can be targeted by
 `Coral` (331 `Param` fields) and `GrowthAcceleration` (36 fields) formerly caused
 `Flatten._flatten` / `_reconstruct` (`@generated` functions) to have O(N²)
 compile-time cost. This is now fixed by concrete method overrides in
-`Corals.jl` / `GrowthAcceleration.jl` that bypass the `@generated` path entirely.
+`src/ecosystem/corals/flatten_overrides.jl` that bypass the `@generated` path entirely.
 
 The `@noinline` annotation prevents the compiler from inlining through the barrier.
 """
@@ -108,9 +108,14 @@ end
 
 # `Model.parent` is an untyped field, so `params(m)` is otherwise a dynamic dispatch whose
 # result type inference cannot see; every caller then specialises on the runtime-concrete
-# ~440-element tuple. Declaring the return type here carries `Tuple{Vararg{Param}}` into
+# ~440-element tuple. Declaring the return type here carries a variadic tuple type into
 # `getindex`/`setindex!`/Tables code that calls `params(m)`.
-function _MP.params(m::Model)::Tuple{Vararg{Param}}
+#
+# `Model` has no type parameter for its parent, so this method cannot be restricted to the
+# domain model by dispatch. The annotation is therefore the full `AllParams` union (it
+# must not convert `RealParam`s of other models to `Param`), and non-domain parents are
+# delegated to the generic behaviour (`params(parent(m))`).
+function _MP.params(m::Model)::Tuple{Vararg{_MP.AllParams}}
     return _MP.params(Base.parent(m))
 end
 
