@@ -90,16 +90,30 @@ end
 function _MP._expandkeys(@nospecialize(pars::Tuple{Vararg{AbstractParam}}))
     isempty(pars) && return pars
     k1 = keys(first(pars))
-    # Fast path: all params already share the same key set (common case).
-    all(p -> keys(p) == k1, pars) && return pars
-    # Slow path: heterogeneous key sets -- replicate original expansion logic.
-    allkeys = Tuple(union(map(keys, pars)...))
-    return map(pars) do par
-        vals = map(allkeys) do key
-            return get(par, key, nothing)
+    # Fast path: all params already share the same key set.
+    uniform = true
+    for p in pars
+        if keys(p) != k1
+            uniform = false
+            break
         end
-        return _MP.rebuild(par, NamedTuple{allkeys}(vals))
     end
+    uniform && return pars
+    # Slow path: heterogeneous key sets (e.g. only some params carry `:direction`).
+    # Plain loops over `Vector`s, not splatted `union(map(keys, pars)...)` / `map` over the
+    # tuple, which compile a ~440-way specialisation (>10 s cold).  Key order matches the
+    # original `union` (first-seen order).
+    allkeys_v = Symbol[]
+    for p in pars, k in keys(p)
+        k in allkeys_v || push!(allkeys_v, k)
+    end
+    allkeys = Tuple(allkeys_v)
+    out = Vector{Any}(undef, length(pars))
+    for (i, par) in enumerate(pars)
+        vals = Tuple(get(par, key, nothing) for key in allkeys_v)
+        out[i] = _MP.rebuild(par, NamedTuple{allkeys}(vals))
+    end
+    return Tuple(out)
 end
 
 # ---------------------------------------------------------------------------
@@ -195,8 +209,15 @@ function _Flatten._reconstruct(
 ) where {U,I}
     len = length(obj)
     results = Vector{Any}(undef, len)
+    # Type-erase `data`.  Components without a concrete override below (`Intervention`,
+    # the criteria weights, `EnvironmentalLayer`, ...) still go through the `@generated`
+    # `_reconstruct`, which specialises on the type of `data`.  Handing it the full
+    # heterogeneous ~440-element tuple made each of those compile against that giant type
+    # (~170 s cold, mostly `Intervention`).  A `Vector{Any}` gives one cheap, shared
+    # specialisation.
+    vdata = data isa Vector{Any} ? data : collect(Any, data)
     @inbounds for i = 1:len
-        results[i], n = _Flatten._reconstruct(obj[i], data, ft, U, I, n)
+        results[i], n = _Flatten._reconstruct(obj[i], vdata, ft, U, I, n)
     end
     return (Tuple(results), n)
 end
