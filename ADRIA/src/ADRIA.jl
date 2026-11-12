@@ -288,6 +288,11 @@ end
             redirect_stdio(stdout=devnull, stderr=devnull) do
                 try
                     mktempdir() do _out
+                        # `run_scenarios` calls `setup()`, which resets ADRIA_OUTPUT_DIR
+                        # to `./Outputs` (or config.toml) unless setup has already run.
+                        # Run it first, then redirect results to the temp dir, so
+                        # precompiling never writes into the working directory.
+                        setup()
                         withenv("ADRIA_OUTPUT_DIR" => _out) do
                             _dom = load_domain(_dpkg, "45")
                             _scens = ADRIA.sample(_dom, 4)
