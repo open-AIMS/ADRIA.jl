@@ -127,7 +127,33 @@ export CScapeResultSet
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.8.0"]
 
+# Precompile-time budgets (seconds). Healthy values are ~8-35 s for the
+# model-assembly block and ~15-60 s for the whole workload; the Flatten specialisation
+# regression this guards against took ~365 s / ~400 s. Exceeding a budget prints a loud
+# warning during `Pkg.precompile()`; it never fails the build.
+const _WORKLOAD_BUDGET_MODEL_S = 90.0
+const _WORKLOAD_BUDGET_TOTAL_S = 180.0
+
+function _warn_slow_precompile(label::AbstractString, secs::Real, budget::Real)
+    secs <= budget && return nothing
+    bar = "#"^78
+    msg = string(
+        "\n", bar, "\n",
+        "## ADRIA PRECOMPILATION TIME REGRESSION\n",
+        "## ", label, " took ", round(secs; digits=1), " s (budget ", budget, " s).\n",
+        "## Every user's fresh `Pkg.precompile()` is now much slower. Do NOT merge/push\n",
+        "## without investigating. Likely cause: Flatten/ModelParameters specialisation on\n",
+        "## the domain Model (see src/ecosystem/corals/flatten_overrides.jl) or a new\n",
+        "## Model component / Param type. Run test/precompile_budget/precompile_budget.jl.\n",
+        bar, "\n"
+    )
+    printstyled(stderr, msg; color=:light_red, bold=true)
+    @warn "Slow ADRIA precompile workload" label secs budget
+    return nothing
+end
+
 @compile_workload begin
+    _wl_t0 = time()
     # DataCube / ZeroDataCube constructors — covers Dim{:timesteps/:scenarios/:locations} triples
     dc = DataCube(zeros(Float64, 5, 3, 10); timesteps=1:5, scenarios=1:3, locations=1:10)
     ZeroDataCube((:timesteps, :scenarios, :locations), (5, 3, 10))
@@ -232,6 +258,7 @@ const COMPAT_DPKG = ["0.8.0"]
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost
     # shifts to Pkg.precompile() time and interactive first-call is <1 s.
+    _wl_model_t0 = time()
     redirect_stdio(stdout=devnull, stderr=devnull) do
         _arr = ones(Float32, 1, 1, 1)
         _model = _assemble_domain_model(
@@ -266,6 +293,13 @@ const COMPAT_DPKG = ["0.8.0"]
             @debug "compile-workload factor write-back failed" err
         end
     end
+
+    _warn_slow_precompile(
+        "Domain model assembly workload", time() - _wl_model_t0, _WORKLOAD_BUDGET_MODEL_S
+    )
+    _warn_slow_precompile(
+        "Entire ADRIA @compile_workload", time() - _wl_t0, _WORKLOAD_BUDGET_TOTAL_S
+    )
 end
 
 # @compile_workload begin
