@@ -9,8 +9,8 @@
 # The workload hides this cost when it works, so we measure the cold JIT cost directly in
 # a subprocess with ADRIA's workload disabled via a LocalPreferences.toml in a temp copy
 # of the active environment.
-# Healthy: ~38 s measured (cold, fresh environment; ~4.5 s once the rest of ADRIA is
-# already compiled). Broken: 357 s measured. The budget is deliberately generous (machine
+# Healthy: ~12-16 s measured (cold, fresh process; the former Model-based path took ~37 s).
+# Broken (former Model path, Flatten blow-up): 357 s measured. The budget is deliberately generous (machine
 # variance) but far below the broken value. Override with ADRIA_PRECOMPILE_BUDGET_S.
 
 using Test

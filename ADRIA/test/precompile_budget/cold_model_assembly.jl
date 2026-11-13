@@ -20,6 +20,7 @@ t = @elapsed begin
         ms = A.model_spec(store)
         A.update!(store, ms)
     end
+    A.update_params!(store, first(eachrow(A.param_table(store))))
     A.component_params(store, A.CAqCriteriaWeights)
 end
 
