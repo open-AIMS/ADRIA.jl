@@ -1,9 +1,10 @@
 # Regression guard for precompilation time.
 #
-# Background: a Flatten.jl/ModelParameters specialisation blow-up in the domain-model
-# assembly made `@compile_workload` take minutes (357 s measured by this test for the
-# cold model-assembly block), turning a fresh `Pkg.precompile()` into a 20-30 minute wait. See
-# `src/ecosystem/corals/flatten_overrides.jl`.
+# Background: a Flatten.jl/ModelParameters specialisation blow-up in the former `Model`
+# based domain-model assembly made `@compile_workload` take minutes (357 s measured by this
+# test for the cold assembly block), turning a fresh `Pkg.precompile()` into a 20-30 minute
+# wait. The domain now holds a plain-DataFrame parameter table (`src/spec_table.jl`); this
+# test guards that its assembly stays cheap.
 #
 # The workload hides this cost when it works, so we measure the cold JIT cost directly in
 # a subprocess with ADRIA's workload disabled via a LocalPreferences.toml in a temp copy
@@ -71,9 +72,7 @@ using Test
             Cold model assembly took $(secs)s (budget $(budget)s).
             This work runs inside ADRIA's @compile_workload, so a fresh
             `Pkg.precompile()` will now be many minutes slower for every user.
-            Look at Flatten/ModelParameters overrides in
-            src/ecosystem/corals/flatten_overrides.jl and any recently added
-            Model components / Param types.
+            Look at src/spec_table.jl and any recently added components / factor types.
             ################################################################
             """
         end

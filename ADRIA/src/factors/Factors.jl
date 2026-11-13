@@ -30,6 +30,18 @@ Convenience constructor for Param type with ADRIA-specific metadata.
 Param
 """
 function Factor(val; kwargs...)::Param
+    return Param(_factor_spec(val; kwargs...))
+end
+
+"""
+    _factor_spec(val; kwargs...)::NamedTuple
+
+Validate and normalise the metadata of a factor, as [`Factor`](@ref) does, but return the
+plain `NamedTuple` (`val`, `ptype`, `dist`, `dist_params`, `default_dist_params`, `name`,
+`description`, ...) rather than a `Param`. This is the representation the parameter table
+(`SpecStore`) is built from; `Factor` merely wraps it in a `Param`, so both always agree.
+"""
+function _factor_spec(val; kwargs...)::NamedTuple
     nt = NamedTuple(kwargs)
     _check_has_required_info(nt)
     nt = _set_factor_defaults(nt)
@@ -42,7 +54,7 @@ function Factor(val; kwargs...)::Param
         default_dist_params=collect(Float64, nt.default_dist_params)
     )
 
-    return Param((; val=val, nt...))
+    return (; val=val, nt...)
 end
 
 struct CategoricalDistribution{T}

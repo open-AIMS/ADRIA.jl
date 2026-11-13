@@ -2,7 +2,7 @@ using Setfield
 
 using DataFrames
 using ModelParameters
-import ModelParameters: update!, Model
+import ModelParameters: update!
 using Distributions
 using StatsFuns
 

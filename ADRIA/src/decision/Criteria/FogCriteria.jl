@@ -103,7 +103,7 @@ FogPreferences(names, criteria, directions) = DecisionPreferences(
 )
 
 function FogPreferences(dom, params::YAXArray)::DecisionPreferences
-    w::DataFrame = component_params(dom.model, FogCriteriaWeights)
+    w::DataFrame = component_params(dom, FogCriteriaWeights)
     # Strip the `iv_Fog_` prefix (2 segments) to recover the bare criterion name
     # (e.g. `heat_stress`) so it matches the generic kwargs used in `setup_guided_intervention`.
     cn = Symbol[Symbol(join(split(string(cn), "_")[3:end], "_")) for cn in w.fieldname]

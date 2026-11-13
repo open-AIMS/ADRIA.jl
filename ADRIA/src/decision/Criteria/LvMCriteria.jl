@@ -91,7 +91,7 @@ struct LvMPreferences <: DecisionPreference
 end
 
 function LvMPreferences(dom, params::YAXArray)::LvMPreferences
-    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
+    w::DataFrame = component_params(dom, LvMCriteriaWeights)
     # Strip the `iv_LvM_` prefix (2 segments) to recover the bare criterion name
     # (e.g. `heat_stress`) so it matches the generic kwargs used in `setup_guided_intervention`.
     cn = Symbol[Symbol(join(split(string(cn), "_")[3:end], "_")) for cn in w.fieldname]
@@ -99,7 +99,7 @@ function LvMPreferences(dom, params::YAXArray)::LvMPreferences
     return LvMPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
 function LvMPreferences(dom, params...)::LvMPreferences
-    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
+    w::DataFrame = component_params(dom, LvMCriteriaWeights)
     for (k, v) in params
         w[w.fieldname .== k, :val] .= v
     end
@@ -107,6 +107,6 @@ function LvMPreferences(dom, params...)::LvMPreferences
     return LvMPreferences(w.fieldname, w.val, w.direction)
 end
 function LvMPreferences(dom)
-    w::DataFrame = component_params(dom.model, LvMCriteriaWeights)
+    w::DataFrame = component_params(dom, LvMCriteriaWeights)
     return LvMPreferences(w.fieldname, w.val, w.direction)
 end

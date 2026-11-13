@@ -41,8 +41,8 @@ const EFF_DHW_DESCRIPTIONS = (
                  which depth provides no refuge at any DHW."
 )
 
-function _eff_dhw_factor(fieldname::Symbol, val::Float64)::Param
-    return Factor(
+function _eff_dhw_spec(fieldname::Symbol, val::Float64)::NamedTuple
+    return _factor_spec(
         val;
         ptype="continuous",
         dist=Uniform,
@@ -51,8 +51,27 @@ function _eff_dhw_factor(fieldname::Symbol, val::Float64)::Param
         description=getproperty(EFF_DHW_DESCRIPTIONS, fieldname)
     )
 end
+_eff_dhw_factor(fieldname::Symbol, val::Float64)::Param = Param(
+    _eff_dhw_spec(fieldname, val)
+)
 function _eff_dhw_factor(fieldname::Symbol)::Param
     return _eff_dhw_factor(fieldname, getproperty(EFF_DHW_DEFAULTS, fieldname))
+end
+
+"""
+    _eff_dhw_specs(; overrides)::Vector{Pair{Symbol,NamedTuple}}
+
+Factor specs of every `DepthAttenuation` field (in field order), with `overrides` (keyed by
+field name) replacing the default values. The source of the `DepthAttenuation` table rows.
+"""
+function _eff_dhw_specs(;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Vector{Pair{Symbol,NamedTuple}}
+    return Pair{Symbol,NamedTuple}[
+        fn => _eff_dhw_spec(
+            fn, get(overrides, string(fn), getproperty(EFF_DHW_DEFAULTS, fn))
+        ) for fn in fieldnames(DepthAttenuation)
+    ]
 end
 
 """

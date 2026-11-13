@@ -149,12 +149,55 @@ function _cots_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
 end
 
 """
+    CalibOverrides
+
+Calibrated factor values by component, each a Dict mapping factor (field) name to value.
+Empty by default, in which case the ADRIA defaults stand. Applied to the rows of the
+parameter table by `build_spec_store`.
+"""
+Base.@kwdef struct CalibOverrides
+    coral::Dict{String,Float64} = Dict{String,Float64}()
+    growth_accel::Dict{String,Float64} = Dict{String,Float64}()
+    depth_atten::Dict{String,Float64} = Dict{String,Float64}()
+    low_dhw::Dict{String,Float64} = Dict{String,Float64}()
+    cots::Dict{String,Float64} = Dict{String,Float64}()
+end
+
+"""
+    load_calib_overrides(calib_params_fn::String)::CalibOverrides
+
+Read the calibrated `Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching` and
+`CotsParams` factor values from a CoralBlox calibration NetCDF. If `calib_params_fn` is empty
+or not an existing file, no values are overridden (ADRIA defaults).
+"""
+function load_calib_overrides(calib_params_fn::String)::CalibOverrides
+    if isempty(calib_params_fn) || !isfile(calib_params_fn)
+        return CalibOverrides()
+    end
+
+    @info "Loading calibrated coral parameters from $(calib_params_fn)"
+    nc_ds = open_dataset(calib_params_fn)
+
+    return CalibOverrides(;
+        coral=_coral_calib_overrides(nc_ds),
+        growth_accel=_growth_accel_calib_overrides(nc_ds),
+        depth_atten=_depth_attenuation_calib_overrides(nc_ds),
+        low_dhw=_low_dhw_bleaching_calib_overrides(nc_ds),
+        cots=_cots_calib_overrides(nc_ds)
+    )
+end
+
+"""
     load_calib_params(calib_params_fn::String)
 
-Build the calibratable component instances for a domain.
+Build the `Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching` and
+`CotsParams` component instances.
 
 If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
 values are applied as overrides; otherwise the ADRIA defaults are used.
+
+Domains do not use these instances (their parameter table is built directly from
+[`load_calib_overrides`](@ref)); this is for working with the component structs.
 
 # Returns
 NamedTuple with fields `coral`, `growth_accel`, `depth_atten`, `low_dhw` and `cots`, holding
@@ -172,20 +215,12 @@ function load_calib_params(calib_params_fn::String)
         )
     end
 
-    @info "Loading calibrated coral parameters from $(calib_params_fn)"
-    nc_ds = open_dataset(calib_params_fn)
-
+    o = load_calib_overrides(calib_params_fn)
     return (
-        coral=create_coral_instance(; overrides=_coral_calib_overrides(nc_ds)),
-        growth_accel=create_growth_acceleration_instance(;
-            overrides=_growth_accel_calib_overrides(nc_ds)
-        ),
-        depth_atten=create_depth_attenuation_instance(;
-            overrides=_depth_attenuation_calib_overrides(nc_ds)
-        ),
-        low_dhw=create_low_dhw_bleaching_instance(;
-            overrides=_low_dhw_bleaching_calib_overrides(nc_ds)
-        ),
-        cots=create_cots_params_instance(; overrides=_cots_calib_overrides(nc_ds))
+        coral=create_coral_instance(; overrides=o.coral),
+        growth_accel=create_growth_acceleration_instance(; overrides=o.growth_accel),
+        depth_atten=create_depth_attenuation_instance(; overrides=o.depth_atten),
+        low_dhw=create_low_dhw_bleaching_instance(; overrides=o.low_dhw),
+        cots=create_cots_params_instance(; overrides=o.cots)
     )
 end

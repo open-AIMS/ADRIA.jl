@@ -76,7 +76,7 @@ function sample(
 )::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
-    spec = component_params(dom.model, component)
+    spec = component_params(dom, component)
     return sample(spec, n, sample_method)
 end
 
@@ -164,7 +164,7 @@ function sample_selection(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     subset_spec = component_params(
-        d.model,
+        d,
         [
             EnvironmentalLayer,
             Intervention,

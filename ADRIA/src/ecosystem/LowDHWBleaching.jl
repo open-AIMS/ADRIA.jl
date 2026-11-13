@@ -46,8 +46,8 @@ const LOW_DHW_BLEACH_DESCRIPTIONS = (
 # Constant at its value by default (sampling bounds collapse to the value, as
 # `fix_factor!` does), so `sample()` does not vary it and sampled scenarios are unchanged.
 # The full bounds are kept as `default_dist_params` for `set_factor_bounds!`.
-function _low_dhw_bleach_factor(fieldname::Symbol, val::Float64)::Param
-    return Factor(
+function _low_dhw_bleach_spec(fieldname::Symbol, val::Float64)::NamedTuple
+    return _factor_spec(
         val;
         ptype="continuous",
         dist=Uniform,
@@ -57,6 +57,9 @@ function _low_dhw_bleach_factor(fieldname::Symbol, val::Float64)::Param
         description=getproperty(LOW_DHW_BLEACH_DESCRIPTIONS, fieldname)
     )
 end
+_low_dhw_bleach_factor(fieldname::Symbol, val::Float64)::Param = Param(
+    _low_dhw_bleach_spec(fieldname, val)
+)
 function _low_dhw_bleach_factor(fieldname::Symbol)::Param
     return _low_dhw_bleach_factor(
         fieldname, getproperty(LOW_DHW_BLEACH_DEFAULTS, fieldname)
@@ -80,4 +83,20 @@ function create_low_dhw_bleaching_instance(;
             for fn in fieldnames(LowDHWBleaching)
         )...
     )
+end
+
+"""
+    _low_dhw_bleach_specs(; overrides)::Vector{Pair{Symbol,NamedTuple}}
+
+Factor specs of every `LowDHWBleaching` field (in field order), with `overrides` (keyed by
+field name) replacing the default values. The source of the `LowDHWBleaching` table rows.
+"""
+function _low_dhw_bleach_specs(;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Vector{Pair{Symbol,NamedTuple}}
+    return Pair{Symbol,NamedTuple}[
+        fn => _low_dhw_bleach_spec(
+            fn, get(overrides, string(fn), getproperty(LOW_DHW_BLEACH_DEFAULTS, fn))
+        ) for fn in fieldnames(LowDHWBleaching)
+    ]
 end

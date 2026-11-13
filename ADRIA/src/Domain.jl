@@ -148,22 +148,17 @@ function nearest_neighbor_distances(dom::Domain, n_neighbors::Int64)::Vector{Flo
 end
 
 """
-    param_table(d::ADRIADomain)::DataFrame
+    param_table(d::Domain)::DataFrame
 
 Get model fieldnames and their parameter values.
 """
 function param_table(d::Domain)::DataFrame
-    f_names::Vector{String} = collect(string.(d.model[:fieldname]))
-    vals::Vector{<:Real} = collect(d.model[:val])
-    p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
-
-    return p_df
+    return param_table(d.spec_store)
 end
 
 """
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
-    model_spec(m::Model)::DataFrame
     model_spec(d::Domain, param_set::DataFrame)
     model_spec(d::Domain, param_names::Vector{String})
     model_spec(d::Domain, param_names::Vector{Symbol})
@@ -174,7 +169,7 @@ If a `param_set` or a vector of `param_set` names is provided, filters params no
 the `param_set`.
 """
 function model_spec(d::Domain)::DataFrame
-    return model_spec(d.model)
+    return model_spec(d.spec_store)
 end
 function model_spec(d::Domain, filepath::String)::Nothing
     version = pkgversion(@__MODULE__)
@@ -191,31 +186,6 @@ function model_spec(d::Domain, filepath::String)::Nothing
 
     return nothing
 end
-function model_spec(m::Model)::DataFrame
-    spec = DataFrame(m)
-    # Model parameter distributions have at least one argument.
-    # dist_params is stored as Vector{Float64} internally; convert each element to a Tuple
-    # so that downstream callers (e.g. distribution constructors) receive the expected type.
-    spec[!, :dist_params] = Tuple.(spec.dist_params)
-    spec[!, :default_dist_params] = Tuple.(spec.default_dist_params)
-
-    DataFrames.hcat!(
-        spec,
-        DataFrame(
-            :lower_bound => distribution_lower_bound.(spec.dist, spec.dist_params),
-            :upper_bound => distribution_upper_bound.(spec.dist, spec.dist_params)
-        )
-    )
-
-    spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")
-    spec[!, :is_constant] .= spec[!, :lower_bound] .== spec[!, :upper_bound]
-
-    # Reorder so name/description appears at end
-    # makes viewing as CSV a little nicer given description can be very long
-    select!(spec, Not([:name, :description]), [:name, :description])
-
-    return spec
-end
 function model_spec(d::Domain, param_set::DataFrame)
     return model_spec(d, Symbol.(names(param_set)))
 end
@@ -228,59 +198,36 @@ function model_spec(d::Domain, param_names::Vector{Symbol})
 end
 
 """
-    update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
+    update_params!(d::Domain, params::DataFrameRow)::Nothing
 
 Update given domain with new parameter values.
+
+Values are matched to factors by name, so `params` may hold any subset of the factors (in any
+order). A column named `RCP` is ignored. Any other column that is not a factor of the domain
+is an error, and nothing is updated in that case.
 """
-function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    # Only `:val` is written here; carrying `:dist_params` through would push the
-    # `model_spec` tuple form back into every `Param` (see `update!` above).
-    p_df::DataFrame = model_spec(d, names(params))[:, [:fieldname, :val]]
-
-    try
-        p_df[!, :val] .= collect(params[Not("RCP")])
-    catch err
-        if isa(err, ArgumentError) || isa(err, DimensionMismatch)
-            if !occursin("RCP", "$err")
-                error("Error occurred loading scenario samples. $err")
-            end
-            p_df[!, :val] .= collect(params)
-        end
-    end
-
-    # Unused params need to be merged with `p_df` to keep the same number of factors as d.model
-    ms_all = model_spec(d)
-    p_df_complementar::DataFrame = ms_all[
-        (ms_all.fieldname .∉ Ref(Symbol.(names(params)))),
-        [:fieldname, :val]
-    ]
-
-    # Update with new parameters
-    update!(d.model, vcat(p_df, p_df_complementar))
+function update_params!(d::Domain, params::DataFrameRow)::Nothing
+    update_params!(d.spec_store, params)
 
     return nothing
 end
 
 """
     component_params(dom::Domain, component)::DataFrame
-    component_params(m::Model, component)::DataFrame
+    component_params(dom::Domain, components::Vector{T})::DataFrame
     component_params(spec::DataFrame, component)::DataFrame
-    component_params(m::Model, components::Vector{T})::DataFrame
     component_params(spec::DataFrame, components::Vector{T})::DataFrame
 
 Extract parameters for a specific model component.
 """
 function component_params(dom::Domain, component)::DataFrame
-    return component_params(model_spec(dom), component)
+    return component_params(dom.spec_store, component)
 end
-function component_params(m::Model, component)::DataFrame
-    return component_params(model_spec(m), component)
+function component_params(dom::Domain, components::Vector{T})::DataFrame where {T}
+    return component_params(dom.spec_store, components)
 end
 function component_params(spec::DataFrame, component)::DataFrame
     return spec[spec.component .== replace.(string(component), "ADRIA." => ""), :]
-end
-function component_params(m::Model, components::Vector{T})::DataFrame where {T}
-    return component_params(model_spec(m), components)
 end
 function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
     return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
@@ -393,32 +340,19 @@ end
 """
     update!(dom::Domain, spec::DataFrame)::Nothing
 
-Update a Domain model with new values specified in spec.
+Update the parameter table of a Domain with new values specified in spec.
 Assumes all `val` and `bounds` are to be updated.
 
-`val` is coerced to `Float64` and each `dist_params` entry to `Vector{Float64}` -- the
-representation `Factor` builds -- so a write never changes any `Param`'s field types.
+`val` is coerced to `Float64` and each `dist_params` entry to `Vector{Float64}`.
 Callers must not infer factor discreteness from the stored `val` type; use `ptype`.
+Rows are matched to factors by `fieldname`, so `spec` may hold a subset of the factors.
 
-Throws an error, leaving the model untouched, if the new bounds would let a coral block skip
-a size class more than the current ones do (see `_validate_growth_limits`).
+Throws an error, leaving the table untouched, if `spec` holds an unknown factor or if the new
+bounds would let a coral block skip a size class more than the current ones do (see
+`_validate_growth_limits`).
 """
 function update!(dom::Domain, spec::DataFrame)::Nothing
-    _validate_growth_limits(model_spec(dom), spec)
-
-    # `dom.model[:col] = v` rebuilds every `Param` and `Flatten.reconstruct`s the
-    # ~430-`Param` component tree, specialising on the `Param` field types. `fix_factor!`
-    # / `set_factor_bounds!` / `model_spec` all hand back `dist_params` as tuples, which
-    # would set each `Param.dist_params` to a domain-arity-specific `NTuple{k,Float64}`
-    # and force a fresh, never-precompilable `@generated` reconstruct of the whole tree
-    # on every write (hundreds of seconds on Julia 1.12). Coercing back to the loaded
-    # representation keeps the `Param` types stable. Lossless: every value is numeric,
-    # and factor discreteness lives in `ptype`.
-    vals = Float64.(spec.val)
-    dist_params = Vector{Float64}[collect(Float64, dp) for dp in spec.dist_params]
-
-    dom.model[:val] = vals
-    dom.model[:dist_params] = dist_params
+    update!(dom.spec_store, spec)
 
     return nothing
 end
