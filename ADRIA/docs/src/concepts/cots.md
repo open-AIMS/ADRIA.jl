@@ -45,12 +45,16 @@ recorded in the scenario table and the result set.
 | Group | Factors |
 | --- | --- |
 | switch | `cots_on` |
-| recruitment | `a`, `b`, `a_ricker`, `b_ricker`, `allee_threshold`, `fecundity_gate` |
-| mortality and starvation | `m1`, `m2`, `m3`, `p_tilde`, `C_max`, `eta_starve`, `tau_condition` |
-| feeding | `a_F`, `a_S`, `h`, `eta_F`, `eta_S` |
-| immigration | `IMM`, `imm_threshold`, `eta_imm` |
-| optional mechanisms (0 = off) | `adult_senescence`, `allee_stretched`, `juvenile_predation`, `per_capita_consumption`, `preferred_condition`, `preferred_prey_starvation` |
-| mechanism parameters | `senescence_age`, `senescence_mortality`, `allee_exponent`, `juvenile_predation_capacity`, `consumption_m2_per_adult_year`, `condition_saturation`, `condition_memory_years`, `starvation_preferred_threshold`, `starvation_memory_years` |
+| recruitment | `cots_bh_a`, `cots_bh_b`, `cots_ricker_a`, `cots_ricker_b`, `cots_allee_threshold`, `cots_fecundity_gate` |
+| mortality and starvation | `cots_mortality_recruit`, `cots_mortality_juvenile`, `cots_mortality_adult`, `cots_starvation_max_fraction`, `cots_max_food_cover`, `cots_starvation_exponent`, `cots_condition_timescale` |
+| feeding | `cots_consumption_rate_fast`, `cots_consumption_rate_slow`, `cots_handling_time`, `cots_consumption_exponent_fast`, `cots_consumption_exponent_slow` |
+| immigration | `cots_immigration_base`, `cots_immigration_threshold`, `cots_immigration_exponent` |
+| optional mechanisms (0 = off) | `cots_adult_senescence`, `cots_allee_stretched`, `cots_juvenile_predation`, `cots_per_capita_consumption`, `cots_preferred_condition`, `cots_preferred_prey_starvation` |
+| mechanism parameters | `cots_senescence_age`, `cots_senescence_mortality`, `cots_allee_exponent`, `cots_juvenile_predation_capacity`, `cots_consumption_m2_per_adult_year`, `cots_condition_saturation`, `cots_condition_memory_years`, `cots_starvation_preferred_threshold`, `cots_starvation_memory_years` |
+
+Every factor name starts with `cots_`. The factors that are COTSMod parameters are mapped
+to COTSMod's own parameter names by `COTS_PARAM_MAP` (for example `cots_mortality_recruit`
+is COTSMod's `m1`).
 
 Densities and the Allee threshold are COTS per hectare. The factor bounds are broad
 placeholders for sampling, not evidence-derived ranges.

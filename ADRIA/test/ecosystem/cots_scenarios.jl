@@ -20,7 +20,7 @@ end
 
     # Scenarios 1 and 2 run COTS (with juvenile predation on in scenario 2); 3 and 4 do not
     scens.cots_on[1:2] .= 1
-    scens.juvenile_predation[2] = 1
+    scens.cots_juvenile_predation[2] = 1
     rs = ADRIA.run_scenarios(dom, scens, "45")
 
     @testset "COTS logs are written for COTS scenarios only" begin
@@ -53,11 +53,11 @@ end
         # COTS off; COTS on (package connectivity and starting state); COTS on with
         # separated recruitment, drawn annual matrices and outside outbreak supply
         pkg_scens = scens[[3, 1, 1], :]
-        pkg_scens.separated_recruitment[3] = 1
-        pkg_scens.larval_fecundity[3] = 20.0
-        pkg_scens.larval_conn_mode[3] = 2
-        pkg_scens.larval_conn_seed[3] = 20260930
-        pkg_scens.external_outbreak_production[3] = 1000.0
+        pkg_scens.cots_separated_recruitment[3] = 1
+        pkg_scens.cots_larval_fecundity[3] = 20.0
+        pkg_scens.cots_larval_conn_mode[3] = 2
+        pkg_scens.cots_larval_conn_seed[3] = 20260930
+        pkg_scens.cots_external_outbreak_production[3] = 1000.0
         pkg_rs = ADRIA.run_scenarios(pkg_dom, pkg_scens, "45")
 
         pop = pkg_rs.cots_pop_log
@@ -74,8 +74,8 @@ end
 
     # Last, as it changes the domain: a COTS factor can be opened up for sampling
     @testset "COTS factors can be opened up for sampling" begin
-        ADRIA.set_factor_bounds!(dom; juvenile_predation_capacity=(10.0, 40.0, 20.0))
+        ADRIA.set_factor_bounds!(dom; cots_juvenile_predation_capacity=(10.0, 40.0, 20.0))
         ms2 = ADRIA.model_spec(dom)
-        @test !only(ms2[ms2.fieldname .== :juvenile_predation_capacity, :is_constant])
+        @test !only(ms2[ms2.fieldname .== :cots_juvenile_predation_capacity, :is_constant])
     end
 end

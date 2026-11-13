@@ -13,52 +13,23 @@ const CotsState = COTSMod.COTSState
 """
     cots_runtime_params(param_set::YAXArray)::COTSMod.COTSParams
 
-Build COTSMod's runtime parameters from a scenario's `CotsParams` factors. Mechanisms that
-are not exposed as factors keep COTSMod's defaults (off).
+Build COTSMod's runtime parameters from a scenario's `CotsParams` factors, following
+`COTS_PARAM_MAP`. Mechanisms that are not exposed as factors keep COTSMod's defaults (off).
 """
 function cots_runtime_params(param_set::YAXArray)::COTSMod.COTSParams
-    f(name) = Float64(param_set[At(name)])
-    on(name) = param_set[At(name)] == 1
-    return COTSMod.COTSParams(;
-        a=f("a"),
-        b=f("b"),
-        IMM=f("IMM"),
-        p_tilde=f("p_tilde"),
-        C_max=f("C_max"),
-        m1=f("m1"),
-        m2=f("m2"),
-        m3=f("m3"),
-        a_F=f("a_F"),
-        a_S=f("a_S"),
-        h=f("h"),
-        eta_F=f("eta_F"),
-        eta_S=f("eta_S"),
-        eta_starve=f("eta_starve"),
-        eta_imm=f("eta_imm"),
-        imm_threshold=f("imm_threshold"),
-        fecundity_gate=on("fecundity_gate"),
-        a_ricker=f("a_ricker"),
-        b_ricker=f("b_ricker"),
-        tau_condition=f("tau_condition"),
-        allee_threshold=f("allee_threshold"),
-        adult_senescence=on("adult_senescence"),
-        senescence_age=round(Int, f("senescence_age")),
-        senescence_mortality=f("senescence_mortality"),
-        allee_stretched=on("allee_stretched"),
-        allee_exponent=f("allee_exponent"),
-        juvenile_predation=on("juvenile_predation"),
-        juvenile_predation_capacity=f("juvenile_predation_capacity"),
-        per_capita_consumption=on("per_capita_consumption"),
-        consumption_m2_per_adult_year=f("consumption_m2_per_adult_year"),
-        preferred_condition=on("preferred_condition"),
-        condition_saturation=f("condition_saturation"),
-        condition_memory_years=f("condition_memory_years"),
-        preferred_prey_starvation=on("preferred_prey_starvation"),
-        starvation_preferred_threshold=f("starvation_preferred_threshold"),
-        starvation_memory_years=f("starvation_memory_years"),
-        separated_recruitment=on("separated_recruitment"),
-        larval_fecundity=f("larval_fecundity")
+    kwargs = (
+        field => _cots_param_value(factor, param_set[At(String(factor))])
+        for (factor, field) in pairs(COTS_PARAM_MAP)
     )
+    return COTSMod.COTSParams(; kwargs...)
+end
+
+# Convert a factor value to the type COTSMod expects, from the factor's `ptype`
+function _cots_param_value(factor::Symbol, val)
+    ptype = getproperty(COTS_FACTOR_SPECS, factor).ptype
+    ptype == "unordered categorical" && return val == 1
+    ptype == "ordered discrete" && return round(Int, val)
+    return Float64(val)
 end
 
 cots_timestep!(model::CotsHuman, F::Float64, S::Float64) = COTSMod.cots_timestep!(

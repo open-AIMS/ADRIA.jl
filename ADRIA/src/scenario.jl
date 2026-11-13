@@ -1209,13 +1209,13 @@ function run_model(
     cots_in = cots_inputs(domain)
     if cots_on && !isnothing(cots_in.initial_state)
         set_initial_state!(
-            cots_models, param_set[At("initial_state_scale")] .* cots_in.initial_state
+            cots_models, param_set[At("cots_initial_state_scale")] .* cots_in.initial_state
         )
     end
-    cots_separated::Bool = cots_on && param_set[At("separated_recruitment")] == 1
-    cots_conn_mode::Int64 = round(Int64, param_set[At("larval_conn_mode")])
-    cots_conn_seed::Int64 = round(Int64, param_set[At("larval_conn_seed")])
-    cots_outbreak_production::Float64 = param_set[At("external_outbreak_production")]
+    cots_separated::Bool = cots_on && param_set[At("cots_separated_recruitment")] == 1
+    cots_conn_mode::Int64 = round(Int64, param_set[At("cots_larval_conn_mode")])
+    cots_conn_seed::Int64 = round(Int64, param_set[At("cots_larval_conn_seed")])
+    cots_outbreak_production::Float64 = param_set[At("cots_external_outbreak_production")]
     cots_forcing = cots_in.reef_forcing
     if cots_on
         (cots_separated || cots_conn_mode != 0) && isnothing(cots_forcing) &&
@@ -1236,7 +1236,7 @@ function run_model(
         nothing
     # Per-capita grazing converts adults per hectare into habitable-cover fractions
     cots_habitable_fraction =
-        cots_on && param_set[At("per_capita_consumption")] == 1 ?
+        cots_on && param_set[At("cots_per_capita_consumption")] == 1 ?
         Float64.(location_k(domain)) : nothing
     # COTS densities (timesteps x 3 age classes x locations, COTS ha^-1) and body condition
     Ycots = zeros(tf, 3, n_locs)
