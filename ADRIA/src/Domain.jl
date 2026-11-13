@@ -1,5 +1,18 @@
 abstract type Domain end
 
+# The parameter store used to be a `ModelParameters.Model` in the `model` field of a Domain.
+# Fail with a pointer to the replacement rather than a bare missing-field error.
+@inline function Base.getproperty(d::Domain, name::Symbol)
+    if name === :model
+        error(
+            "`Domain.model` no longer exists: the parameters of a domain are held in a " *
+            "table. Use `model_spec(dom)`, `component_params(dom, Component)` and " *
+            "`update!(dom, spec)` / `update_params!(dom, row)` instead."
+        )
+    end
+    return getfield(d, name)
+end
+
 """
     EnvLayer{S, TF}
 

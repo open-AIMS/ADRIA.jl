@@ -37,6 +37,29 @@ mutable struct SpecStore
     row_of::Dict{Symbol,Int}
 end
 
+"""
+    copy(s::SpecStore)::SpecStore
+
+Independent copy of the table. `update!`/`update_params!` write into the table in place, so a
+shallow copy of a Domain (`copy`/`Setfield` on the struct) shares its table with the original
+and writes through either one are seen by both; use `deepcopy(dom)` (which copies the table)
+to get an independent Domain.
+"""
+Base.copy(s::SpecStore)::SpecStore = SpecStore(deepcopy(s.tbl), copy(s.row_of))
+
+"""
+    spec_components()::NTuple{11,DataType}
+
+Components of the parameter table, in row order. The single definition of which components
+a domain's table holds (`build_spec_store` and the tests use it). A function, not a constant,
+because some of the component types are defined after this file is included.
+"""
+spec_components() = (
+    EnvironmentalLayer, Intervention, CAqCriteriaWeights, FogCriteriaWeights,
+    LvMCriteriaWeights, DepthThresholds, Coral, GrowthAcceleration, DepthAttenuation,
+    LowDHWBleaching, CotsParams
+)
+
 _component_name(component)::String = replace(string(component), "ADRIA." => "")
 
 """Factor spec (see `_factor_spec`) held by a `Param`."""
@@ -91,24 +114,27 @@ function build_spec_store(
     intervention::Intervention;
     calib::CalibOverrides=CalibOverrides()
 )::SpecStore
-    parts = DataFrame[
-        _component_table(EnvironmentalLayer, _instance_specs(env)),
-        _component_table(Intervention, _instance_specs(intervention)),
-        _component_table(CAqCriteriaWeights, _instance_specs(CAqCriteriaWeights())),
-        _component_table(FogCriteriaWeights, _instance_specs(FogCriteriaWeights())),
-        _component_table(LvMCriteriaWeights, _instance_specs(LvMCriteriaWeights())),
-        _component_table(DepthThresholds, _instance_specs(DepthThresholds())),
-        _component_table(Coral, _dict_specs(_build_coral_fields(; overrides=calib.coral))),
-        _component_table(
-            GrowthAcceleration,
-            _dict_specs(_build_growth_acceleration_fields(; overrides=calib.growth_accel))
+    specs = Dict{DataType,Vector{Pair{Symbol,NamedTuple}}}(
+        EnvironmentalLayer => _instance_specs(env),
+        Intervention => _instance_specs(intervention),
+        CAqCriteriaWeights => _instance_specs(CAqCriteriaWeights()),
+        FogCriteriaWeights => _instance_specs(FogCriteriaWeights()),
+        LvMCriteriaWeights => _instance_specs(LvMCriteriaWeights()),
+        DepthThresholds => _instance_specs(DepthThresholds()),
+        Coral => _dict_specs(_build_coral_fields(; overrides=calib.coral)),
+        GrowthAcceleration => _dict_specs(
+            _build_growth_acceleration_fields(; overrides=calib.growth_accel)
         ),
-        _component_table(DepthAttenuation, _eff_dhw_specs(; overrides=calib.depth_atten)),
-        _component_table(
-            LowDHWBleaching, _low_dhw_bleach_specs(; overrides=calib.low_dhw)
-        ),
-        _component_table(CotsParams, _cots_specs(; overrides=calib.cots))
-    ]
+        DepthAttenuation => _eff_dhw_specs(; overrides=calib.depth_atten),
+        LowDHWBleaching => _low_dhw_bleach_specs(; overrides=calib.low_dhw),
+        CotsParams => _cots_specs(; overrides=calib.cots)
+    )
+    # Every component must be listed in `spec_components()` and vice versa
+    Set(keys(specs)) == Set(spec_components()) || error(
+        "`spec_components()` and the components built in `build_spec_store` differ: " *
+        "$(symdiff(Set(keys(specs)), Set(spec_components())))"
+    )
+    parts = DataFrame[_component_table(c, specs[c]) for c in spec_components()]
     tbl = reduce(vcat, parts)
     row_of = Dict{Symbol,Int}(f => i for (i, f) in enumerate(tbl.fieldname))
     length(row_of) == nrow(tbl) ||
@@ -193,25 +219,17 @@ end
     update!(s::SpecStore, spec::DataFrame)::Nothing
 
 Write `val` (as `Float64`) and `dist_params` (as `Vector{Float64}`) of `spec` into the table.
-Rows are matched by `fieldname` when `spec` has that column (so `spec` may hold a subset of
-the factors), otherwise by position (`spec` then needs a row for every factor).
+Rows are matched by `fieldname` (so `spec` may hold a subset of the factors); `spec` must
+have that column.
 
 Throws an error, leaving the table untouched, if `spec` holds an unknown factor or if its
 bounds would let a coral block skip a size class more than the current ones do (see
 `_validate_growth_limits`).
 """
 function update!(s::SpecStore, spec::DataFrame)::Nothing
-    rows = if hasproperty(spec, :fieldname)
-        _rows_of(s, spec.fieldname)
-    else
-        nrow(spec) == nrow(s.tbl) || throw(
-            DimensionMismatch(
-                "Expected $(nrow(s.tbl)) rows (spec has no `fieldname` column), " *
-                "got $(nrow(spec))"
-            )
-        )
-        collect(1:nrow(s.tbl))
-    end
+    hasproperty(spec, :fieldname) ||
+        throw(ArgumentError("`spec` needs a `fieldname` column to match factors by name"))
+    rows = _rows_of(s, spec.fieldname)
     _validate_growth_limits(s.tbl, spec)
 
     vals = Float64.(spec.val)

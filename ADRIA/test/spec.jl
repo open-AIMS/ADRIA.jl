@@ -7,12 +7,7 @@ if !@isdefined(ADRIA_DOM_45)
     const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 end
 
-const _SPEC_COMPONENTS = [
-    ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.CAqCriteriaWeights,
-    ADRIA.FogCriteriaWeights, ADRIA.LvMCriteriaWeights, ADRIA.DepthThresholds,
-    ADRIA.Coral, ADRIA.GrowthAcceleration, ADRIA.DepthAttenuation,
-    ADRIA.LowDHWBleaching, ADRIA.CotsParams
-]
+const _SPEC_COMPONENTS = collect(ADRIA.spec_components())
 
 @testset "Extracting component parameters" begin
     # Run full example to make sure nothing errors
@@ -106,9 +101,45 @@ end
     end
 end
 
+@testset "Parameter table components" begin
+    # Every ADRIA struct that holds `Param` factors is a component of the table, so a new
+    # component cannot be left out of `spec_components()` unnoticed.
+    param_structs = Set{DataType}()
+    for m in (ADRIA, ADRIA.decision), n in names(m; all=true)
+        isdefined(m, n) || continue
+        T = getfield(m, n)
+        if T isa DataType && isconcretetype(T) && T.name.module === m &&
+            any(ft -> ft <: ADRIA.Param, fieldtypes(T))
+            push!(param_structs, T)
+        end
+    end
+    @test param_structs == Set(ADRIA.spec_components())
+
+    ms = ADRIA.model_spec(ADRIA_DOM_45)
+    @test unique(ms.component) == collect(ADRIA._component_name.(ADRIA.spec_components()))
+end
+
+@testset "Removed `model` field" begin
+    err = try
+        ADRIA_DOM_45.model
+        nothing
+    catch e
+        e
+    end
+    @test err isa ErrorException
+    @test occursin("model_spec", err.msg) && occursin("component_params", err.msg)
+    @test !hasproperty(ADRIA_DOM_45, :model)
+end
+
 @testset "Updating the parameter table" begin
     dom = deepcopy(ADRIA_DOM_45)
     @test !hasproperty(dom, :model)
+
+    # Copies of the store are independent; deepcopy of a Domain does not share the table
+    st = copy(dom.spec_store)
+    st.tbl.val[1] += 1.0
+    @test st.tbl.val[1] != dom.spec_store.tbl.val[1]
+    @test dom.spec_store.tbl !== ADRIA_DOM_45.spec_store.tbl
 
     # update! matches rows by name, so a partial spec only touches its own rows
     before = ADRIA.model_spec(dom)
