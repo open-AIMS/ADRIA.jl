@@ -188,6 +188,76 @@ end
     end
 end
 
+@testset "Low-DHW bleaching" begin
+    defaults = ADRIA.LowDHWBleaching()
+
+    @testset "Off by default and falls back when absent" begin
+        @test defaults.low_dhw_bleach_reduction.val == 0.0
+        @test defaults.low_dhw_bleach_threshold.val == 0.0
+        # MOCK_CALIB_PARAMS_PATH has no low_dhw_bleaching variable
+        dom = ADRIA.load_domain(
+            TEST_DOMAIN_PATH, "45"; calib_params_fn=MOCK_CALIB_PARAMS_PATH
+        )
+        ms_dict = Dict(
+            string(r.fieldname) => r.val for r in eachrow(ADRIA.model_spec(dom))
+        )
+        @test ms_dict["low_dhw_bleach_reduction"] == 0.0
+        @test ms_dict["low_dhw_bleach_threshold"] == 0.0
+        # Never sampled by default, so sample() reproduces existing scenarios
+        ms = ADRIA.model_spec(dom)
+        @test all(ms[ms.component .== "LowDHWBleaching", :is_constant])
+        @test all(ADRIA.sample(dom, 4).low_dhw_bleach_reduction .== 0.0)
+    end
+
+    @testset "Loads by label, not position" begin
+        ds = Dataset(;
+            low_dhw_bleaching=ADRIA.YAXArrays.YAXArray(
+                (
+                    Dim{:low_dhw_bleach_param}([
+                        "low_dhw_bleach_threshold", "low_dhw_bleach_reduction"
+                    ]),
+                ),
+                [6.0, 0.75]
+            )
+        )
+        overrides = ADRIA._low_dhw_bleaching_calib_overrides(ds)
+        @test overrides["low_dhw_bleach_reduction"] ≈ 0.75
+        @test overrides["low_dhw_bleach_threshold"] ≈ 6.0
+        instance = ADRIA.create_low_dhw_bleaching_instance(; overrides=overrides)
+        @test instance.low_dhw_bleach_reduction.val ≈ 0.75
+        # Constant at the calibrated value; the full bounds come from the spec
+        @test instance.low_dhw_bleach_reduction.dist_params == [0.75, 0.75]
+        @test instance.low_dhw_bleach_reduction.default_dist_params ==
+            defaults.low_dhw_bleach_reduction.default_dist_params
+    end
+
+    @testset "Reduction applies only below the threshold" begin
+        n_groups, n_sizes, n_locs = 5, 7, 2
+        eff_dhw = [3.0, 8.0]  # location 1 below a 6 DHW threshold, location 2 above
+        function run_bleaching(; kwargs...)
+            cover = fill(0.1, n_groups, n_sizes, n_locs)
+            dist_t = fill(4.0, n_groups, n_sizes, n_locs)
+            bleach = zeros(2, n_groups, n_sizes, n_locs)
+            ADRIA.bleaching_mortality!(
+                cover, eff_dhw, fill(1.5, n_groups, n_sizes), dist_t,
+                @view(bleach[1:2, :, :, :]),
+                fill(4.0 + ADRIA.HEAT_UB, n_groups, n_sizes, n_locs);
+                kwargs...
+            )
+            return 0.1 .- cover  # cover lost to bleaching
+        end
+        base = run_bleaching()
+        @test all(base .> 0.0)
+        @test run_bleaching(; low_dhw_reduction=0.0, low_dhw_threshold=6.0) == base
+        reduced = run_bleaching(; low_dhw_reduction=0.75, low_dhw_threshold=6.0)
+        @test reduced[:, :, 1] ≈ 0.25 .* base[:, :, 1]
+        @test reduced[:, :, 2] == base[:, :, 2]
+        @test_throws ArgumentError run_bleaching(;
+            low_dhw_reduction=1.5, low_dhw_threshold=6.0
+        )
+    end
+end
+
 @testset "ReefMod domains accept calibrated parameters" begin
     fg_names = string.(ADRIA.functional_group_names())
     dm = Array(open_dataset(MOCK_CALIB_PARAMS_PATH)["dist_mean"])
