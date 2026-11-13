@@ -78,6 +78,7 @@ end
 # Bound variation last passed to `create_growth_acceleration_struct`; used by the parameter
 # table of domains loaded afterwards.
 const _GROWTH_ACCEL_BOUNDS_VAR = Ref(0.1)
+const _GROWTH_ACCEL_OVERRIDES = Ref(Dict{String,Float64}())
 
 function _build_growth_acceleration_fields(
     bounds_var::Float64=0.1;
@@ -123,6 +124,7 @@ function create_growth_acceleration_struct(
         _build_growth_acceleration_fields(bounds_var; overrides=overrides)
     )
     _GROWTH_ACCEL_BOUNDS_VAR[] = bounds_var
+    _GROWTH_ACCEL_OVERRIDES[] = copy(overrides)
     return nothing
 end
 

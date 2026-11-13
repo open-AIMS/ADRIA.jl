@@ -114,6 +114,11 @@ function build_spec_store(
     intervention::Intervention;
     calib::CalibOverrides=CalibOverrides()
 )::SpecStore
+    # As for `Coral()` / `GrowthAcceleration()`: the last `create_*_struct` bounds and
+    # overrides apply to uncalibrated domains only; calibrated ones use the default bounds.
+    coral_bounds, coral_ovr = _CORAL_BOUNDS[], merge(_CORAL_OVERRIDES[], calib.coral)
+    ga_bounds = _GROWTH_ACCEL_BOUNDS_VAR[]
+    ga_ovr = merge(_GROWTH_ACCEL_OVERRIDES[], calib.growth_accel)
     specs = Dict{DataType,Vector{Pair{Symbol,NamedTuple}}}(
         EnvironmentalLayer => _instance_specs(env),
         Intervention => _instance_specs(intervention),
@@ -121,11 +126,9 @@ function build_spec_store(
         FogCriteriaWeights => _instance_specs(FogCriteriaWeights()),
         LvMCriteriaWeights => _instance_specs(LvMCriteriaWeights()),
         DepthThresholds => _instance_specs(DepthThresholds()),
-        Coral => _dict_specs(_build_coral_fields(_CORAL_BOUNDS[]; overrides=calib.coral)),
+        Coral => _dict_specs(_build_coral_fields(coral_bounds; overrides=coral_ovr)),
         GrowthAcceleration => _dict_specs(
-            _build_growth_acceleration_fields(
-                _GROWTH_ACCEL_BOUNDS_VAR[]; overrides=calib.growth_accel
-            )
+            _build_growth_acceleration_fields(ga_bounds; overrides=ga_ovr)
         ),
         DepthAttenuation => _eff_dhw_specs(; overrides=calib.depth_atten),
         LowDHWBleaching => _low_dhw_bleach_specs(; overrides=calib.low_dhw),

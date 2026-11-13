@@ -123,6 +123,37 @@ end
     end
 end
 
+@testset "create_coral_struct overrides reach subsequently loaded domains" begin
+    try
+        ADRIA.create_coral_struct(
+            (0.9, 1.1);
+            overrides=Dict("tabular_Acropora_1_1_linear_extension" => 0.05)
+        )
+        ADRIA.create_growth_acceleration_struct(
+            0.1; overrides=Dict("growth_acceleration_cb_group_1_height" => 0.5)
+        )
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+        row = ADRIA.component_params(dom, ADRIA.Coral)
+        i = findfirst(==(:tabular_Acropora_1_1_linear_extension), row.fieldname)
+        @test row.val[i] == 0.05
+        @test collect(row.dist_params[i]) ≈ [0.045, 0.055, 0.05]
+        @test row.val[i] ==
+              Base.invokelatest(ADRIA.Coral).tabular_Acropora_1_1_linear_extension.val
+        ga = ADRIA.component_params(dom, ADRIA.GrowthAcceleration)
+        j = findfirst(==(:growth_acceleration_cb_group_1_height), ga.fieldname)
+        @test ga.val[j] == 0.5
+        @test collect(ga.dist_params[j]) ≈ [0.45, 0.55]
+    finally
+        ADRIA.create_coral_struct()
+        ADRIA.create_growth_acceleration_struct()
+    end
+    # reset: defaults again
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+    row = ADRIA.component_params(dom, ADRIA.Coral)
+    i = findfirst(==(:tabular_Acropora_1_1_linear_extension), row.fieldname)
+    @test row.val[i] != 0.05
+end
+
 @testset "Parameter table components" begin
     # Every ADRIA struct that holds `Param` factors is a component of the table, so a new
     # component cannot be left out of `spec_components()` unnoticed.
