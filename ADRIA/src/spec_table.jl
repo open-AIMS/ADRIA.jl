@@ -121,9 +121,11 @@ function build_spec_store(
         FogCriteriaWeights => _instance_specs(FogCriteriaWeights()),
         LvMCriteriaWeights => _instance_specs(LvMCriteriaWeights()),
         DepthThresholds => _instance_specs(DepthThresholds()),
-        Coral => _dict_specs(_build_coral_fields(; overrides=calib.coral)),
+        Coral => _dict_specs(_build_coral_fields(_CORAL_BOUNDS[]; overrides=calib.coral)),
         GrowthAcceleration => _dict_specs(
-            _build_growth_acceleration_fields(; overrides=calib.growth_accel)
+            _build_growth_acceleration_fields(
+                _GROWTH_ACCEL_BOUNDS_VAR[]; overrides=calib.growth_accel
+            )
         ),
         DepthAttenuation => _eff_dhw_specs(; overrides=calib.depth_atten),
         LowDHWBleaching => _low_dhw_bleach_specs(; overrides=calib.low_dhw),

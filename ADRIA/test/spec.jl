@@ -66,6 +66,8 @@ end
 @testset "Table rows follow the component definitions" begin
     # The table is built from the component definitions, so a default instance of every
     # component must agree with its rows (growth caps only lower scale-factor bounds).
+    ADRIA.create_coral_struct()  # reset bounds so the result is test-order independent
+    ADRIA.create_growth_acceleration_struct()
     dom = ADRIA_DOM_45
     n_dhw = length(ADRIA.component_params(dom, ADRIA.EnvironmentalLayer).fieldname)
     @test n_dhw == 3
@@ -98,6 +100,26 @@ end
                 @test collect(rows.default_dist_params[i]) == p.default_dist_params
             end
         end
+    end
+end
+
+@testset "create_coral_struct bounds reach subsequently loaded domains" begin
+    try
+        ADRIA.create_coral_struct((0.5, 1.5))
+        ADRIA.create_growth_acceleration_struct(0.5)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+        row = ADRIA.component_params(dom, ADRIA.Coral)
+        i = findfirst(==(:tabular_Acropora_1_1_linear_extension), row.fieldname)
+        v = row.val[i]
+        @test row.dist_params[i][1] ≈ v * 0.5
+        @test row.dist_params[i][2] ≈ v * 1.5
+        ga = ADRIA.component_params(dom, ADRIA.GrowthAcceleration)
+        j = findfirst(==(:growth_acceleration_cb_group_1_height), ga.fieldname)
+        @test ga.dist_params[j][1] ≈ ga.val[j] * 0.5
+        @test ga.dist_params[j][2] ≈ ga.val[j] * 1.5
+    finally
+        ADRIA.create_coral_struct()
+        ADRIA.create_growth_acceleration_struct()
     end
 end
 

@@ -429,6 +429,10 @@ function _coral_struct(field_defs::OrderedDict)::Nothing  # values are factor sp
     return nothing
 end
 
+# Bounds last passed to `create_coral_struct`. The parameter table of domains loaded
+# afterwards is built with these (as the redefined `Coral()` defaults were before).
+const _CORAL_BOUNDS = Ref((0.9, 1.1))
+
 function _build_coral_fields(
     bounds::Tuple{Float64,Float64}=(0.9, 1.1);
     overrides::Dict{String,Float64}=Dict{String,Float64}()
@@ -493,6 +497,7 @@ function create_coral_struct(
     overrides::Dict{String,Float64}=Dict{String,Float64}()
 )::Nothing
     _coral_struct(_build_coral_fields(bounds; overrides=overrides))
+    _CORAL_BOUNDS[] = bounds
     return nothing
 end
 
