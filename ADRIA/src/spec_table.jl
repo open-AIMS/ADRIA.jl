@@ -258,13 +258,15 @@ end
 
 Set the `val` of the factors named by the columns of `params` (e.g. a row of a scenario
 set). Values are matched by name; a column named `RCP` is ignored and any other name that is
-not a factor of the table is an error (nothing is written in that case).
+not a factor of the table is an error. Nothing is written in that case, nor if a value
+cannot be converted to `Float64`.
 """
 function update_params!(s::SpecStore, params::DataFrameRow)::Nothing
     nms = String[nm for nm in names(params) if nm != "RCP"]
     rows = _rows_of(s, nms)
-    for (nm, i) in zip(nms, rows)
-        s.tbl.val[i] = Float64(params[nm])
+    vals = Float64[Float64(params[nm]) for nm in nms]  # convert all before writing any
+    for (v, i) in zip(vals, rows)
+        s.tbl.val[i] = v
     end
 
     return nothing

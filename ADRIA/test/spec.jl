@@ -230,3 +230,12 @@ end
     @test ADRIA.model_spec(dom) == before
 end
 
+
+@testset "update_params! is atomic when a value cannot be converted" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    before = ADRIA.model_spec(dom)
+    row = DataFrames.DataFrame("guided" => [1.0], "a" => [missing])
+    @test_throws MethodError ADRIA.update_params!(dom, row[1, :])
+    @test ADRIA.model_spec(dom) == before
+end
+
