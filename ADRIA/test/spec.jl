@@ -218,3 +218,15 @@ end
     @test_throws ArgumentError ADRIA.update_params!(dom, row[1, :])
     @test ADRIA.model_spec(dom) == after
 end
+
+@testset "A partial spec is checked against the growth limits" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    before = ADRIA.model_spec(dom)
+    fn = :linear_extension_scale_cb_group_1_tabular_Acropora
+    i = findfirst(==(fn), before.fieldname)
+    row = before[[i], :]
+    row[!, :dist_params] = [(before.dist_params[i][1], 50.0)]
+    @test_throws ErrorException ADRIA.update!(dom, row)
+    @test ADRIA.model_spec(dom) == before
+end
+

@@ -232,10 +232,19 @@ function update!(s::SpecStore, spec::DataFrame)::Nothing
     hasproperty(spec, :fieldname) ||
         throw(ArgumentError("`spec` needs a `fieldname` column to match factors by name"))
     rows = _rows_of(s, spec.fieldname)
-    _validate_growth_limits(s.tbl, spec)
-
     vals = Float64.(spec.val)
     dist_params = Vector{Float64}[collect(Float64, dp) for dp in spec.dist_params]
+
+    # Validate the table as it would be after the update (a partial `spec` may hold only
+    # some of the rows a growth limit term depends on)
+    merged = DataFrame(;
+        fieldname=s.tbl.fieldname, dist_params=copy(s.tbl.dist_params), copycols=false
+    )
+    for (k, i) in enumerate(rows)
+        merged.dist_params[i] = dist_params[k]
+    end
+    _validate_growth_limits(s.tbl, merged)
+
     for (k, i) in enumerate(rows)
         s.tbl.val[i] = vals[k]
         s.tbl.dist_params[i] = dist_params[k]
