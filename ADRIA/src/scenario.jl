@@ -151,6 +151,9 @@ function run_scenarios(
     # Initialize ADRIA configuration options
     setup()
 
+    # Fail before running anything if a COTS scenario needs inputs the domain lacks
+    validate_cots_settings(dom, scens)
+
     # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
 
@@ -1197,47 +1200,8 @@ function run_model(
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
 
-    # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1.
-    # Fast prey: the three Acropora groups; slow prey: the two massive groups.
-    cots_on::Bool = param_set[At("cots_on")] == 1
-    cots_prey_map = COTSMod.COTSPreyMap([1, 2, 3], [4, 5])
-    cots_models =
-        cots_on ? COTSMod.initialize_cots(n_locs, cots_runtime_params(param_set); rng=rng) :
-        nothing
-    cots_conn = cots_on ? sparse(cots_connectivity(domain).data) : nothing
-    # Optional inputs from the data package (see `CotsInputs`)
-    cots_in = cots_inputs(domain)
-    if cots_on && !isnothing(cots_in.initial_state)
-        COTSMod.set_cots_state!(
-            cots_models, param_set[At("cots_initial_state_scale")] .* cots_in.initial_state
-        )
-    end
-    cots_separated::Bool = cots_on && param_set[At("cots_separated_recruitment")] == 1
-    cots_conn_mode::Int64 = round(Int64, param_set[At("cots_larval_conn_mode")])
-    cots_conn_seed::Int64 = round(Int64, param_set[At("cots_larval_conn_seed")])
-    cots_outbreak_production::Float64 = param_set[At("cots_external_outbreak_production")]
-    cots_forcing = cots_in.reef_forcing
-    if cots_on
-        (cots_separated || cots_conn_mode != 0) && isnothing(cots_forcing) &&
-            error(
-                "Separated recruitment and annual larval connectivity need annual reef " *
-                "connectivity in the data package (cots_connectivity/annual_forcing/)"
-            )
-        cots_outbreak_production > 0.0 && !cots_separated &&
-            error("External outbreak supply needs separated recruitment")
-        cots_outbreak_production > 0.0 && isempty(cots_forcing.outbreak_years) &&
-            error("External outbreak supply needs an outbreak boundary in the data package")
-    end
-    # Reef connectivity averaged over the annual matrices (larval connectivity mode 0)
-    cots_mean_reef_conn =
-        cots_separated && cots_conn_mode == 0 ?
-        reduce(+, cots_forcing.reef_connectivity) ./
-        length(cots_forcing.reef_connectivity) :
-        nothing
-    # Per-capita grazing converts adults per hectare into habitable-cover fractions
-    cots_habitable_fraction =
-        cots_on && param_set[At("cots_per_capita_consumption")] == 1 ?
-        Float64.(location_k(domain)) : nothing
+    # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1
+    cots = param_set[At("cots_on")] == 1 ? CotsRun(domain, param_set, rng) : nothing
     # COTS densities (timesteps x 3 age classes x locations, COTS ha^-1) and body condition
     Ycots = zeros(tf, 3, n_locs)
     Ycots_bc = zeros(tf, n_locs)
@@ -1957,52 +1921,8 @@ function run_model(
 
         # COTS: one year of the COTS life cycle and its grazing on coral, then larval
         # dispersal between locations and larvae arriving from outside the domain
-        if cots_on
-            COTSMod.apply_predation!(C_cover_t, cots_models, cots_prey_map;
-                habitable_fraction=cots_habitable_fraction)
-            if cots_separated
-                isnothing(cots_in.larval_survival) || COTSMod.scale_larval_production!(
-                    cots_models, @view(cots_in.larval_survival[tstep, :])
-                )
-                isnothing(cots_in.settlement_modifier) ||
-                    COTSMod.scale_settlement!(cots_models, cots_in.settlement_modifier)
-            end
-            forcing_idx = 0  # 0 = no annual matrix in use
-            if cots_conn_mode == 0 && !cots_separated
-                COTSMod.disperse_larvae!(cots_models, cots_conn)
-            elseif cots_conn_mode == 0
-                COTSMod.disperse_larvae_by_reef!(
-                    cots_models, cots_mean_reef_conn, cots_forcing.site_to_reef;
-                    reef_areas=cots_forcing.reef_habitable_area_ha
-                )
-            else
-                forcing_idx = larval_conn_index(
-                    cots_forcing, tstep - 1, cots_conn_mode, cots_conn_seed
-                )
-                COTSMod.disperse_larvae_by_reef!(
-                    cots_models, cots_forcing.reef_connectivity[forcing_idx],
-                    cots_forcing.site_to_reef;
-                    reef_areas=cots_separated ? cots_forcing.reef_habitable_area_ha :
-                               nothing
-                )
-            end
-            if cots_outbreak_production > 0.0
-                # The supply is passed as both the potential and the pelagic (post-survival)
-                # supply, so pelagic survival is not applied again
-                outbreak_supply = outbreak_supply_by_location(
-                    cots_forcing, forcing_idx,
-                    Int64(domain.env_layer_md.timeframe[tstep]),
-                    cots_outbreak_production
-                )
-                COTSMod.apply_external_larval_supply!(
-                    cots_models, outbreak_supply, outbreak_supply
-                )
-            end
-            for loc in 1:n_locs
-                Ycots[tstep, :, loc] .= cots_models[loc].N
-                Ycots_bc[tstep, loc] = cots_models[loc].body_condition
-            end
-        end
+        cots_step!(cots, C_cover_t, tstep, Int64(domain.env_layer_md.timeframe[tstep]))
+        log_cots!(Ycots, Ycots_bc, cots, tstep)
 
         # Calculate survival_rate due to env. disturbances
         @inbounds for i in eachindex(survival_rate_cache)

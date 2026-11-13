@@ -72,6 +72,32 @@ end
         end
     end
 
+    @testset "unsupported COTS settings fail before any scenario runs" begin
+        bad = scens[1:2, :]
+        bad.cots_on .= [1, 1]
+        # Separated recruitment needs annual reef connectivity, which Test_domain lacks
+        bad.cots_separated_recruitment[2] = 1
+        err = try
+            ADRIA.validate_cots_settings(dom, bad)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ErrorException
+        @test occursin("Scenario 2", err.msg)
+        @test occursin("annual reef connectivity", err.msg)
+        @test_throws ErrorException ADRIA.run_scenarios(dom, bad, "45")
+
+        # Outside outbreak supply needs separated recruitment
+        bad.cots_separated_recruitment[2] = 0
+        bad.cots_external_outbreak_production[2] = 10.0
+        @test_throws "needs separated recruitment" ADRIA.validate_cots_settings(dom, bad)
+
+        # Scenarios with COTS off are not checked
+        bad.cots_on[2] = 0
+        @test isnothing(ADRIA.validate_cots_settings(dom, bad))
+    end
+
     # Last, as it changes the domain: a COTS factor can be opened up for sampling
     @testset "COTS factors can be opened up for sampling" begin
         ADRIA.set_factor_bounds!(dom; cots_juvenile_predation_capacity=(10.0, 40.0, 20.0))

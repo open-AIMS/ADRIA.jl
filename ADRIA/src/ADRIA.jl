@@ -62,11 +62,11 @@ include("ecosystem/corals/growth_limits.jl")
 include("ecosystem/corals/flatten_overrides.jl")
 include("ecosystem/cyclones.jl")
 include("ecosystem/cots_factors.jl")
-include("ExtInterface/COTSMod/cots.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
 include("io/cots_inputs.jl")
+include("ExtInterface/COTSMod/cots.jl")
 include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 include("io/initial_coral_cover.jl")
