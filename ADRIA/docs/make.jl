@@ -36,6 +36,7 @@ makedocs(;
         "Development" => [
             joinpath("development", "development_setup.md"),
             joinpath("development", "metrics.md"),
+            joinpath("development", "testing_cots.md"),
             joinpath("development", "release_guide.md"),
             joinpath("development", "building_docs.md")
         ],

@@ -1205,6 +1205,35 @@ function run_model(
         cots_on ? initialize_cots(n_locs, cots_runtime_params(param_set); rng=rng) :
         nothing
     cots_conn = cots_on ? sparse(cots_connectivity(domain).data) : nothing
+    # Optional inputs from the data package (see `CotsInputs`)
+    cots_in = cots_inputs(domain)
+    if cots_on && !isnothing(cots_in.initial_state)
+        set_initial_state!(
+            cots_models, param_set[At("initial_state_scale")] .* cots_in.initial_state
+        )
+    end
+    cots_separated::Bool = cots_on && param_set[At("separated_recruitment")] == 1
+    cots_conn_mode::Int64 = round(Int64, param_set[At("larval_conn_mode")])
+    cots_conn_seed::Int64 = round(Int64, param_set[At("larval_conn_seed")])
+    cots_outbreak_production::Float64 = param_set[At("external_outbreak_production")]
+    cots_forcing = cots_in.reef_forcing
+    if cots_on
+        (cots_separated || cots_conn_mode != 0) && isnothing(cots_forcing) &&
+            error(
+                "Separated recruitment and annual larval connectivity need annual reef " *
+                "connectivity in the data package (cots_connectivity/annual_forcing/)"
+            )
+        cots_outbreak_production > 0.0 && !cots_separated &&
+            error("External outbreak supply needs separated recruitment")
+        cots_outbreak_production > 0.0 && isempty(cots_forcing.outbreak_years) &&
+            error("External outbreak supply needs an outbreak boundary in the data package")
+    end
+    # Reef connectivity averaged over the annual matrices (larval connectivity mode 0)
+    cots_mean_reef_conn =
+        cots_separated && cots_conn_mode == 0 ?
+        reduce(+, cots_forcing.reef_connectivity) ./
+        length(cots_forcing.reef_connectivity) :
+        nothing
     # Per-capita grazing converts adults per hectare into habitable-cover fractions
     cots_habitable_fraction =
         cots_on && param_set[At("per_capita_consumption")] == 1 ?
@@ -1927,11 +1956,46 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # COTS: one year of the COTS life cycle and its grazing on coral, then larval
-        # dispersal between locations
+        # dispersal between locations and larvae arriving from outside the domain
         if cots_on
             apply_predation!(C_cover_t, cots_models, cots_prey_map;
                 habitable_fraction=cots_habitable_fraction)
-            disperse_larvae!(cots_models, cots_conn)
+            if cots_separated
+                isnothing(cots_in.larval_survival) || apply_larval_survival!(
+                    cots_models, @view(cots_in.larval_survival[tstep, :])
+                )
+                isnothing(cots_in.settlement_modifier) ||
+                    apply_settlement_modifier!(cots_models, cots_in.settlement_modifier)
+            end
+            forcing_idx = 0  # 0 = no annual matrix in use
+            if cots_conn_mode == 0 && !cots_separated
+                disperse_larvae!(cots_models, cots_conn)
+            elseif cots_conn_mode == 0
+                disperse_larvae_by_reef!(
+                    cots_models, cots_mean_reef_conn, cots_forcing.site_to_reef;
+                    reef_areas=cots_forcing.reef_habitable_area_ha
+                )
+            else
+                forcing_idx = larval_conn_index(
+                    cots_forcing, tstep - 1, cots_conn_mode, cots_conn_seed
+                )
+                disperse_larvae_by_reef!(
+                    cots_models, cots_forcing.reef_connectivity[forcing_idx],
+                    cots_forcing.site_to_reef;
+                    reef_areas=cots_separated ? cots_forcing.reef_habitable_area_ha :
+                               nothing
+                )
+            end
+            if cots_outbreak_production > 0.0
+                apply_external_larval_supply!(
+                    cots_models,
+                    outbreak_supply_by_location(
+                        cots_forcing, forcing_idx,
+                        Int64(domain.env_layer_md.timeframe[tstep]),
+                        cots_outbreak_production
+                    )
+                )
+            end
             for loc in 1:n_locs
                 Ycots[tstep, :, loc] .= cots_models[loc].N
                 Ycots_bc[tstep, loc] = cots_models[loc].body_condition

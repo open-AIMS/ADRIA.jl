@@ -44,6 +44,34 @@ end
             rs.cots_pop_log[scenarios = 1].data
     end
 
+    @testset "COTS runs from the data package's inputs" begin
+        @isdefined(make_cots_test_package) ||
+            include(joinpath(@__DIR__, "..", "io", "cots_test_package.jl"))
+        pkg_dom = ADRIA.load_domain(
+            make_cots_test_package(joinpath(mktempdir(), "Test_domain")), "45"
+        )
+        # COTS off; COTS on (package connectivity and starting state); COTS on with
+        # separated recruitment, drawn annual matrices and outside outbreak supply
+        pkg_scens = scens[[3, 1, 1], :]
+        pkg_scens.separated_recruitment[3] = 1
+        pkg_scens.larval_fecundity[3] = 20.0
+        pkg_scens.larval_conn_mode[3] = 2
+        pkg_scens.larval_conn_seed[3] = 20260930
+        pkg_scens.external_outbreak_production[3] = 1000.0
+        pkg_rs = ADRIA.run_scenarios(pkg_dom, pkg_scens, "45")
+
+        pop = pkg_rs.cots_pop_log
+        @test all(isfinite, pop.data)
+        @test all(pop[scenarios = 1].data .== 0.0)
+        @test any(pop[scenarios = 3].data .> 0.0)
+        @test pop[scenarios = 2].data != rs.cots_pop_log[scenarios = 1].data
+        @test pop[scenarios = 3].data != pop[scenarios = 2].data
+        # COTS inputs leave coral-only scenarios unchanged
+        for (name, cube) in pairs(pkg_rs.outcomes)
+            @test cube[scenarios = 1].data == rs.outcomes[name][scenarios = 3].data
+        end
+    end
+
     # Last, as it changes the domain: a COTS factor can be opened up for sampling
     @testset "COTS factors can be opened up for sampling" begin
         ADRIA.set_factor_bounds!(dom; juvenile_predation_capacity=(10.0, 40.0, 20.0))

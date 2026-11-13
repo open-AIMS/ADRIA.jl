@@ -55,7 +55,9 @@ function cots_runtime_params(param_set::YAXArray)::COTSMod.COTSParams
         condition_memory_years=f("condition_memory_years"),
         preferred_prey_starvation=on("preferred_prey_starvation"),
         starvation_preferred_threshold=f("starvation_preferred_threshold"),
-        starvation_memory_years=f("starvation_memory_years")
+        starvation_memory_years=f("starvation_memory_years"),
+        separated_recruitment=on("separated_recruitment"),
+        larval_fecundity=f("larval_fecundity")
     )
 end
 
@@ -127,4 +129,95 @@ function disperse_larvae!(
     cots_state::CotsState, conn::SparseMatrixCSC{Float64,Int64}; scalar::Float64=1.0
 )::Nothing
     return COTSMod.disperse_larvae!(cots_state, conn; scalar=scalar)
+end
+
+"""
+    disperse_larvae_by_reef!(cots_state, reef_conn, site_to_reef; scalar=1.0, reef_areas=nothing)
+
+Disperse COTS larvae between reefs through the reef x reef connectivity `reef_conn`, then
+share each reef's settlers among its locations. `reef_areas` (habitable ha per reef) is
+required by separated recruitment.
+"""
+function disperse_larvae_by_reef!(
+    cots_state::CotsState, reef_conn::AbstractMatrix,
+    site_to_reef::AbstractVector{<:Integer}; scalar::Float64=1.0, reef_areas=nothing
+)::Nothing
+    return COTSMod.disperse_larvae_by_reef!(
+        cots_state, reef_conn, site_to_reef; scalar=scalar, reef_areas=reef_areas
+    )
+end
+
+"""
+    apply_external_larval_supply!(cots_state, supply::AbstractVector{<:Real})
+
+Add larvae arriving from outside the domain to each location's settlers.
+"""
+function apply_external_larval_supply!(
+    cots_state::CotsState, supply::AbstractVector{<:Real}
+)::Nothing
+    return COTSMod.apply_external_larval_supply!(cots_state, supply, supply)
+end
+
+"""
+    set_initial_state!(cots_state, state::AbstractMatrix{<:Real})
+
+Set each location's COTS densities (COTS ha^-1; columns juvenile, subadult, adult) and
+clear the state COTSMod derives from earlier years.
+"""
+function set_initial_state!(cots_state::CotsState, state::AbstractMatrix{<:Real})::Nothing
+    size(state) == (length(cots_state), 3) ||
+        throw(DimensionMismatch("COTS initial state must be locations x 3 stages"))
+    for (model, row) in zip(cots_state, eachrow(state))
+        model.N .= row
+        model.large_adults =
+            model.params.size_weighted_fecundity ?
+            row[3] * model.params.size_initial_large_fraction : 0.0
+        model.last_effective_breeders = 0.0
+        model.last_small_adult_growth = 0.0
+        model.burden_ha = 0.0
+        model.last_burden_ha = 0.0
+        model.last_hazard = 0.0
+        model.last_hazard_deaths_ha = 0.0
+        # Spread adults over the stable age profile (when enabled) and clear food memory
+        COTSMod.reset_adult_ages!(model)
+    end
+    return nothing
+end
+
+"""
+    apply_larval_survival!(cots_state, multipliers::AbstractVector{<:Real})
+
+Scale each location's larval production (separated recruitment) by its survival
+multiplier, at the source and before dispersal.
+"""
+function apply_larval_survival!(
+    cots_state::CotsState, multipliers::AbstractVector{<:Real}
+)::Nothing
+    length(multipliers) == length(cots_state) ||
+        throw(DimensionMismatch("Larval-survival multipliers must match locations"))
+    for (model, m) in zip(cots_state, multipliers)
+        model.last_local_fecundity *= m
+    end
+    return nothing
+end
+
+"""
+    apply_settlement_modifier!(cots_state, multipliers::AbstractVector{<:Real})
+
+Scale each location's settlement (separated recruitment) by its habitat multiplier, after
+the COTS year and before dispersal. Larvae settling later in the year (local, from other
+locations and from outside) pass through the scaled settlement gate; recruits already
+settled from background immigration are scaled here.
+"""
+function apply_settlement_modifier!(
+    cots_state::CotsState, multipliers::AbstractVector{<:Real}
+)::Nothing
+    length(multipliers) == length(cots_state) ||
+        throw(DimensionMismatch("Settlement modifiers must match locations"))
+    for (model, m) in zip(cots_state, multipliers)
+        model.last_settlement_gate *= m
+        model.N[1] *= m
+        model.last_background_immigration *= m
+    end
+    return nothing
 end

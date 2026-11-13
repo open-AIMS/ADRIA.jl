@@ -56,6 +56,7 @@ if _in_shard("fast")
         include("data_loading.jl")
         include("connectivity.jl")
         include("io/inputs.jl")
+        include("io/cots_inputs.jl")
         include("calib_params_loading.jl")
         # Cold-JIT budget for the work done in ADRIA's @compile_workload (~1 min; spawns
         # subprocesses). Guards against 20-30 min fresh-install precompile regressions.
