@@ -118,5 +118,10 @@ end
         ds = ADRIA._open_dataset(fn)
         @test :dhw in keys(ds.cubes)
         @test open_nc() == before
+
+        # A `driver` keyword is forwarded rather than dropped
+        ds = ADRIA._open_dataset(fn; driver=:netcdf)
+        @test :dhw in keys(ds.cubes)
+        @test open_nc() == before
     end
 end

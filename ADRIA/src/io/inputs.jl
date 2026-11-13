@@ -81,17 +81,37 @@ lazy but does not use that handle (array reads reopen and close the file themsel
 is closed here, as soon as the metadata has been read. Datasets of other backends (which
 have no such handle) are returned unchanged.
 """
-function _open_dataset(path::AbstractString; kwargs...)
-    YAB = YAXArrays.Datasets.YAXArrayBase
-    base = YAB.to_dataset(String(path); driver=:all)
-    return YAB.open_dataset_handle(base) do b
-        ds = open_dataset(b; kwargs...)
-        if hasproperty(b, :handle) && b.handle isa Base.RefValue
-            h = b.handle[]
-            isnothing(h) || finalize(h)  # runs the NcFile's close finalizer now
+function _open_dataset(path::AbstractString; driver=:all, kwargs...)
+    try
+        YAB = YAXArrays.Datasets.YAXArrayBase
+        base = YAB.to_dataset(String(path); driver=driver)
+        return YAB.open_dataset_handle(base) do b
+            ds = open_dataset(b; kwargs...)
+            if hasproperty(b, :handle) && b.handle isa Base.RefValue
+                h = b.handle[]
+                isnothing(h) || finalize(h)  # runs the NcFile's close finalizer now
+            end
+            return ds
         end
-        return ds
+    catch err
+        # Relies on YAXArrayBase internals; fall back to the public API if they changed
+        # (or if opening failed, in which case the plain call reports the error).
+        _warn_open_dataset_fallback(err)
+        return open_dataset(path; driver=driver, kwargs...)
     end
+end
+
+const _OPEN_DATASET_FALLBACK_WARNED = Ref(false)
+
+function _warn_open_dataset_fallback(err)
+    @debug "Closing the dataset handle failed, using plain `open_dataset`" exception = err
+    if !_OPEN_DATASET_FALLBACK_WARNED[]
+        _OPEN_DATASET_FALLBACK_WARNED[] = true
+        @warn "Could not close NetCDF file handles when opening datasets (YAXArrayBase " *
+            "internals may have changed); falling back to `open_dataset`. File handles " *
+            "may stay open until garbage collected." exception = (err, catch_backtrace())
+    end
+    return nothing
 end
 
 """
