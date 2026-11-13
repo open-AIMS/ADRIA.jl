@@ -82,33 +82,54 @@ is closed here, as soon as the metadata has been read. Datasets of other backend
 have no such handle) are returned unchanged.
 """
 function _open_dataset(path::AbstractString; driver=:all, kwargs...)
-    try
-        YAB = YAXArrays.Datasets.YAXArrayBase
-        base = YAB.to_dataset(String(path); driver=driver)
-        return YAB.open_dataset_handle(base) do b
-            ds = open_dataset(b; kwargs...)
-            if hasproperty(b, :handle) && b.handle isa Base.RefValue
-                h = b.handle[]
-                isnothing(h) || finalize(h)  # runs the NcFile's close finalizer now
-            end
-            return ds
-        end
-    catch err
-        # Relies on YAXArrayBase internals; fall back to the public API if they changed
-        # (or if opening failed, in which case the plain call reports the error).
-        _warn_open_dataset_fallback(err)
+    # Only the use of YAXArrayBase internals falls back to the public API. Ordinary errors
+    # (missing file, wrong driver, bad keyword, ...) propagate unchanged, without a second
+    # attempt to open the file and without using up the one-time warning.
+    if !(
+        isdefined(YAXArrays.Datasets, :YAXArrayBase) &&
+        isdefined(YAXArrays.Datasets.YAXArrayBase, :to_dataset) &&
+        isdefined(YAXArrays.Datasets.YAXArrayBase, :open_dataset_handle)
+    )
+        _warn_open_dataset_fallback("`to_dataset`/`open_dataset_handle` not found")
         return open_dataset(path; driver=driver, kwargs...)
     end
+    YAB = YAXArrays.Datasets.YAXArrayBase
+    base = YAB.to_dataset(String(path); driver=driver)
+    return YAB.open_dataset_handle(base) do b
+        ds = open_dataset(b; kwargs...)
+        _close_dataset_handle!(b)
+        return ds
+    end
+end
+
+# Close the NetCDF handle of an opened dataset now (see `_open_dataset`). A dataset of
+# another backend has no handle. If the handle can not be accessed or closed (the YAXArrayBase
+# internals changed), warn once and leave it to the garbage collector.
+function _close_dataset_handle!(b)
+    hasproperty(b, :handle) || return nothing
+    try
+        h = b.handle
+        if h isa Base.RefValue
+            x = h[]
+            isnothing(x) || finalize(x)  # runs the NcFile's close finalizer now
+        else
+            _warn_open_dataset_fallback("unexpected handle type $(typeof(h))")
+        end
+    catch err
+        err isa InterruptException && rethrow()
+        _warn_open_dataset_fallback(err)
+    end
+    return nothing
 end
 
 const _OPEN_DATASET_FALLBACK_WARNED = Ref(false)
 
 function _warn_open_dataset_fallback(err)
-    @debug "Closing the dataset handle failed, using plain `open_dataset`" exception = err
+    @debug "Closing the dataset handle failed" exception = err
     if !_OPEN_DATASET_FALLBACK_WARNED[]
         _OPEN_DATASET_FALLBACK_WARNED[] = true
         @warn "Could not close NetCDF file handles when opening datasets (YAXArrayBase " *
-            "internals may have changed); falling back to `open_dataset`. File handles " *
+            "internals may have changed); using the plain `open_dataset`. File handles " *
             "may stay open until garbage collected." exception = (err, catch_backtrace())
     end
     return nothing

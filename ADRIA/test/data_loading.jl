@@ -124,4 +124,19 @@ end
         @test :dhw in keys(ds.cubes)
         @test open_nc() == before
     end
+
+    # Ordinary errors propagate as they are and do not use up the one-time warning
+    @testset "_open_dataset errors" begin
+        warned = ADRIA._OPEN_DATASET_FALLBACK_WARNED
+        before = warned[]
+        missing_fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "does_not_exist.nc")
+        @test_logs min_level = Base.CoreLogging.Warn @test_throws Exception ADRIA._open_dataset(
+            missing_fn
+        )
+        fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
+        @test_logs min_level = Base.CoreLogging.Warn @test_throws Exception ADRIA._open_dataset(
+            fn; driver=:zarr
+        )
+        @test warned[] == before
+    end
 end
