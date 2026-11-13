@@ -69,19 +69,29 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
 end
 
 """
-    _release_netcdf_handles()::Nothing
+    _open_dataset(path::AbstractString; kwargs...)
 
-Close the NetCDF files left open by earlier loads.
+Open a dataset with `open_dataset`, closing the file handle that opening it leaves behind.
 
-YAXArrays/NetCDF.jl open a file with a finalizer-closed handle and never close it explicitly,
-so a file stays open until the garbage collector next runs its finalizers. Opening the same
-file again while it is still open can fail with `NetCDF: HDF error` (-101). Loading data
-used to allocate enough to make a collection between two loads all but certain; call this
-before loading a domain so that it does not depend on that.
+YAXArrayBase (as of 0.7.8) opens a NetCDF file with a finalizer-closed `NcFile` to read the
+metadata and then only drops its reference to it, so the file stays open until the garbage
+collector happens to run the finalizer. Opening the same file again while it is still open
+can fail with `NetCDF: HDF error` (-101), nondeterministically. The returned dataset is
+lazy but does not use that handle (array reads reopen and close the file themselves), so it
+is closed here, as soon as the metadata has been read. Datasets of other backends (which
+have no such handle) are returned unchanged.
 """
-function _release_netcdf_handles()::Nothing
-    GC.gc()
-    return nothing
+function _open_dataset(path::AbstractString; kwargs...)
+    YAB = YAXArrays.Datasets.YAXArrayBase
+    base = YAB.to_dataset(String(path); driver=:all)
+    return YAB.open_dataset_handle(base) do b
+        ds = open_dataset(b; kwargs...)
+        if hasproperty(b, :handle) && b.handle isa Base.RefValue
+            h = b.handle[]
+            isnothing(h) || finalize(h)  # runs the NcFile's close finalizer now
+        end
+        return ds
+    end
 end
 
 """
@@ -95,9 +105,8 @@ function load_nc_data(
     dim_names::Vector{Symbol}=Symbol[],
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
-    _release_netcdf_handles()
     data = try
-        ds = open_dataset(data_fn)
+        ds = _open_dataset(data_fn)
         res = ds[Symbol(attr)]
         ax_names = name.(res.axes)
         loc_dim = if :locations in ax_names
@@ -229,7 +238,7 @@ Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality
 ordered by :locations
 """
 function load_cyclone_data(data_fn::String)
-    cyclone_cube::YAXArray = Cube(data_fn)
+    cyclone_cube::YAXArray = Cube(_open_dataset(data_fn))
 
     if !(eltype(lookup(cyclone_cube, :locations)) <: String)
         error(

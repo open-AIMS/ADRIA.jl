@@ -73,9 +73,8 @@ function load_domain(
     calib_params_fn::String=""
 )::ReefModDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
-    _release_netcdf_handles()
     netcdf_file = _find_netcdf(fn_path, RCP)
-    dom_dataset::Dataset = open_dataset(netcdf_file)
+    dom_dataset::Dataset = _open_dataset(netcdf_file)
 
     # Read location data
     geodata_dir = joinpath(fn_path, "region")
@@ -310,7 +309,7 @@ Load different RCP into domain.
 """
 function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     new_scen_fn = _find_netcdf(d.env_layer_md.dpkg_path, RCP)
-    new_scen_dataset = open_dataset(new_scen_fn)
+    new_scen_dataset = _open_dataset(new_scen_fn)
 
     cube_axes = caxes(new_scen_dataset.record_applied_DHWs)
     dhws = DataCube(

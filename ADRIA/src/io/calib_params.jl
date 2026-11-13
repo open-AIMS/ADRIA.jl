@@ -176,7 +176,7 @@ function load_calib_overrides(calib_params_fn::String)::CalibOverrides
     end
 
     @info "Loading calibrated coral parameters from $(calib_params_fn)"
-    nc_ds = open_dataset(calib_params_fn)
+    nc_ds = _open_dataset(calib_params_fn)
 
     return CalibOverrides(;
         coral=_coral_calib_overrides(nc_ds),

@@ -387,7 +387,6 @@ function load_domain(
     ::Type{ADRIADomain}, path::String, rcp::String; calib_params_fn::String=""
 )::ADRIADomain
     isdir(path) ? true : error("Path does not exist or is not a directory.")
-    _release_netcdf_handles()
 
     domain_name::String = basename(path)
     if length(domain_name) == 0
