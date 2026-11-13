@@ -200,10 +200,7 @@ function Domain(
         )
     )
 
-    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance,
-    cots_instance = load_calib_params(
-        calib_params_fn
-    )
+    calib = load_calib_params(calib_params_fn)
 
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
@@ -212,11 +209,11 @@ function Domain(
         FogCriteriaWeights(),
         LvMCriteriaWeights(),
         DepthThresholds(),
-        coral_instance,
-        growth_accel_instance,
-        depth_atten_instance,
-        low_dhw_instance,
-        cots_instance
+        calib.coral,
+        calib.growth_accel,
+        calib.depth_atten,
+        calib.low_dhw,
+        calib.cots
     )
     _cap_growth_bounds!(model)
 

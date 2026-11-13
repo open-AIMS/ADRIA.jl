@@ -170,20 +170,17 @@ function load_domain(
         timeframe
     )
 
-    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance,
-    cots_instance = load_calib_params(
-        calib_params_fn
-    )
+    calib = load_calib_params(calib_params_fn)
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
         Intervention(),
         criteria_weights...,
-        coral_instance,
-        growth_accel_instance,
-        depth_atten_instance,
-        low_dhw_instance,
-        cots_instance
+        calib.coral,
+        calib.growth_accel,
+        calib.depth_atten,
+        calib.low_dhw,
+        calib.cots
     ))
     _cap_growth_bounds!(model)
 
