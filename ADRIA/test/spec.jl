@@ -26,3 +26,9 @@ end
     x = ADRIA.component_params(ADRIA_DOM_45.model, ADRIA.FogCriteriaWeights)
     @test size(x, 1) > 0
 end
+
+@testset "Domain model parent type matches assembled model" begin
+    # Guards against `_DomainModelParent` drifting from the model component tuple,
+    # which would silently disable the `params`/`_setindex` overrides.
+    @test typeof(parent(ADRIA_DOM_45.model)) <: ADRIA._DomainModelParent
+end

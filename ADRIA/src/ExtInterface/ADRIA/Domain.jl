@@ -80,7 +80,8 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     ))
 end
 
-# The component tuple held by the domain `Model`.
+# The component tuple held by the domain `Model`. Must match, in order, the tuple built in
+# `_assemble_domain_model` (checked in test/spec.jl).
 const _DomainModelParent = Tuple{
     EnvironmentalLayer,
     Intervention,
@@ -90,7 +91,9 @@ const _DomainModelParent = Tuple{
     DepthThresholds,
     Coral,
     GrowthAcceleration,
-    DepthAttenuation
+    DepthAttenuation,
+    LowDHWBleaching,
+    CotsParams
 }
 
 """
