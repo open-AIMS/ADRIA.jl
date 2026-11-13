@@ -76,18 +76,20 @@ The `Coral` sub-component relates to ADRIAmod, currently representing six coral 
 ADRIAmod represents these across six size classes, with six parameter sets for each coral
 species and size class. These six parameter sets are further detailed in [Model Factors](@ref),
 however, it results in a large number of unique factors (6 groups x 6 size classes x 6 parameters: 216 factors).
-Instead of specifying all coral factors by hand, ADRIA instead auto-generates the sub-component
-using a common template (see `coral_spec()` and `create_coral_struct()` in [General API](@ref)).
+Instead of specifying all coral factors by hand, ADRIA auto-generates the `Coral` and
+`GrowthAcceleration` sub-components from a common template (`_build_coral_fields` and
+`_build_growth_acceleration_fields`, which generate both the struct and the rows of the
+parameter table).
 Through discussion with expert stakeholders, factor bounds were set to +/- 10% of their
 default values following a triangular distribution, the peak of which is the default value.
 
-The [ModelParameters.jl](https://github.com/rafaqz/ModelParameters.jl) package is used to provide
-a simple table-like interface to model factors. ADRIA provides a wrapper to the `Param` type
-provided by ModelParameters.jl called a `Factor`. These `Factor`s requires ADRIA-specific
-metadata to be provided alongside the default value for a given model factor. These include
-the assumed distribution of the factor, distribution factors (principally the lower and
-upper bounds), and a human-readable name and description. An example from the `Intervention`
-sub-component is shown below.
+Each factor is declared with a `Factor`, a wrapper around the `Param` type of
+[ModelParameters.jl](https://github.com/rafaqz/ModelParameters.jl). A `Factor` requires
+ADRIA-specific metadata to be provided alongside the default value for a given model factor.
+These include the assumed distribution of the factor, distribution factors (principally the
+lower and upper bounds), and a human-readable name and description. An example from the
+`Intervention` sub-component is shown below. `Factor`/`Param` are used to declare defaults and
+validate metadata only: a Domain does not hold a `ModelParameters.Model`.
 
 ```julia
 guided::Param = Factor(
@@ -111,6 +113,21 @@ values and bounds from then on: `model_spec(dom)` returns it (with derived lower
 `component_params(dom, Component)` returns the rows of one sub-component, and `update!(dom, spec)`,
 `update_params!(dom, scenario_row)` and `fix_factor!` write to it. Changing a default in a
 sub-component definition therefore changes the table of every Domain created afterwards.
+
+The table is a `SpecStore` (`src/spec_table.jl`) wrapping a `DataFrame` with one row per factor, in
+component order (`EnvironmentalLayer`, `Intervention`, `CAqCriteriaWeights`, `FogCriteriaWeights`,
+`LvMCriteriaWeights`, `DepthThresholds`, `Coral`, `GrowthAcceleration`, `DepthAttenuation`,
+`LowDHWBleaching`, `CotsParams`). Its columns are `component`, `fieldname`, `val` (always `Float64`),
+`ptype`, `dist`, `dist_params`, `default_dist_params`, `direction` (criteria weights only), `name` and
+`description`; `model_spec` adds `lower_bound`, `upper_bound` and `is_constant`. Calibration overrides are
+applied while the rows are built. `update_params!` matches by factor name and errors on unknown names.
+A shallow `copy` of a Domain shares its table with the original; use `deepcopy` for an independent Domain.
+
+!!! warning "Migration: `Model`/`Param` access removed"
+    `dom.model`, the `Model` type, access to a Domain's `Param`s, and `component_params(::Model)`
+    have been removed (`dom.model` throws an error naming the replacements). Use `model_spec(dom)`
+    to read the table, `component_params(dom, Component)` for one sub-component, and
+    `update!(dom, spec)` / `update_params!(dom, row)` to change values.
 
 Combinations of the realized factor values then represent a "scenario".
 
