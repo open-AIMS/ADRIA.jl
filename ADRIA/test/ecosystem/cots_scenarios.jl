@@ -52,15 +52,30 @@ end
         )
         # COTS off; COTS on (package connectivity and starting state); COTS on with
         # separated recruitment, drawn annual matrices and outside outbreak supply
-        pkg_scens = scens[[3, 1, 1], :]
-        pkg_scens.cots_separated_recruitment[3] = 1
-        pkg_scens.cots_larval_fecundity[3] = 20.0
+        pkg_scens = scens[[3, 1, 1, 1, 1, 1], :]
+        pkg_scens.cots_separated_recruitment[3:6] .= 1
+        pkg_scens.cots_larval_fecundity[3:6] .= 20.0
         pkg_scens.cots_larval_conn_mode[3] = 2
         pkg_scens.cots_larval_conn_seed[3] = 20260930
         pkg_scens.cots_external_outbreak_production[3] = 1000.0
+        # Remaining dispersal paths, all with separated recruitment: the mean reef
+        # connectivity (4), annual matrices in turn (5), and drawn matrices without
+        # outside outbreak supply (6)
+        pkg_scens.cots_larval_conn_mode[5] = 1
+        pkg_scens.cots_larval_conn_mode[6] = 2
+        pkg_scens.cots_larval_conn_seed[6] = 20260930
         pkg_rs = ADRIA.run_scenarios(pkg_dom, pkg_scens, "45")
 
         pop = pkg_rs.cots_pop_log
+        for i in 4:6
+            @test any(pop[scenarios = i].data .> 0.0)
+        end
+        # Each dispersal path gives its own trajectory: non-separated (2), mean (4),
+        # annual in turn (5), drawn (6), and drawn with outside outbreak supply (3)
+        paths = [2, 4, 5, 6, 3]
+        for (k, i) in enumerate(paths), j in paths[(k + 1):end]
+            @test pop[scenarios = i].data != pop[scenarios = j].data
+        end
         @test all(isfinite, pop.data)
         @test all(pop[scenarios = 1].data .== 0.0)
         @test any(pop[scenarios = 3].data .> 0.0)
