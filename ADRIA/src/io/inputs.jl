@@ -69,6 +69,22 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
 end
 
 """
+    _release_netcdf_handles()::Nothing
+
+Close the NetCDF files left open by earlier loads.
+
+YAXArrays/NetCDF.jl open a file with a finalizer-closed handle and never close it explicitly,
+so a file stays open until the garbage collector next runs its finalizers. Opening the same
+file again while it is still open can fail with `NetCDF: HDF error` (-101). Loading data
+used to allocate enough to make a collection between two loads all but certain; call this
+before loading a domain so that it does not depend on that.
+"""
+function _release_netcdf_handles()::Nothing
+    GC.gc()
+    return nothing
+end
+
+"""
     load_nc_data(data_fn::String, attr::String; dim_names::Vector{Symbol}=Symbol[], dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[])::YAXArray
 
 Load cluster-level data for a given attribute in a netCDF.
@@ -79,6 +95,7 @@ function load_nc_data(
     dim_names::Vector{Symbol}=Symbol[],
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
+    _release_netcdf_handles()
     data = try
         ds = open_dataset(data_fn)
         res = ds[Symbol(attr)]

@@ -73,6 +73,7 @@ function load_domain(
     calib_params_fn::String=""
 )::ReefModDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
+    _release_netcdf_handles()
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
 
