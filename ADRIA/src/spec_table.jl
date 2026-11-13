@@ -116,9 +116,16 @@ function build_spec_store(
 )::SpecStore
     # As for `Coral()` / `GrowthAcceleration()`: the last `create_*_struct` bounds and
     # overrides apply to uncalibrated domains only; calibrated ones use the default bounds.
-    coral_bounds, coral_ovr = _CORAL_BOUNDS[], merge(_CORAL_OVERRIDES[], calib.coral)
-    ga_bounds = _GROWTH_ACCEL_BOUNDS_VAR[]
-    ga_ovr = merge(_GROWTH_ACCEL_OVERRIDES[], calib.growth_accel)
+    coral_bounds, coral_ovr = if calib.calibrated
+        (0.9, 1.1), calib.coral
+    else
+        _CORAL_BOUNDS[], merge(_CORAL_OVERRIDES[], calib.coral)
+    end
+    ga_bounds, ga_ovr = if calib.calibrated
+        0.1, calib.growth_accel
+    else
+        _GROWTH_ACCEL_BOUNDS_VAR[], merge(_GROWTH_ACCEL_OVERRIDES[], calib.growth_accel)
+    end
     specs = Dict{DataType,Vector{Pair{Symbol,NamedTuple}}}(
         EnvironmentalLayer => _instance_specs(env),
         Intervention => _instance_specs(intervention),

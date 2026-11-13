@@ -153,7 +153,9 @@ end
 
 Calibrated factor values by component, each a Dict mapping factor (field) name to value.
 Empty by default, in which case the ADRIA defaults stand. Applied to the rows of the
-parameter table by `build_spec_store`.
+parameter table by `build_spec_store`. `calibrated` is true when read from a calibration
+file; such domains use the default bounds, as the stored bounds and overrides of
+`create_coral_struct` / `create_growth_acceleration_struct` only apply to uncalibrated ones.
 """
 Base.@kwdef struct CalibOverrides
     coral::Dict{String,Float64} = Dict{String,Float64}()
@@ -161,6 +163,7 @@ Base.@kwdef struct CalibOverrides
     depth_atten::Dict{String,Float64} = Dict{String,Float64}()
     low_dhw::Dict{String,Float64} = Dict{String,Float64}()
     cots::Dict{String,Float64} = Dict{String,Float64}()
+    calibrated::Bool = false
 end
 
 """
@@ -183,7 +186,8 @@ function load_calib_overrides(calib_params_fn::String)::CalibOverrides
         growth_accel=_growth_accel_calib_overrides(nc_ds),
         depth_atten=_depth_attenuation_calib_overrides(nc_ds),
         low_dhw=_low_dhw_bleaching_calib_overrides(nc_ds),
-        cots=_cots_calib_overrides(nc_ds)
+        cots=_cots_calib_overrides(nc_ds),
+        calibrated=true
     )
 end
 
