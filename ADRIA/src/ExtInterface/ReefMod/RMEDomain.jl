@@ -302,7 +302,8 @@ function load_domain(
         )
     end
 
-    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance = load_calib_params(
+    coral_instance, growth_accel_instance, depth_atten_instance, low_dhw_instance,
+    cots_instance = load_calib_params(
         calib_params_fn
     )
 
@@ -313,7 +314,8 @@ function load_domain(
         coral_instance,
         growth_accel_instance,
         depth_atten_instance,
-        low_dhw_instance
+        low_dhw_instance,
+        cots_instance
     ))
     _cap_growth_bounds!(model)
 

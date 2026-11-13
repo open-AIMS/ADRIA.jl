@@ -34,6 +34,7 @@ using
     Distances,
     Distributions,
     CoralBlox,
+    COTSMod,
     LinearAlgebra,
     OrderedCollections,
     Setfield,
@@ -60,6 +61,8 @@ include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/corals/growth_limits.jl")
 include("ecosystem/corals/flatten_overrides.jl")
 include("ecosystem/cyclones.jl")
+include("ecosystem/cots_factors.jl")
+include("ecosystem/cots.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
@@ -235,7 +238,7 @@ end
         end
     end
 
-    # Full domain model assembly — covers the 10-component tuple form used by
+    # Full domain model assembly — covers the 11-component tuple form used by
     # load_domain() via _assemble_domain_model(). Without this workload entry,
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost
@@ -253,7 +256,8 @@ end
             Coral(),
             GrowthAcceleration(),
             DepthAttenuation(),
-            LowDHWBleaching()
+            LowDHWBleaching(),
+            CotsParams()
         )
 
         # Factor-fixing write-back path (see `update!` in Domain.jl for why the exact

@@ -454,7 +454,9 @@ function _collect_scenario_results(
         LvM_log=LvM_vals,
         CAq_log=CAq_vals,
         coral_dhw_log=dhw_vals,
-        coral_cover_log=cover_vals
+        coral_cover_log=cover_vals,
+        cots_pop_log=Float32.(result_set.cots_log),
+        cots_condition_log=Float32.(result_set.cots_condition_log)
     )
 end
 
@@ -541,6 +543,18 @@ function _write_batch!(
                 UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0
             )
         end
+    end
+
+    # COTS logs (present only when a scenario in the run switched COTS on)
+    if !isnothing(data_store.cots_pop_log)
+        cots_batch = Array{Float32}(undef, size(results[1].cots_pop_log)..., n)
+        bc_batch = Array{Float32}(undef, size(results[1].cots_condition_log)..., n)
+        for (i, r) in enumerate(results)
+            cots_batch[:, :, :, i] .= r.cots_pop_log
+            bc_batch[:, :, i] .= r.cots_condition_log
+        end
+        data_store.cots_pop_log[:, :, :, idx_range] .= cots_batch
+        data_store.cots_condition_log[:, :, idx_range] .= bc_batch
     end
 
     return nothing
@@ -1182,6 +1196,22 @@ function run_model(
     _recruitment_col_sum = zeros(n_locs)
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
+
+    # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1.
+    # Fast prey: the three Acropora groups; slow prey: the two massive groups.
+    cots_on::Bool = param_set[At("cots_on")] == 1
+    cots_prey_map = CotsPreyMap([1, 2, 3], [4, 5])
+    cots_models =
+        cots_on ? initialize_cots(n_locs, cots_runtime_params(param_set); rng=rng) :
+        nothing
+    cots_conn = cots_on ? sparse(cots_connectivity(domain).data) : nothing
+    # Per-capita grazing converts adults per hectare into habitable-cover fractions
+    cots_habitable_fraction =
+        cots_on && param_set[At("per_capita_consumption")] == 1 ?
+        Float64.(location_k(domain)) : nothing
+    # COTS densities (timesteps x 3 age classes x locations, COTS ha^-1) and body condition
+    Ycots = zeros(tf, 3, n_locs)
+    Ycots_bc = zeros(tf, n_locs)
 
     for tstep::Int64 = 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1896,6 +1926,18 @@ function run_model(
         # TODO: Update cyclone data to hold data for relevant functional groups
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
+        # COTS: one year of the COTS life cycle and its grazing on coral, then larval
+        # dispersal between locations
+        if cots_on
+            apply_predation!(C_cover_t, cots_models, cots_prey_map;
+                habitable_fraction=cots_habitable_fraction)
+            disperse_larvae!(cots_models, cots_conn)
+            for loc in 1:n_locs
+                Ycots[tstep, :, loc] .= cots_models[loc].N
+                Ycots_bc[tstep, loc] = cots_models[loc].body_condition
+            end
+        end
+
         # Calculate survival_rate due to env. disturbances
         @inbounds for i in eachindex(survival_rate_cache)
             d = ΔC_cover_t[i]
@@ -1972,6 +2014,8 @@ function run_model(
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
         coral_cover_log=collated_cover_log,
-        coral_dhw_final=copy(c_mean_t)
+        coral_dhw_final=copy(c_mean_t),
+        cots_log=Ycots,
+        cots_condition_log=Ycots_bc
     )
 end

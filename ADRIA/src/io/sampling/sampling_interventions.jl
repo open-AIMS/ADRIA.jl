@@ -58,6 +58,10 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     low_dhw_params = ADRIA.component_params(d.model, ADRIA.LowDHWBleaching).fieldname
     ADRIA.fix_factor!(d, low_dhw_params)
 
+    # ... and for the COTS submodel (off by default)
+    cots_params = ADRIA.component_params(d.model, ADRIA.CotsParams).fieldname
+    ADRIA.fix_factor!(d, cots_params)
+
     # Fix coral aquaculture weights
     CAq_criteria_params = ADRIA.component_params(
         d.model,

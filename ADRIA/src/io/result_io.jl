@@ -202,7 +202,8 @@ Note: This setup relies on hardcoded values for number of species represented an
 via coral aquaculture.
 """
 function setup_logs(
-    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1
+    z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1;
+    log_cots::Bool=false
 )
     # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
@@ -369,7 +370,47 @@ function setup_logs(
         )
     end
 
-    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log
+    # COTS logs, only when at least one scenario runs the COTS submodel
+    cots_pop_log = nothing
+    cots_condition_log = nothing
+    if log_cots
+        # COTS population: (timesteps, 3 age classes, locations, scenarios), COTS ha^-1
+        cots_pop_dims = (tf, 3, n_locs, n_scens)
+        cots_pop_log = zcreate(
+            Float32,
+            cots_pop_dims...;
+            name="cots_pop_log",
+            fill_value=Float32(0),
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(cots_pop_dims[1:3]..., batch_size),
+            attrs=Dict(
+                :structure => ("timesteps", "age_class", "locations", "scenarios"),
+                :age_classes => ["recruits", "juveniles", "adults"],
+                :units => "COTS ha^-1",
+                :unique_loc_ids => unique_loc_ids
+            )
+        )
+
+        # COTS body condition: (timesteps, locations, scenarios)
+        cots_bc_dims = (tf, n_locs, n_scens)
+        cots_condition_log = zcreate(
+            Float32,
+            cots_bc_dims...;
+            name="cots_condition_log",
+            fill_value=Float32(0),
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(cots_bc_dims[1:2]..., batch_size),
+            attrs=Dict(
+                :structure => ("timesteps", "locations", "scenarios"),
+                :unique_loc_ids => unique_loc_ids
+            )
+        )
+    end
+
+    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, cots_pop_log,
+    cots_condition_log
 end
 
 """
@@ -587,7 +628,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
             n_locations,
             n_groups,
             domain.coral_growth.n_sizes,
-            batch_size
+            batch_size;
+            log_cots="cots_on" in names(scen_spec) && any(==(1), scen_spec.cots_on)
         )...
     ]
 
@@ -604,7 +646,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :CAq_log,
                 :Shd_log,
                 :coral_dhw_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :cots_pop_log,
+                :cots_condition_log
             ),
             stores
         )...
