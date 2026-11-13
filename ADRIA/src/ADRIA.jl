@@ -239,7 +239,7 @@ end
         end
     end
 
-    # Full domain model assembly — covers the 11-component tuple form used by
+    # Full domain model assembly — covers the full component tuple form used by
     # load_domain() via _assemble_domain_model(). Without this workload entry,
     # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
     # is compiled on first interactive call (~20 s JIT). With this entry the cost

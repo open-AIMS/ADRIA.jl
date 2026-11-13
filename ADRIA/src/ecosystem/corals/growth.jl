@@ -247,8 +247,11 @@ end
         eff_dhw::Vector{Float64},
         stdev::AbstractMatrix{Float64},
         dist_t::AbstractArray{Float64,3},
-        prop_mort::SubArray{Float64};
-        mean_tol_update_method::Symbol=:blend
+        bleach_dhw::SubArray{Float64},
+        tol_ceil::AbstractArray{Float64,3};
+        mean_tol_update_method::Symbol=:blend,
+        low_dhw_reduction::Float64=0.0,
+        low_dhw_threshold::Float64=0.0
     )::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
@@ -268,9 +271,9 @@ Baird et al., [4].
 - `stdev` : Standard deviation of DHW tolerance
 - `dist_t` : Critical DHW threshold distribution for current timestep, for all species and
     locations
-- `prop_mort` : Cache to store records of bleaching mortality (stores mortalities for
+- `bleach_dhw` : Cache to store records of bleaching mortality (stores mortalities for
     t-1 and t)
-- `n_sizes` : Number of size classes within each functional group
+- `tol_ceil` : Upper limit on the mean DHW tolerance
 - `mean_tol_update_method` : How the mean tolerance of a bleached size class is updated.
     - `:blend` (default): average of the pre-bleaching mean and the survivors' mean,
       weighted by the number of individuals before and after bleaching, i.e.
@@ -278,6 +281,12 @@ Baird et al., [4].
       first-event jump of `:legacy`.
     - `:legacy`: the survivors' mean replaces the mean, and is re-used as the centre of
       the (re-truncated) distribution at the next bleaching event.
+- `low_dhw_reduction` : Fraction in [0, 1] by which bleaching mortality is reduced at
+    locations whose effective DHW is below `low_dhw_threshold` (see `LowDHWBleaching`).
+    Mortality is scaled by `1 - low_dhw_reduction`. Values outside [0, 1] throw an
+    `ArgumentError`. The default 0.0 leaves mortality unchanged.
+- `low_dhw_threshold` : Effective DHW (degree heating weeks) below which the reduction
+    applies. The default 0.0 means it never applies.
 
 # References
 1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.

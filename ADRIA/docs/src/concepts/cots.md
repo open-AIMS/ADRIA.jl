@@ -29,13 +29,17 @@ COTS act after the year's bleaching and cyclone mortality:
    dies, with feeding and starvation set by the cover of fast-growing coral (the three
    *Acropora* groups) and slow-growing coral (the two massive groups).
 2. The coral eaten is removed from that location's cover.
-3. COTS larvae disperse between locations through the domain's connectivity. A data
-   package may supply a dedicated COTS connectivity matrix in `cots_connectivity/`;
-   otherwise the coral connectivity is used.
+3. COTS larvae disperse between locations. By default they use the domain's connectivity:
+   a data package may supply a dedicated COTS connectivity matrix in `cots_connectivity/`,
+   otherwise the coral connectivity is used. With the optional reef-scale inputs (see
+   [Optional data-package inputs](#optional-data-package-inputs)) larvae can instead
+   disperse through annual reef-scale matrices (`cots_larval_conn_mode`), settle only
+   through that dispersal (`cots_separated_recruitment`), and be supplemented by
+   outbreaks outside the domain (`cots_external_outbreak_production`).
 
-Populations start from COTSMod's default: a random 25% of locations hold 0.1 adults per
-hectare. The draw uses the scenario's own random number generator, so it is
-reproducible.
+Populations start from COTSMod's default (a random 25% of locations hold 0.1 adults per
+hectare) unless the data package supplies starting densities. The default draw uses the
+scenario's own random number generator, so it is reproducible.
 
 ## Factors
 
@@ -50,6 +54,7 @@ recorded in the scenario table and the result set.
 | feeding | `cots_consumption_rate_fast`, `cots_consumption_rate_slow`, `cots_handling_time`, `cots_consumption_exponent_fast`, `cots_consumption_exponent_slow` |
 | immigration | `cots_immigration_base`, `cots_immigration_threshold`, `cots_immigration_exponent` |
 | optional mechanisms (0 = off) | `cots_adult_senescence`, `cots_allee_stretched`, `cots_juvenile_predation`, `cots_per_capita_consumption`, `cots_preferred_condition`, `cots_preferred_prey_starvation` |
+| reef-scale dispersal and inputs | `cots_separated_recruitment`, `cots_larval_fecundity`, `cots_larval_conn_mode`, `cots_larval_conn_seed`, `cots_external_outbreak_production`, `cots_initial_state_scale` |
 | mechanism parameters | `cots_senescence_age`, `cots_senescence_mortality`, `cots_allee_exponent`, `cots_juvenile_predation_capacity`, `cots_consumption_m2_per_adult_year`, `cots_condition_saturation`, `cots_condition_memory_years`, `cots_starvation_preferred_threshold`, `cots_starvation_memory_years` |
 
 Every factor name starts with `cots_`. The factors that are COTSMod parameters are mapped
@@ -70,7 +75,8 @@ and factors missing from the file keep their defaults.
 
 When `ADRIA_RNG_SEED` is not set, ADRIA derives each scenario's seed from the sum of its
 parameter values. The COTS factors are left out of that sum, so adding the COTS component
-does not change the seed, or the results, of any coral-only scenario.
+does not change the seed, or the results, of any coral-only scenario. The one exception is
+`cots_larval_conn_seed`, which seeds its own generator for the annual-matrix draws.
 
 ## Outputs
 
@@ -84,10 +90,26 @@ When at least one scenario has `cots_on = 1`, the result set holds two extra log
 Scenarios with COTS off hold zeros in these logs. When no scenario runs COTS, the logs are
 not created and both fields are `nothing`.
 
+## Optional data-package inputs
+
+A data package can carry extra COTS inputs. All are optional; without them COTS runs as
+described above. Their layout and formats are in the `CotsInputs` docstring.
+
+- `cots_connectivity/annual_forcing/`: reef-scale larval connectivity, one matrix per
+  year, plus larval supply from outbreaks outside the domain. Needed by separated
+  recruitment, the annual connectivity modes and external outbreak supply.
+- `cots_initial_state.csv`: starting densities per location (scaled by
+  `cots_initial_state_scale`).
+- `cots_larval_survival.csv`: larval survival multipliers per location and year.
+- `cots_settlement_modifier.csv`: settlement multipliers per location.
+
+`cots_larval_conn_mode` selects the connectivity: 0 uses the mean matrix, 1 steps through
+the annual matrices in turn, and 2 draws one each year using `cots_larval_conn_seed`.
+Unsupported combinations (for example separated recruitment without annual connectivity)
+are rejected before any scenario runs.
+
 ## Not yet included
 
-Reef-scale and annual larval connectivity, larvae arriving from outside the domain,
-starting densities supplied by the domain, and COTS control (culling) are not yet part of
-ADRIA. They are being developed and calibrated in
+COTS control (culling) is not yet part of ADRIA. It is being developed and calibrated in
 [COTSMod-Calibration](https://github.com/open-AIMS/COTSMod-Calibration) for a fine-scale
 Lizard Island domain.

@@ -1,30 +1,7 @@
+# Optional COTS inputs of a data package; see the `CotsInputs` docstring for the layout.
 """
-Optional crown-of-thorns starfish (COTS) inputs carried by an ADRIA data package.
-
-Every input is optional. A data package without them runs COTS exactly as before: larvae
-disperse through the coral connectivity and COTSMod initialises the populations.
-
-```
-<data package>/
-    cots_connectivity/                    site-to-site COTS larval connectivity (CSV)
-        annual_forcing/                   reef-scale connectivity, one matrix per year
-            provenance.toml               `years`, `site_map`, `matrix_files` and,
-                                          optionally, `external_outbreak_boundary`
-            <site_map>.csv                `site_id`, `reef_index`, `reef_habitable_area_ha`
-            <matrix_files>.csv            reef x reef, first column holds the reef ids
-            <external_outbreak_boundary>.csv
-                                          `reef_id`, `calendar_year`, `hydrodynamic_year`,
-                                          `probability_area_connectivity`
-    cots_initial_state.csv                `site_id`, `juvenile_ha`, `subadult_ha`, `adult_ha`
-    cots_larval_survival.csv              `site_id`, `year`, `multiplier`
-    cots_settlement_modifier.csv          `site_id`, `multiplier`
-```
-
-`site_id` values are the domain's location ids. Densities are COTS ha^-1; multipliers are
-dimensionless. Years in `cots_larval_survival.csv` and `calendar_year` in the outbreak
-boundary are calendar years, matched against the domain's timeframe.
+Name of the data-package folder holding the optional COTS inputs.
 """
-
 const COTS_CONN_DIR = "cots_connectivity"
 const COTS_FORCING_DIR = "annual_forcing"
 const COTS_INITIAL_STATE_FN = "cots_initial_state.csv"
@@ -58,7 +35,30 @@ end
     CotsInputs
 
 The optional COTS inputs of a domain. Each field is `nothing` when the data package does
-not provide it.
+not provide it, and a data package without any of them runs COTS with larvae dispersing
+through the coral connectivity and COTSMod initialising the populations.
+
+# Data package layout
+
+```
+<data package>/
+    cots_connectivity/                    site-to-site COTS larval connectivity (CSV)
+        annual_forcing/                   reef-scale connectivity, one matrix per year
+            provenance.toml               `years`, `site_map`, `matrix_files` and,
+                                          optionally, `external_outbreak_boundary`
+            <site_map>.csv                `site_id`, `reef_index`, `reef_habitable_area_ha`
+            <matrix_files>.csv            reef x reef, first column holds the reef ids
+            <external_outbreak_boundary>.csv
+                                          `reef_id`, `calendar_year`, `hydrodynamic_year`,
+                                          `probability_area_connectivity`
+    cots_initial_state.csv                `site_id`, `juvenile_ha`, `subadult_ha`, `adult_ha`
+    cots_larval_survival.csv              `site_id`, `year`, `multiplier`
+    cots_settlement_modifier.csv          `site_id`, `multiplier`
+```
+
+`site_id` values are the domain's location ids. Densities are COTS ha^-1; multipliers are
+dimensionless. Years in `cots_larval_survival.csv` and `calendar_year` in the outbreak
+boundary are calendar years, matched against the domain's timeframe.
 
 # Fields
 - `conn` : site-to-site COTS larval connectivity

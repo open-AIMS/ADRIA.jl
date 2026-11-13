@@ -1,8 +1,8 @@
 # Testing the COTS integration
 
 How to check that a change to the crown-of-thorns starfish (COTS) integration hasn't broken
-ADRIA or changed its default behaviour. The integration was added in #1202 (low-DHW
-bleaching reduction), #1208 (COTS submodel) and #1209 (COTS inputs in the data package).
+ADRIA or changed its default behaviour. The integration comprises a low-DHW bleaching
+reduction, the COTS submodel and optional COTS inputs in the data package.
 
 ## Which check to run
 
