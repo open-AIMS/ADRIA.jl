@@ -85,11 +85,13 @@ function _component_table(component, specs::Vector{Pair{Symbol,NamedTuple}})::Da
         :val => Float64[Float64(sp.val) for (_, sp) in specs],
         :ptype => String[sp.ptype for (_, sp) in specs],
         :dist => Type[sp.dist for (_, sp) in specs],
-        :dist_params => Vector{Float64}[collect(Float64, sp.dist_params) for (_, sp) in specs],
+        :dist_params =>
+            Vector{Float64}[collect(Float64, sp.dist_params) for (_, sp) in specs],
         :default_dist_params => Vector{Float64}[
             collect(Float64, sp.default_dist_params) for (_, sp) in specs
         ],
-        :direction => Union{Nothing,Function}[get(sp, :direction, nothing) for (_, sp) in specs],
+        :direction =>
+            Union{Nothing,Function}[get(sp, :direction, nothing) for (_, sp) in specs],
         :name => String[sp.name for (_, sp) in specs],
         :description => String[sp.description for (_, sp) in specs];
         copycols=false
@@ -216,7 +218,9 @@ end
 One-row DataFrame of the nominal factor values (`fieldname => val`).
 """
 function param_table(s::SpecStore)::DataFrame
-    return DataFrame(OrderedDict(string(k) => v for (k, v) in zip(s.tbl.fieldname, s.tbl.val)))
+    return DataFrame(
+        OrderedDict(string(k) => v for (k, v) in zip(s.tbl.fieldname, s.tbl.val))
+    )
 end
 
 function _rows_of(s::SpecStore, fieldnames)::Vector{Int}

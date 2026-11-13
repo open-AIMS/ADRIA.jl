@@ -138,7 +138,7 @@ end
         @test row.val[i] == 0.05
         @test collect(row.dist_params[i]) ≈ [0.045, 0.055, 0.05]
         @test row.val[i] ==
-              Base.invokelatest(ADRIA.Coral).tabular_Acropora_1_1_linear_extension.val
+            Base.invokelatest(ADRIA.Coral).tabular_Acropora_1_1_linear_extension.val
         ga = ADRIA.component_params(dom, ADRIA.GrowthAcceleration)
         j = findfirst(==(:growth_acceleration_cb_group_1_height), ga.fieldname)
         @test ga.val[j] == 0.5

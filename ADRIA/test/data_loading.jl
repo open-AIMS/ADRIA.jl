@@ -109,10 +109,13 @@ end
 
     # Opening a dataset leaves no NetCDF file open
     if Sys.islinux()
-        open_nc() = count(
-            l -> endswith(l, ".nc"),
-            [(try readlink(joinpath("/proc/self/fd", f)) catch; "" end) for f in readdir("/proc/self/fd")]
-        )
+        fd_target(f) =
+            try
+                readlink(joinpath("/proc/self/fd", f))
+            catch
+                ""
+            end
+        open_nc() = count(l -> endswith(l, ".nc"), fd_target.(readdir("/proc/self/fd")))
         before = open_nc()
         fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
         ds = ADRIA._open_dataset(fn)
