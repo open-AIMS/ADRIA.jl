@@ -62,7 +62,7 @@ include("ecosystem/corals/growth_limits.jl")
 include("ecosystem/corals/flatten_overrides.jl")
 include("ecosystem/cyclones.jl")
 include("ecosystem/cots_factors.jl")
-include("ecosystem/cots.jl")
+include("ExtInterface/COTSMod/cots.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")

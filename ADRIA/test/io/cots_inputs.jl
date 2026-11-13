@@ -86,18 +86,18 @@ using ADRIA.CSV, ADRIA.DataFrames
 
     @testset "inputs act on the COTS state" begin
         params = ADRIA.COTSMod.COTSParams(; separated_recruitment=true)
-        models = ADRIA.initialize_cots(10, params; rng=ADRIA.Random.Xoshiro(1))
-        ADRIA.set_initial_state!(models, inputs.initial_state)
+        models = ADRIA.COTSMod.initialize_cots(10, params; rng=ADRIA.Random.Xoshiro(1))
+        ADRIA.COTSMod.set_cots_state!(models, inputs.initial_state)
         @test models[3].N == [3.0, 0.5, 2.0]
 
         for m in models
             m.last_local_fecundity = 2.0
             m.last_settlement_gate = 1.0
         end
-        ADRIA.apply_larval_survival!(models, inputs.larval_survival[2, :])
+        ADRIA.COTSMod.scale_larval_production!(models, inputs.larval_survival[2, :])
         @test models[1].last_local_fecundity == 1.0
         @test models[2].last_local_fecundity == 2.0
-        ADRIA.apply_settlement_modifier!(models, inputs.settlement_modifier)
+        ADRIA.COTSMod.scale_settlement!(models, inputs.settlement_modifier)
         @test models[10].last_settlement_gate == 0.5
         @test models[3].N[1] == 3.0 * 0.8
     end

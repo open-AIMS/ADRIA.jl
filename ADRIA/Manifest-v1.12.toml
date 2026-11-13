@@ -231,8 +231,8 @@ version = "0.2.10"
 
 [[deps.COTSMod]]
 deps = ["Random", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "ea0b0b45afece9592c62887194461eb242c6e114"
-repo-rev = "67754cd71f64e0468f5b1877de1016972bb7e416"
+git-tree-sha1 = "474a1ccc0cea802731c176a659cc0eb1b54f9aea"
+repo-rev = "92ea46a22813c716e470037c73a69dcbf6dd3337"
 repo-url = "https://github.com/open-AIMS/COTSMod.jl"
 uuid = "83d48a2b-3f7b-4d52-9f7e-4f2d9b0b8f91"
 version = "0.1.0"
