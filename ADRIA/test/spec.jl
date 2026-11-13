@@ -219,6 +219,14 @@ end
     @test ADRIA.model_spec(dom) == after
 end
 
+@testset "update_params! is atomic when a value cannot be converted" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    before = ADRIA.model_spec(dom)
+    row = DataFrames.DataFrame("guided" => [1.0], "a" => [missing])
+    @test_throws MethodError ADRIA.update_params!(dom, row[1, :])
+    @test ADRIA.model_spec(dom) == before
+end
+
 @testset "A partial spec is checked against the growth limits" begin
     dom = deepcopy(ADRIA_DOM_45)
     before = ADRIA.model_spec(dom)
@@ -230,12 +238,9 @@ end
     @test ADRIA.model_spec(dom) == before
 end
 
-
-@testset "update_params! is atomic when a value cannot be converted" begin
-    dom = deepcopy(ADRIA_DOM_45)
-    before = ADRIA.model_spec(dom)
-    row = DataFrames.DataFrame("guided" => [1.0], "a" => [missing])
-    @test_throws MethodError ADRIA.update_params!(dom, row[1, :])
-    @test ADRIA.model_spec(dom) == before
+@testset "Only Domains without a `model` field get the removed-field error" begin
+    struct _ModelFieldDomain <: ADRIA.Domain
+        model::Int
+    end
+    @test _ModelFieldDomain(3).model == 3
 end
-
