@@ -242,6 +242,7 @@ end
     # write-back paths (`update!`, `update_params!`, `fix_factor!`, ...) that run on it.
     # Guarded so a failure degrades coverage rather than breaking `using ADRIA`.
     _wl_model_t0 = time()
+    _wl_model_err = nothing
     redirect_stdio(stdout=devnull, stderr=devnull) do
         try
             _arr = ones(Float32, 1, 1, 1)
@@ -252,8 +253,14 @@ end
             component_params(_store, CAqCriteriaWeights)
             component_params(_store, [Coral, CotsParams])
         catch err
-            @debug "compile-workload parameter table failed" err
+            _wl_model_err = err
         end
+    end
+    if _wl_model_err !== nothing
+        # Reported after the redirect block so it reaches the real stderr.
+        @warn "ADRIA precompile workload for the parameter table failed; the first " *
+            "parameter table operations in each session will be slow." exception =
+            _wl_model_err
     end
 
     _warn_slow_precompile(

@@ -263,7 +263,7 @@ Stored as `dist=DiscreteOrderedUniformDist` in Factor definitions.
 
 Using a struct (DataType) rather than a plain function ensures `typeof(DiscreteOrderedUniformDist)`
 is `DataType` — the same metatype as `DiscreteUniform` — so both share one concrete `Param`
-type in the NamedTuple type parameter, reducing Flatten.jl specialization count.
+type in the NamedTuple type parameter, keeping the number of distinct `Param` types low.
 
 # Example
 ```julia
