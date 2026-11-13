@@ -24,13 +24,13 @@ ADRIA.model_spec(dom, "model_spec.csv")
 ## Get parameter details
 
 ## Parameter names
-p_names = dom.model[:fieldname]
+p_names = model_spec.fieldname
 
 ## Current values
-p_vals = dom.model[:val]
+p_vals = model_spec.val
 
 ## ADRIA parameter types
-p_types = dom.model[:ptype]
+p_types = model_spec.ptype
 
 ## Parameter bounds (for e.g., to pass into a sampler or optimizer)
 ## Note: ADRIA integer parameter bounds are set such that lb <= x <= u+1,
@@ -38,16 +38,13 @@ p_types = dom.model[:ptype]
 ## This is because `floor(x)` is assigned with `update_params!()`.
 ## Instances where lb == x == u indicate uncertain parameters that
 ## are nevertheless assumed to be constant.
-p_bounds = dom.model[:bounds]
+p_bounds = tuple.(model_spec.lower_bound, model_spec.upper_bound)
 
 ## Component groups
-p_groups = dom.model[:component]
-
-## All of above as a DataFrame
-model_spec = DataFrame(dom.model)
+p_groups = model_spec.component
 
 ## Get DataFrame of parameter information for a specific sub-component (Intervention, Criteria, Coral)
-ADRIA.component_params(dom.model, Intervention)
+ADRIA.component_params(dom, Intervention)
 
 # ## Generating and running scenarios
 

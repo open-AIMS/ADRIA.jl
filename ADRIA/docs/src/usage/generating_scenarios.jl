@@ -88,7 +88,7 @@ dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
 ## Could keep a copy of the original model parameters/bounds
 ## to reset to later.
-## orig_spec = DataFrame(dom.model)
+## orig_spec = ADRIA.model_spec(dom)
 
 ## Make the assisted adaptation factor a constant
 ADRIA.fix_factor!(dom, :iv_CAq_a_adapt)

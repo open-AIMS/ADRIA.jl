@@ -7,6 +7,13 @@ if !@isdefined(ADRIA_DOM_45)
     const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 end
 
+const _SPEC_COMPONENTS = [
+    ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.CAqCriteriaWeights,
+    ADRIA.FogCriteriaWeights, ADRIA.LvMCriteriaWeights, ADRIA.DepthThresholds,
+    ADRIA.Coral, ADRIA.GrowthAcceleration, ADRIA.DepthAttenuation,
+    ADRIA.LowDHWBleaching, ADRIA.CotsParams
+]
+
 @testset "Extracting component parameters" begin
     # Run full example to make sure nothing errors
     ADRIA.setup()  # Load and apply configuration options
@@ -14,21 +21,147 @@ end
     # Use a temporary directory for result location
     ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 
-    x = ADRIA.component_params(ADRIA_DOM_45.model, Intervention)
+    x = ADRIA.component_params(ADRIA_DOM_45, Intervention)
     @test size(x, 1) > 0
 
-    x = ADRIA.component_params(ADRIA_DOM_45.model, ADRIA.Coral)
+    x = ADRIA.component_params(ADRIA_DOM_45, ADRIA.Coral)
     @test size(x, 1) > 0
 
-    x = ADRIA.component_params(ADRIA_DOM_45.model, ADRIA.CAqCriteriaWeights)
+    x = ADRIA.component_params(ADRIA_DOM_45, ADRIA.CAqCriteriaWeights)
     @test size(x, 1) > 0
 
-    x = ADRIA.component_params(ADRIA_DOM_45.model, ADRIA.FogCriteriaWeights)
+    x = ADRIA.component_params(ADRIA_DOM_45, ADRIA.FogCriteriaWeights)
     @test size(x, 1) > 0
+
+    # Every component is present, rows are in component order and the slices tile the spec
+    ms = ADRIA.model_spec(ADRIA_DOM_45)
+    parts = [ADRIA.component_params(ADRIA_DOM_45, c) for c in _SPEC_COMPONENTS]
+    @test all(DataFrames.nrow.(parts) .> 0)
+    @test reduce(vcat, parts) == ms
+    @test ADRIA.component_params(ADRIA_DOM_45, [ADRIA.Coral, ADRIA.CotsParams]) ==
+        vcat(parts[7], parts[11])
+    @test allunique(ms.fieldname)
+
+    # The spec on a DataFrame filters in the same way
+    @test ADRIA.component_params(ms, ADRIA.Intervention) == parts[2]
 end
 
-@testset "Domain model parent type matches assembled model" begin
-    # Guards against `_DomainModelParent` drifting from the model component tuple,
-    # which would silently disable the `params`/`_setindex` overrides.
-    @test typeof(parent(ADRIA_DOM_45.model)) <: ADRIA._DomainModelParent
+@testset "Model spec layout" begin
+    ms = ADRIA.model_spec(ADRIA_DOM_45)
+    @test names(ms) == [
+        "component", "fieldname", "val", "ptype", "dist", "dist_params",
+        "default_dist_params", "direction", "lower_bound", "upper_bound", "is_constant",
+        "name", "description"
+    ]
+    @test eltype(ms.val) == Float64
+    @test eltype(ms.dist_params) <: Tuple
+    @test all(ms.lower_bound .<= ms.upper_bound)
+    @test ms.is_constant == (ms.lower_bound .== ms.upper_bound)
+    @test all(isnothing, ms[ms.component .== "Coral", :direction])
+    @test all(
+        d -> d in (minimum, maximum),
+        ADRIA.component_params(ms, ADRIA.CAqCriteriaWeights).direction
+    )
+
+    # `model_spec` hands out a copy: editing it does not change the domain
+    ms.val .= 0.0
+    @test ADRIA.model_spec(ADRIA_DOM_45).val != ms.val
+end
+
+@testset "Table rows follow the component definitions" begin
+    # The table is built from the component definitions, so a default instance of every
+    # component must agree with its rows (growth caps only lower scale-factor bounds).
+    dom = ADRIA_DOM_45
+    n_dhw = length(ADRIA.component_params(dom, ADRIA.EnvironmentalLayer).fieldname)
+    @test n_dhw == 3
+
+    insts = Dict(
+        ADRIA.Intervention => ADRIA.Intervention(),
+        ADRIA.CAqCriteriaWeights => ADRIA.CAqCriteriaWeights(),
+        ADRIA.FogCriteriaWeights => ADRIA.FogCriteriaWeights(),
+        ADRIA.LvMCriteriaWeights => ADRIA.LvMCriteriaWeights(),
+        ADRIA.DepthThresholds => ADRIA.DepthThresholds(),
+        ADRIA.Coral => ADRIA.Coral(),
+        ADRIA.GrowthAcceleration => ADRIA.GrowthAcceleration(),
+        ADRIA.DepthAttenuation => ADRIA.DepthAttenuation(),
+        ADRIA.LowDHWBleaching => ADRIA.LowDHWBleaching(),
+        ADRIA.CotsParams => ADRIA.CotsParams()
+    )
+    for (comp, inst) in insts
+        rows = ADRIA.component_params(dom, comp)
+        @test Symbol.(rows.fieldname) == collect(fieldnames(typeof(inst)))
+        for (i, fn) in enumerate(fieldnames(typeof(inst)))
+            p = getfield(inst, fn)
+            # the test domain has no MCB data: its iv_MCB_* rows are the defaults too
+            @test rows.val[i] == p.val
+            @test rows.ptype[i] == p.ptype
+            @test rows.dist[i] === p.dist
+            @test rows.name[i] == p.name
+            @test rows.description[i] == p.description
+            if !startswith(string(fn), "linear_extension_scale")
+                @test collect(rows.dist_params[i]) == p.dist_params
+                @test collect(rows.default_dist_params[i]) == p.default_dist_params
+            end
+        end
+    end
+end
+
+@testset "Updating the parameter table" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    @test !hasproperty(dom, :model)
+
+    # update! matches rows by name, so a partial spec only touches its own rows
+    before = ADRIA.model_spec(dom)
+    part = before[before.fieldname .== :cots_on, :]
+    part[!, :val] .= 1.0
+    ADRIA.update!(dom, part)
+    after = ADRIA.model_spec(dom)
+    @test after[after.fieldname .== :cots_on, :val] == [1.0]
+    @test after[after.fieldname .!= :cots_on, :] == before[before.fieldname .!= :cots_on, :]
+    @test ADRIA.param_table(dom).cots_on == [1.0]
+
+    # Full write-back round trips
+    ADRIA.update!(dom, after)
+    @test ADRIA.model_spec(dom) == after
+
+    # Bounds are written and the derived columns follow
+    ms = ADRIA.model_spec(dom)
+    i = findfirst(ms.fieldname .== :guided)
+    ms[i, :dist_params] = (0.0, 1.0)
+    ADRIA.update!(dom, ms)
+    g = ADRIA.model_spec(dom)
+    g = g[g.fieldname .== :guided, :]
+    @test g.lower_bound == [0.0] && g.upper_bound == [1.0]
+
+    # Unknown factors are an error and leave the table untouched
+    snapshot = ADRIA.model_spec(dom)
+    bad = snapshot[1:2, :]
+    bad[!, :fieldname] = [bad.fieldname[1], :not_a_factor]
+    bad[!, :val] .= 99.0
+    @test_throws ArgumentError ADRIA.update!(dom, bad)
+    @test ADRIA.model_spec(dom) == snapshot
+end
+
+@testset "update_params! sets factors by name" begin
+    dom = deepcopy(ADRIA_DOM_45)
+    ms = ADRIA.model_spec(dom)
+
+    # A row holding only some of the factors, in an order unlike the table's
+    names_ = [:iv_CAq_N_TA, :guided, :a, :dhw_scenario]
+    row = DataFrames.DataFrame(String.(names_) .=> [500_000.0, 1.0, 2.0, 3.0])
+    row[!, :RCP] .= 45
+    before = ADRIA.model_spec(dom)
+    ADRIA.update_params!(dom, row[1, :])
+    after = ADRIA.model_spec(dom)
+    for (fn, v) in zip(names_, [500_000.0, 1.0, 2.0, 3.0])
+        @test after[after.fieldname .== fn, :val] == [v]
+    end
+    # every other factor is untouched (the positional `Model` update scrambled them)
+    others = after.fieldname .∉ Ref(names_)
+    @test after[others, :] == before[others, :]
+
+    # Unknown names are an error, and nothing is written
+    row = DataFrames.DataFrame("guided" => [-1.0], "not_a_factor" => [1.0])
+    @test_throws ArgumentError ADRIA.update_params!(dom, row[1, :])
+    @test ADRIA.model_spec(dom) == after
 end

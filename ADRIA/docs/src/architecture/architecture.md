@@ -104,6 +104,14 @@ Note that factor values are provided as floats - even where discrete values are 
 to maintain type stability. Mixing floats with integers will lead to an error. Similarly,
 values used to update the model should always be floats.
 
+The factors of all sub-components are held by the Domain in one table (a `DataFrame` with a row per
+factor: its value, distribution, bounds, name and description). The table is built from the
+sub-component definitions above when the Domain is created, and is the source of truth for factor
+values and bounds from then on: `model_spec(dom)` returns it (with derived lower/upper bounds),
+`component_params(dom, Component)` returns the rows of one sub-component, and `update!(dom, spec)`,
+`update_params!(dom, scenario_row)` and `fix_factor!` write to it. Changing a default in a
+sub-component definition therefore changes the table of every Domain created afterwards.
+
 Combinations of the realized factor values then represent a "scenario".
 
 !!! note "Parameter Collation and Scenario Generation"
