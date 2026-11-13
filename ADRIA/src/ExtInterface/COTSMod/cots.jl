@@ -27,6 +27,25 @@ function _cots_param_value(factor::Symbol, val)
 end
 
 """
+    cots_inputs(domain::Domain)::CotsInputs
+
+The optional COTS inputs of `domain`. Domain types that do not carry any (e.g. ReefMod)
+have none; `ADRIADomain` returns those loaded from its data package.
+"""
+cots_inputs(::Domain)::CotsInputs = CotsInputs()
+
+"""
+    cots_connectivity(domain::Domain)
+
+The source-to-sink connectivity used for COTS larval dispersal: the data package's
+`cots_connectivity/` when it has one (see `CotsInputs`), else the coral connectivity.
+"""
+function cots_connectivity(domain::Domain)
+    conn = cots_inputs(domain).conn
+    return isnothing(conn) ? domain.conn : conn
+end
+
+"""
     check_cots_settings(inputs::CotsInputs, separated::Bool, conn_mode::Integer, outbreak_production::Real)
 
 Throw an `ErrorException` when a scenario with COTS on asks for something the domain's

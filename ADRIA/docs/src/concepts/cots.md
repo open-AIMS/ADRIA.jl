@@ -29,9 +29,9 @@ COTS act after the year's bleaching and cyclone mortality:
    dies, with feeding and starvation set by the cover of fast-growing coral (the three
    *Acropora* groups) and slow-growing coral (the two massive groups).
 2. The coral eaten is removed from that location's cover.
-3. COTS larvae disperse between locations through the domain's connectivity. A domain
-   may supply a dedicated COTS connectivity matrix (`cots_conn`); otherwise the coral
-   connectivity is used.
+3. COTS larvae disperse between locations through the domain's connectivity. A data
+   package may supply a dedicated COTS connectivity matrix in `cots_connectivity/`;
+   otherwise the coral connectivity is used.
 
 Populations start from COTSMod's default: a random 25% of locations hold 0.1 adults per
 hectare. The draw uses the scenario's own random number generator, so it is

@@ -77,15 +77,6 @@ Base.@kwdef struct CotsInputs
 end
 
 """
-    cots_inputs(domain::Domain)::CotsInputs
-
-The optional COTS inputs of `domain`; empty for domain types that do not carry them.
-"""
-function cots_inputs(domain::Domain)::CotsInputs
-    return hasproperty(domain, :cots_inputs) ? domain.cots_inputs : CotsInputs()
-end
-
-"""
     load_cots_inputs(dpkg_path::String, loc_ids::Vector{String}, timeframe::Vector{Int64})::CotsInputs
 
 Load the optional COTS inputs of the data package at `dpkg_path` for the locations

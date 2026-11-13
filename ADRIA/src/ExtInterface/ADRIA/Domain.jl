@@ -46,6 +46,8 @@ mutable struct ADRIADomain <: Domain
     const cots_inputs::CotsInputs  # optional COTS inputs from the data package
 end
 
+cots_inputs(domain::ADRIADomain)::CotsInputs = domain.cots_inputs
+
 """
     _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw, cots)
 
