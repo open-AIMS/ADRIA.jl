@@ -144,18 +144,22 @@ function LogSpec(
 end
 
 """
-    SubmodelContext{I,C}
+    SubmodelContext{I,C,M}
 
 What a submodel may see about the domain and run; built by the host (once per scenario run)
 and passed to [`init_state`](@ref), [`log_specs`](@ref) and [`step!`](@ref). Read-only by
 contract. `inputs::I` is the result of [`load_inputs`](@ref) and `cache::C` the result of
 [`prepare`](@ref); both concrete type parameters so field access is type-stable.
+`connectivity::M` is the domain's connectivity matrix (`M <: AbstractMatrix{Float64}`;
+source locations in rows, sink locations in columns, `n_locs x n_locs`, as used by the
+core model, i.e. not normalised to transition probabilities). It is shared with the host,
+not copied: read-only by contract.
 
 Fields: `n_locs`, `n_groups`, `n_sizes`, `tf` (number of timesteps), `timeframe` (year of
 each timestep), `group_names` (functional group names, so submodels map groups by name and
-not by position), `location_k` (habitable area per location), `inputs`, `cache`.
+not by position), `location_k` (habitable area per location), `connectivity`, `inputs`, `cache`.
 """
-struct SubmodelContext{I,C}
+struct SubmodelContext{I,C,M<:AbstractMatrix{Float64}}
     n_locs::Int
     n_groups::Int
     n_sizes::Int
@@ -163,6 +167,7 @@ struct SubmodelContext{I,C}
     timeframe::Vector{Int}
     group_names::Vector{Symbol}
     location_k::Vector{Float64}
+    connectivity::M
     inputs::I
     cache::C
 end
@@ -175,7 +180,7 @@ Copy of `ctx` with `cache` set (type parameter `C` follows).
 function with_cache(ctx::SubmodelContext, cache)
     return SubmodelContext(
         ctx.n_locs, ctx.n_groups, ctx.n_sizes, ctx.tf, ctx.timeframe, ctx.group_names,
-        ctx.location_k, ctx.inputs, cache
+        ctx.location_k, ctx.connectivity, ctx.inputs, cache
     )
 end
 
