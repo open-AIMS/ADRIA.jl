@@ -324,9 +324,11 @@ end
 """
     record!(sm::Submodel, bufs::NamedTuple, state, tstep::Int)::Nothing
 
-Called after the submodel's [`step!`](@ref) calls of each timestep. Writes the timestep's
+Called once per timestep for every active submodel, after all submodels' [`step!`](@ref)
+calls at [`AfterDisturbances`](@ref) of that timestep (so: all steps in attach order, then all
+records in attach order), whether or not the submodel lists any phase. Writes the timestep's
 values into `bufs`, the buffers allocated for this submodel from [`log_specs`](@ref).
-Default: no-op.
+Must not mutate coral cover. Default: no-op.
 """
 record!(::Submodel, bufs::NamedTuple, state, tstep::Int)::Nothing = nothing
 

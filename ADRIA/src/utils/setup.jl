@@ -95,7 +95,7 @@ function is_test_env()::Bool
 end
 
 """
-    set_random_seed(param_set)::Nothing
+    set_random_seed(param_set; excluded=String[])::AbstractRNG
 
 Set the RNG seed from `ENV["ADRIA_RNG_SEED"]`. If unset or `"false"`, derives the seed
 from the sum of all non-RCP parameters in `param_set`, excluding the COTS factors
@@ -109,11 +109,22 @@ generator used only for the annual larval-connectivity draws of the COTS submode
 
 # Arguments
 - `param_set` : YAXArray of scenario parameter values for a single run.
+- `excluded` : further factor names left out of the derived seed (those the attached
+    submodels declare with `ADRIAinterfaces.seed_excluded`).
 """
-function set_random_seed(param_set::YAXArray)::AbstractRNG
+function set_random_seed(
+    param_set::YAXArray; excluded::Vector{String}=String[]
+)::AbstractRNG
     rnd_seed_val::Int64 =
         get(ENV, "ADRIA_RNG_SEED", "false") == "false" ?
-        floor(Int64, sum(param_set[Where(x -> x != "RCP" && x ∉ COTS_FACTOR_NAMES)])) :
+        floor(
+            Int64,
+            sum(
+                param_set[Where(
+                    x -> x != "RCP" && x ∉ COTS_FACTOR_NAMES && x ∉ excluded
+                )]
+            )
+        ) :
         parse(Int64, ENV["ADRIA_RNG_SEED"])
     return Xoshiro(rnd_seed_val)
 end

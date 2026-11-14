@@ -31,11 +31,17 @@ built directly, without constructing component instances.
 (Type), `dist_params` and `default_dist_params` (`Vector{Float64}`), `direction`
 (`Union{Nothing,Function}`; criteria weights only), `name` and `description` (String).
 `model_spec` adds the derived `lower_bound`, `upper_bound` and `is_constant` columns.
+
+`submodels` holds the submodels attached to the domain (see `AttachedSubmodel`); empty by
+default. It lives here so that it is copied together with the table.
 """
 mutable struct SpecStore
     tbl::DataFrame
     row_of::Dict{Symbol,Int}
+    submodels::Vector{AttachedSubmodel}  # attached submodels, in attach order (default none)
 end
+SpecStore(tbl::DataFrame, row_of::Dict{Symbol,Int}) =
+    SpecStore(tbl, row_of, AttachedSubmodel[])
 
 """
     copy(s::SpecStore)::SpecStore
@@ -45,7 +51,8 @@ shallow copy of a Domain (`copy`/`Setfield` on the struct) shares its table with
 and writes through either one are seen by both; use `deepcopy(dom)` (which copies the table)
 to get an independent Domain.
 """
-Base.copy(s::SpecStore)::SpecStore = SpecStore(deepcopy(s.tbl), copy(s.row_of))
+Base.copy(s::SpecStore)::SpecStore =
+    SpecStore(deepcopy(s.tbl), copy(s.row_of), copy(s.submodels))
 
 """
     spec_components()::NTuple{11,DataType}

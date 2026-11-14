@@ -101,7 +101,8 @@ end
         # Wrap in functions so the measurement does not include global-scope overhead.
         run_step(sm, state, ctx, v) = step!(sm, AfterDisturbances(), state, ctx, v, 2, 2001)
         run_rec(sm, bufs, state) = record!(sm, bufs, state, 2)
-        run_step(sm, state, ctx, v); run_rec(sm, bufs, state)  # compile
+        run_step(sm, state, ctx, v);
+        run_rec(sm, bufs, state)  # compile
         @test (@allocated run_step(sm, state, ctx, v)) == 0
         @test (@allocated run_rec(sm, bufs, state)) == 0
 

@@ -75,6 +75,7 @@ include("interventions/Interventions.jl")
 include("interventions/CAq.jl")
 include("interventions/Fog.jl")
 include("interventions/LvM.jl")
+include("submodels.jl")
 include("spec_table.jl")
 
 include("io/ResultSet.jl")
