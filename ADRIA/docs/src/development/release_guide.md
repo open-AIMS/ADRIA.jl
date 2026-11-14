@@ -10,6 +10,7 @@ This repository contains multiple packages:
 - `ADRIA/` — main package
 - `ADRIAviz/` — visualization package
 - `ADRIAanalysis/` — analysis package
+- `ADRIAinterfaces/` — contracts between the ADRIA run loop and optional submodels (no ADRIA dependency)
 
 Each package has its own `Project.toml` and version. Releases are coordinated per-package.
 
@@ -19,11 +20,13 @@ Each package has its own `Project.toml` and version. Releases are coordinated pe
    - For ADRIA: `ADRIA/Project.toml`
    - For ADRIAviz: `ADRIAviz/Project.toml`
    - For ADRIAanalysis: `ADRIAanalysis/Project.toml`
+   - For ADRIAinterfaces: `ADRIAinterfaces/Project.toml`
 2. Update the environment and run tests locally to ensure all pass:
    ```bash
    cd ADRIA && julia --project=. -e 'using Pkg; Pkg.test()'
    cd ADRIAviz && julia --project=. -e 'using Pkg; Pkg.test()'
    cd ADRIAanalysis && julia --project=. -e 'using Pkg; Pkg.test()'
+   cd ADRIAinterfaces && julia --project=. -e 'using Pkg; Pkg.test()'
    ```
    See [Testing](@ref) for more details.
 3. Submit a PR with the updated version number(s).
@@ -55,6 +58,14 @@ Paste the generated release notes here.
 For other packages, use:
 - `@JuliaRegistrator register subdir=ADRIAviz`
 - `@JuliaRegistrator register subdir=ADRIAanalysis`
+- `@JuliaRegistrator register subdir=ADRIAinterfaces`
+
+ADRIA depends on ADRIAinterfaces. Until ADRIAinterfaces is registered, `ADRIA/Project.toml`
+carries a `[sources]` path entry for it (as it does for COTSMod); a released ADRIA cannot be
+installed from the registry without that dependency being registered, so **register
+ADRIAinterfaces first**, and only then register the ADRIA release that depends on it. Once
+registered, keep the `[sources]` entry (it only applies inside the monorepo) and keep the
+`ADRIAinterfaces` compat entry in `ADRIA/Project.toml` in step with its version.
 
 
 See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Registrator.jl?installation_id=32448289&setup_action=install#details-for-triggering-juliaregistrator-for-step-2-above) for more details.
