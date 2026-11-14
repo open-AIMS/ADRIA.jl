@@ -231,7 +231,7 @@ end
     ms = ADRIA.model_spec(dom)
 
     # A row holding only some of the factors, in an order unlike the table's
-    names_ = [:iv_CAq_N_TA, :guided, :a, :dhw_scenario]
+    names_ = [:iv_CAq_N_TA, :guided, :cots_bh_a, :dhw_scenario]
     row = DataFrames.DataFrame(String.(names_) .=> [500_000.0, 1.0, 2.0, 3.0])
     row[!, :RCP] .= 45
     before = ADRIA.model_spec(dom)
@@ -253,7 +253,7 @@ end
 @testset "update_params! is atomic when a value cannot be converted" begin
     dom = deepcopy(ADRIA_DOM_45)
     before = ADRIA.model_spec(dom)
-    row = DataFrames.DataFrame("guided" => [1.0], "a" => [missing])
+    row = DataFrames.DataFrame("guided" => [1.0], "cots_bh_a" => [missing])
     @test_throws MethodError ADRIA.update_params!(dom, row[1, :])
     @test ADRIA.model_spec(dom) == before
 end
