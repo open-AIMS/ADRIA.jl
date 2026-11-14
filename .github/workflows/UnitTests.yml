@@ -64,6 +64,8 @@ jobs:
           # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
           # a plain `--code-coverage=user` would discard precompiled code of all deps.
           ADRIA_TEST_COVERAGE: adria
+          # Use all available cores (4 on public-repo standard runners).
+          JULIA_NUM_THREADS: auto
       - name: Upload shard logs
         if: always()
         uses: actions/upload-artifact@v4
