@@ -59,7 +59,6 @@ include("ecosystem/LowDHWBleaching.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/corals/growth_limits.jl")
-include("ecosystem/corals/flatten_overrides.jl")
 include("ecosystem/cyclones.jl")
 include("ecosystem/cots_factors.jl")
 include("ecosystem/connectivity.jl")
@@ -77,6 +76,7 @@ include("interventions/Interventions.jl")
 include("interventions/CAq.jl")
 include("interventions/Fog.jl")
 include("interventions/LvM.jl")
+include("spec_table.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
@@ -138,9 +138,9 @@ const COMPAT_DPKG = ["0.8.0"]
 # environment (precompile budget test); `load_domain` + `run_scenarios` ~60-120 s (the
 # run budget below leaves headroom above that range for loaded machines and
 # `--check-bounds=yes`);
-# ~100-150 s for the whole workload. The Flatten specialisation regression this guards
-# against took 357 s in the budget test's cold model assembly. Exceeding a budget prints
-# a loud warning during `Pkg.precompile()`; it never fails the build.
+# ~100-150 s for the whole workload. The budget guards against a repeat of the Flatten /
+# ModelParameters specialisation regression (357 s in the former `Model` based assembly).
+# Exceeding a budget prints a loud warning during `Pkg.precompile()`; it never fails the build.
 const _WORKLOAD_BUDGET_MODEL_S = 90.0
 const _WORKLOAD_BUDGET_RUN_S = 180.0
 const _WORKLOAD_BUDGET_TOTAL_S = 240.0
@@ -153,9 +153,8 @@ function _warn_slow_precompile(label::AbstractString, secs::Real, budget::Real)
         "## ADRIA PRECOMPILATION TIME REGRESSION\n",
         "## ", label, " took ", round(secs; digits=1), " s (budget ", budget, " s).\n",
         "## Every user's fresh `Pkg.precompile()` is now much slower. Do NOT merge/push\n",
-        "## without investigating. Likely cause: Flatten/ModelParameters specialisation on\n",
-        "## the domain Model (see src/ecosystem/corals/flatten_overrides.jl) or a new\n",
-        "## Model component / Param type. Run test/precompile_budget/precompile_budget.jl.\n",
+        "## without investigating. Likely cause: a new component or factor type in the\n",
+        "## parameter table (src/spec_table.jl). Run test/precompile_budget/precompile_budget.jl.\n",
         bar, "\n"
     )
     printstyled(stderr, msg; color=:light_red, bold=true)
@@ -239,51 +238,33 @@ end
         end
     end
 
-    # Full domain model assembly — covers the full component tuple form used by
-    # load_domain() via _assemble_domain_model(). Without this workload entry,
-    # Flatten.reconstruct for Tuple{EnvironmentalLayer,...,Coral,...,GrowthAcceleration}
-    # is compiled on first interactive call (~20 s JIT). With this entry the cost
-    # shifts to Pkg.precompile() time and interactive first-call is <1 s.
+    # Parameter table of the domain: assembly from the component definitions and the
+    # write-back paths (`update!`, `update_params!`, `fix_factor!`, ...) that run on it.
+    # Guarded so a failure degrades coverage rather than breaking `using ADRIA`.
     _wl_model_t0 = time()
+    _wl_model_err = nothing
     redirect_stdio(stdout=devnull, stderr=devnull) do
-        _arr = ones(Float32, 1, 1, 1)
-        _model = _assemble_domain_model(
-            EnvironmentalLayer(_arr, _arr, _arr),
-            Intervention(),
-            CAqCriteriaWeights(),
-            FogCriteriaWeights(),
-            LvMCriteriaWeights(),
-            DepthThresholds(),
-            Coral(),
-            GrowthAcceleration(),
-            DepthAttenuation(),
-            LowDHWBleaching(),
-            CotsParams()
-        )
-
-        # Factor-fixing write-back path (see `update!` in Domain.jl for why the exact
-        # `Float64` / `Vector{Float64}` column forms matter). Run twice: a freshly
-        # assembled model has a `Float64`/`Int` `val` mix (`guided` etc. default to an
-        # `Int` literal); the first write flips those to `Float64`, changing the `Param`
-        # types handed to `Flatten.reconstruct`, and every `fix_factor!` after the first
-        # sees that all-`Float64` shape. Values are written back unchanged -- compile
-        # coverage only. Guarded so a failure degrades coverage rather than breaking
-        # `using ADRIA`.
         try
-            for _ in 1:2
-                _ms = model_spec(_model)
-                _model[:val] = Float64.(_ms.val)
-                _model[:dist_params] = Vector{Float64}[
-                    collect(Float64, _dp) for _dp in _ms.dist_params
-                ]
-            end
+            _arr = ones(Float32, 1, 1, 1)
+            _store = build_spec_store(EnvironmentalLayer(_arr, _arr, _arr), Intervention())
+            _ms = model_spec(_store)
+            update!(_store, _ms)
+            update_params!(_store, first(eachrow(param_table(_store))))
+            component_params(_store, CAqCriteriaWeights)
+            component_params(_store, [Coral, CotsParams])
         catch err
-            @debug "compile-workload factor write-back failed" err
+            _wl_model_err = err
         end
+    end
+    if _wl_model_err !== nothing
+        # Reported after the redirect block so it reaches the real stderr.
+        @warn "ADRIA precompile workload for the parameter table failed; the first " *
+            "parameter table operations in each session will be slow." exception =
+            _wl_model_err
     end
 
     _warn_slow_precompile(
-        "Domain model assembly workload", time() - _wl_model_t0, _WORKLOAD_BUDGET_MODEL_S
+        "Domain parameter table workload", time() - _wl_model_t0, _WORKLOAD_BUDGET_MODEL_S
     )
 
     # `load_domain` and a minimal `run_scenarios` on the bundled test data package.

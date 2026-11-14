@@ -49,7 +49,7 @@ function load_results(
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
 
     result_path = joinpath(result_dir, "results.nc")
-    raw_set = open_dataset(result_path)
+    raw_set = _open_dataset(result_path)
 
     # Name and RCP haven't been added to outputs yet.
     name::String = "ReefModEngine Result Set"

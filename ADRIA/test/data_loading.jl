@@ -93,3 +93,53 @@ end
         "Cyclone mortality data does not list species in expected order"
     GC.gc()
 end
+
+@testset "Repeated loading of the same data package" begin
+    # NetCDF handles must be closed when loading, not left to the garbage collector:
+    # re-opening a file that is still open can fail with `NetCDF: HDF error` (-101)
+    # depending on when a collection happens to run. No `GC.gc()` here, on purpose.
+    n_loaded = 0
+    for _ in 1:6
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA.switch_RCPs!(dom, "45")
+        n_loaded += 1
+        @test size(dom.dhw_scens, 2) == length(dom.loc_ids)
+    end
+    @test n_loaded == 6
+
+    # Opening a dataset leaves no NetCDF file open
+    if Sys.islinux()
+        fd_target(f) =
+            try
+                readlink(joinpath("/proc/self/fd", f))
+            catch
+                ""
+            end
+        open_nc() = count(l -> endswith(l, ".nc"), fd_target.(readdir("/proc/self/fd")))
+        before = open_nc()
+        fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
+        ds = ADRIA._open_dataset(fn)
+        @test :dhw in keys(ds.cubes)
+        @test open_nc() == before
+
+        # A `driver` keyword is forwarded rather than dropped
+        ds = ADRIA._open_dataset(fn; driver=:netcdf)
+        @test :dhw in keys(ds.cubes)
+        @test open_nc() == before
+    end
+
+    # Ordinary errors propagate as they are and do not use up the one-time warning
+    @testset "_open_dataset errors" begin
+        warned = ADRIA._OPEN_DATASET_FALLBACK_WARNED
+        before = warned[]
+        missing_fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "does_not_exist.nc")
+        @test_logs min_level = Base.CoreLogging.Warn @test_throws Exception ADRIA._open_dataset(
+            missing_fn
+        )
+        fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
+        @test_logs min_level = Base.CoreLogging.Warn @test_throws Exception ADRIA._open_dataset(
+            fn; driver=:zarr
+        )
+        @test warned[] == before
+    end
+end

@@ -63,7 +63,7 @@ end
 function ShdPreferences(
     dom, params::YAXArray
 )::DecisionPreferences
-    w::DataFrame = component_params(dom.model, ShdCriteriaWeights)
+    w::DataFrame = component_params(dom, ShdCriteriaWeights)
 
     return DecisionPreferences(
         string.(w.fieldname), params[At(string.(w.fieldname))], w.direction

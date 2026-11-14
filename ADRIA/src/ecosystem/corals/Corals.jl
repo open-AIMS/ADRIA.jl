@@ -1,5 +1,4 @@
 using DataFrames, Serialization
-import ModelParameters: Model
 
 # Upper bound offset to use when re-creating critical DHW distributions
 const HEAT_UB = 10.0
@@ -331,7 +330,7 @@ function invalidate_coral_spec_cache!()::Nothing
 end
 
 function add_scale_factors!(
-    struct_fields::OrderedDict{String,Param},
+    struct_fields::OrderedDict{String,NamedTuple},
     bounds,
     overrides::Dict{String,Float64}=Dict{String,Float64}()
 )
@@ -359,7 +358,7 @@ function add_scale_factors!(
                 _mb_rate_scale_factors[fgroup_idx, cb_calib_group]
             )
 
-            struct_fields[linear_extension_factor_name] = Factor(
+            struct_fields[linear_extension_factor_name] = _factor_spec(
                 linear_extension_factor_val;
                 ptype="continuous",
                 dist=Uniform,
@@ -370,7 +369,7 @@ function add_scale_factors!(
                             "functional group $functional_group"
             )
 
-            struct_fields[mb_rate_factor_name] = Factor(
+            struct_fields[mb_rate_factor_name] = _factor_spec(
                 mb_rate_factor_val;
                 ptype="continuous",
                 dist=Uniform,
@@ -406,7 +405,7 @@ y.a
 # 200
 ```
 """
-function _coral_struct(field_defs::OrderedDict)::Nothing
+function _coral_struct(field_defs::OrderedDict)::Nothing  # values are factor specs (`_factor_spec`)
     s = IOBuffer()
     write(s, "Base.@kwdef struct Coral <: EcoModel\n")
 
@@ -421,7 +420,7 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
         #     continue
         # end
 
-        write(s, "$(f)::Param = $(v)\n")
+        write(s, "$(f)::Param = Param($(repr(v)))\n")
     end
 
     write(s, "end")
@@ -430,14 +429,19 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
     return nothing
 end
 
+# Bounds last passed to `create_coral_struct`. The parameter table of domains loaded
+# afterwards is built with these (as the redefined `Coral()` defaults were before).
+const _CORAL_BOUNDS = Ref((0.9, 1.1))
+const _CORAL_OVERRIDES = Ref(Dict{String,Float64}())
+
 function _build_coral_fields(
     bounds::Tuple{Float64,Float64}=(0.9, 1.1);
     overrides::Dict{String,Float64}=Dict{String,Float64}()
-)::OrderedDict{String,Param}
+)::OrderedDict{String,NamedTuple}
     functional_group_names, base_coral_factor_names, coral_factors = coral_spec()
 
-    struct_fields = OrderedDict{String,Param}()
-    struct_fields["heritability"] = Factor(
+    struct_fields = OrderedDict{String,NamedTuple}()
+    struct_fields["heritability"] = _factor_spec(
         0.3;
         ptype="continuous",
         dist=Uniform,
@@ -456,7 +460,7 @@ function _build_coral_fields(
             default_val = coral_factors[coral_id_math, base_coral_factor_name][1]
             factor_val = get(overrides, factor_name, default_val)
 
-            struct_fields[factor_name] = Factor(
+            struct_fields[factor_name] = _factor_spec(
                 factor_val;
                 ptype="continuous",
                 dist=TriangularDist,
@@ -494,6 +498,8 @@ function create_coral_struct(
     overrides::Dict{String,Float64}=Dict{String,Float64}()
 )::Nothing
     _coral_struct(_build_coral_fields(bounds; overrides=overrides))
+    _CORAL_BOUNDS[] = bounds
+    _CORAL_OVERRIDES[] = copy(overrides)
     return nothing
 end
 
@@ -523,13 +529,13 @@ end
 create_coral_struct()
 
 """
-    to_coral_spec(m::Model)::DataFrame
+    to_coral_spec(m::Coral)::DataFrame
 
-Convert Coral Model specification to a coral spec DataFrame
+Convert a `Coral` instance to a coral spec DataFrame
 """
 function to_coral_spec(m::Coral)::DataFrame
     _, pnames, spec = coral_spec()
-    val_df = DataFrame(Model(m))
+    val_df = _component_table(Coral, _instance_specs(m))
 
     return _update_coral_spec(spec, pnames, val_df)
 end
@@ -570,8 +576,10 @@ For debugging purposes only.
 !!! note "Revise workflow"
     After modifying `_coral_spec_impl` and letting Revise reload the file, call
     `ADRIA.invalidate_coral_spec_cache!()` to clear the cached result before
-    calling `coral_spec()` again. If the struct fields changed, also call
-    `ADRIA.create_coral_struct()` to redefine `Coral`. No session restart is needed.
+    calling `coral_spec()` again. Domains loaded afterwards get the new defaults in their
+    parameter table (it is built from `coral_spec()`, not from the `Coral` struct). Call
+    `ADRIA.create_coral_struct()` only to also redefine the `Coral` struct itself.
+    No session restart is needed.
 
 # Examples
 ```julia

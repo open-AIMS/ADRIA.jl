@@ -110,7 +110,7 @@ struct CAqPreferences <: DecisionPreference
 end
 
 function CAqPreferences(dom, params::YAXArray)::CAqPreferences
-    w::DataFrame = component_params(dom.model, CAqCriteriaWeights)
+    w::DataFrame = component_params(dom, CAqCriteriaWeights)
     # Strip the `iv_CAq_` prefix (2 segments) to recover the bare criterion name
     # (e.g. `heat_stress`) so it matches the generic kwargs used in `setup_guided_intervention`.
     cn = Symbol[Symbol(join(split(string(cn), "_")[3:end], "_")) for cn in w.fieldname]
@@ -118,7 +118,7 @@ function CAqPreferences(dom, params::YAXArray)::CAqPreferences
     return CAqPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
 function CAqPreferences(dom, params...)::CAqPreferences
-    w::DataFrame = component_params(dom.model, CAqCriteriaWeights)
+    w::DataFrame = component_params(dom, CAqCriteriaWeights)
     for (k, v) in params
         w[w.fieldname .== k, :val] .= v
     end
@@ -126,7 +126,7 @@ function CAqPreferences(dom, params...)::CAqPreferences
     return CAqPreferences(w.fieldname, w.val, w.direction)
 end
 function CAqPreferences(dom)
-    w::DataFrame = component_params(dom.model, CAqCriteriaWeights)
+    w::DataFrame = component_params(dom, CAqCriteriaWeights)
     return CAqPreferences(w.fieldname, w.val, w.direction)
 end
 

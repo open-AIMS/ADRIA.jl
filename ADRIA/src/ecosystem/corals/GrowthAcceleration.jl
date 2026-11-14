@@ -66,7 +66,7 @@ function _growth_acceleration_struct(field_defs::OrderedDict)::Nothing
     write(s, "Base.@kwdef struct GrowthAcceleration <: EcoModel\n")
 
     for (f, v) in field_defs
-        write(s, "$(f)::Param = $(v)\n")
+        write(s, "$(f)::Param = Param($(repr(v)))\n")
     end
 
     write(s, "end")
@@ -75,11 +75,16 @@ function _growth_acceleration_struct(field_defs::OrderedDict)::Nothing
     return nothing
 end
 
+# Bound variation last passed to `create_growth_acceleration_struct`; used by the parameter
+# table of domains loaded afterwards.
+const _GROWTH_ACCEL_BOUNDS_VAR = Ref(0.1)
+const _GROWTH_ACCEL_OVERRIDES = Ref(Dict{String,Float64}())
+
 function _build_growth_acceleration_fields(
     bounds_var::Float64=0.1;
     overrides::Dict{String,Float64}=Dict{String,Float64}()
-)::OrderedDict{String,Param}
-    struct_fields = OrderedDict{String,Param}()
+)::OrderedDict{String,NamedTuple}
+    struct_fields = OrderedDict{String,NamedTuple}()
 
     growth_accel_params = [:steepness, :midpoint, :height]
     n_cb_calib_groups = length(growth_acceleration_midpoint())
@@ -97,7 +102,7 @@ function _build_growth_acceleration_fields(
             lower_bound = factor_val - bounds_var * abs(factor_val)
             upper_bound = factor_val + bounds_var * abs(factor_val)
 
-            struct_fields[factor_name] = Factor(
+            struct_fields[factor_name] = _factor_spec(
                 factor_val;
                 ptype="continuous",
                 dist=Uniform,
@@ -118,6 +123,8 @@ function create_growth_acceleration_struct(
     _growth_acceleration_struct(
         _build_growth_acceleration_fields(bounds_var; overrides=overrides)
     )
+    _GROWTH_ACCEL_BOUNDS_VAR[] = bounds_var
+    _GROWTH_ACCEL_OVERRIDES[] = copy(overrides)
     return nothing
 end
 

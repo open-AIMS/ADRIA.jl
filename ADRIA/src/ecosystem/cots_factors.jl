@@ -190,9 +190,9 @@ const COTS_FACTOR_SPECS = (
 # value, as `fix_factor!` does), so `sample()` leaves COTS off and adds no sampled
 # dimensions. The full bounds are kept as `default_dist_params`; widen a factor's bounds
 # with `set_factor_bounds!` to sample it.
-function _cots_factor(fieldname::Symbol, val)::Param
+function _cots_spec(fieldname::Symbol, val)::NamedTuple
     spec = getproperty(COTS_FACTOR_SPECS, fieldname)
-    return Factor(
+    return _factor_spec(
         val;
         ptype=spec.ptype,
         dist=spec.dist,
@@ -202,6 +202,7 @@ function _cots_factor(fieldname::Symbol, val)::Param
         description=spec.description
     )
 end
+_cots_factor(fieldname::Symbol, val)::Param = Param(_cots_spec(fieldname, val))
 _cots_factor(fieldname::Symbol)::Param = _cots_factor(
     fieldname, getproperty(COTS_FACTOR_SPECS, fieldname).val
 )
@@ -327,3 +328,19 @@ const COTS_PARAM_MAP = (
     cots_separated_recruitment=:separated_recruitment,
     cots_larval_fecundity=:larval_fecundity
 )
+
+"""
+    _cots_specs(; overrides)::Vector{Pair{Symbol,NamedTuple}}
+
+Factor specs of every `CotsParams` field (in field order), with `overrides` (keyed by field
+name) replacing the default values. The source of the `CotsParams` table rows.
+"""
+function _cots_specs(;
+    overrides::Dict{String,Float64}=Dict{String,Float64}()
+)::Vector{Pair{Symbol,NamedTuple}}
+    return Pair{Symbol,NamedTuple}[
+        fn => _cots_spec(
+            fn, get(overrides, string(fn), getproperty(COTS_FACTOR_SPECS, fn).val)
+        ) for fn in fieldnames(CotsParams)
+    ]
+end

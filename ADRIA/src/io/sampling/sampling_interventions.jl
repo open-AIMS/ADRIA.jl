@@ -43,35 +43,35 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     )
 
     # Assume coral model has been perfectly parameterized
-    coral_params = ADRIA.component_params(d.model, ADRIA.Coral).fieldname
+    coral_params = ADRIA.component_params(d, ADRIA.Coral).fieldname
     ADRIA.fix_factor!(d, coral_params)
 
     # Assume the same for growth acceleration parameters
-    growth_acc_params = ADRIA.component_params(d.model, ADRIA.GrowthAcceleration).fieldname
+    growth_acc_params = ADRIA.component_params(d, ADRIA.GrowthAcceleration).fieldname
     ADRIA.fix_factor!(d, growth_acc_params)
 
     # ... and for the depth attenuation of surface DHW
-    depth_atten_params = ADRIA.component_params(d.model, ADRIA.DepthAttenuation).fieldname
+    depth_atten_params = ADRIA.component_params(d, ADRIA.DepthAttenuation).fieldname
     ADRIA.fix_factor!(d, depth_atten_params)
 
     # ... and for the optional low-DHW bleaching reduction (off by default)
-    low_dhw_params = ADRIA.component_params(d.model, ADRIA.LowDHWBleaching).fieldname
+    low_dhw_params = ADRIA.component_params(d, ADRIA.LowDHWBleaching).fieldname
     ADRIA.fix_factor!(d, low_dhw_params)
 
     # ... and for the COTS submodel (off by default)
-    cots_params = ADRIA.component_params(d.model, ADRIA.CotsParams).fieldname
+    cots_params = ADRIA.component_params(d, ADRIA.CotsParams).fieldname
     ADRIA.fix_factor!(d, cots_params)
 
     # Fix coral aquaculture weights
     CAq_criteria_params = ADRIA.component_params(
-        d.model,
+        d,
         ADRIA.CAqCriteriaWeights
     )
     ADRIA.fix_factor!(d, CAq_criteria_params.fieldname)
 
     # Fix larval methods weights
     LvM_criteria_params = ADRIA.component_params(
-        d.model,
+        d,
         ADRIA.LvMCriteriaWeights
     )
     ADRIA.fix_factor!(d, LvM_criteria_params.fieldname)

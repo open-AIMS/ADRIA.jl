@@ -265,3 +265,29 @@ end
         @test ms_dict["$(fg_names[2])_2_5_dist_std"] ≈ ds[2, 5]
     end
 end
+
+@testset "Calibrated domains ignore create_coral_struct bounds and overrides" begin
+    try
+        ADRIA.create_coral_struct(
+            (0.5, 1.5);
+            overrides=Dict("tabular_Acropora_1_1_linear_extension" => 0.05)
+        )
+        ADRIA.create_growth_acceleration_struct(0.5)
+        dom = ADRIA.load_domain(
+            TEST_DOMAIN_PATH, "45"; calib_params_fn=MOCK_CALIB_PARAMS_PATH
+        )
+        row = ADRIA.component_params(dom, ADRIA.Coral)
+        i = findfirst(==(:tabular_Acropora_1_1_linear_extension), row.fieldname)
+        # calibrated value with the default +-10% bounds, as for `create_coral_instance`
+        @test row.val[i] != 0.05
+        @test row.dist_params[i][1] ≈ row.val[i] * 0.9
+        @test row.dist_params[i][2] ≈ row.val[i] * 1.1
+        ga = ADRIA.component_params(dom, ADRIA.GrowthAcceleration)
+        j = findfirst(==(:growth_acceleration_cb_group_1_height), ga.fieldname)
+        @test ga.dist_params[j][1] ≈ ga.val[j] - 0.1 * abs(ga.val[j])
+        @test ga.dist_params[j][2] ≈ ga.val[j] + 0.1 * abs(ga.val[j])
+    finally
+        ADRIA.create_coral_struct()
+        ADRIA.create_growth_acceleration_struct()
+    end
+end

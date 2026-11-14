@@ -45,7 +45,7 @@ mutable struct RMEDomain <: AbstractReefModDomain
     LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
     Shd_target_locations::Vector{String}    # locations eligible for shading
 
-    model::ModelParameters.Model
+    spec_store::SpecStore
     sim_constants::SimConstants
 end
 
@@ -287,13 +287,6 @@ function load_domain(
         timeframe_range
     )
 
-    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        CAqCriteriaWeights(),
-        FogCriteriaWeights(),
-        LvMCriteriaWeights(),
-        DepthThresholds()
-    ]
-
     if ndims(dhw_scens) != 3
         throw(
             ArgumentError(
@@ -302,19 +295,11 @@ function load_domain(
         )
     end
 
-    calib = load_calib_params(calib_params_fn)
-
-    model::Model = Model((
+    spec_store::SpecStore = build_spec_store(
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
-        Intervention(),
-        criteria_weights...,
-        calib.coral,
-        calib.growth_accel,
-        calib.depth_atten,
-        calib.low_dhw,
-        calib.cots
-    ))
-    _cap_growth_bounds!(model)
+        Intervention();
+        calib=load_calib_overrides(calib_params_fn)
+    )
 
     return adjust_sampling_bounds(
         RMEDomain(
@@ -336,7 +321,7 @@ function load_domain(
             reef_ids,
             [(weight=1.0, target_locs=reef_ids)],
             reef_ids,
-            model,
+            spec_store,
             SimConstants()
         )
     )

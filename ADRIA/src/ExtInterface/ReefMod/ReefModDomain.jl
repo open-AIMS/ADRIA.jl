@@ -38,7 +38,7 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     Shd_target_locations::Vector{String}    # locations eligible for shading
     LvM_target_locations::Vector{@NamedTuple{weight::Float64,target_locs::Vector{String}}}  # locations eligible for larval methods
 
-    model
+    spec_store::SpecStore
     sim_constants::SimConstants
 end
 
@@ -74,7 +74,7 @@ function load_domain(
 )::ReefModDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
     netcdf_file = _find_netcdf(fn_path, RCP)
-    dom_dataset::Dataset = open_dataset(netcdf_file)
+    dom_dataset::Dataset = _open_dataset(netcdf_file)
 
     # Read location data
     geodata_dir = joinpath(fn_path, "region")
@@ -156,13 +156,6 @@ function load_domain(
         timeframe[1]:timeframe[2]
     )
 
-    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
-        CAqCriteriaWeights(),
-        FogCriteriaWeights(),
-        LvMCriteriaWeights(),
-        DepthThresholds()
-    ]
-
     cyclone_mortality_scens::YAXArray{Float64,4} = _cyclone_mortality_scens(
         dom_dataset,
         spatial_data,
@@ -170,19 +163,11 @@ function load_domain(
         timeframe
     )
 
-    calib = load_calib_params(calib_params_fn)
-
-    model::Model = Model((
+    spec_store::SpecStore = build_spec_store(
         EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
-        Intervention(),
-        criteria_weights...,
-        calib.coral,
-        calib.growth_accel,
-        calib.depth_atten,
-        calib.low_dhw,
-        calib.cots
-    ))
-    _cap_growth_bounds!(model)
+        Intervention();
+        calib=load_calib_overrides(calib_params_fn)
+    )
 
     return ReefModDomain(
         "ReefMod",
@@ -203,7 +188,7 @@ function load_domain(
         location_ids,
         location_ids,
         [(weight=1.0, target_locs=location_ids)],
-        model,
+        spec_store,
         SimConstants()
     )
 end
@@ -324,7 +309,7 @@ Load different RCP into domain.
 """
 function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     new_scen_fn = _find_netcdf(d.env_layer_md.dpkg_path, RCP)
-    new_scen_dataset = open_dataset(new_scen_fn)
+    new_scen_dataset = _open_dataset(new_scen_fn)
 
     cube_axes = caxes(new_scen_dataset.record_applied_DHWs)
     dhws = DataCube(

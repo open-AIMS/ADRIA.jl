@@ -75,7 +75,7 @@ function sample_stratified(
     cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
     full_spec = _filtered_model_spec(model_spec(d), cb_calib_groups)
     env_fieldnames = component_params(
-        d.model,
+        d,
         [
             EnvironmentalLayer, Coral, GrowthAcceleration, DepthAttenuation,
             LowDHWBleaching, CotsParams

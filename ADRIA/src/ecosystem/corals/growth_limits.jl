@@ -87,63 +87,8 @@ function _scale_ub_caps(
     return caps
 end
 
-"""
-    _cap_growth_bounds!(model::Model)::Nothing
-
-Lower the upper sampling bound of each `linear_extension_scale` factor (and its default
-bound) so the size class growth limit holds in the worst case. A bound is never lowered
-below the factor's nominal value, in which case a warning is issued.
-"""
-function _cap_growth_bounds!(model::Model)::Nothing
-    spec = model_spec(model)
-    caps = _scale_ub_caps(_growth_limit_terms(spec))
-    isempty(caps) && return nothing
-
-    fg_names = string.(functional_group_names())
-    row_of = Dict(fn => i for (i, fn) in enumerate(spec.fieldname))
-    dist_params = Vector{Float64}[collect(Float64, dp) for dp in spec.dist_params]
-    default_dist_params = Vector{Float64}[
-        collect(Float64, dp) for dp in spec.default_dist_params
-    ]
-
-    n_capped = 0
-    above_nominal = Symbol[]
-    for ((cb, g), cap) in caps
-        fn = _scale_factor_name(cb, fg_names[g])
-        i = row_of[fn]
-        val = Float64(spec.val[i])
-        cap < val && push!(above_nominal, fn)
-
-        capped_here = false
-        for dp in (dist_params[i], default_dist_params[i])
-            new_ub = max(min(dp[2], cap), val)
-            if new_ub < dp[2]
-                dp[2] = new_ub
-                capped_here = true
-            end
-        end
-        n_capped += capped_here
-    end
-
-    if n_capped > 0
-        model[:val] = Float64.(spec.val)
-        model[:dist_params] = dist_params
-        model[:default_dist_params] = default_dist_params
-        @info "Capped $(n_capped) `linear_extension_scale` upper bounds so growth cannot " *
-            "exceed size class widths."
-    end
-
-    if !isempty(above_nominal)
-        sort!(above_nominal)
-        @warn "The worst-case growth limit is below the nominal value of " *
-            "$(length(above_nominal)) `linear_extension_scale` factors, e.g. " *
-            "$(first(above_nominal)). Their upper bounds were set to the nominal value; " *
-            "the linear extension, scale or growth acceleration height values may need " *
-            "recalibrating for the current size class edges."
-    end
-
-    return nothing
-end
+# `_cap_growth_bounds!(::SpecStore)`, which applies `_scale_ub_caps` to the parameter table,
+# lives in `spec_table.jl`.
 
 """
     _validate_growth_limits(old_spec::DataFrame, new_spec::DataFrame)::Nothing
