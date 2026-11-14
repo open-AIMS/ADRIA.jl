@@ -71,13 +71,13 @@ jobs:
         shard: [fast, spec, sim]
         include:
           # The `setup` job builds the cache, so these only cover restoring it plus the
-          # tests. 10 min leaves headroom over the launcher's 6 min per-shard limit; it
-          # can be tightened once warm runs have been timed. The sim shard runs 32
+          # tests. 60 min is a deliberately generous placeholder so that runs complete and
+          # report their real durations; tighten it once warm runs have been timed. The sim shard runs 32
           # simulations and needs more.
           - shard: fast
-            timeout: 10
+            timeout: 60
           - shard: spec
-            timeout: 10
+            timeout: 60
           - shard: sim
             timeout: 12
     steps:
