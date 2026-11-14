@@ -63,14 +63,16 @@ end
 
 """
 Records every hook call (in order) into the shared `calls` vector, and the cover total seen
-at `AfterDisturbances` into `seen`. Does not touch cover.
+at `AfterDisturbances` into `seen`. Does not touch cover. `on=false` makes it inactive.
 """
 struct RecordingMock <: Submodel
     tag::Symbol
     calls::Vector{Tuple{Symbol,Symbol,Int}}  # (tag, hook, tstep)
     seen::Vector{Float64}
+    on::Bool
 end
-RecordingMock(tag::Symbol, calls) = RecordingMock(tag, calls, Float64[])
+RecordingMock(tag::Symbol, calls; on::Bool=true) = RecordingMock(tag, calls, Float64[], on)
+active(m::RecordingMock, ::NamedTuple) = m.on
 phases(::RecordingMock) = (AfterDisturbances(),)
 function load_inputs(m::RecordingMock, ::AbstractString)
     push!(m.calls, (m.tag, :load_inputs, 0))
