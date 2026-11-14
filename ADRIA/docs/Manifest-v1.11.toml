@@ -248,7 +248,7 @@ version = "0.1.4"
 
 [[deps.COTSMod]]
 deps = ["Random", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "ea0b0b45afece9592c62887194461eb242c6e114"
+git-tree-sha1 = "474a1ccc0cea802731c176a659cc0eb1b54f9aea"
 repo-rev = "d29824dd3c72590bcca015bbc86696b4e68b68c4"
 repo-url = "https://github.com/open-AIMS/COTSMod.jl"
 uuid = "83d48a2b-3f7b-4d52-9f7e-4f2d9b0b8f91"
@@ -517,9 +517,9 @@ version = "1.1.0"
 
 [[deps.DiffRules]]
 deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "7ab8388b721794863a6e809a2436e639832ee74a"
+git-tree-sha1 = "6a4a3d254ca35fe9b35e456c66589228514d6a01"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.17.1"
+version = "1.18.0"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
@@ -750,9 +750,9 @@ version = "1.11.0"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "831f86fde78ab7f6470d6ba4d1161a11fb6b4ec0"
+git-tree-sha1 = "889174c6aef868dc0e5f083dd6d94b4d3b786d7f"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "1.18.2"
+version = "1.19.0"
 weakdeps = ["PDMats", "SparseArrays", "StaticArrays", "Statistics"]
 
     [deps.FillArrays.extensions]
@@ -976,9 +976,9 @@ version = "1.14.3+3"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "Dates", "EnumX", "Logging", "PrecompileTools", "Random", "Reseau", "SHA", "TranscodingStreams", "URIs", "UUIDs", "Zlib_jll"]
-git-tree-sha1 = "1c43585d8005543674a114997fdf73fc767bbd66"
+git-tree-sha1 = "48d59dc5887b523cc3c6d388f3ce79e51b67cc48"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "2.15.2"
+version = "2.16.0"
 
 [[deps.Hwloc_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "XML2_jll", "Xorg_libpciaccess_jll"]
@@ -1597,9 +1597,9 @@ version = "0.3.3"
 
 [[deps.OpenEXR_jll]]
 deps = ["Artifacts", "Imath_jll", "JLLWrappers", "Libdl", "OpenJPH_jll", "Zlib_jll", "Zstd_jll", "libdeflate_jll"]
-git-tree-sha1 = "afa66dc1246b28b68600d053715e00a379268980"
+git-tree-sha1 = "db5f91397090eab5dc6899a61f20d54505b49995"
 uuid = "18a262bb-aa17-5467-a713-aee519bc75cb"
-version = "3.5.3+0"
+version = "3.5.4+0"
 
 [[deps.OpenJPH_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libtiff_jll"]
@@ -2071,9 +2071,9 @@ version = "0.1.2"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "8a8a52f887f38d44014e24ee46b8a7311c625f6d"
+git-tree-sha1 = "c8bf24c3f713c724e7bceaf9d0bb6729dbd3c8cc"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.24"
+version = "1.9.25"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
