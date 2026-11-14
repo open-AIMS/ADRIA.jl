@@ -153,6 +153,9 @@ function run_scenarios(
 
     # Fail before running anything if a COTS scenario needs inputs the domain lacks
     validate_cots_settings(dom, scens)
+    _validate_submodels(dom, scens)
+    # `prepare` once per run; the caches are shared read-only by all scenarios and threads
+    submodel_caches = _prepare_submodels(dom)
 
     # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
@@ -311,7 +314,7 @@ function run_scenarios(
                     results = [
                         _collect_scenario_results(
                             scen_args[lo + k][1], scen_args[lo + k][3], fg;
-                            sim_cache=sc
+                            sim_cache=sc, submodel_caches=submodel_caches
                         ) for k = 0:(n_c - 1)
                     ]
                     put!(ch, (scen_args[lo][2], results))
@@ -339,7 +342,9 @@ function run_scenarios(
             if show_progress
                 @showprogress desc = run_msg dt = 4 for batch in all_batches
                     batch_results = map(
-                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        dfx -> _collect_scenario_results(
+                            dfx[1], dfx[3], functional_groups; submodel_caches
+                        ),
                         batch
                     )
                     _write_batch!(data_store, first(batch)[2], batch_results)
@@ -347,7 +352,9 @@ function run_scenarios(
             else
                 for batch in all_batches
                     batch_results = map(
-                        dfx -> _collect_scenario_results(dfx[1], dfx[3], functional_groups),
+                        dfx -> _collect_scenario_results(
+                            dfx[1], dfx[3], functional_groups; submodel_caches
+                        ),
                         batch
                     )
                     _write_batch!(data_store, first(batch)[2], batch_results)
@@ -385,9 +392,10 @@ function _collect_scenario_results(
     domain::Domain,
     scenario::Union{AbstractVector,DataFrameRow},
     functional_groups::Vector{Vector{FunctionalGroup}};
-    sim_cache=nothing
+    sim_cache=nothing,
+    submodel_caches=nothing
 )::NamedTuple
-    result_set = run_model(domain, scenario, functional_groups; sim_cache)
+    result_set = run_model(domain, scenario, functional_groups; sim_cache, submodel_caches)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw::Array{Float64} = result_set.raw
@@ -668,7 +676,8 @@ NamedTuple of collated results
 function run_model(
     domain::Domain,
     param_set::Union{DataFrameRow,YAXArray};
-    apply_allee_effect::Bool=true
+    apply_allee_effect::Bool=true,
+    submodel_caches=nothing
 )
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
@@ -693,7 +702,8 @@ function run_model(
     end
 
     return run_model(
-        domain, param_set, functional_groups; apply_allee_effect=apply_allee_effect
+        domain, param_set, functional_groups;
+        apply_allee_effect=apply_allee_effect, submodel_caches=submodel_caches
     )
 end
 function run_model(
@@ -701,7 +711,8 @@ function run_model(
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}};
     sim_cache=nothing,
-    apply_allee_effect::Bool=true
+    apply_allee_effect::Bool=true,
+    submodel_caches=nothing
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
@@ -710,7 +721,8 @@ function run_model(
         ps,
         functional_groups;
         sim_cache=sim_cache,
-        apply_allee_effect=apply_allee_effect
+        apply_allee_effect=apply_allee_effect,
+        submodel_caches=submodel_caches
     )
 end
 function run_model(
@@ -718,7 +730,8 @@ function run_model(
     param_set::YAXArray,
     functional_groups::Vector{Vector{FunctionalGroup}};
     sim_cache=nothing,
-    apply_allee_effect::Bool=true
+    apply_allee_effect::Bool=true,
+    submodel_caches=nothing
 )::NamedTuple
     corals = to_coral_spec(param_set)
     cache = isnothing(sim_cache) ? setup_cache(domain) : sim_cache
@@ -736,7 +749,16 @@ function run_model(
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
 
-    rng = set_random_seed(param_set)
+    # Submodels attached to the domain (none by default). Called directly (not through
+    # `run_scenarios`), validate and prepare in-line, like `sim_cache`.
+    if isnothing(submodel_caches) && !isempty(attached_submodels(domain))
+        _validate_submodels(
+            domain, DataFrame(permutedims(Vector(param_set.data)), factor_names)
+        )
+        submodel_caches = _prepare_submodels(domain)
+    end
+
+    rng = set_random_seed(param_set; excluded=_submodel_seed_excluded(domain))
 
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
@@ -1199,6 +1221,10 @@ function run_model(
     _recruitment_col_sum = zeros(n_locs)
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
+
+    # Optional submodels attached to the domain (ADRIAinterfaces); `()` when none
+    submodel_slots = _init_submodels(domain, param_set, factor_names, submodel_caches, rng)
+    has_submodels = !isempty(submodel_slots)
 
     # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1
     cots = param_set[At("cots_on")] == 1 ? CotsRun(domain, param_set, rng) : nothing
@@ -1924,6 +1950,17 @@ function run_model(
         cots_step!(cots, C_cover_t, tstep, Int64(domain.env_layer_md.timeframe[tstep]))
         log_cots!(Ycots, Ycots_bc, cots, tstep)
 
+        # Submodels attached to the domain, in attach order, at the `AfterDisturbances`
+        # phase: they may only reduce `C_cover_t` (checked by the survival assertion below)
+        if has_submodels
+            _step_submodels!(
+                submodel_slots, AfterDisturbances(),
+                CoralStepView(C_cover_t, dhw_t, vec_abs_k),
+                tstep, Int(domain.env_layer_md.timeframe[tstep])
+            )
+            _record_submodels!(submodel_slots, tstep)
+        end
+
         # Calculate survival_rate due to env. disturbances
         @inbounds for i in eachindex(survival_rate_cache)
             d = ΔC_cover_t[i]
@@ -2002,6 +2039,7 @@ function run_model(
         coral_cover_log=collated_cover_log,
         coral_dhw_final=copy(c_mean_t),
         cots_log=Ycots,
-        cots_condition_log=Ycots_bc
+        cots_condition_log=Ycots_bc,
+        aux_logs=_aux_logs(submodel_slots)
     )
 end
