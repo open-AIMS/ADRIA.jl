@@ -1,9 +1,16 @@
 name: UnitTests
 on:
-  # Trigger manually or on version tags
+  # Trigger manually, on version tags, or on main when packages updated. The main run
+  # seeds the cache that every PR starts from: GitHub only lets a PR restore caches saved
+  # on its own ref or on the default branch.
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    paths:
+      - 'ADRIA/Manifest-v1.12.toml'
+      - '.github/workflows/UnitTests.yml'
   # Run in PR when packages updated.
   # NOTE: PRs are only tested when the manifest changes, so ordinary PRs that touch
   # ADRIA/src do NOT run these jobs (including the precompile budget test in the `fast`
@@ -12,6 +19,7 @@ on:
   pull_request:
     paths:
       - 'ADRIA/Manifest-v1.12.toml'
+      - '.github/workflows/UnitTests.yml'
   workflow_dispatch:
 
 # Cancel superseded runs of the same ref so stale pushes don't burn minutes.
@@ -20,16 +28,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Builds the shared test environment (install + precompile) once and saves it to the
+  # cache, so the three shards below start from a warm depot instead of each doing the
+  # cold build in parallel inside a tight limit. It has a generous limit because a cold
+  # build is slow; it is quick when the cache is warm.
+  setup:
+    name: setup - Julia ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        version: ["1.12"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: adria-setup-cache
+          include-matrix: false
+      - name: Prepare test environment
+        run: julia ADRIA/test/run_tests.jl --prepare-only
+        env:
+          ADRIA_TEST_COVERAGE: adria
+
   test:
+    needs: setup
     name: ${{ matrix.shard }} - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     # Limit for the whole job (checkout + cache + precompile + tests). This is a
     # GitHub-side hard limit that still works if the launcher itself is wedged. The
     # launcher separately enforces a per-shard limit on the test process only (see
-    # ADRIA/test/run_tests.jl): 6 min for fast/spec, which is NOT tighter than the 6 min
-    # job limit here (the job limit also has to cover setup), so for fast/spec the job
-    # timeout is the effective bound; for sim the launcher limit (10 min) is tighter
-    # than the 12 min job limit.
+    # ADRIA/test/run_tests.jl): 6 min for fast/spec and 10 min for sim, each tighter than
+    # the job limits below, which also have to cover checkout and cache restore.
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -38,14 +70,14 @@ jobs:
         os: [ubuntu-latest]
         shard: [fast, spec, sim]
         include:
-          # `timeout-minutes: 6` is the target for the quick shards. It covers the whole
-          # job, so it only holds with a warm depot cache; the first run after a
-          # manifest change will need to rebuild the cache (re-run with a larger value
-          # or via workflow_dispatch). The sim shard runs 32 simulations and needs more.
+          # The `setup` job builds the cache, so these only cover restoring it plus the
+          # tests. 10 min leaves headroom over the launcher's 6 min per-shard limit; it
+          # can be tightened once warm runs have been timed. The sim shard runs 32
+          # simulations and needs more.
           - shard: fast
-            timeout: 6
+            timeout: 10
           - shard: spec
-            timeout: 6
+            timeout: 10
           - shard: sim
             timeout: 12
     steps:
@@ -56,6 +88,9 @@ jobs:
       - uses: julia-actions/cache@v3
         with:
           cache-name: adria-setup-cache
+          # Same key for every shard and for the setup job (the matrix values, including
+          # the timeout, would otherwise be part of it and give each its own cache).
+          include-matrix: false
       # The launcher prepares one shared test environment, then runs this shard in a
       # supervised subprocess with a hard per-shard kill limit.
       - name: Run ${{ matrix.shard }} shard
