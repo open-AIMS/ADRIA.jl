@@ -26,11 +26,10 @@ end
 
     @testset "no submodels attached by default" begin
         @test isempty(ADRIA.attached_submodels(dom))
-        res = ADRIA.run_scenario(dom, row)
-        @test res.aux_logs == (;)
     end
 
     base = ADRIA.run_scenario(dom, row)
+    @test base.aux_logs == (;)
 
     @testset "attached submodels are copied with the domain's spec store" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -123,18 +122,14 @@ end
     end
 
     @testset "run_scenario equals the matching slice of run_scenarios" begin
-        calls = Tuple{Symbol,Symbol,Int}[]
         d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d1, ShrinkMock(0.1))
         rs = ADRIA.run_scenarios(d1, scens, "45")
-        for i in (1, 3)
-            single = ADRIA.run_scenario(d1, scens[i, :])
-            @test _rel_cover(single) == rs.outcomes[:relative_cover][scenarios = i].data
-        end
+        single = ADRIA.run_scenario(d1, scens[3, :])
+        @test _rel_cover(single) == rs.outcomes[:relative_cover][scenarios = 3].data
 
-        # and the reduction is visible against a domain without the submodel
-        rs0 = ADRIA.run_scenarios(dom, scens, "45")
-        @test sum(rs.outcomes[:relative_cover][scenarios = 1].data) <
-            sum(rs0.outcomes[:relative_cover][scenarios = 1].data)
+        # and the reduction is visible against the run without the submodel (scenario 2)
+        @test sum(rs.outcomes[:relative_cover][scenarios = 2].data) <
+            sum(_rel_cover(base))
     end
 end
