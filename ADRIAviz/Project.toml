@@ -33,6 +33,9 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
 
+[sources]
+ADRIA = {path = "../ADRIA"}
+
 [extensions]
 ADRIAvizMakieExt = ["Makie", "GeoMakie", "GraphMakie"]
 ADRIAvizPlotlyExt = ["PlotlyBase"]
