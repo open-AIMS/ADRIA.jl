@@ -7,7 +7,7 @@ Flatten.jl / ModelParameters concrete-method overrides for large `Param`-only st
 build a per-field inline expression for every struct they encounter.  For structs with
 many homogeneous fields (`Coral` has 331, `GrowthAcceleration` has 36) the expression
 size grows as O(N), but Julia must *type-infer* each intermediate tuple concatenation step,
-so the total compile cost is O(N²).  For the 9-component domain model tuple assembled
+so the total compile cost is O(N²).  For the domain model tuple assembled
 in `_assemble_domain_model`, the outer `@generated _reconstruct` additionally tries to
 inline all ~440 fields at once, giving O(440²) compile cost (the regression this
 caused was minutes of cold JIT; 357 s measured by the precompile budget test).
@@ -217,7 +217,7 @@ end
 # Fix D: Override Flatten._reconstruct for outer Tuple types.
 #
 # The @generated _reconstruct inlines code for ALL fields of ALL components in
-# the tuple (e.g., the 9 domain model components = ~440 params total) ->
+# the tuple (the domain model components together hold ~450 params) ->
 # O(440²) compile time (minutes cold).  This override loops over tuple elements and
 # dispatches _reconstruct per component, so each component is compiled
 # independently in O(1) time via its own concrete override above.

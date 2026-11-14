@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "a11e26ffc79180e476ea39e93312e6a4806e7c8f"
+project_hash = "759c16b24c39dc5146ed99b375bc34c8058ebc45"
 
 [[deps.ADRIA]]
 deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "Flatten", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Serialization", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
@@ -228,6 +228,14 @@ deps = ["Dates", "Printf"]
 git-tree-sha1 = "fad2f199d1f1ae0c8e820ab68f81f6dbf62e60b2"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
 version = "0.2.10"
+
+[[deps.COTSMod]]
+deps = ["Random", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "474a1ccc0cea802731c176a659cc0eb1b54f9aea"
+repo-rev = "d29824dd3c72590bcca015bbc86696b4e68b68c4"
+repo-url = "https://github.com/open-AIMS/COTSMod.jl"
+uuid = "83d48a2b-3f7b-4d52-9f7e-4f2d9b0b8f91"
+version = "0.1.0"
 
 [[deps.CRC32c]]
 uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"

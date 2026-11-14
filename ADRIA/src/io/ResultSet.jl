@@ -23,7 +23,7 @@ const LOC_METRIC_NAMES = [
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,D5,D6,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -51,6 +51,8 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
+    cots_pop_log::D5  # COTS population (timesteps, age_class, locations, scenarios); nothing when COTS was off
+    cots_condition_log::D6  # COTS body condition (timesteps, locations, scenarios); nothing when COTS was off
 end
 
 """
@@ -196,7 +198,18 @@ function ResultSet(
                     NamedTuple{ax}([1:s for s in size(arr)])...
                 )
             )
-        end : nothing
+        end : nothing,
+        # COTS logs are present only when a scenario ran the COTS submodel
+        haskey(log_set, "cots_pop_log") ?
+        DataCube(
+            log_set["cots_pop_log"],
+            Symbol.(Tuple(log_set["cots_pop_log"].attrs["structure"]))
+        ) : nothing,
+        haskey(log_set, "cots_condition_log") ?
+        DataCube(
+            log_set["cots_condition_log"],
+            Symbol.(Tuple(log_set["cots_condition_log"].attrs["structure"]))
+        ) : nothing
     )
 end
 
@@ -343,7 +356,9 @@ function combine_results(result_sets...)::ResultSet
                 :iv_CAq_log,
                 :iv_Shd_log,
                 :coral_dhw_tol_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :cots_pop_log,
+                :cots_condition_log
             ],
             setup_logs(
                 z_store,
@@ -353,7 +368,8 @@ function combine_results(result_sets...)::ResultSet
                 size(rs1.iv_CAq_log, :locations),
                 size(rs1.iv_CAq_log, :coral_id),
                 size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
-                batch_size
+                batch_size;
+                log_cots=any(rs -> !isnothing(rs.cots_pop_log), result_sets)
             )
         )...
     )
@@ -364,6 +380,7 @@ function combine_results(result_sets...)::ResultSet
     n_rs = length(result_sets)
     for log in keys(logs)
         n_log = getfield(logs, log)
+        isnothing(n_log) && continue  # e.g. COTS logs when no scenario ran COTS
 
         src = Vector{Union{Nothing,Array}}(undef, n_rs)
         Threads.@threads for i = 1:n_rs
@@ -383,7 +400,9 @@ function combine_results(result_sets...)::ResultSet
                 isnothing(src[i]) ?
                 size(result_sets[i].iv_CAq_log, :scenarios) : size(src[i], ndims(src[i]))
             if !isnothing(src[i])
-                n_log[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = src[i]
+                # Scenarios are the last dimension; the COTS condition log is 3-D
+                lead = ntuple(_ -> Colon(), ndims(n_log) - 1)
+                n_log[lead..., scen_id:(scen_id + rs_scen_len - 1)] = src[i]
             end
             scen_id += rs_scen_len
         end

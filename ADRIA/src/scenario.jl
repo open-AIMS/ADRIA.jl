@@ -151,6 +151,9 @@ function run_scenarios(
     # Initialize ADRIA configuration options
     setup()
 
+    # Fail before running anything if a COTS scenario needs inputs the domain lacks
+    validate_cots_settings(dom, scens)
+
     # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
 
@@ -454,7 +457,9 @@ function _collect_scenario_results(
         LvM_log=LvM_vals,
         CAq_log=CAq_vals,
         coral_dhw_log=dhw_vals,
-        coral_cover_log=cover_vals
+        coral_cover_log=cover_vals,
+        cots_pop_log=Float32.(result_set.cots_log),
+        cots_condition_log=Float32.(result_set.cots_condition_log)
     )
 end
 
@@ -541,6 +546,18 @@ function _write_batch!(
                 UInt16, clamp.(cc_batch, 0.0f0, 1.0f0) .* 65535.0f0
             )
         end
+    end
+
+    # COTS logs (present only when a scenario in the run switched COTS on)
+    if !isnothing(data_store.cots_pop_log)
+        cots_batch = Array{Float32}(undef, size(results[1].cots_pop_log)..., n)
+        bc_batch = Array{Float32}(undef, size(results[1].cots_condition_log)..., n)
+        for (i, r) in enumerate(results)
+            cots_batch[:, :, :, i] .= r.cots_pop_log
+            bc_batch[:, :, i] .= r.cots_condition_log
+        end
+        data_store.cots_pop_log[:, :, :, idx_range] .= cots_batch
+        data_store.cots_condition_log[:, :, idx_range] .= bc_batch
     end
 
     return nothing
@@ -1146,6 +1163,10 @@ function run_model(
     eff_dhw_base::Float64 = param_set[At("eff_dhw_base")]
     eff_dhw_mix::Float64 = param_set[At("eff_dhw_mix")]
 
+    # Optional reduction of bleaching mortality at low effective DHW (see `LowDHWBleaching`)
+    low_dhw_bleach_reduction::Float64 = param_set[At("low_dhw_bleach_reduction")]
+    low_dhw_bleach_threshold::Float64 = param_set[At("low_dhw_bleach_threshold")]
+
     # c_mean tolerance of the "natural" population used as the reference for coral aquaculture corals
     # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
@@ -1178,6 +1199,12 @@ function run_model(
     _recruitment_col_sum = zeros(n_locs)
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
+
+    # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1
+    cots = param_set[At("cots_on")] == 1 ? CotsRun(domain, param_set, rng) : nothing
+    # COTS densities (timesteps x 3 age classes x locations, COTS ha^-1) and body condition
+    Ycots = zeros(tf, 3, n_locs)
+    Ycots_bc = zeros(tf, n_locs)
 
     for tstep::Int64 = 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1874,7 +1901,9 @@ function run_model(
             c_std,
             c_mean_t,
             @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
-            c_mean_tol_ceil
+            c_mean_tol_ceil;
+            low_dhw_reduction=low_dhw_bleach_reduction,
+            low_dhw_threshold=low_dhw_bleach_threshold
         )
 
         # Store current means to be used in future timesteps.
@@ -1889,6 +1918,11 @@ function run_model(
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
+
+        # COTS: one year of the COTS life cycle and its grazing on coral, then larval
+        # dispersal between locations and larvae arriving from outside the domain
+        cots_step!(cots, C_cover_t, tstep, Int64(domain.env_layer_md.timeframe[tstep]))
+        log_cots!(Ycots, Ycots_bc, cots, tstep)
 
         # Calculate survival_rate due to env. disturbances
         @inbounds for i in eachindex(survival_rate_cache)
@@ -1966,6 +2000,8 @@ function run_model(
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
         coral_cover_log=collated_cover_log,
-        coral_dhw_final=copy(c_mean_t)
+        coral_dhw_final=copy(c_mean_t),
+        cots_log=Ycots,
+        cots_condition_log=Ycots_bc
     )
 end

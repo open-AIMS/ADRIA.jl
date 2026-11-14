@@ -15,7 +15,8 @@ makedocs(;
         "index.md",
         "Concepts" => [
             joinpath("concepts", "dMCDA.md"),
-            joinpath("concepts", "disturbances.md")
+            joinpath("concepts", "disturbances.md"),
+            joinpath("concepts", "cots.md")
         ],
         "Usage" => [
             joinpath("usage", "getting_started.md"),
@@ -35,6 +36,7 @@ makedocs(;
         "Development" => [
             joinpath("development", "development_setup.md"),
             joinpath("development", "metrics.md"),
+            joinpath("development", "testing_cots.md"),
             joinpath("development", "release_guide.md"),
             joinpath("development", "building_docs.md")
         ],

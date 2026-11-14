@@ -42,10 +42,14 @@ mutable struct ADRIADomain <: Domain
     # Parameters
     model::Model  # core model
     sim_constants::SimConstants
+
+    const cots_inputs::CotsInputs  # optional COTS inputs from the data package
 end
 
+cots_inputs(domain::ADRIADomain)::CotsInputs = domain.cots_inputs
+
 """
-    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten)
+    _assemble_domain_model(el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw, cots)
 
 Wrapper around `ModelParameters.Model` construction so it can be targeted by
 `@compile_workload`.
@@ -66,9 +70,14 @@ The `@noinline` annotation prevents the compiler from inlining through the barri
     @nospecialize(dth),
     @nospecialize(coral),
     @nospecialize(growth_accel),
-    @nospecialize(depth_atten)
+    @nospecialize(depth_atten),
+    @nospecialize(low_dhw),
+    @nospecialize(cots)
 )::Model
-    return Model((el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten))
+    return Model((
+        el, interv, swt, fwt, mwt, dth, coral, growth_accel, depth_atten, low_dhw,
+        cots
+    ))
 end
 
 # The component tuple held by the domain `Model`.
@@ -142,7 +151,8 @@ Barrier function to create Domain struct without specifying Intervention, Criter
 or SimConstant parameters, which are constructed internally.
 
 Coral and growth acceleration parameters are taken from `calib_params_fn` when given, and
-default to ADRIA values otherwise.
+default to ADRIA values otherwise. `cots_inputs` holds the optional COTS inputs of the data
+package (see `CotsInputs`); none by default.
 """
 function Domain(
     name::String,
@@ -159,7 +169,8 @@ function Domain(
     DHW::YAXArray,
     wave::YAXArray,
     cyclone_mortality::YAXArray;
-    calib_params_fn::String=""
+    calib_params_fn::String="",
+    cots_inputs::CotsInputs=CotsInputs()
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
     if has_MCB_scenarios(DHW)
@@ -189,9 +200,7 @@ function Domain(
         )
     )
 
-    coral_instance, growth_accel_instance, depth_atten_instance = load_calib_params(
-        calib_params_fn
-    )
+    calib = load_calib_params(calib_params_fn)
 
     model::Model = _assemble_domain_model(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
@@ -200,9 +209,11 @@ function Domain(
         FogCriteriaWeights(),
         LvMCriteriaWeights(),
         DepthThresholds(),
-        coral_instance,
-        growth_accel_instance,
-        depth_atten_instance
+        calib.coral,
+        calib.growth_accel,
+        calib.depth_atten,
+        calib.low_dhw,
+        calib.cots
     )
     _cap_growth_bounds!(model)
 
@@ -227,7 +238,8 @@ function Domain(
         [(weight=1.0, target_locs=location_ids)],
         location_ids,
         model,
-        sim_constants
+        sim_constants,
+        cots_inputs
     )
 end
 
@@ -374,7 +386,8 @@ function Domain(
         dhw,
         waves,
         cyclone_mortality;
-        calib_params_fn=calib_params_fn
+        calib_params_fn=calib_params_fn,
+        cots_inputs=load_cots_inputs(dpkg_path, connectivity.loc_ids, Int64.(timeframe))
     )
 end
 

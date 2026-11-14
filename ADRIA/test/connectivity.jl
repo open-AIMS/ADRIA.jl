@@ -1,5 +1,20 @@
 using ADRIA, ADRIA.DataFrames, ADRIA.CSV
 import ADRIA.GDF as GDF
+using Test
+
+struct ConnectivityFallbackDomain <: ADRIA.Domain
+    conn
+end
+
+@testset "COTS connectivity selection" begin
+    coral_conn = [0.1 0.2; 0.3 0.4]
+    # Domain types without COTS inputs use the coral connectivity
+    dom = ConnectivityFallbackDomain(coral_conn)
+    @test all(
+        isnothing(getfield(ADRIA.cots_inputs(dom), f)) for f in fieldnames(ADRIA.CotsInputs)
+    )
+    @test ADRIA.cots_connectivity(dom) === coral_conn
+end
 
 if !@isdefined(TEST_DOMAIN_PATH)
     const ADRIA_DIR = pkgdir(ADRIA)

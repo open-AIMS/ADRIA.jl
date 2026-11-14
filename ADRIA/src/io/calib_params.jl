@@ -100,32 +100,92 @@ function _depth_attenuation_calib_overrides(calib_dataset::Dataset)::Dict{String
 end
 
 """
+    _low_dhw_bleaching_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+
+Read calibrated low-DHW bleaching values from a NetCDF dataset and return a Dict mapping
+`LowDHWBleaching` struct field names to their calibrated values.
+
+Calibration outputs without a `low_dhw_bleaching` variable return an empty Dict, so the
+ADRIA defaults (no reduction) stand. Values are looked up by their `low_dhw_bleach_param`
+label rather than by position.
+"""
+function _low_dhw_bleaching_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :low_dhw_bleaching in keys(calib_dataset.cubes) || return overrides
+
+    lb = calib_dataset["low_dhw_bleaching"]
+    p_names = string.(collect(DimensionalData.lookup(lb, :low_dhw_bleach_param)))
+    vals = Array(lb)
+
+    for fn in string.(fieldnames(LowDHWBleaching))
+        idx = findfirst(==(fn), p_names)
+        isnothing(idx) || (overrides[fn] = vals[idx])
+    end
+
+    return overrides
+end
+
+"""
+    _cots_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+
+Read calibrated COTS values from a NetCDF dataset and return a Dict mapping `CotsParams`
+field names to their calibrated values. A file without a `cots` variable returns an empty
+Dict, so the defaults (COTS off) stand. Values are looked up by their `cots_param` label.
+"""
+function _cots_calib_overrides(calib_dataset::Dataset)::Dict{String,Float64}
+    overrides = Dict{String,Float64}()
+    :cots in keys(calib_dataset.cubes) || return overrides
+
+    cp = calib_dataset["cots"]
+    p_names = string.(collect(DimensionalData.lookup(cp, :cots_param)))
+    vals = Array(cp)
+
+    for fn in string.(fieldnames(CotsParams))
+        idx = findfirst(==(fn), p_names)
+        isnothing(idx) || (overrides[fn] = vals[idx])
+    end
+
+    return overrides
+end
+
+"""
     load_calib_params(calib_params_fn::String)
 
-Build the `Coral`, `GrowthAcceleration` and `DepthAttenuation` component instances for a
-domain.
+Build the calibratable component instances for a domain.
 
 If `calib_params_fn` points to an existing CoralBlox calibration NetCDF, its parameter
 values are applied as overrides; otherwise the ADRIA defaults are used.
 
 # Returns
-Tuple of (Coral, GrowthAcceleration, DepthAttenuation)
+NamedTuple with fields `coral`, `growth_accel`, `depth_atten`, `low_dhw` and `cots`, holding
+the `Coral`, `GrowthAcceleration`, `DepthAttenuation`, `LowDHWBleaching` and `CotsParams`
+instances.
 """
 function load_calib_params(calib_params_fn::String)
     if isempty(calib_params_fn) || !isfile(calib_params_fn)
-        return Coral(), GrowthAcceleration(), DepthAttenuation()
+        return (
+            coral=Coral(),
+            growth_accel=GrowthAcceleration(),
+            depth_atten=DepthAttenuation(),
+            low_dhw=LowDHWBleaching(),
+            cots=CotsParams()
+        )
     end
 
     @info "Loading calibrated coral parameters from $(calib_params_fn)"
     nc_ds = open_dataset(calib_params_fn)
 
     return (
-        create_coral_instance(; overrides=_coral_calib_overrides(nc_ds)),
-        create_growth_acceleration_instance(;
+        coral=create_coral_instance(; overrides=_coral_calib_overrides(nc_ds)),
+        growth_accel=create_growth_acceleration_instance(;
             overrides=_growth_accel_calib_overrides(nc_ds)
         ),
-        create_depth_attenuation_instance(;
+        depth_atten=create_depth_attenuation_instance(;
             overrides=_depth_attenuation_calib_overrides(nc_ds)
-        )
+        ),
+        low_dhw=create_low_dhw_bleaching_instance(;
+            overrides=_low_dhw_bleaching_calib_overrides(nc_ds)
+        ),
+        cots=create_cots_params_instance(; overrides=_cots_calib_overrides(nc_ds))
     )
 end
