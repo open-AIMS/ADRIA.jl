@@ -9,7 +9,7 @@ import ..ADRIAinterfaces:
     phases, step!, record!, init_state, log_specs, parameters, active, prepare,
     load_inputs, validate, seed_excluded, submodel_name
 
-export NoOpMock, ShrinkMock, RecordingMock, GrowMock, MockState
+export NoOpMock, ShrinkMock, RecordingMock, GrowMock, ConnMock, MockState
 
 """Implements nothing: everything comes from the no-op defaults."""
 struct NoOpMock <: Submodel end
@@ -118,4 +118,25 @@ function step!(
     return nothing
 end
 
+"""
+Reads the connectivity matrix from the context: `init_state` returns a state holding a
+reference to it and `step!` accumulates its sum into `state.total` (no allocation). Records
+nothing. Used to check that the host hands the domain's connectivity to submodels.
+"""
+struct ConnMock <: Submodel end
+mutable struct ConnState{M<:AbstractMatrix{Float64}}
+    conn::M
+    total::Float64
 end
+phases(::ConnMock) = (AfterDisturbances(),)
+init_state(::ConnMock, ctx::SubmodelContext, ::NamedTuple, ::Random.AbstractRNG) =
+    ConnState(ctx.connectivity, 0.0)
+function step!(
+    ::ConnMock, ::AfterDisturbances, state::ConnState, ctx::SubmodelContext,
+    ::CoralStepView, tstep::Int, year::Int
+)::Nothing
+    state.total += sum(ctx.connectivity)
+    return nothing
+end
+
+end # module

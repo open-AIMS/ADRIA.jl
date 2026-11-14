@@ -5,10 +5,13 @@ import ADRIAinterfaces: step!
 include("MockSubmodels.jl")
 using .MockSubmodels
 
-function make_ctx(; n_locs=4, tf=5, inputs=nothing, cache=nothing)
+function make_ctx(;
+    n_locs=4, tf=5, inputs=nothing, cache=nothing,
+    conn=[Float64(i == j) for i in 1:n_locs, j in 1:n_locs]
+)
     return SubmodelContext(
         n_locs, 2, 3, tf, collect(2000:(2000 + tf - 1)), [:a, :b],
-        fill(10.0, n_locs), inputs, cache
+        fill(10.0, n_locs), conn, inputs, cache
     )
 end
 
@@ -58,7 +61,10 @@ end
         ctx = make_ctx(; inputs=(; x=1))
         ctx2 = with_cache(ctx, [1.0])
         @test ctx2.cache == [1.0] && ctx2.inputs === ctx.inputs
-        @test ctx2 isa SubmodelContext{@NamedTuple{x::Int},Vector{Float64}}
+        @test ctx2 isa
+            SubmodelContext{@NamedTuple{x::Int},Vector{Float64},Matrix{Float64}}
+        @test ctx2.connectivity === ctx.connectivity   # shared, not copied
+        @test size(ctx.connectivity) == (ctx.n_locs, ctx.n_locs)
 
         cov = zeros(2, 3, 4)
         v = CoralStepView(cov, zeros(4), fill(10.0, 4))
@@ -97,6 +103,19 @@ end
         @inferred init_state(sm, ctx, (; mock_on=1.0), Xoshiro(1))
         @inferred has_phase(sm, AfterDisturbances())
         @inferred cover(v)
+
+        # The connectivity matrix is reachable through the context, type-stable and free
+        cm = ConnMock()
+        cctx = make_ctx(; conn=reshape(collect(1.0:16.0), 4, 4))
+        cstate = init_state(cm, cctx, (;), Xoshiro(1))
+        @inferred step!(cm, AfterDisturbances(), cstate, cctx, v, 2, 2001)
+        get_conn(c) = c.connectivity
+        @inferred get_conn(cctx)
+        run_conn(cm, cstate, cctx, v) =
+            step!(cm, AfterDisturbances(), cstate, cctx, v, 2, 2001)
+        run_conn(cm, cstate, cctx, v)
+        @test (@allocated run_conn(cm, cstate, cctx, v)) == 0
+        @test cstate.total == 3 * sum(1.0:16.0)   # three step! calls above
 
         # Wrap in functions so the measurement does not include global-scope overhead.
         run_step(sm, state, ctx, v) = step!(sm, AfterDisturbances(), state, ctx, v, 2, 2001)

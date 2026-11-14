@@ -1,6 +1,7 @@
 using Test
 using ADRIA
 using ADRIA: ADRIAinterfaces, DataFrames
+using Random
 
 # Mock submodels are shared with the ADRIAinterfaces package's own tests
 @isdefined(MockSubmodels) || include(
@@ -131,5 +132,35 @@ end
         # and the reduction is visible against the run without the submodel (scenario 2)
         @test sum(rs.outcomes[:relative_cover][scenarios = 2].data) <
             sum(_rel_cover(base))
+    end
+
+    @testset "the context carries the domain's connectivity matrix" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        m = ConnMock()
+        ADRIA._attach_submodel!(d2, m)
+        a = only(ADRIA.attached_submodels(d2))
+        ctx = ADRIA._submodel_context(d2, a)
+        @test ctx isa ADRIAinterfaces.SubmodelContext
+        @test ctx.connectivity === d2.conn.data
+        @test size(ctx.connectivity) == (ctx.n_locs, ctx.n_locs)
+        @test eltype(ctx.connectivity) === Float64
+        @test isconcretetype(typeof(ctx))
+
+        # Reachable from the hooks (inference/allocation: see the ADRIAinterfaces tests)
+        st = ADRIAinterfaces.init_state(m, ctx, (;), Random.Xoshiro(1))
+        @test st.conn === d2.conn.data
+        @inferred ADRIAinterfaces.init_state(m, ctx, (;), Random.Xoshiro(1))
+        cov = zeros(ctx.n_groups, ctx.n_sizes, ctx.n_locs)
+        v = ADRIAinterfaces.CoralStepView(cov, zeros(ctx.n_locs), ctx.location_k)
+        step_conn(m, st, ctx, v) = ADRIAinterfaces.step!(
+            m, ADRIAinterfaces.AfterDisturbances(), st, ctx, v, 2, 2001
+        )
+        step_conn(m, st, ctx, v)
+        @test (@allocated step_conn(m, st, ctx, v)) == 0
+        @test st.total == 2 * sum(d2.conn.data)
+
+        # Attached and run: the run is unchanged
+        res = ADRIA.run_scenario(d2, row)
+        @test isequal(res.raw, base.raw)
     end
 end

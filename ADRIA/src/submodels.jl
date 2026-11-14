@@ -53,6 +53,7 @@ function _submodel_context(domain::Domain, a::AttachedSubmodel)
         Vector{Int}(domain.env_layer_md.timeframe),
         functional_group_names(),
         loc_k_area(domain),
+        domain.conn.data,
         a.inputs,
         nothing
     )

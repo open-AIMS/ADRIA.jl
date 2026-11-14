@@ -1,0 +1,20 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.12.7"
+manifest_format = "2.0"
+project_hash = "ac5e69117c52573a82d538aefb8abaeeee072d40"
+
+[[deps.ADRIAinterfaces]]
+deps = ["Random"]
+path = "."
+uuid = "614a4c2d-c4df-40cc-95b9-f7070135fec7"
+version = "0.1.0"
+
+[[deps.Random]]
+deps = ["SHA"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+version = "1.11.0"
+
+[[deps.SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+version = "0.7.0"
