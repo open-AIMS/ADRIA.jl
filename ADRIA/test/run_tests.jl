@@ -35,11 +35,11 @@ const ENV_DIR = joinpath(TEST_DIR, ".testenv")   # shared, prepared once, git-ig
 const LOG_DIR = joinpath(TEST_DIR, "logs")
 
 # Default wall-clock limits in seconds, measured per shard process (the launcher's own
-# environment preparation is not counted). `fast` and `spec` are 6 min as a "something is
-# wrong" tripwire; `sim` runs 32 full simulations and needs longer. NB: in CI the job-level
-# `timeout-minutes` (UnitTests.yml) also covers checkout/cache/precompile, so for `fast`
-# and `spec` the job timeout, not this limit, is the effective bound.
-const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 360, "sim" => 600)
+# environment preparation is not counted). Measured in CI on a warm cache: fast ~2 min,
+# spec ~5 min, sim ~4.5 min; limits are about 2-3x that as a "something is wrong"
+# tripwire. NB: the job-level `timeout-minutes` (UnitTests.yml) also covers
+# checkout/cache restore, so it is always a little larger than the shard limit.
+const DEFAULT_LIMITS = Dict("fast" => 360, "spec" => 600, "sim" => 600)
 
 limit_for(shard) = parse(
     Float64,
