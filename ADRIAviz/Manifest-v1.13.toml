@@ -5,7 +5,7 @@ manifest_format = "2.1"
 project_hash = "3ce8c4230ec382fdb955e632b59f3e138bbbf6b9"
 
 [[deps.ADRIA]]
-deps = ["ADRIAIndicators", "ArchGDAL", "Bootstrap", "COTSMod", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Serialization", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
+deps = ["ADRIAIndicators", "ADRIAinterfaces", "ArchGDAL", "Bootstrap", "COTSMod", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Glob", "Graphs", "ImageIO", "Interpolations", "JMcDM", "JSON", "LERC_jll", "LinearAlgebra", "Logging", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "QuasiMonteCarlo", "Random", "Reexport", "RelocatableFolders", "Serialization", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "TOML", "YAXArrays", "Zarr"]
 path = "../ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 version = "0.20.0"
@@ -18,6 +18,12 @@ git-tree-sha1 = "aaa97fdc8125b525f4b11542cccedc64929826f7"
 registries = "General"
 uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
 version = "0.2.1"
+
+[[deps.ADRIAinterfaces]]
+deps = ["Random"]
+path = "../ADRIAinterfaces"
+uuid = "614a4c2d-c4df-40cc-95b9-f7070135fec7"
+version = "0.1.0"
 
 [[deps.ADRIAviz]]
 deps = ["ADRIA", "ArchGDAL", "DataFrames", "DimensionalData", "Distances", "Distributions", "GeoFormatTypes", "GeoInterface", "Graphs", "ImageIO", "NaturalEarth", "OrderedCollections", "PrecompileTools", "Printf", "Random", "Reexport", "SimpleWeightedGraphs", "SparseArrays", "Statistics", "StatsBase", "YAXArrays"]
