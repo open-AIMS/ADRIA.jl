@@ -5,6 +5,7 @@
 #   julia ADRIA/test/run_tests.jl fast            # one shard (what CI matrix jobs use)
 #   julia ADRIA/test/run_tests.jl fast spec       # a subset, concurrently
 #   julia ADRIA/test/run_tests.jl --no-prepare .. # skip env preparation (already done)
+#   julia ADRIA/test/run_tests.jl --prepare-only  # only prepare/precompile (CI cache warm-up)
 #
 # Shards (see ADRIA_TEST_SHARD in runtests.jl):
 #   fast  tiers 1-2 + precompile budget test
@@ -45,6 +46,11 @@ limit_for(shard) = parse(
     get(ENV, "ADRIA_TEST_LIMIT_$(uppercase(shard))_S", string(DEFAULT_LIMITS[shard]))
 )
 
+function coverage_flag(cov::AbstractString)
+    cov in ("user", "adria") && return "--code-coverage=@$(ADRIA_DIR)"
+    return "--code-coverage=$cov"
+end
+
 """Create/refresh the shared test environment once, so concurrent shards don't each
 instantiate and precompile their own copy.
 
@@ -67,7 +73,10 @@ function prepare_env()
     # `--check-bounds=yes`, and every shard would re-precompile ADRIA and its deps itself
     # (inside its time limit, and racing the other shards).
     julia = joinpath(Sys.BINDIR, Base.julia_exename())
-    run(`$julia --project=$ENV_DIR $JULIA_FLAGS -e "using Pkg; Pkg.precompile()"`)
+    # The coverage flag is passed too (when requested) so that the precompile cache
+    # produced here is the one the shards' own flags will look for.
+    cov = coverage_flag(get(ENV, "ADRIA_TEST_COVERAGE", "none"))
+    run(`$julia --project=$ENV_DIR $cov $JULIA_FLAGS -e "using Pkg; Pkg.precompile()"`)
 end
 
 # Same flags as `Pkg.test`. Only `--check-bounds` affects the precompile cache key.
@@ -128,11 +137,6 @@ function run_with_timeout(cmd::Cmd, limit_s::Real, logfile::AbstractString)
     end
 end
 
-function coverage_flag(cov::AbstractString)
-    cov in ("user", "adria") && return "--code-coverage=@$(ADRIA_DIR)"
-    return "--code-coverage=$cov"
-end
-
 function run_shard(shard::String)
     julia = joinpath(Sys.BINDIR, Base.julia_exename())
     cov = coverage_flag(get(ENV, "ADRIA_TEST_COVERAGE", "none"))
@@ -147,6 +151,11 @@ end
 
 function main(args)
     prepare = !("--no-prepare" in args)
+    if "--prepare-only" in args
+        mkpath(LOG_DIR)
+        prepare_env()
+        return nothing
+    end
     shards = filter(a -> !startswith(a, "--"), args)
     isempty(shards) && (shards = ["fast", "spec", "sim"])
     for s in shards
