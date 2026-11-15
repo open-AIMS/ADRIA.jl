@@ -60,7 +60,7 @@ jobs:
     # Limit for the whole job (checkout + cache + precompile + tests). This is a
     # GitHub-side hard limit that still works if the launcher itself is wedged. The
     # launcher separately enforces a per-shard limit on the test process only (see
-    # ADRIA/test/run_tests.jl): 6 min for fast/spec and 10 min for sim, each tighter than
+    # ADRIA/test/run_tests.jl): 6 min for fast and 10 min for spec/sim, each tighter than
     # the job limits below, which also have to cover checkout and cache restore.
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
@@ -71,13 +71,13 @@ jobs:
         shard: [fast, spec, sim]
         include:
           # The `setup` job builds the cache, so these only cover restoring it plus the
-          # tests. 60 min is a deliberately generous placeholder so that runs complete and
-          # report their real durations; tighten it once warm runs have been timed. The sim shard runs 32
-          # simulations and needs more.
+          # tests. Measured on a warm cache (whole job): fast ~3 min, sim ~5.5 min, spec
+          # ~6.5 min. Limits are roughly 2-3x those, to absorb runner variance without
+          # letting a hung job run for an hour.
           - shard: fast
-            timeout: 60
+            timeout: 10
           - shard: spec
-            timeout: 60
+            timeout: 15
           - shard: sim
             timeout: 12
     steps:
