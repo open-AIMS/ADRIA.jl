@@ -2,12 +2,18 @@
 
 julia_version = "1.11.9"
 manifest_format = "2.0"
-project_hash = "5d96e7d25429b9945127313c829cacfbe1a55911"
+project_hash = "9b66e3a64c14a3e78f5420eedd88d942c5052e9d"
 
 [[deps.ADRIAIndicators]]
 git-tree-sha1 = "aaa97fdc8125b525f4b11542cccedc64929826f7"
 uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
 version = "0.2.1"
+
+[[deps.ADRIAinterfaces]]
+deps = ["Random"]
+path = "../ADRIAinterfaces"
+uuid = "614a4c2d-c4df-40cc-95b9-f7070135fec7"
+version = "0.1.0"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
