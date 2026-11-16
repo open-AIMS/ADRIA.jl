@@ -483,14 +483,25 @@ function _log_bytes_per_scen(
     aux = [prod(s.size) for s in aux_specs]
     total = 4 * (sum(arrays) + sum(aux; init=0))
 
-    optional = Int[]
-    if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false"))
-        push!(optional, tf * n_groups * n_sizes * n_locs)
-    end
-    if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false"))
-        push!(optional, tf * n_groups * n_sizes * n_locs)
-    end
-    largest = 4 * maximum(vcat(arrays, aux, optional))
+    # Largest single array, with the element sizes actually stored: Float32 for the
+    # outcome and aux logs, UInt16 ranks, Float16 shading, and the optional DHW (Float16)
+    # and cover (UInt16) logs, which hold a single location unless enabled by env var.
+    sized = [
+        4 * tf * n_locs * length(LOC_METRIC_NAMES),
+        4 * tf * n_groups,
+        2 * tf * n_locs * 2,
+        2 * tf * n_locs * n_ivs,
+        4 * tf * n_groups * n_locs,
+        4 * tf * n_groups * n_locs
+    ]
+    aux_bytes = [4 * prod(s.size) for s in aux_specs]
+    dhw_locs = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) ? n_locs : 1
+    cover_locs = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) ? n_locs : 1
+    optional = [
+        2 * tf * n_groups * n_sizes * dhw_locs,
+        2 * tf * n_groups * n_sizes * cover_locs
+    ]
+    largest = maximum(vcat(sized, aux_bytes, optional))
 
     return (; total, largest)
 end
@@ -499,13 +510,24 @@ end
     _max_chunk_by_size_for(domain::Domain, aux_specs)::Int
 
 Largest number of scenarios per chunk (and per in-memory batch) within a 1.8 GB working
-budget, below the hard 2 GB limit per array: the budget divided by the summed bytes per
-scenario of all arrays, and by the bytes per scenario of the largest array.
+budget, below the hard 2 GB limit per array: see [`_chunk_cap_by_bytes`](@ref).
 """
 function _max_chunk_by_size_for(domain::Domain, aux_specs::AbstractVector{LogSpec})::Int
     b = _log_bytes_per_scen(domain, aux_specs)
+    return _chunk_cap_by_bytes(b.total, b.largest)
+end
+
+"""
+    _chunk_cap_by_bytes(total::Int, largest::Int)::Int
+
+Scenarios per chunk within the 1.8 GB working budget: the cap from the summed bytes per
+scenario (the batch budget), and the separate cap from the largest array (2 GB per array).
+As every counted array is part of the sum, the second binds only for arrays that are not
+counted in `total` (the optional logs), and only when one really nears the limit.
+"""
+function _chunk_cap_by_bytes(total::Int, largest::Int)::Int
     budget = 1_800_000_000
-    return max(1, min(floor(Int, budget / b.total), floor(Int, budget / b.largest)))
+    return max(1, min(floor(Int, budget / total), floor(Int, budget / largest)))
 end
 
 """
