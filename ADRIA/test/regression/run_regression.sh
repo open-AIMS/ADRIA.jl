@@ -62,7 +62,7 @@ compare)
     [ -d "$CACHE/$rev" ] || { echo "no cached reference for $rev; run: $0 ref $rev" >&2; exit 2; }
     COMPARE_ENV="$(cd "$cand" && pwd)/ADRIA"
     run_driver "$(cd "$cand" && pwd)" "$SCRATCH/cand"
-    compare "$CACHE/$rev" "$SCRATCH/cand" "${extra[@]}"
+    compare "$CACHE/$rev" "$SCRATCH/cand" ${extra[@]+"${extra[@]}"}
     ;;
 selftest)
     rev="$(cat "$CACHE/CURRENT")"
