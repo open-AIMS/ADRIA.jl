@@ -59,6 +59,30 @@ end
     @test issubset(TEST_RS.model_spec.fieldname, ms.fieldname)
 end
 
+@testset "Provenance is stored, loaded, merged and optional" begin
+    prov = ADRIA.provenance(TEST_RS)
+    @test length(prov) == 1
+    @test prov[1]["adria_version"] == string(pkgversion(ADRIA))
+    @test prov[1]["models"] == []  # COTS off, nothing attached
+    @test prov[1]["overrides"] == []
+
+    merged = ADRIA.combine_results(TEST_RS, TEST_RS)
+    @test ADRIA.provenance(merged) == [prov[1], prov[1]]
+    @test length(ADRIA.provenance(merged)) == length(merged.source_sizes)
+
+    # A store written without provenance loads with `nothing`; merging it keeps alignment
+    old_dir = mktempdir()
+    cp(TEST_RS.env_layer_md.dpkg_path, old_dir; force=true)
+    fn = joinpath(old_dir, ADRIA.INPUTS, ".zattrs")
+    attrs = ADRIA.JSON.parsefile(fn)
+    delete!(attrs, "provenance")
+    write(fn, ADRIA.JSON.json(attrs))
+    old_rs = ADRIA.load_results(old_dir)
+    @test ADRIA.provenance(old_rs) == [nothing]
+    mixed = ADRIA.combine_results(old_rs, TEST_RS)
+    @test ADRIA.provenance(mixed) == [nothing, prov[1]]
+end
+
 @testset "Auxiliary logs" begin
     using ADRIA: Zarr
 
