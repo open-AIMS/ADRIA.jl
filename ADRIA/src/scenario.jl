@@ -1324,6 +1324,14 @@ function run_model(
         cover_transition_ub, loc_cb_calib_group_idxs, net_growth_rates, functional_groups
     )
 
+    # State used by the reproduction phase (arrays are mutated in place by `_reproduce!`)
+    reproduction_state = (;
+        c_mean_pre_CAq, fec_scope, fecundity_per_m², habitable_areas, prop_fecundity,
+        n_locs, _loc_coral_cover, leftover_space_m², vec_abs_k, potential_settlers, conn,
+        sim_params, basal_area_per_settler, habitable_loc_idxs, _recruitment_col_sum_2d,
+        _recruitment_col_sum
+    )
+
     for tstep::Int64 = 2:tf
         _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
@@ -1332,57 +1340,9 @@ function run_model(
             cover_log, _permuted_buf, log_dhw_tols, log_cover, tstep, tf
         )
 
-        # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
-        # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
-        # here would cause the enhancement to compound each deployment year.
-        c_mean_pre_CAq .= c_mean_t[:, JUVENILE_SIZE_CLASS, :]
-
-        # Reproduction
-        # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(
-            fec_scope, fecundity_per_m², C_cover_t, habitable_areas;
-            apply_allee_effect=apply_allee_effect
+        _reproduce!(
+            recruitment, C_cover_t, c_mean_t, reproduction_state, rng, apply_allee_effect
         )
-
-        for l = 1:n_locs
-            s = sum(fec_scope[:, l])
-            if s > 0.0
-                prop_fecundity[:, l] .= fec_scope[:, l] ./ s
-            else
-                prop_fecundity[:, l] .= 0.0
-            end
-        end
-
-        _loc_coral_cover .= loc_coral_cover(C_cover_t)
-        leftover_space_m² .= relative_leftover_space(_loc_coral_cover) .* vec_abs_k
-
-        # Reset potential settlers to zero
-        potential_settlers .= 0.0
-        recruitment .= 0.0
-
-        # habitable_areas_view = @view habitable_areas[:, habitable_locs]
-
-        # Recruitment represents additional cover, relative to total location area
-        # Recruitment/settlement occurs after the full moon in October/November
-        @views recruitment[:, habitable_loc_idxs] .=
-            settler_cover(
-                fec_scope,
-                conn,
-                leftover_space_m²,
-                sim_params.max_settler_density,
-                sim_params.max_larval_density,
-                basal_area_per_settler,
-                potential_settlers;
-                rng=rng
-            )[
-                :, habitable_loc_idxs
-            ] ./ habitable_areas[:, habitable_loc_idxs]
-
-        # Reset fecundity scope before next run
-        fec_scope .= 0.0
-
-        sum!(_recruitment_col_sum_2d, recruitment)
-        leftover_space_m² .-= _recruitment_col_sum .* vec_abs_k
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
@@ -2181,5 +2141,78 @@ function _adapt_and_log!(
             cover_log[tstep, :, :] .= reshape(_permuted_buf, size(cover_log)[2:3])
         end
     end
+    return nothing
+end
+
+"""
+    _reproduce!(recruitment, C_cover_t, c_mean_t, rs, rng, apply_allee_effect)
+
+Reproduction phase: snapshot the juvenile tolerance (before coral aquaculture changes it),
+compute fecundity scope and its proportions per location, the leftover space, and the
+settlers (`settler_cover`, the only RNG draws of this phase) as the new `recruitment`
+(relative to the location area). `leftover_space_m²` is reduced by the settlers.
+`rs` holds the per-scenario buffers and constants built before the time loop.
+"""
+function _reproduce!(
+    recruitment, C_cover_t, c_mean_t, rs, rng, apply_allee_effect::Bool
+)
+    (;
+        c_mean_pre_CAq, fec_scope, fecundity_per_m², habitable_areas, prop_fecundity,
+        n_locs, _loc_coral_cover, leftover_space_m², vec_abs_k, potential_settlers, conn,
+        sim_params, basal_area_per_settler, habitable_loc_idxs, _recruitment_col_sum_2d,
+        _recruitment_col_sum
+    ) = rs
+
+    # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
+    # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
+    # here would cause the enhancement to compound each deployment year.
+    c_mean_pre_CAq .= c_mean_t[:, JUVENILE_SIZE_CLASS, :]
+
+    # Reproduction
+    # Calculates scope for coral fedundity for each size class and at each location
+    fecundity_scope!(
+        fec_scope, fecundity_per_m², C_cover_t, habitable_areas;
+        apply_allee_effect=apply_allee_effect
+    )
+
+    for l = 1:n_locs
+        s = sum(fec_scope[:, l])
+        if s > 0.0
+            prop_fecundity[:, l] .= fec_scope[:, l] ./ s
+        else
+            prop_fecundity[:, l] .= 0.0
+        end
+    end
+
+    _loc_coral_cover .= loc_coral_cover(C_cover_t)
+    leftover_space_m² .= relative_leftover_space(_loc_coral_cover) .* vec_abs_k
+
+    # Reset potential settlers to zero
+    potential_settlers .= 0.0
+    recruitment .= 0.0
+
+    # habitable_areas_view = @view habitable_areas[:, habitable_locs]
+
+    # Recruitment represents additional cover, relative to total location area
+    # Recruitment/settlement occurs after the full moon in October/November
+    @views recruitment[:, habitable_loc_idxs] .=
+        settler_cover(
+            fec_scope,
+            conn,
+            leftover_space_m²,
+            sim_params.max_settler_density,
+            sim_params.max_larval_density,
+            basal_area_per_settler,
+            potential_settlers;
+            rng=rng
+        )[
+            :, habitable_loc_idxs
+        ] ./ habitable_areas[:, habitable_loc_idxs]
+
+    # Reset fecundity scope before next run
+    fec_scope .= 0.0
+
+    sum!(_recruitment_col_sum_2d, recruitment)
+    leftover_space_m² .-= _recruitment_col_sum .* vec_abs_k
     return nothing
 end
