@@ -533,6 +533,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
     input_loc::String = joinpath(z_store.folder, INPUTS)
     input_dims::Tuple{Int64,Int64} = size(scen_spec)
     attrs::Dict = scenario_attributes(domain, scen_spec)
+    attrs[:provenance] = _provenance_record(domain, scen_spec)
 
     # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, SPATIAL_DATA))
@@ -870,6 +871,15 @@ function _load_results(result_loc::String)::ResultSet
     source_sizes::Vector{Int} = Int.(
         get(input_set.attrs, "source_sizes", [nrow(inputs_used)])
     )
+    # Provenance, one record per source (`nothing` for stores written without it)
+    prov = get(input_set.attrs, "provenance", nothing)
+    provenance::Vector{Any} = if prov isa AbstractVector
+        collect(Any, prov)
+    else
+        Any[prov]
+    end
+    length(provenance) == length(source_sizes) ||
+        (provenance = fill(nothing, length(source_sizes)))
     sum(source_sizes) == nrow(inputs_used) || error(
         "Result set at $(result_loc) is inconsistent: its sources hold $(sum(source_sizes)) " *
         "scenarios but the scenario table has $(nrow(inputs_used))"
@@ -978,7 +988,8 @@ function _load_results(result_loc::String)::ResultSet
         loc_data,
         model_spec,
         model_specs,
-        source_sizes
+        source_sizes,
+        provenance
     )
 end
 

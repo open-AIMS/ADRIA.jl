@@ -44,6 +44,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     model_spec::DF
     model_specs::Vector{DF}  # model spec of each source result set (one if not merged)
     source_sizes::Vector{Int}  # number of scenarios taken from each source, in order
+    provenance::Vector{Any}  # provenance record of each source (`nothing` if not stored)
 
     # raw::AbstractArray
     outcomes::D2
@@ -175,7 +176,8 @@ function ResultSet(
     loc_data::DataFrame,
     model_spec::DataFrame,
     model_specs::Vector{DataFrame}=[model_spec],
-    source_sizes::Vector{Int}=[nrow(inputs_used)]
+    source_sizes::Vector{Int}=[nrow(inputs_used)],
+    provenance::Vector{Any}=Any[nothing]
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
 
@@ -200,6 +202,7 @@ function ResultSet(
         model_spec,
         model_specs,
         source_sizes,
+        provenance,
         outcomes,
         map(Float64, _rankings_data(log_set["rankings"])),
         let arr = log_set["larval_methods"]
@@ -391,6 +394,7 @@ function combine_results(result_sets...)::ResultSet
     all_inputs = _union_inputs([getfield(rs, :inputs) for rs in result_sets])
     source_sizes = reduce(vcat, [rs.source_sizes for rs in result_sets])
     source_specs = reduce(vcat, [rs.model_specs for rs in result_sets])
+    source_prov = reduce(vcat, [rs.provenance for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(
         canonical_name,
@@ -405,6 +409,8 @@ function combine_results(result_sets...)::ResultSet
         rs1.loc_centroids
     )
     length(source_sizes) > 1 && (attrs[:source_sizes] = source_sizes)
+    # One provenance record per source, aligned with `source_sizes`
+    all(isnothing, source_prov) || (attrs[:provenance] = source_prov)
 
     # ── Copy spatial data and model spec ──────────────────────────────────────
     mkdir(joinpath(new_loc, SPATIAL_DATA))
@@ -798,6 +804,17 @@ each scenario of the result set, the index of the source it came from. A result 
 not merged has one source.
 """
 model_specs(rs::ADRIAResultSet)::Vector{DataFrame} = rs.model_specs
+"""
+    provenance(rs::ADRIAResultSet)::Vector{Any}
+
+What produced each source of the result set (one record if not merged), aligned with
+`model_specs`: a `Dict` with `adria_version`, `julia_version`, `interface_version`, `models`
+(attached submodels in attach order, then COTS if it was on; each with `name`, `type`,
+`module`, `version`, `revision`) and `overrides` (always empty today). An entry is `nothing`
+for a store written before provenance was recorded.
+"""
+provenance(rs::ADRIAResultSet)::Vector{Any} = rs.provenance
+
 scenario_sources(rs::ADRIAResultSet)::Vector{Int} = reduce(
     vcat, [fill(i, n) for (i, n) in enumerate(rs.source_sizes)]; init=Int[]
 )
