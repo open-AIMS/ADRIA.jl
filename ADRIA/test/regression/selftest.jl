@@ -7,16 +7,18 @@ ref, cmp = ARGS
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
 
-passes(cand) =
+passes(cand, extra=``) =
     run(
-        pipeline(ignorestatus(`$julia --project=$project $cmp $ref $cand`);
-            stdout=devnull)
+        pipeline(
+            ignorestatus(`$julia --project=$project $cmp $ref $cand $extra`);
+            stdout=devnull
+        )
     ).exitcode == 0
 
 store(root, c) = only(filter(isdir, readdir(joinpath(root, c); join=true)))
 results = Bool[]
-function expect(name, cand, want)
-    ok = passes(cand) == want
+function expect(name, cand, want, extra=``)
+    ok = passes(cand, extra) == want
     println(ok ? "ok   " : "FAIL ", name, " (expected ", want ? "pass" : "fail", ")")
     push!(results, ok)
 end
@@ -57,6 +59,21 @@ mktempdir() do tmp
     f3 = joinpath(store(d, "mixed"), "model_spec", "model_spec.csv")
     write(f3, read(f3, String) * "\n")
     expect("model_spec.csv perturbed", d, false)
+
+    # 5. --tol must still require exact inputs table and intervention logs
+    for p in ("inputs", joinpath("logs", "shading_log"), joinpath("logs", "rankings"))
+        d = fresh("tol_" * replace(p, "/" => "_", "\\" => "_"))
+        arr = joinpath(store(d, "mixed"), p)
+        isfile(joinpath(arr, ".zarray")) ||
+            (push!(results, false); println("FAIL missing ", p); continue)
+        z = zopen(arr, "w")
+        isfloat = eltype(z) <: AbstractFloat
+        isfloat || (println("skip non-float ", p); continue)
+        idx = ntuple(_ -> 1, ndims(z))
+        v = z[idx...]
+        z[idx...] = isnan(v) ? zero(v) : nextfloat(v)   # far below any tolerance
+        expect("$p perturbed by < tol under --tol", d, false, `--tol 1e-4`)
+    end
 end
 all(results) || (println("SELFTEST FAILED"); exit(1))
 println("SELFTEST PASSED")

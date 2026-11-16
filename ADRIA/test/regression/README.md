@@ -32,7 +32,7 @@ scenarios alone (`cots_off` case, a store without COTS logs).
 
 `compare.jl` compares decoded contents, not file bytes: for every Zarr array the path set,
 dtype, shape, chunks, fill value and all values (NaN-aware exact equality); attrs against an
-allow-list (ignored: `invoke_time`, `ADRIA_VERSION`, `name`; `*_file` attrs by basename);
+allow-list (ignored: `invoke_time`, `ADRIA_VERSION`; `*_file` attrs by basename);
 `model_spec/model_spec.csv` as text, ignoring its `#` header comment (version, time). The geopackage is not compared.
 
 Default mode requires everything to be identical. `--tol X` is a documented fallback for a
