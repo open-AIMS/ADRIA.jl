@@ -215,7 +215,10 @@ same domain) into one store. The sources need not have the same factors or logs:
   concatenated along scenarios. Scenarios from a source without the log are `NaN`, which tells
   them apart from scenarios that ran with the model off (zeros).
 - **Model specification:** `ADRIA.model_specs(rs)` holds the specification of every source
-  (in order) and `ADRIA.scenario_sources(rs)` the source of each scenario. `ADRIA.model_spec(rs)`
+  (in order), `ADRIA.provenance(rs)` what produced each source (versions of ADRIA, Julia and
+  the submodel interface, the models that ran with their package versions and manifest
+  revisions, and parameter overrides, which are always empty today) and
+  `ADRIA.scenario_sources(rs)` the source of each scenario. `ADRIA.model_spec(rs)`
   is the union of the specifications, the first source winning for a parameter that several
   share. A result set that was not merged has a single source.
 

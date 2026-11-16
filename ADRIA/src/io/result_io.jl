@@ -885,8 +885,14 @@ function _load_results(result_loc::String)::ResultSet
     else
         Any[prov]
     end
-    length(provenance) == length(source_sizes) ||
-        (provenance = fill(nothing, length(source_sizes)))
+    if length(provenance) != length(source_sizes)
+        # Only a store without provenance may lack records; anything else is inconsistent
+        isnothing(prov) || error(
+            "Result set at $(result_loc) has $(length(provenance)) provenance records " *
+            "for $(length(source_sizes)) sources"
+        )
+        provenance = fill(nothing, length(source_sizes))
+    end
     sum(source_sizes) == nrow(inputs_used) || error(
         "Result set at $(result_loc) is inconsistent: its sources hold $(sum(source_sizes)) " *
         "scenarios but the scenario table has $(nrow(inputs_used))"

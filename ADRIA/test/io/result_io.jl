@@ -99,7 +99,7 @@ end
 @testset "Provenance is stored, loaded, merged and optional" begin
     prov = ADRIA.provenance(TEST_RS)
     @test length(prov) == 1
-    @test prov[1]["adria_version"] == string(pkgversion(ADRIA))
+    @test prov[1]["adria_version"] == "v" * string(pkgversion(ADRIA))
     @test prov[1]["models"] == []  # COTS off, nothing attached
     @test prov[1]["overrides"] == []
 
