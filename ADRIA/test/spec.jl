@@ -319,4 +319,9 @@ end
     @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:categorical)])
     @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:nope)])
 
+    # COTS declares its factors as ParamSpecs: the row view and `spec_rows` agree
+    @test length(ADRIA.COTS_PARAM_SPECS) == 43 == length(ADRIA.COTS_FACTOR_SPECS)
+    @test ADRIA.spec_rows(ADRIA.COTS_PARAM_SPECS) == ADRIA._cots_specs()
+    @test first.(ADRIA.spec_rows(ADRIA.COTS_PARAM_SPECS)) ==
+        collect(fieldnames(ADRIA.CotsParams))
 end
