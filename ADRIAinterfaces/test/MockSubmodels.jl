@@ -9,7 +9,7 @@ import ..ADRIAinterfaces:
     phases, step!, record!, init_state, log_specs, parameters, active, prepare,
     load_inputs, validate, seed_excluded, submodel_name
 
-export NoOpMock, ShrinkMock, RecordingMock, GrowMock, ConnMock, MockState
+export NoOpMock, ShrinkMock, RecordingMock, GrowMock, FillMock, ConnMock, MockState
 
 """Implements nothing: everything comes from the no-op defaults."""
 struct NoOpMock <: Submodel end
@@ -115,6 +115,25 @@ function step!(
     tstep::Int, year::Int
 )::Nothing
     cover(view) .*= m.factor
+    return nothing
+end
+
+"""
+Violates the decrease-only contract in cells that hold no cover: sets them to `amount`.
+Such an increase leaves the survival ratio at 1, so only a per-cell check catches it.
+"""
+struct FillMock <: Submodel
+    amount::Float64
+end
+phases(::FillMock) = (AfterDisturbances(),)
+function step!(
+    m::FillMock, ::AfterDisturbances, state, ::SubmodelContext, view::CoralStepView,
+    tstep::Int, year::Int
+)::Nothing
+    c = cover(view)
+    @inbounds for i in eachindex(c)
+        c[i] == 0.0 && (c[i] = m.amount)
+    end
     return nothing
 end
 
