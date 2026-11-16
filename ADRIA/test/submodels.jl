@@ -122,6 +122,35 @@ end
         @test_throws AssertionError ADRIA.run_scenario(d1, row)
     end
 
+    @testset "an increase that the survival ratio cannot see is caught per cell" begin
+        # Cells holding no cover: survival stays 1 whatever is added, so only the
+        # per-cell snapshot check can catch it
+        d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d1, FillMock(1e-6))
+        err = try
+            ADRIA.run_scenario(d1, row)
+            nothing
+        catch e
+            e
+        end
+        @test err isa AssertionError
+        @test occursin("increased (or invalidated) coral cover", err.msg)
+
+        # An increase that only offsets a disturbance loss (survival 0.9 <= 1 would pass)
+        before = fill(0.5, 1, 1, 1)
+        @test ADRIA._check_decrease_only(before, fill(0.5, 1, 1, 1), 2) === nothing
+        @test ADRIA._check_decrease_only(before, fill(0.4, 1, 1, 1), 2) === nothing
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(0.5 + 1e-12, 1, 1, 1), 2
+        )
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(NaN, 1, 1, 1), 2
+        )
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(-0.1, 1, 1, 1), 2
+        )
+    end
+
     @testset "run_scenario equals the matching slice of run_scenarios" begin
         d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d1, ShrinkMock(0.1))
@@ -162,5 +191,19 @@ end
         # Attached and run: the run is unchanged
         res = ADRIA.run_scenario(d2, row)
         @test isequal(res.raw, base.raw)
+    end
+
+    @testset "a guided reactive scenario runs with a submodel attached" begin
+        # Reactive strategies use run_model locals (cover losses etc.) next to the hook
+        # phase; a name clash there broke attached runs once
+        sc = ADRIA.sample_guided(dom, 4)
+        for f in ("iv_CAq_strategy", "iv_Fog_strategy", "iv_LvM_strategy")
+            sc[!, f] .= 2.0
+        end
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
+        res = ADRIA.run_scenario(d2, sc[2, :])
+        @test all(isfinite, res.raw)
+        @test res.aux_logs.mock_calls[tf] == tf - 1
     end
 end

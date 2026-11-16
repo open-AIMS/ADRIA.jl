@@ -189,13 +189,16 @@ end
 
 The only window a [`step!`](@ref) hook has on the coral model at a phase.
 
-- `cover(v)`: coral cover (`n_groups x n_sizes x n_locs`, as absolute area, the same units as
-  `location_k`). **Mutable in place, decrease only**: a hook may reduce any entry (down to
-  zero) and must never increase one. The host propagates the reduction to the coral
-  groups through the survival ratio, and asserts that survival is `<= 1`, so an increase
-  fails there.
+- `cover(v)`: coral cover (`n_groups x n_sizes x n_locs`) as a **fraction of each
+  location's habitable area** (not absolute area; multiply by `location_k` for area).
+  **Mutable in place, decrease only**: a hook may reduce any entry (down to zero) and must
+  never increase one. The host snapshots cover before the submodel phase and, when any
+  submodel is attached, checks per cell that the value after the phase is `<=` the value
+  before (exact comparison) and raises an error otherwise, so an increase of any size is
+  caught, including one that only offsets a disturbance loss or fills an empty cell. The
+  reduction is then propagated to the coral groups through the survival ratio.
 - `dhw(v)`: degree heating weeks of this timestep per location. Read-only by contract.
-- `location_k(v)`: habitable area per location. Read-only by contract.
+- `location_k(v)`: habitable area per location (absolute area). Read-only by contract.
 
 Immutable; the fields are references to host arrays, so building one does not copy.
 """
