@@ -214,3 +214,54 @@ the hook path the same input would raise here instead.
     end
     return nothing
 end
+
+"""
+    _model_provenance(model::Submodel)::Dict{String,Any}
+
+Provenance of one attached submodel: its name, type, the module that defines the type and
+that module's package version (`nothing` when the module is not a package, e.g. `Main`).
+`revision` is `nothing`: no cheap, robust source for it exists yet.
+"""
+function _model_provenance(model::Submodel)::Dict{String,Any}
+    T = typeof(model)
+    mod = parentmodule(T)
+    ver = pkgversion(mod)
+    return Dict{String,Any}(
+        "name" => string(ADRIAinterfaces.submodel_name(model)),
+        "type" => string(T),
+        "module" => string(mod),
+        "version" => isnothing(ver) ? nothing : string(ver),
+        "revision" => nothing
+    )
+end
+
+"""
+    _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
+
+What produced a run, written to the result store: ADRIA, Julia and submodel interface
+versions; `models`, the attached submodels in attach order followed by the built-in COTS
+model when any scenario has `cots_on = 1`; and `overrides` (always empty: there is no
+mechanism to override submodel parameters except the scenario table, which is stored in
+`inputs`). Deterministic for a given run apart from the versions.
+"""
+function _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
+    models = Dict{String,Any}[
+        _model_provenance(a.model) for a in attached_submodels(domain)
+    ]
+    if "cots_on" in names(scens) && any(==(1), scens.cots_on)
+        push!(
+            models,
+            Dict{String,Any}(
+                "name" => "COTS", "type" => "builtin", "module" => "ADRIA",
+                "version" => string(pkgversion(@__MODULE__)), "revision" => nothing
+            )
+        )
+    end
+    return Dict{String,Any}(
+        "adria_version" => string(pkgversion(@__MODULE__)),
+        "julia_version" => string(VERSION),
+        "interface_version" => string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION),
+        "models" => models,
+        "overrides" => Any[]
+    )
+end
