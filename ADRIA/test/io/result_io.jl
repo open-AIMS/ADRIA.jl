@@ -83,6 +83,32 @@ end
     @test ADRIA.provenance(mixed) == [nothing, prov[1]]
 end
 
+@testset "Loading rejects inconsistent merged stores" begin
+    n = size(TEST_RS.inputs, 1)
+    # Copy of the fixture store with its scenario-table attributes edited
+    function edited_store(edit!)
+        dir = mktempdir()
+        cp(TEST_RS.env_layer_md.dpkg_path, dir; force=true)
+        fn = joinpath(dir, ADRIA.INPUTS, ".zattrs")
+        attrs = ADRIA.JSON.parsefile(fn)
+        edit!(attrs)
+        write(fn, ADRIA.JSON.json(attrs))
+        return dir
+    end
+
+    # Source sizes must add up to the number of scenarios
+    dir = edited_store(a -> a["source_sizes"] = [n + 1])
+    @test_throws "inconsistent" ADRIA.load_results(dir)
+
+    # A multi-source store needs one model specification file per source
+    dir = edited_store(a -> (a["source_sizes"] = [1, n - 1]; delete!(a, "provenance")))
+    @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
+
+    # Provenance records must match the sources (absent provenance is fine)
+    dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
+    @test_throws "provenance records" ADRIA.load_results(dir)
+end
+
 @testset "Auxiliary logs" begin
     using ADRIA: Zarr
 
