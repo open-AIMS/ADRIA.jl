@@ -13,7 +13,8 @@
 using Zarr
 using JSON
 
-# Attr keys ignored entirely (run-specific; `provenance` holds machine-specific versions); `*_file` attrs compare by basename
+# Attr keys ignored entirely (run-specific; `provenance` holds version-specific content).
+# `*_file` attrs compare by basename.
 const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION", "provenance"])
 # Always-exact arrays, by store-relative path (rankings, intervention logs, inputs table)
 const ALWAYS_EXACT = [
