@@ -38,7 +38,7 @@ allow-list (ignored: `invoke_time`, `ADRIA_VERSION`; `*_file` attrs by basename)
 Default mode requires everything to be identical. `--tol X` is a documented fallback for a
 stage that deliberately re-orders floating-point work: it relaxes only outcome arrays and
 non-intervention logs to a max abs difference of `X`. Ranks, intervention logs
-(`logs/seed|fog|shade`), the inputs table and `model_spec.csv` always stay exact. Do not use
+(`logs/rankings`, `coral_aquaculture`, `larval_methods`, `shading_log`), the inputs table and `model_spec.csv` always stay exact. Do not use
 it for result-changing stages (compare ensemble statistics instead).
 
 ## Per-stage driver variant
