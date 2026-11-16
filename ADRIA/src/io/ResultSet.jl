@@ -75,7 +75,7 @@ const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
     aux = getfield(rs, :aux)
     haskey(aux, name) && return aux[name]
     name in LEGACY_AUX_NAMES && return nothing
-    error("ADRIAResultSet has no property or auxiliary log `$name`")
+    throw(ArgumentError("ADRIAResultSet has no property or auxiliary log `$name`"))
 end
 # Note: this lists more names than there are fields when aux logs exist, so Setfield's
 # `@set!` on such a set may fail; rebuild the set through its constructor instead.
@@ -93,7 +93,11 @@ function _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
     names = sort!([n for n in keys(log_set.arrays) if !(n in CORE_LOG_NAMES)])
     for n in names
         haskey(log_set[n].attrs, "structure") ||
-            error("Auxiliary log `$n` has no `structure` attribute naming its axes")
+            throw(
+                ArgumentError(
+                    "Auxiliary log `$n` has no `structure` attribute naming its axes"
+                )
+            )
     end
     arrs = [
         DataCube(log_set[n], Symbol.(Tuple(log_set[n].attrs["structure"]))) for n in names
