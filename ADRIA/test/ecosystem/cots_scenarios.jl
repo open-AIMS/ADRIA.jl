@@ -49,6 +49,36 @@ end
             rs.cots_pop_log[scenarios = 1].data
     end
 
+    @testset "result sets with and without COTS logs combine, filling the missing log with NaN" begin
+        rs_off = ADRIA.run_scenarios(dom, scens[3:4, :], "45")
+        for (a, b, on_range, off_range) in
+            ((rs, rs_off, 1:4, 5:6), (rs_off, rs, 3:6, 1:2))
+            combined = ADRIA.combine_results(a, b)
+            @test size(combined.cots_pop_log, :scenarios) == 6
+            @test size(combined.cots_condition_log, :scenarios) == 6
+            @test all(isnan, combined.cots_pop_log[scenarios = off_range].data)
+            @test all(isnan, combined.cots_condition_log[scenarios = off_range].data)
+            @test combined.cots_pop_log[scenarios = on_range].data == rs.cots_pop_log.data
+            # Same factors in both sources: the scenario table is the plain stack
+            @test combined.inputs == vcat(a.inputs, b.inputs)
+            # One model specification per source, in order, and the source of each scenario
+            @test length(ADRIA.model_specs(combined)) == 2
+            @test isequal(ADRIA.model_specs(combined)[1], a.model_spec)
+            @test isequal(ADRIA.model_specs(combined)[2], b.model_spec)
+            @test ADRIA.scenario_sources(combined) ==
+                [fill(1, size(a.inputs, 1)); fill(2, size(b.inputs, 1))]
+            @test isequal(ADRIA.model_spec(combined), a.model_spec)
+            # Merged results can be merged again, keeping every source
+            again = ADRIA.combine_results(combined, rs)
+            @test length(ADRIA.model_specs(again)) == 3
+            @test ADRIA.scenario_sources(again) ==
+                [ADRIA.scenario_sources(combined); fill(3, 4)]
+        end
+        # Sets that are not merged have a single source
+        @test length(ADRIA.model_specs(rs)) == 1
+        @test ADRIA.scenario_sources(rs) == fill(1, 4)
+    end
+
     @testset "COTS runs from the data package's inputs" begin
         @isdefined(make_cots_test_package) ||
             include(joinpath(@__DIR__, "..", "io", "cots_test_package.jl"))
