@@ -20,7 +20,7 @@ const ALWAYS_EXACT = [
     "inputs", "logs/rankings", "logs/coral_aquaculture", "logs/larval_methods",
     "logs/shading_log"
 ]
-const IGNORED_DIRS = Set(["spatial_data"])
+const IGNORED_DIRS = Set(["spatial", "spatial_data"])
 
 mutable struct Report
     diffs::Vector{String}
