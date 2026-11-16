@@ -1320,129 +1320,20 @@ function run_model(
     Ycots = zeros(tf, 3, n_locs)
     Ycots_bc = zeros(tf, n_locs)
 
+    # State used by the growth phase (arrays are mutated in place by `_grow_corals!`)
+    growth_state = (;
+        habitable_locs, habitable_loc_areas, habitable_loc_areas′, habitable_loc_idxs,
+        vec_abs_k, agg_cover_above_threshold_mask, _recruitment_col_sum_2d,
+        _recruitment_col_sum, habitable_max_projected_cover,
+        cache_habitable_max_projected_cover, relative_habitable_cover_cache,
+        growth_threshold_mask_cache, cover_threshold_mask, growth_constraints,
+        cb_calib_group_masks, n_cb_calib_groups, biogrp_lin_ext, biogrp_survival, _le_cache,
+        growth_acc_height, growth_acc_midpoint, growth_acc_steepness, cover_transition_lb,
+        cover_transition_ub, loc_cb_calib_group_idxs, net_growth_rates, functional_groups
+    )
+
     for tstep::Int64 = 2:tf
-        # Convert cover to absolute values to use within CoralBlox model
-        C_cover_t[:, :, habitable_locs] .=
-            C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
-
-        # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
-        # which recruits are either set to zero or rescaled.
-        constrain_recruitment!(
-            recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas
-        )
-
-        # Settlers from t-1 grow into observable sizes.
-        C_cover_t[:, 1, habitable_locs] .+= recruitment
-
-        sum!(_recruitment_col_sum_2d, recruitment)
-        habitable_max_projected_cover .=
-            cache_habitable_max_projected_cover .+ _recruitment_col_sum
-
-        relative_habitable_cover_cache[habitable_locs] .=
-            loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./
-            vec_abs_k[habitable_locs]
-
-        # Growth constrains need to be calculated seperately for differen growth rates
-        growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .>= cover_transition_ub
-        for idx = 1:n_cb_calib_groups
-            cover_threshold_mask .=
-                cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
-
-            # Only apply linear_extension_scale_factors to locations with high cover
-            @views growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
-                C_cover_t[:, :, cover_threshold_mask],
-                vec_abs_k[cover_threshold_mask],
-                biogrp_lin_ext[:, :, idx],
-                _le_cache,
-                habitable_max_projected_cover[cover_threshold_mask]
-            )
-        end
-
-        # When cover is between cover_transition_lb and cover_transition_ub use a weighted mean
-        @. growth_threshold_mask_cache = (
-            cover_transition_lb <= relative_habitable_cover_cache <
-            cover_transition_ub
-        )
-        if sum(growth_threshold_mask_cache) > 0
-            for idx = 1:n_cb_calib_groups
-                cover_threshold_mask .=
-                    growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
-                transition_scale =
-                    (
-                        relative_habitable_cover_cache[cover_threshold_mask] .-
-                        cover_transition_lb
-                    ) ./ (cover_transition_ub - cover_transition_lb)
-                growth_constraints[cover_threshold_mask] .=
-                    (
-                        transition_scale .*
-                        linear_extension_scale_factors(
-                            C_cover_t[:, :, cover_threshold_mask],
-                            vec_abs_k[cover_threshold_mask],
-                            biogrp_lin_ext[:, :, idx],
-                            _le_cache,
-                            habitable_max_projected_cover[cover_threshold_mask]
-                        )
-                    ) .+
-                    (
-                        (1 .- transition_scale) .*
-                        growth_acceleration.(
-                            growth_acc_height[idx],
-                            growth_acc_midpoint[idx],
-                            growth_acc_steepness[idx],
-                            relative_habitable_cover_cache[cover_threshold_mask]
-                        )
-                    )
-            end
-        end
-        growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .< cover_transition_lb
-        for idx = 1:n_cb_calib_groups
-            cover_threshold_mask .=
-                growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
-            growth_constraints[cover_threshold_mask] .= growth_acceleration.(
-                growth_acc_height[idx],
-                growth_acc_midpoint[idx],
-                growth_acc_steepness[idx],
-                relative_habitable_cover_cache[cover_threshold_mask]
-            )
-        end
-
-        @inbounds for i in habitable_loc_idxs
-            cb_idx::Int64 = loc_cb_calib_group_idxs[i]
-            net_growth_rates[:, :, i] .=
-                @view(biogrp_lin_ext[:, :, cb_idx]) .*
-                growth_constraints[i]
-
-            timestep!(
-                functional_groups[i],
-                @view(recruitment[:, i]),
-                @view(net_growth_rates[:, :, i]),
-                @view(biogrp_survival[:, :, cb_idx])
-            )
-
-            # Write to the cover matrix
-            coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
-        end
-
-        # Check if size classes are inappropriately out-growing habitable area
-        if any(loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas)
-            @warn "Cover outgrowing habitable area at tstep $tstep. Constraining."
-            outgrowing_locs_mask =
-                loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
-            C_cover_t[:, :, outgrowing_locs_mask] .*=
-                reshape(
-                    vec_abs_k[outgrowing_locs_mask] ./
-                    loc_coral_cover(C_cover_t)[outgrowing_locs_mask],
-                    (1, 1, count(outgrowing_locs_mask))
-                ) .* 0.999
-        end
-
-        # Convert C_cover_t to relative values after CoralBlox was run
-        C_cover_t[:, :, habitable_locs] .= (
-            @view(C_cover_t[:, :, habitable_locs]) ./ habitable_loc_areas′
-        )
-        C_cover[tstep, :, :, habitable_locs] .= @view(C_cover_t[:, :, habitable_locs])
+        _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
@@ -2132,4 +2023,152 @@ function run_model(
         cots_condition_log=Ycots_bc,
         submodel_logs=_submodel_logs(submodel_slots)
     )
+end
+
+"""
+    _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep)
+
+Growth phase of a timestep: take the cover of `tstep - 1` into `C_cover_t` (absolute area),
+add the recruits settled last step, set the cover-dependent growth constraints per location,
+run CoralBlox for each habitable location, constrain cover that outgrows the habitable
+area, and write the result back as relative cover into `C_cover_t` and `C_cover[tstep]`.
+`gs` holds the per-scenario growth state built before the time loop (arrays are mutated
+in place, nothing is rebound).
+"""
+function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
+    (;
+        habitable_locs, habitable_loc_areas, habitable_loc_areas′, habitable_loc_idxs,
+        vec_abs_k, agg_cover_above_threshold_mask, _recruitment_col_sum_2d,
+        _recruitment_col_sum, habitable_max_projected_cover,
+        cache_habitable_max_projected_cover, relative_habitable_cover_cache,
+        growth_threshold_mask_cache, cover_threshold_mask, growth_constraints,
+        cb_calib_group_masks, n_cb_calib_groups, biogrp_lin_ext, biogrp_survival, _le_cache,
+        growth_acc_height, growth_acc_midpoint, growth_acc_steepness, cover_transition_lb,
+        cover_transition_ub, loc_cb_calib_group_idxs, net_growth_rates, functional_groups
+    ) = gs
+
+    # Convert cover to absolute values to use within CoralBlox model
+    C_cover_t[:, :, habitable_locs] .=
+        C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
+
+    # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
+    # which recruits are either set to zero or rescaled.
+    constrain_recruitment!(
+        recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas
+    )
+
+    # Settlers from t-1 grow into observable sizes.
+    C_cover_t[:, 1, habitable_locs] .+= recruitment
+
+    sum!(_recruitment_col_sum_2d, recruitment)
+    habitable_max_projected_cover .=
+        cache_habitable_max_projected_cover .+ _recruitment_col_sum
+
+    relative_habitable_cover_cache[habitable_locs] .=
+        loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./
+        vec_abs_k[habitable_locs]
+
+    # Growth constrains need to be calculated seperately for differen growth rates
+    growth_threshold_mask_cache .=
+        relative_habitable_cover_cache .>= cover_transition_ub
+    for idx = 1:n_cb_calib_groups
+        cover_threshold_mask .=
+            cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
+
+        # Only apply linear_extension_scale_factors to locations with high cover
+        @views growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
+            C_cover_t[:, :, cover_threshold_mask],
+            vec_abs_k[cover_threshold_mask],
+            biogrp_lin_ext[:, :, idx],
+            _le_cache,
+            habitable_max_projected_cover[cover_threshold_mask]
+        )
+    end
+
+    # When cover is between cover_transition_lb and cover_transition_ub use a weighted mean
+    @. growth_threshold_mask_cache = (
+        cover_transition_lb <= relative_habitable_cover_cache <
+        cover_transition_ub
+    )
+    if sum(growth_threshold_mask_cache) > 0
+        for idx = 1:n_cb_calib_groups
+            cover_threshold_mask .=
+                growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
+            transition_scale =
+                (
+                    relative_habitable_cover_cache[cover_threshold_mask] .-
+                    cover_transition_lb
+                ) ./ (cover_transition_ub - cover_transition_lb)
+            growth_constraints[cover_threshold_mask] .=
+                (
+                    transition_scale .*
+                    linear_extension_scale_factors(
+                        C_cover_t[:, :, cover_threshold_mask],
+                        vec_abs_k[cover_threshold_mask],
+                        biogrp_lin_ext[:, :, idx],
+                        _le_cache,
+                        habitable_max_projected_cover[cover_threshold_mask]
+                    )
+                ) .+
+                (
+                    (1 .- transition_scale) .*
+                    growth_acceleration.(
+                        growth_acc_height[idx],
+                        growth_acc_midpoint[idx],
+                        growth_acc_steepness[idx],
+                        relative_habitable_cover_cache[cover_threshold_mask]
+                    )
+                )
+        end
+    end
+    growth_threshold_mask_cache .=
+        relative_habitable_cover_cache .< cover_transition_lb
+    for idx = 1:n_cb_calib_groups
+        cover_threshold_mask .=
+            growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
+        growth_constraints[cover_threshold_mask] .= growth_acceleration.(
+            growth_acc_height[idx],
+            growth_acc_midpoint[idx],
+            growth_acc_steepness[idx],
+            relative_habitable_cover_cache[cover_threshold_mask]
+        )
+    end
+
+    @inbounds for i in habitable_loc_idxs
+        cb_idx::Int64 = loc_cb_calib_group_idxs[i]
+        net_growth_rates[:, :, i] .=
+            @view(biogrp_lin_ext[:, :, cb_idx]) .*
+            growth_constraints[i]
+
+        timestep!(
+            functional_groups[i],
+            @view(recruitment[:, i]),
+            @view(net_growth_rates[:, :, i]),
+            @view(biogrp_survival[:, :, cb_idx])
+        )
+
+        # Write to the cover matrix
+        coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
+    end
+
+    # Check if size classes are inappropriately out-growing habitable area
+    if any(loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas)
+        @warn "Cover outgrowing habitable area at tstep $tstep. Constraining."
+        outgrowing_locs_mask =
+            loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
+        C_cover_t[:, :, outgrowing_locs_mask] .*=
+            reshape(
+                vec_abs_k[outgrowing_locs_mask] ./
+                loc_coral_cover(C_cover_t)[outgrowing_locs_mask],
+                (1, 1, count(outgrowing_locs_mask))
+            ) .* 0.999
+    end
+
+    # Convert C_cover_t to relative values after CoralBlox was run
+    C_cover_t[:, :, habitable_locs] .= (
+        @view(C_cover_t[:, :, habitable_locs]) ./ habitable_loc_areas′
+    )
+    C_cover[tstep, :, :, habitable_locs] .= @view(C_cover_t[:, :, habitable_locs])
+
+    return nothing
 end
