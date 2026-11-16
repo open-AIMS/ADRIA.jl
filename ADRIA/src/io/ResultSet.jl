@@ -808,7 +808,7 @@ model_specs(rs::ADRIAResultSet)::Vector{DataFrame} = rs.model_specs
     provenance(rs::ADRIAResultSet)::Vector{Any}
 
 What produced each source of the result set (one record if not merged), aligned with
-`model_specs`: a `Dict` with `adria_version`, `julia_version`, `interface_version`, `models`
+`model_specs`: a `Dict` with `adria_version` (leading `v`, as the `ADRIA_VERSION` attr), `julia_version`, `interface_version`, `models`
 (attached submodels in attach order, then COTS if it was on; each with `name`, `type`,
 `module`, `version`, `revision`) and `overrides` (always empty today). An entry is `nothing`
 for a store written before provenance was recorded.

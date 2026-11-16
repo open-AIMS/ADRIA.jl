@@ -3,6 +3,7 @@
 # COTS does not go through this path. With no submodel attached, none of this runs and the
 # run is unchanged (no extra RNG draws, no extra allocations).
 
+using TOML: TOML
 using ADRIAinterfaces: ADRIAinterfaces
 using ADRIAinterfaces: Submodel, SubmodelContext, CoralStepView, AfterDisturbances, LogSpec
 
@@ -193,11 +194,34 @@ values also fail.
 end
 
 """
+    _pkg_revision(name::AbstractString)::Union{String,Nothing}
+
+Git revision of package `name` as recorded in the active environment's manifest
+(`repo-rev`), or `nothing` when it is not recorded there (registered or path packages) or
+the manifest cannot be read. Uses only `TOML`, already a dependency.
+"""
+function _pkg_revision(name::AbstractString)::Union{String,Nothing}
+    try
+        manifest = Base.project_file_manifest_path(Base.active_project())
+        isnothing(manifest) && return nothing
+        entries = get(TOML.parsefile(manifest), "deps", Dict())
+        haskey(entries, name) || return nothing
+        rev = get(first(entries[name]), "repo-rev", nothing)
+        return isnothing(rev) ? nothing : String(rev)
+    catch
+        return nothing
+    end
+end
+
+"""
     _model_provenance(model::Submodel)::Dict{String,Any}
 
-Provenance of one attached submodel: its name, type, the module that defines the type and
-that module's package version (`nothing` when the module is not a package, e.g. `Main`).
-`revision` is `nothing`: no cheap, robust source for it exists yet.
+Provenance of one attached submodel: its name, its type as `<module>.<TypeName>` (without
+type parameters, so it does not depend on what the session imported), the module that
+defines the type and that module's package version (`nothing` when the module is not a
+package, e.g. `Main`; note that `pkgversion` of a package *extension* module may also be
+`nothing`, so a model living in an extension reports no version). `revision` is the
+manifest `repo-rev` of the package of that name, if any.
 """
 function _model_provenance(model::Submodel)::Dict{String,Any}
     T = typeof(model)
@@ -205,19 +229,21 @@ function _model_provenance(model::Submodel)::Dict{String,Any}
     ver = pkgversion(mod)
     return Dict{String,Any}(
         "name" => string(ADRIAinterfaces.submodel_name(model)),
-        "type" => string(T),
+        "type" => string(mod) * "." * string(nameof(T)),
         "module" => string(mod),
         "version" => isnothing(ver) ? nothing : string(ver),
-        "revision" => nothing
+        "revision" => isnothing(ver) ? nothing : _pkg_revision(string(nameof(mod)))
     )
 end
 
 """
     _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
 
-What produced a run, written to the result store: ADRIA, Julia and submodel interface
+What produced a run, written to the result store: ADRIA (with a leading `v`, like the
+`ADRIA_VERSION` attr; other versions are plain), Julia and submodel interface
 versions; `models`, the attached submodels in attach order followed by the built-in COTS
-model when any scenario has `cots_on = 1`; and `overrides` (always empty: there is no
+model (`COTSMod`, with its package version and manifest revision) when any scenario has
+`cots_on = 1`; and `overrides` (always empty: there is no
 mechanism to override submodel parameters except the scenario table, which is stored in
 `inputs`). Deterministic for a given run apart from the versions.
 """
@@ -229,13 +255,14 @@ function _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
         push!(
             models,
             Dict{String,Any}(
-                "name" => "COTS", "type" => "builtin", "module" => "ADRIA",
-                "version" => string(pkgversion(@__MODULE__)), "revision" => nothing
+                "name" => "COTS", "type" => "builtin", "module" => "COTSMod",
+                "version" => string(pkgversion(COTSMod)),
+                "revision" => _pkg_revision("COTSMod")
             )
         )
     end
     return Dict{String,Any}(
-        "adria_version" => string(pkgversion(@__MODULE__)),
+        "adria_version" => "v" * string(pkgversion(@__MODULE__)),
         "julia_version" => string(VERSION),
         "interface_version" => string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION),
         "models" => models,

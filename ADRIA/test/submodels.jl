@@ -49,9 +49,11 @@ end
         rec = ADRIA._provenance_record(d2, scens)
         @test [m["name"] for m in rec["models"]] == ["RecordingMock", "NoOpMock"]
         @test all(m["module"] == "Main.MockSubmodels" for m in rec["models"])
+        @test [m["type"] for m in rec["models"]] ==
+            ["Main.MockSubmodels.RecordingMock", "Main.MockSubmodels.NoOpMock"]
         @test all(isnothing(m["version"]) for m in rec["models"])  # not a package
         @test rec["interface_version"] == string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION)
-        @test rec["adria_version"] == string(pkgversion(ADRIA))
+        @test rec["adria_version"] == "v" * string(pkgversion(ADRIA))
         @test rec["julia_version"] == string(VERSION)
         @test isempty(rec["overrides"])
         # COTS is listed (after attached submodels) only when a scenario has it on
@@ -62,6 +64,19 @@ end
         @test [m["name"] for m in rec_on["models"]] ==
             ["RecordingMock", "NoOpMock", "COTS"]
         @test rec_on == ADRIA._provenance_record(d2, on)  # deterministic
+        cots = rec_on["models"][end]
+        @test cots["module"] == "COTSMod"
+        @test cots["version"] == string(pkgversion(ADRIA.COTSMod))
+        @test cots["revision"] isa Union{Nothing,String}
+    end
+
+    @testset "attached submodels are written to the store and read back" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, NoOpMock())
+        rs = ADRIA.run_scenarios(d2, scens[1:2, :], "45")
+        models = ADRIA.provenance(rs)[1]["models"]
+        @test [m["name"] for m in models] == ["NoOpMock"]
+        @test models[1]["type"] == "Main.MockSubmodels.NoOpMock"
     end
 
     @testset "a submodel that does nothing leaves the run bit-identical" begin
