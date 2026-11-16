@@ -74,18 +74,30 @@ At this phase a submodel may only reduce coral cover (see [`CoralStepView`](@ref
 struct AfterDisturbances <: Phase end
 
 """
-    ParamSpec(name, default, bounds; ptype="real", dist=:uniform, dist_params=[bounds...],
+    ParamSpec(name, default, bounds; label=string(name), kind=nothing, levels=Float64[],
+              ptype=nothing, dist=nothing, dist_params=[bounds...], constant=true,
               description="")
 
-Declaration of one scenario parameter (factor) of a submodel. Plain data: the host decides
-how to turn it into a sampled/constant factor.
+Declaration of one scenario parameter (factor) of a submodel. Plain data (strings, symbols
+and numbers only): the host decides how to turn it into a sampled/constant factor (ADRIA
+does so in `ADRIA.spec_rows`).
 
 - `name::Symbol`: unique and prefixed with the submodel name, e.g. `:mymodel_rate`.
+- `label::String`: human-readable name shown in the parameter table (defaults to `name`).
 - `default::Float64` and `bounds::Tuple{Float64,Float64}` (lower, upper). Equal bounds
   declare a constant.
-- `ptype::String`: `"real"`, `"integer"` or `"categorical"`.
-- `dist::Symbol`: name of the sampling distribution (`:uniform`, `:triang`, ...), with
-  parameters `dist_params`.
+- `kind::Symbol`: `:real`, `:integer`, `:bool` or `:categorical`. Derived from `ptype` when
+  not given (`"real"`, `"integer"`, `"categorical"`), `:real` if neither is given.
+- `levels::Vector{Float64}`: the values of a `:bool` (`[0, 1]`, filled in) or
+  `:categorical` factor (required).
+- `ptype::String`: `"real"`, `"integer"` or `"categorical"`. Derived from `kind` when not
+  given (`:bool` is `"categorical"`).
+- `dist::Symbol`: sampling distribution, with parameters `dist_params` (the full range):
+  `:uniform` (lo, hi), `:triang` (lo, hi, mode), `:discrete_ordered` (lo, hi, step),
+  `:discrete_uniform` (lo, hi) or `:categorical` (the levels; set from `levels`). Defaults
+  to `:categorical` for `:bool`/`:categorical` kinds and `:uniform` otherwise.
+- `constant::Bool`: if `true` (the default) the factor is held at `default` when sampling
+  and `dist_params` is only the range it may be widened to.
 """
 struct ParamSpec
     name::Symbol
@@ -95,20 +107,63 @@ struct ParamSpec
     dist::Symbol
     dist_params::Vector{Float64}
     description::String
+    label::String
+    kind::Symbol
+    levels::Vector{Float64}
+    constant::Bool
 end
+
+const _PARAM_KINDS = (:real, :integer, :bool, :categorical)
+const _PTYPE_KIND = Dict(
+    "real" => :real, "integer" => :integer, "categorical" => :categorical
+)
+
 function ParamSpec(
     name::Symbol, default::Real, bounds::Tuple{<:Real,<:Real};
-    ptype::AbstractString="real", dist::Symbol=:uniform,
+    ptype::Union{Nothing,AbstractString}=nothing, dist::Union{Nothing,Symbol}=nothing,
     dist_params::AbstractVector{<:Real}=Float64[bounds[1], bounds[2]],
-    description::AbstractString=""
+    description::AbstractString="", label::AbstractString=String(name),
+    kind::Union{Nothing,Symbol}=nothing, levels::AbstractVector{<:Real}=Float64[],
+    constant::Bool=true
 )
     lo, hi = Float64(bounds[1]), Float64(bounds[2])
     lo <= hi || throw(ArgumentError("$name: lower bound $lo exceeds upper bound $hi"))
     lo <= default <= hi ||
         throw(ArgumentError("$name: default $default is outside bounds ($lo, $hi)"))
+
+    if kind === nothing
+        kind = ptype === nothing ? :real : get(_PTYPE_KIND, String(ptype), nothing)
+        kind === nothing && throw(ArgumentError("$name: unknown ptype \"$ptype\""))
+    end
+    kind in _PARAM_KINDS ||
+        throw(ArgumentError("$name: kind must be one of $_PARAM_KINDS, got :$kind"))
+    ptype === nothing && (ptype = if kind === :real
+        "real"
+    elseif kind === :integer
+        "integer"
+    else
+        "categorical"
+    end)
+
+    levels = Float64.(levels)
+    if kind === :bool
+        isempty(levels) && (levels = [0.0, 1.0])
+        levels == [0.0, 1.0] ||
+            throw(ArgumentError("$name: a :bool factor has levels [0, 1]"))
+    elseif kind === :categorical
+        length(levels) >= 2 ||
+            throw(ArgumentError("$name: a :categorical factor needs at least 2 levels"))
+        default in levels ||
+            throw(ArgumentError("$name: default $default is not one of the levels"))
+    end
+    if dist === nothing
+        dist = kind in (:bool, :categorical) ? :categorical : :uniform
+    end
+
     return ParamSpec(
         name, Float64(default), (lo, hi), String(ptype), dist,
-        Float64.(dist_params), String(description)
+        Float64.(dist_params), String(description), String(label), kind, levels,
+        constant
     )
 end
 
