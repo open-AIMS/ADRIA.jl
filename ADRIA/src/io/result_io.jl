@@ -182,13 +182,16 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
     )
 end
 
+# Attribute names under which stores written so far hold axis labels
+const LEGACY_LABEL_ATTRS = Dict(:age_class => :age_classes)
+
 """
     _label_attr_key(dim::Symbol)::Symbol
 
-Name of the array attribute that holds the labels of axis `dim`: the axis name made plural
-(`:age_class` -> `:age_classes`).
+Name of the array attribute that holds the labels of axis `dim`: a fixed name for the axes
+of existing stores (`:age_class` -> `:age_classes`), else `<dim>_labels`.
 """
-_label_attr_key(dim::Symbol)::Symbol = Symbol(dim, endswith(string(dim), "s") ? "es" : "s")
+_label_attr_key(dim::Symbol)::Symbol = get(LEGACY_LABEL_ATTRS, dim, Symbol(dim, "_labels"))
 
 """
     _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}

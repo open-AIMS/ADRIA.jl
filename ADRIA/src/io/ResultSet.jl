@@ -72,7 +72,7 @@ const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
     aux = getfield(rs, :aux)
     haskey(aux, name) && return aux[name]
     name in LEGACY_AUX_NAMES && return nothing
-    return getfield(rs, name)  # raises the usual error
+    error("ADRIAResultSet has no property or auxiliary log `$name`")
 end
 function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
     return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
@@ -86,6 +86,10 @@ named by its `structure` attribute. Sorted by name; empty when there are none.
 """
 function _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
     names = sort!([n for n in keys(log_set.arrays) if !(n in CORE_LOG_NAMES)])
+    for n in names
+        haskey(log_set[n].attrs, "structure") ||
+            error("Auxiliary log `$n` has no `structure` attribute naming its axes")
+    end
     arrs = [
         DataCube(log_set[n], Symbol.(Tuple(log_set[n].attrs["structure"]))) for n in names
     ]
@@ -381,6 +385,13 @@ function combine_results(result_sets...)::ResultSet
     aux_specs = filter(
         sp -> any(rs -> haskey(rs.aux, sp.name), result_sets), cots_log_specs(n_tf, n_loc)
     )
+    known = Set(sp.name for sp in cots_log_specs(n_tf, n_loc))
+    for rs in result_sets, k in keys(rs.aux)
+        k in known ||
+            error(
+                "Cannot combine result sets holding auxiliary log `$k` (merging aux logs other than COTS is not supported yet)"
+            )
+    end
     logs = (;
         zip(
             [
