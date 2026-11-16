@@ -8,15 +8,18 @@
 # Compared, per case directory and per Zarr array: relative path set, dtype, shape, chunks,
 # fill_value and every value (NaN-aware exact equality, `isequal`), and attrs against an
 # allow-list. `model_spec/model_spec.csv` is compared as text. The geopackage is ignored.
-# Ranks, intervention logs (seed/fog/shade) and the inputs table are ALWAYS exact; `--tol`
+# Ranks, intervention logs (rankings, coral_aquaculture, larval_methods, shading_log) and the inputs table are ALWAYS exact; `--tol`
 # only relaxes the other arrays (outcomes, other logs) to a max abs difference.
 using Zarr
 using JSON
 
 # Attr keys ignored entirely (run-specific); `*_file` attrs compare by basename
-const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION", "name"])
-# Always-exact arrays, by path prefix inside a store
-const ALWAYS_EXACT = ["inputs", "ranks", "logs/seed", "logs/fog", "logs/shade"]
+const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION"])
+# Always-exact arrays, by store-relative path (rankings, intervention logs, inputs table)
+const ALWAYS_EXACT = [
+    "inputs", "logs/rankings", "logs/coral_aquaculture", "logs/larval_methods",
+    "logs/shading_log"
+]
 const IGNORED_DIRS = Set(["spatial_data"])
 
 mutable struct Report
@@ -52,7 +55,7 @@ function compare_attrs!(rep, id, ref_dir, cand_dir)
     end
 end
 
-function compare_array!(rep, id, ref_dir, cand_dir, tol)
+function compare_array!(rep, id, path, ref_dir, cand_dir, tol)
     rep.n_arrays += 1
     ma = JSON.parsefile(joinpath(ref_dir, ".zarray"))
     mb = JSON.parsefile(joinpath(cand_dir, ".zarray"))
@@ -66,7 +69,7 @@ function compare_array!(rep, id, ref_dir, cand_dir, tol)
 
     a = Array(zopen(ref_dir))
     b = Array(zopen(cand_dir))
-    exact = any(p -> id == p || startswith(id, p * "/"), ALWAYS_EXACT)
+    exact = any(p -> path == p || startswith(path, p * "/"), ALWAYS_EXACT)
     if exact || isnothing(tol) || !(eltype(a) <: AbstractFloat)
         if !isequal(a, b)
             n = count(.!isequal.(a, b))
@@ -97,7 +100,19 @@ function compare_store!(rep, name, ref, cand, tol)
         push!(rep.diffs, "$name/$p: extra in candidate")
     end
     for p in intersect(ra, rb)
-        compare_array!(rep, "$name/$p", joinpath(ref, p), joinpath(cand, p), tol)
+        compare_array!(rep, "$name/$p", p, joinpath(ref, p), joinpath(cand, p), tol)
+    end
+    # Group-level attrs (store root, logs/, ...)
+    groups(root) = sort!(
+        [
+        relpath(dir, root) for (dir, dirs, files) in walkdir(root) if
+        ".zgroup" in files && !any(d -> startswith(relpath(dir, root), d), IGNORED_DIRS)
+    ]
+    )
+    ga, gb = groups(ref), groups(cand)
+    ga == gb || push!(rep.diffs, "$name: group sets differ: $ga vs $gb")
+    for g in intersect(ga, gb)
+        compare_attrs!(rep, "$name/$g (group)", joinpath(ref, g), joinpath(cand, g))
     end
     ms = joinpath("model_spec", "model_spec.csv")
     fa, fb = joinpath(ref, ms), joinpath(cand, ms)
@@ -121,6 +136,7 @@ function main(args)
     i = 1
     while i <= length(args)
         if args[i] == "--tol"
+            i < length(args) || (println(stderr, "--tol needs a value"); return 2)
             tol = parse(Float64, args[i + 1])
             i += 2
         else
