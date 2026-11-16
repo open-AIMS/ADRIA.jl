@@ -63,6 +63,29 @@ end
         @test isempty(ADRIA.attached_submodels(dom))
     end
 
+    @testset "provenance record lists attached submodels in order" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        calls = Any[]
+        ADRIA._attach_submodel!(d2, RecordingMock(:b, calls))
+        ADRIA._attach_submodel!(d2, NoOpMock())
+        rec = ADRIA._provenance_record(d2, scens)
+        @test [m["name"] for m in rec["models"]] == ["RecordingMock", "NoOpMock"]
+        @test all(m["module"] == "Main.MockSubmodels" for m in rec["models"])
+        @test all(isnothing(m["version"]) for m in rec["models"])  # not a package
+        @test rec["interface_version"] == string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION)
+        @test rec["adria_version"] == string(pkgversion(ADRIA))
+        @test rec["julia_version"] == string(VERSION)
+        @test isempty(rec["overrides"])
+        # COTS is listed (after attached submodels) only when a scenario has it on
+        @test !any(m["name"] == "COTS" for m in rec["models"])
+        on = copy(scens)
+        on.cots_on[1] = 1
+        rec_on = ADRIA._provenance_record(d2, on)
+        @test [m["name"] for m in rec_on["models"]] ==
+            ["RecordingMock", "NoOpMock", "COTS"]
+        @test rec_on == ADRIA._provenance_record(d2, on)  # deterministic
+    end
+
     @testset "a submodel that does nothing leaves the run bit-identical" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d2, NoOpMock())
