@@ -183,6 +183,70 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
 end
 
 """
+    _label_attr_key(dim::Symbol)::Symbol
+
+Name of the array attribute that holds the labels of axis `dim`: the axis name made plural
+(`:age_class` -> `:age_classes`).
+"""
+_label_attr_key(dim::Symbol)::Symbol = Symbol(dim, endswith(string(dim), "s") ? "es" : "s")
+
+"""
+    _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
+
+Zarr attributes of an auxiliary log: its axes (with the scenario axis appended), axis
+labels, units, description and location ids. `units` and `description` are omitted when empty.
+"""
+function _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
+    attrs = Dict{Symbol,Any}(
+        :structure => (string.(spec.dims)..., "scenarios"),
+        :unique_loc_ids => unique_loc_ids
+    )
+    for (dim, labels) in spec.labels
+        attrs[_label_attr_key(dim)] = labels
+    end
+    isempty(spec.units) || (attrs[:units] = spec.units)
+    isempty(spec.description) || (attrs[:description] = spec.description)
+    return attrs
+end
+
+"""
+    _setup_aux_logs(log_fn, specs, unique_loc_ids, n_scens, batch_size)::NamedTuple
+
+Create one Float32, zero-filled Zarr array per `LogSpec` in the log group at `log_fn`,
+with the scenario axis appended, chunked as one batch of scenarios per chunk.
+"""
+function _setup_aux_logs(
+    log_fn::String, specs::AbstractVector{LogSpec}, unique_loc_ids, n_scens::Int,
+    batch_size::Int
+)::NamedTuple
+    arrs = map(specs) do spec
+        dims = (spec.size..., n_scens)
+        zcreate(
+            Float32,
+            dims...;
+            name=String(spec.name),
+            fill_value=Float32(0),
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(spec.size..., batch_size),
+            attrs=_aux_log_attrs(spec, unique_loc_ids)
+        )
+    end
+    return NamedTuple{Tuple(s.name for s in specs)}(Tuple(arrs))
+end
+
+"""
+    _aux_log_specs(domain::Domain, scen_spec::DataFrame)::Vector{LogSpec}
+
+The auxiliary logs a run needs: today the COTS logs, when at least one scenario has
+`cots_on = 1`.
+"""
+function _aux_log_specs(domain::Domain, scen_spec::DataFrame)::Vector{LogSpec}
+    log_cots = "cots_on" in names(scen_spec) && any(==(1), scen_spec.cots_on)
+    return log_cots ? cots_log_specs(domain) : LogSpec[]
+end
+
+"""
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
 Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
@@ -197,13 +261,16 @@ Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 - `n_sizes` : number of size classes
 - `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
   that each batch write lands in exactly one chunk file per array.
+- `aux_specs` : `LogSpec`s of the auxiliary (submodel) logs to create, e.g. from
+  [`cots_log_specs`](@ref). They are returned as a `NamedTuple` of Zarr arrays (empty when
+  there are none) in the last position.
 
 Note: This setup relies on hardcoded values for number of species represented and deployed
 via coral aquaculture.
 """
 function setup_logs(
     z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1;
-    log_cots::Bool=false
+    aux_specs::AbstractVector{LogSpec}=LogSpec[]
 )
     # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
@@ -370,47 +437,10 @@ function setup_logs(
         )
     end
 
-    # COTS logs, only when at least one scenario runs the COTS submodel
-    cots_pop_log = nothing
-    cots_condition_log = nothing
-    if log_cots
-        # COTS population: (timesteps, 3 age classes, locations, scenarios), COTS ha^-1
-        cots_pop_dims = (tf, 3, n_locs, n_scens)
-        cots_pop_log = zcreate(
-            Float32,
-            cots_pop_dims...;
-            name="cots_pop_log",
-            fill_value=Float32(0),
-            fill_as_missing=false,
-            path=log_fn,
-            chunks=(cots_pop_dims[1:3]..., batch_size),
-            attrs=Dict(
-                :structure => ("timesteps", "age_class", "locations", "scenarios"),
-                :age_classes => ["recruits", "juveniles", "adults"],
-                :units => "COTS ha^-1",
-                :unique_loc_ids => unique_loc_ids
-            )
-        )
+    # Auxiliary (submodel) logs, only those declared for this run
+    aux = _setup_aux_logs(log_fn, aux_specs, unique_loc_ids, n_scens, batch_size)
 
-        # COTS body condition: (timesteps, locations, scenarios)
-        cots_bc_dims = (tf, n_locs, n_scens)
-        cots_condition_log = zcreate(
-            Float32,
-            cots_bc_dims...;
-            name="cots_condition_log",
-            fill_value=Float32(0),
-            fill_as_missing=false,
-            path=log_fn,
-            chunks=(cots_bc_dims[1:2]..., batch_size),
-            attrs=Dict(
-                :structure => ("timesteps", "locations", "scenarios"),
-                :unique_loc_ids => unique_loc_ids
-            )
-        )
-    end
-
-    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, cots_pop_log,
-    cots_condition_log
+    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, aux
 end
 
 """
@@ -629,7 +659,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
             n_groups,
             domain.coral_growth.n_sizes,
             batch_size;
-            log_cots="cots_on" in names(scen_spec) && any(==(1), scen_spec.cots_on)
+            aux_specs=_aux_log_specs(domain, scen_spec)
         )...
     ]
 
@@ -647,8 +677,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :Shd_log,
                 :coral_dhw_log,
                 :coral_cover_log,
-                :cots_pop_log,
-                :cots_condition_log
+                :aux
             ),
             stores
         )...
