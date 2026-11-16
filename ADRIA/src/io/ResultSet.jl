@@ -23,7 +23,7 @@ const LOC_METRIC_NAMES = [
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,D5,D6,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -51,8 +51,45 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,D5,D6,DF} <: ResultSet
     iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
-    cots_pop_log::D5  # COTS population (timesteps, age_class, locations, scenarios); nothing when COTS was off
-    cots_condition_log::D6  # COTS body condition (timesteps, locations, scenarios); nothing when COTS was off
+    aux::AX  # NamedTuple of auxiliary (submodel) logs by name, e.g. `cots_pop_log`; empty if none
+end
+
+# Names of the arrays in the log group that are part of the core result set. Every other
+# array in the group is an auxiliary log. `fog` and `shade` are the old (pre-`shading_log`)
+# separate shading arrays.
+const CORE_LOG_NAMES = (
+    "rankings", "larval_methods", "coral_aquaculture", "shading_log", "fog", "shade",
+    "coral_dhw_log", "coral_cover_log"
+)
+
+# Auxiliary logs that older code exposed as fields of the result set; `nothing` when absent
+const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
+
+# Auxiliary logs are reachable as properties (`rs.cots_pop_log`); the legacy COTS names
+# give `nothing` when the log is absent, as the former fields did.
+@inline function Base.getproperty(rs::ADRIAResultSet, name::Symbol)
+    hasfield(ADRIAResultSet, name) && return getfield(rs, name)
+    aux = getfield(rs, :aux)
+    haskey(aux, name) && return aux[name]
+    name in LEGACY_AUX_NAMES && return nothing
+    return getfield(rs, name)  # raises the usual error
+end
+function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
+    return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
+end
+
+"""
+    _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
+
+Load the auxiliary logs of a log group: every array not in `CORE_LOG_NAMES`, with axes
+named by its `structure` attribute. Sorted by name; empty when there are none.
+"""
+function _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
+    names = sort!([n for n in keys(log_set.arrays) if !(n in CORE_LOG_NAMES)])
+    arrs = [
+        DataCube(log_set[n], Symbol.(Tuple(log_set[n].attrs["structure"]))) for n in names
+    ]
+    return NamedTuple{Tuple(Symbol.(names))}(Tuple(arrs))
 end
 
 """
@@ -199,17 +236,7 @@ function ResultSet(
                 )
             )
         end : nothing,
-        # COTS logs are present only when a scenario ran the COTS submodel
-        haskey(log_set, "cots_pop_log") ?
-        DataCube(
-            log_set["cots_pop_log"],
-            Symbol.(Tuple(log_set["cots_pop_log"].attrs["structure"]))
-        ) : nothing,
-        haskey(log_set, "cots_condition_log") ?
-        DataCube(
-            log_set["cots_condition_log"],
-            Symbol.(Tuple(log_set["cots_condition_log"].attrs["structure"]))
-        ) : nothing
+        _load_aux_logs(log_set)
     )
 end
 
@@ -348,6 +375,12 @@ function combine_results(result_sets...)::ResultSet
     end
 
     # ── Setup log Zarr stores ─────────────────────────────────────────────────
+    n_tf = size(rs1.iv_CAq_log, :timesteps)
+    n_loc = size(rs1.iv_CAq_log, :locations)
+    # Auxiliary logs present in any source set (only the COTS logs have known specs here)
+    aux_specs = filter(
+        sp -> any(rs -> haskey(rs.aux, sp.name), result_sets), cots_log_specs(n_tf, n_loc)
+    )
     logs = (;
         zip(
             [
@@ -357,19 +390,18 @@ function combine_results(result_sets...)::ResultSet
                 :iv_Shd_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log,
-                :cots_pop_log,
-                :cots_condition_log
+                :aux
             ],
             setup_logs(
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                size(rs1.iv_CAq_log, :timesteps),
-                size(rs1.iv_CAq_log, :locations),
+                n_tf,
+                n_loc,
                 size(rs1.iv_CAq_log, :coral_id),
                 size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
                 batch_size;
-                log_cots=any(rs -> !isnothing(rs.cots_pop_log), result_sets)
+                aux_specs=aux_specs
             )
         )...
     )
@@ -378,13 +410,19 @@ function combine_results(result_sets...)::ResultSet
     # Pre-read all source data in parallel (reads from separate Zarr stores are
     # independent), then write sequentially to each destination ZArray.
     n_rs = length(result_sets)
-    for log in keys(logs)
-        n_log = getfield(logs, log)
-        isnothing(n_log) && continue  # e.g. COTS logs when no scenario ran COTS
+    dest_logs = Pair{Symbol,Any}[k => getfield(logs, k) for k in keys(logs) if k != :aux]
+    for (k, v) in pairs(logs.aux)
+        push!(dest_logs, k => v)
+    end
+    for (log, n_log) in dest_logs
+        isnothing(n_log) && continue
 
         src = Vector{Union{Nothing,Array}}(undef, n_rs)
         Threads.@threads for i = 1:n_rs
-            s = getfield(result_sets[i], log)
+            s =
+                log in keys(logs.aux) ?
+                get(getfield(result_sets[i], :aux), log, nothing) :
+                getfield(result_sets[i], log)
             if isnothing(s)
                 src[i] = nothing
             elseif log == :coral_cover_log
