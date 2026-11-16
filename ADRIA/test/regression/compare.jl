@@ -30,8 +30,11 @@ isdefined(@__MODULE__, :JSON) || using JSON
 
 include(joinpath(@__DIR__, "meta.jl"))
 
-"""Attr keys ignored entirely (run-specific); `*_file` attrs compare by basename."""
-const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION"])
+"""
+Attr keys ignored entirely (run-specific; `provenance` holds version-specific content).
+`*_file` attrs compare by basename.
+"""
+const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION", "provenance"])
 
 """
 Always-exact arrays, by store-relative path (rankings, intervention logs, inputs table).
