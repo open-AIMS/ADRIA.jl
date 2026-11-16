@@ -216,7 +216,20 @@ end
         ADRIA.run_scenario(d2, row)  # compile
         detached = @allocated ADRIA.run_scenario(dom, row)
         attached = @allocated ADRIA.run_scenario(d2, row)
-        @info "ALLOC" attached detached
         @test attached - detached < 0.02 * detached
+    end
+
+    @testset "fixed-seed checksum of a short run (detached)" begin
+        # Total of the raw cover array of scenario 2 of a seeded 4-scenario sample on
+        # Test_domain RCP 45 (75 timesteps). Generated from the current code (7490170f
+        # plus Stage 0): a change here means simulation results changed, which needs a
+        # deliberate decision; update the value only for an intended result change.
+        old_rng = copy(Random.default_rng())
+        Random.seed!(42)
+        s42 = ADRIA.sample(dom, 4)
+        copy!(Random.default_rng(), old_rng)
+        res = ADRIA.run_scenario(dom, s42[2, :])
+        @test size(res.raw) == (75, 5, 7, 10)
+        @test sum(res.raw) ≈ 163.9824484400013 rtol = 1e-8
     end
 end
