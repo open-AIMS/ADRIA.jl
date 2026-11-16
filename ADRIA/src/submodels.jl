@@ -162,3 +162,29 @@ end
     foreach(s -> ADRIAinterfaces.record!(s.model, s.bufs, s.state, tstep), slots)
     return nothing
 end
+
+"""
+    _check_decrease_only(before, after, tstep)
+
+Enforce the submodel contract that cover may only decrease: per cell, `after <= before`
+(exact), where `before` is the cover snapshot taken just before the submodel phase.
+Only called when submodels are attached. The comparison is exact on purpose, so a
+submodel that rescales cover must not round a value up by even one ulp. NaN and negative
+values also fail.
+"""
+@noinline function _check_decrease_only(
+    before::AbstractArray{Float64,3}, after::AbstractArray{Float64,3}, tstep::Int
+)::Nothing
+    @inbounds for i in eachindex(before, after)
+        if !(after[i] <= before[i]) || after[i] < 0.0
+            throw(
+                AssertionError(
+                    "Submodel increased (or invalidated) coral cover at timestep $(tstep) (cell " *
+                    "$(Tuple(CartesianIndices(before)[i]))): $(before[i]) -> $(after[i]). " *
+                    "Submodels may only reduce cover."
+                )
+            )
+        end
+    end
+    return nothing
+end
