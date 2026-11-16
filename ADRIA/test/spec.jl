@@ -275,3 +275,48 @@ end
     end
     @test _ModelFieldDomain(3).model == 3
 end
+
+@testset "ParamSpec to table rows (`spec_rows`)" begin
+    PS = ADRIA.ADRIAinterfaces.ParamSpec
+    row(ps; kw...) = only(ADRIA.spec_rows([ps]; kw...))[2]
+
+    # Real, triangular: constant by default (collapsed dist_params), full range kept
+    r = row(PS(:x_a, 1.5, (0.5, 2.5); dist=:triang, dist_params=[0.5, 2.5, 1.5], label="A"))
+    @test r.ptype == "continuous" && r.dist == ADRIA.TriangularDist && r.name == "A"
+    @test r.val == 1.5 && r.dist_params == [1.5, 1.5, 1.5]
+    @test r.default_dist_params == [0.5, 2.5, 1.5]
+    # ... or sampled when not constant; overrides replace the value only
+    r = row(
+        PS(
+            :x_a, 1.5, (0.5, 2.5); dist=:triang, dist_params=[0.5, 2.5, 1.5], constant=false
+        );
+        overrides=Dict("x_a" => 2.0))
+    @test r.val == 2.0 && r.dist_params == r.default_dist_params == [0.5, 2.5, 1.5]
+    @test row(PS(:x_a, 1.5, (0.5, 2.5))).name == "x_a"  # label defaults to the name
+
+    # Uniform (the default dist) and the discrete dists
+    r = row(PS(:x_u, 1, (0, 2)))
+    @test r.dist == ADRIA.Uniform && r.dist_params == [1.0, 1.0]
+    @test r.default_dist_params == [0.0, 2.0]
+    r = row(
+        PS(:x_i, 6, (3, 10); kind=:integer, dist=:discrete_ordered, dist_params=[3, 10, 1])
+    )
+    @test r.ptype == "ordered discrete" && r.dist == ADRIA.DiscreteOrderedUniformDist
+    @test r.dist_params == [6.0, 6.0, 6.0] && r.default_dist_params == [3.0, 10.0, 1.0]
+    r = row(PS(:x_d, 0, (0, 1e9); kind=:integer, dist=:discrete_uniform))
+    @test r.ptype == "ordered discrete" && r.dist == ADRIA.DiscreteUniform
+    @test r.default_dist_params == [0.0, 1.0e9]
+
+    # Bool and categorical: parameters are the levels
+    r = row(PS(:x_b, 0, (0, 1); kind=:bool))
+    @test r.ptype == "unordered categorical" && r.dist == ADRIA.CategoricalDistribution
+    @test r.dist_params == [0.0, 0.0] && r.default_dist_params == [0.0, 1.0]
+    r = row(PS(:x_c, 1, (0, 2); kind=:categorical, levels=[0, 1, 2]))
+    @test r.dist_params == [1.0, 1.0, 1.0] && r.default_dist_params == [0.0, 1.0, 2.0]
+
+    # Wrong number of parameters or a kind/dist mismatch is an error
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:triang)])
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:categorical)])
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:nope)])
+
+end
