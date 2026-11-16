@@ -215,12 +215,13 @@ end
 """
     _setup_aux_logs(log_fn, specs, unique_loc_ids, n_scens, batch_size)::NamedTuple
 
-Create one Float32, zero-filled Zarr array per `LogSpec` in the log group at `log_fn`,
-with the scenario axis appended, chunked as one batch of scenarios per chunk.
+Create one Float32 Zarr array per `LogSpec` in the log group at `log_fn`, with the scenario
+axis appended, chunked as one batch of scenarios per chunk. Zero-filled unless `fill` is
+given (merged result sets use `NaN` for scenarios from sources lacking the log).
 """
 function _setup_aux_logs(
     log_fn::String, specs::AbstractVector{LogSpec}, unique_loc_ids, n_scens::Int,
-    batch_size::Int
+    batch_size::Int; fill::Float32=Float32(0)
 )::NamedTuple
     arrs = map(specs) do spec
         dims = (spec.size..., n_scens)
@@ -228,7 +229,7 @@ function _setup_aux_logs(
             Float32,
             dims...;
             name=String(spec.name),
-            fill_value=Float32(0),
+            fill_value=fill,
             fill_as_missing=false,
             path=log_fn,
             chunks=(spec.size..., batch_size),
@@ -236,6 +237,28 @@ function _setup_aux_logs(
         )
     end
     return NamedTuple{Tuple(s.name for s in specs)}(Tuple(arrs))
+end
+
+"""
+    _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
+
+Rebuild the `LogSpec` of the auxiliary log `name` in a stored log group from its `structure`
+attribute, shape, axis labels, units and description (the inverse of `_aux_log_attrs`).
+"""
+function _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
+    arr = log_set[String(name)]
+    dims = Symbol.(collect(arr.attrs["structure"]))
+    pop!(dims)  # scenario axis
+    labels = Dict{Symbol,Vector{String}}()
+    for d in dims
+        key = string(_label_attr_key(d))
+        haskey(arr.attrs, key) && (labels[d] = string.(arr.attrs[key]))
+    end
+    return LogSpec(
+        name, dims, collect(size(arr))[1:length(dims)];
+        labels=labels, units=get(arr.attrs, "units", ""),
+        description=get(arr.attrs, "description", "")
+    )
 end
 
 """
@@ -267,13 +290,14 @@ Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 - `aux_specs` : `LogSpec`s of the auxiliary (submodel) logs to create, e.g. from
   [`cots_log_specs`](@ref). They are returned as a `NamedTuple` of Zarr arrays (empty when
   there are none) in the last position.
+- `aux_fill` : fill value of the auxiliary logs (zero; `combine_results` uses `NaN`).
 
 Note: This setup relies on hardcoded values for number of species represented and deployed
 via coral aquaculture.
 """
 function setup_logs(
     z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1;
-    aux_specs::AbstractVector{LogSpec}=LogSpec[]
+    aux_specs::AbstractVector{LogSpec}=LogSpec[], aux_fill::Float32=Float32(0)
 )
     # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
@@ -441,7 +465,9 @@ function setup_logs(
     end
 
     # Auxiliary (submodel) logs, only those declared for this run
-    aux = _setup_aux_logs(log_fn, aux_specs, unique_loc_ids, n_scens, batch_size)
+    aux = _setup_aux_logs(
+        log_fn, aux_specs, unique_loc_ids, n_scens, batch_size; fill=aux_fill
+    )
 
     return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, aux
 end
@@ -840,6 +866,23 @@ function _load_results(result_loc::String)::ResultSet
     input_cols::Array{String} = input_set.attrs["columns"]
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
+    # Sources of a merged result set (see `combine_results`); a single source otherwise
+    source_sizes::Vector{Int} = Int.(
+        get(input_set.attrs, "source_sizes", [nrow(inputs_used)])
+    )
+    spec_dir = joinpath(result_loc, MODEL_SPEC)
+    model_specs = if length(source_sizes) > 1
+        map(1:length(source_sizes)) do i
+            ms = CSV.read(
+                joinpath(spec_dir, "model_spec_source_$(i).csv"), DataFrame; comment="#"
+            )
+            ms.fieldname .= Symbol.(ms.fieldname)
+            ms
+        end
+    else
+        [model_spec]
+    end
+
     # Details of the environmental data layer used for the sims
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
@@ -926,7 +969,9 @@ function _load_results(result_loc::String)::ResultSet
         wave_stat_set,
         conn_set,
         loc_data,
-        model_spec
+        model_spec,
+        model_specs,
+        source_sizes
     )
 end
 
