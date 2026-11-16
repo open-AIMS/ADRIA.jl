@@ -1359,15 +1359,9 @@ function run_model(
         # after spawning. If bio-banking or similar tech comes up to speed then we could
         # potentially deploy at alternate times.
 
-        # Shading
-        # Apply regional cooling effect before selecting locations for coral aquaculture
-        dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if apply_Shd && Shd_decision_years[tstep]
-            YShd[tstep, :] .= Shd
-
-            # Apply reduction in DHW due to shading
-            dhw_t[Shd_locs_mask] .= max.(0.0, dhw_t[Shd_locs_mask] .- Shd)
-        end
+        _apply_shading!(
+            dhw_t, YShd, dhw_scen, Shd_locs_mask, Shd_decision_years, apply_Shd, Shd, tstep
+        )
 
         if is_guided
             # Use modified projected DHW (may have been affected by shading)
@@ -2214,5 +2208,29 @@ function _reproduce!(
 
     sum!(_recruitment_col_sum_2d, recruitment)
     leftover_space_m² .-= _recruitment_col_sum .* vec_abs_k
+    return nothing
+end
+
+"""
+    _apply_shading!(
+        dhw_t, YShd, dhw_scen, Shd_locs_mask, Shd_decision_years, apply_Shd, Shd, tstep
+    )
+
+Take the DHW of `tstep` into `dhw_t` and, in shading years, reduce it at the shaded
+locations (logged in `YShd`). This is the surface DHW used by everything that follows.
+"""
+function _apply_shading!(
+    dhw_t, YShd, dhw_scen, Shd_locs_mask, Shd_decision_years, apply_Shd::Bool,
+    Shd::Float64, tstep::Int64
+)
+    # Shading
+    # Apply regional cooling effect before selecting locations for coral aquaculture
+    dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+    if apply_Shd && Shd_decision_years[tstep]
+        YShd[tstep, :] .= Shd
+
+        # Apply reduction in DHW due to shading
+        dhw_t[Shd_locs_mask] .= max.(0.0, dhw_t[Shd_locs_mask] .- Shd)
+    end
     return nothing
 end
