@@ -220,9 +220,12 @@ same domain) into one store. The sources need not have the same factors or logs:
 
 !!! warning "Subset merged tables before analysis"
     Analysis functions do not handle the `NaN` columns of a union table. `ADRIAanalysis.rsa`
-    throws an `ArgumentError` for a column with `NaN`; `pawn` and `tsa` (which call
-    `quantile`) throw an `ArgumentError`; `_filter_constants` (used by `feature_set`
-    consumers) keeps a constant `NaN` column because `NaN != NaN`. Clustering and
-    `find_scenarios` use outcomes only and are unaffected. Before analysis, subset the
-    scenario table (and the matching outcomes) to the factors that all sources share, or to
-    the scenarios of one source.
+    throws an `ArgumentError` for a column with `NaN` on the Mann-Whitney path, but with
+    `method=:cramers_v` or for unordered categorical columns it silently treats `NaN` as a
+    level; `pawn` and `tsa` (which call `quantile`) throw an `ArgumentError`;
+    `_filter_constants` (used by `feature_set` consumers) keeps a constant `NaN` column
+    because `NaN != NaN`. `find_pareto_optimal`, `find_robust` and
+    `data_envelopment_analysis` also take the scenario table and should be checked likewise.
+    Clustering and `find_scenarios` use outcomes only and are unaffected. Before analysis,
+    subset the scenario table (and the matching outcomes) to the factors that all sources
+    share, or to the scenarios of one source.

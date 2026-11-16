@@ -91,6 +91,29 @@ end
         )
     end
 
+    @testset "aux LogSpec round-trips through a store, merged attrs equal the source's" begin
+        spec = ADRIA.LogSpec(
+            :synthetic_log, [:timesteps, :stage, :locations], [2, 2, 3];
+            labels=Dict(:stage => ["a", "b"]), units="u", description="d"
+        )
+        ids = ["x", "y", "z"]
+        dir = mktempdir()
+        Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
+        log_fn = joinpath(dir, ADRIA.LOG_GRP)
+        ADRIA._setup_aux_logs(log_fn, [spec], ids, 4, 2; fill=Float32(NaN))
+        grp = Zarr.zopen(log_fn)
+        spec2 = ADRIA._aux_logspec_from_store(grp, :synthetic_log)
+        @test all(getfield(spec2, f) == getfield(spec, f) for f in fieldnames(typeof(spec)))
+        # A merged store builds its aux arrays from the rebuilt spec: same attributes
+        dir2 = mktempdir()
+        Zarr.zgroup(Zarr.DirectoryStore(dir2), ADRIA.LOG_GRP)
+        log_fn2 = joinpath(dir2, ADRIA.LOG_GRP)
+        ADRIA._setup_aux_logs(log_fn2, [spec2], ids, 8, 2; fill=Float32(NaN))
+        a1 = Zarr.zopen(log_fn)["synthetic_log"].attrs
+        a2 = Zarr.zopen(log_fn2)["synthetic_log"].attrs
+        @test a1 == a2
+    end
+
     @testset "load_results discovers aux logs, old fog/shade arrays stay core" begin
         dir = mktempdir()
         root = Zarr.zgroup(Zarr.DirectoryStore(dir))

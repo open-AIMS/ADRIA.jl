@@ -42,7 +42,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     inputs::G
     sim_constants::D1
     model_spec::DF
-    model_specs::Vector{DF}  # model specification of each source result set (one if not merged)
+    model_specs::Vector{DF}  # model spec of each source result set (one if not merged)
     source_sizes::Vector{Int}  # number of scenarios taken from each source, in order
 
     # raw::AbstractArray
@@ -76,6 +76,8 @@ const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
     name in LEGACY_AUX_NAMES && return nothing
     error("ADRIAResultSet has no property or auxiliary log `$name`")
 end
+# Note: this lists more names than there are fields when aux logs exist, so Setfield's
+# `@set!` on such a set may fail; rebuild the set through its constructor instead.
 function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
     return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
 end
@@ -338,9 +340,13 @@ Note: Results are stored in Zarr format. Combining data sets can be
 
 !!! warning
     A merged scenario table can hold `NaN` columns. `ADRIAanalysis` functions that take
-    scenario inputs (`rsa`, `pawn`, `tsa`) throw an `ArgumentError` on them, and a constant
-    `NaN` column is not treated as constant. Subset the table (and matching outcomes) to the
-    factors all sources share, or to the scenarios of one source (`scenario_sources`), first.
+    scenario inputs do not handle them: `rsa` (Mann-Whitney path), `pawn` and `tsa` throw an
+    `ArgumentError`, while `rsa` with `method=:cramers_v` or on unordered categorical columns
+    silently treats `NaN` as a level, and a constant `NaN` column is not treated as constant.
+    `find_pareto_optimal`, `find_robust` and `data_envelopment_analysis` also take the
+    scenario table and should be checked likewise. Subset the table (and matching outcomes)
+    to the factors all sources share, or to the scenarios of one source
+    (`scenario_sources`), first.
 """
 function combine_results(result_sets...)::ResultSet
     # ── Validation ────────────────────────────────────────────────────────────
@@ -782,8 +788,8 @@ function model_spec(rs::ResultSet)::DataFrame
 end
 
 """
-    model_specs(rs::ResultSet)::Vector{DataFrame}
-    scenario_sources(rs::ResultSet)::Vector{Int}
+    model_specs(rs::ADRIAResultSet)::Vector{DataFrame}
+    scenario_sources(rs::ADRIAResultSet)::Vector{Int}
 
 A result set made by [`combine_results`](@ref) keeps the model specification of every source
 (`model_specs`, in the order the sources were given); [`model_spec`](@ref) is then their
@@ -791,8 +797,8 @@ union (first source wins for a parameter that several have). `scenario_sources` 
 each scenario of the result set, the index of the source it came from. A result set that is
 not merged has one source.
 """
-model_specs(rs::ResultSet)::Vector{DataFrame} = rs.model_specs
-scenario_sources(rs::ResultSet)::Vector{Int} = reduce(
+model_specs(rs::ADRIAResultSet)::Vector{DataFrame} = rs.model_specs
+scenario_sources(rs::ADRIAResultSet)::Vector{Int} = reduce(
     vcat, [fill(i, n) for (i, n) in enumerate(rs.source_sizes)]; init=Int[]
 )
 
