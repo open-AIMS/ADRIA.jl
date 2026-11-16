@@ -201,3 +201,28 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 │   └───relative_taxa_cover
 └───spatial
 ```
+
+### Merging result sets
+
+`ADRIA.combine_results(rs1, rs2, ...)` writes the scenarios of several result sets (for the
+same domain) into one store. The sources need not have the same factors or logs:
+
+- **Scenario table:** the union of the columns, in order of first appearance. A factor a source
+  does not have is `NaN` for its scenarios (the stored table is all `Float64`, so `NaN`
+  stands in for `missing`).
+- **Auxiliary (submodel) logs**, such as the COTS logs: any log held by a source is
+  concatenated along scenarios. Scenarios from a source without the log are `NaN`, which tells
+  them apart from scenarios that ran with the model off (zeros).
+- **Model specification:** `ADRIA.model_specs(rs)` holds the specification of every source
+  (in order) and `ADRIA.scenario_sources(rs)` the source of each scenario. `model_spec(rs)`
+  is the union of the specifications, the first source winning for a parameter that several
+  share. A result set that was not merged has a single source.
+
+!!! warning "Subset merged tables before analysis"
+    Analysis functions do not handle the `NaN` columns of a union table. `ADRIAanalysis.rsa`
+    throws an `ArgumentError` for a column with `NaN`; `pawn` and `tsa` (which call
+    `quantile`) throw an `ArgumentError`; `_filter_constants` (used by `feature_set`
+    consumers) keeps a constant `NaN` column because `NaN != NaN`. Clustering and
+    `find_scenarios` use outcomes only and are unaffected. Before analysis, subset the
+    scenario table (and the matching outcomes) to the factors that all sources share, or to
+    the scenarios of one source.
