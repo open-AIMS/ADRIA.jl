@@ -1023,6 +1023,8 @@ function run_model(
     is_guided = param_set[At("guided")] > 0
     if is_guided
         MCDA_approach = mcda_methods()[Int64(param_set[At("mcda_method")])]
+    else
+        MCDA_approach = nothing
     end
 
     # Number of time steps in environmental layers to look ahead when making decisions
@@ -1100,6 +1102,10 @@ function run_model(
             is_LvM, build_LvM_strategy
         )
     else
+        # Only used by guided selection; defined so they can be passed to the phases
+        CAq_pref = CAq_decision_mat = nothing
+        Fog_pref = Fog_decision_mat = nothing
+        LvM_pref = LvM_decision_mat = nothing
         CAq_strategy =
             unguided_CAq ? build_CAq_strategy(param_set, domain, CAq_t_locs) : nothing
         Fog_strategy =
@@ -1332,6 +1338,18 @@ function run_model(
         _recruitment_col_sum
     )
 
+    # State shared by the intervention phases and per-intervention constants; arrays are
+    # mutated in place by the phases
+    intervention_state = (;
+        domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
+        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
+        iv_CAq_last_deployment, rng
+    )
+    fog_state = (;
+        Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
+        min_iv_locs
+    )
+
     for tstep::Int64 = 2:tf
         _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
@@ -1398,77 +1416,7 @@ function run_model(
         #     log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .= 1.0
         # end
 
-        # Fog location selection
-        if !isnothing(Fog_strategy)
-            state = if is_guided
-                build_state(
-                    domain, Fog_strategy,
-                    (
-                        current_cover=current_loc_cover,
-                        recent_cover_losses=recent_cover_losses,
-                        last_deployment=iv_CAq_last_deployment
-                    )
-                )
-            else
-                nothing
-            end
-
-            # Get candidate locations from strategy
-            candidate_locs = filter_candidate_locations(Fog_strategy, tstep, state)
-            candidate_loc_indices = findall(
-                in.(domain.loc_ids, Ref(candidate_locs))
-            )
-
-            if !isempty(candidate_locs)
-                selected_Fog_ranks = []
-                if is_guided
-                    # Update decision matrix with current conditions
-                    update_criteria_values!(
-                        Fog_decision_mat[location = At(candidate_locs)];
-                        heat_stress=dhw_projection[candidate_loc_indices],
-                        wave_stress=wave_projection[candidate_loc_indices],
-                        coral_cover=current_loc_cover[candidate_loc_indices],
-                        in_connectivity=in_conn[candidate_loc_indices],
-                        out_connectivity=out_conn[candidate_loc_indices]
-                    )
-
-                    # Build state for target locations only
-                    selected_Fog_ranks = select_locations(
-                        Fog_pref,
-                        Fog_decision_mat[location = At(candidate_locs)],
-                        MCDA_approach,
-                        min_iv_locs
-                    )
-                else
-                    selected_Fog_ranks = unguided_selection(
-                        candidate_locs,
-                        min_iv_locs,
-                        vec(leftover_space_m²[candidate_loc_indices]);
-                        rng=rng
-                    )
-                end
-                if !isempty(selected_Fog_ranks)
-                    log_val = is_guided ? (1:length(selected_Fog_ranks)) : 1.0
-                    log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .=
-                        log_val
-                    selected_Fog_loc_idx = findall(
-                        in.(domain.loc_ids, Ref(selected_Fog_ranks))
-                    )
-                    last_Fog_deployment[selected_Fog_loc_idx] .= tstep
-                end
-            end
-        end
-
-        has_Fog_locs::Bool = !isempty(selected_Fog_ranks)
-
-        # Fog selected locations
-        if has_Fog_locs  # fog_decision_years[tstep] &&
-            Fog_locs = findall(log_location_ranks.locations .∈ [selected_Fog_ranks])
-            Fog_locations!(@view(Yfog[tstep, :]), Fog_locs, dhw_t, fogging)
-
-            # Empty selected_Fog_ranks before the next iteration
-            selected_Fog_ranks = []
-        end
+        _apply_fogging!(fog_state, intervention_state, in_conn, out_conn, dhw_t, tstep)
 
         # Larval methods intervention
         if !isnothing(LvM_strategy)
@@ -2259,4 +2207,86 @@ function _update_guided_state!(
     current_loc_cover .= dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
 
     return in_conn, out_conn
+end
+
+"""
+    _apply_fogging!(fog, ivs, in_conn, out_conn, dhw_t, tstep)
+
+Fogging: select the fogging locations of this step (guided by the decision matrix, or
+unguided at random using the scenario RNG) and reduce `dhw_t` there. `fog` holds the
+fogging strategy and its scenario constants, `ivs` the state shared by the intervention
+phases (both built before the time loop). In and out connectivity are `nothing` unless
+the scenario is guided.
+"""
+function _apply_fogging!(fog, ivs, in_conn, out_conn, dhw_t, tstep::Int64)
+    (; Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
+        min_iv_locs) = fog
+    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
+        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
+        iv_CAq_last_deployment, rng) = ivs
+
+    # Fog location selection
+    if !isnothing(Fog_strategy)
+        state = if is_guided
+            build_state(
+                domain, Fog_strategy,
+                (
+                    current_cover=current_loc_cover,
+                    recent_cover_losses=recent_cover_losses,
+                    last_deployment=iv_CAq_last_deployment
+                )
+            )
+        else
+            nothing
+        end
+
+        # Get candidate locations from strategy
+        candidate_locs = filter_candidate_locations(Fog_strategy, tstep, state)
+        candidate_loc_indices = findall(
+            in.(domain.loc_ids, Ref(candidate_locs))
+        )
+
+        if !isempty(candidate_locs)
+            if is_guided
+                # Update decision matrix with current conditions
+                update_criteria_values!(
+                    Fog_decision_mat[location = At(candidate_locs)];
+                    heat_stress=dhw_projection[candidate_loc_indices],
+                    wave_stress=wave_projection[candidate_loc_indices],
+                    coral_cover=current_loc_cover[candidate_loc_indices],
+                    in_connectivity=in_conn[candidate_loc_indices],
+                    out_connectivity=out_conn[candidate_loc_indices]
+                )
+
+                # Build state for target locations only
+                selected_Fog_ranks = select_locations(
+                    Fog_pref,
+                    Fog_decision_mat[location = At(candidate_locs)],
+                    MCDA_approach,
+                    min_iv_locs
+                )
+            else
+                selected_Fog_ranks = unguided_selection(
+                    candidate_locs,
+                    min_iv_locs,
+                    vec(leftover_space_m²[candidate_loc_indices]);
+                    rng=rng
+                )
+            end
+            if !isempty(selected_Fog_ranks)
+                log_val = is_guided ? (1:length(selected_Fog_ranks)) : 1.0
+                log_location_ranks[tstep, At(selected_Fog_ranks), At(:fog)] .=
+                    log_val
+                selected_Fog_loc_idx = findall(
+                    in.(domain.loc_ids, Ref(selected_Fog_ranks))
+                )
+                last_Fog_deployment[selected_Fog_loc_idx] .= tstep
+
+                # Fog selected locations
+                Fog_locs = findall(log_location_ranks.locations .∈ [selected_Fog_ranks])
+                Fog_locations!(@view(Yfog[tstep, :]), Fog_locs, dhw_t, fogging)
+            end
+        end
+    end
+    return nothing
 end
