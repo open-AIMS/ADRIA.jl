@@ -147,7 +147,10 @@ _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
 
 # Phase hook position: after core disturbances (bleaching, cyclones), before survival is
 # propagated. Submodels step in attach order, then record.
-@inline function _step_submodels!(
+# `@noinline` on both hooks: `slots` is only known as an abstract `Tuple` in `run_model`, so
+# these calls are the function barrier that specialises on the concrete slot types (once
+# per submodel combination), without recompiling the whole time loop.
+@noinline function _step_submodels!(
     slots::Tuple, phase::ADRIAinterfaces.Phase, view::CoralStepView, tstep::Int, year::Int
 )::Nothing
     foreach(slots) do s
@@ -158,7 +161,7 @@ _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
     return nothing
 end
 
-@inline function _record_submodels!(slots::Tuple, tstep::Int)::Nothing
+@noinline function _record_submodels!(slots::Tuple, tstep::Int)::Nothing
     foreach(s -> ADRIAinterfaces.record!(s.model, s.bufs, s.state, tstep), slots)
     return nothing
 end
