@@ -87,8 +87,14 @@ When at least one scenario has `cots_on = 1`, the result set holds two extra log
 - `cots_condition_log`: COTS body condition, with dimensions timesteps x locations x
   scenarios.
 
-Scenarios with COTS off hold zeros in these logs. When no scenario runs COTS, the logs are
-not created and both fields are `nothing`.
+Scenarios with COTS off hold zeros in these logs. The logs are auxiliary logs of the result
+set: they are found in `rs.aux` (a `NamedTuple` keyed by log name) and as `rs.cots_pop_log`
+and `rs.cots_condition_log`. When no scenario runs COTS, the logs are not created, `rs.aux`
+is empty and both properties are `nothing`.
+
+The store names are unchanged. When a result set is loaded, every array of the `logs` group
+that is not one of the core logs (rankings, intervention logs, shading, DHW tolerance and
+cover) is loaded as an auxiliary log, so stores written before this change load as before.
 
 ## Optional data-package inputs
 
