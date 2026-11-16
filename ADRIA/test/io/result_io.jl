@@ -98,14 +98,16 @@ end
 
     # Source sizes must add up to the number of scenarios
     dir = edited_store(a -> a["source_sizes"] = [n + 1])
-    @test_throws "inconsistent" ADRIA.load_results(dir)
+    @test_throws DimensionMismatch ADRIA.load_results(dir)
 
     # A multi-source store needs one model specification file per source
-    dir = edited_store(a -> (a["source_sizes"] = [1, n - 1]; delete!(a, "provenance")))
+    dir = edited_store(a -> (a["source_sizes"]=[1, n - 1]; delete!(a, "provenance")))
+    @test_throws ArgumentError ADRIA.load_results(dir)
     @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
 
     # Provenance records must match the sources (absent provenance is fine)
     dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
+    @test_throws ArgumentError ADRIA.load_results(dir)
     @test_throws "provenance records" ADRIA.load_results(dir)
 end
 
@@ -116,7 +118,7 @@ end
         @test TEST_RS.aux == NamedTuple()
         @test isnothing(TEST_RS.cots_pop_log)  # legacy accessors give nothing
         @test isnothing(TEST_RS.cots_condition_log)
-        @test_throws "no property or auxiliary log" TEST_RS.not_a_log
+        @test_throws ArgumentError TEST_RS.not_a_log
     end
 
     @testset "COTS logs are declared as LogSpecs with unchanged store attributes" begin
@@ -192,7 +194,7 @@ end
             NamedTuple()
 
         Zarr.zcreate(Float32, 2, 2; name="no_structure", path=joinpath(none, ADRIA.LOG_GRP))
-        @test_throws "no_structure" ADRIA._load_aux_logs(
+        @test_throws ArgumentError ADRIA._load_aux_logs(
             Zarr.zopen(joinpath(none, ADRIA.LOG_GRP))
         )
     end

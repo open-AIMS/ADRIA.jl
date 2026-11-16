@@ -140,7 +140,7 @@ function _init_submodels(
     slots_t = Tuple(slots)
     names = Tuple(k for s in slots_t for k in keys(s.bufs))
     length(unique(names)) == length(names) ||
-        error("Submodels declare logs with the same name: $names")
+        throw(ArgumentError("Submodels declare logs with the same name: $names"))
     return slots_t
 end
 
