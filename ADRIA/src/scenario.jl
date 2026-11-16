@@ -1327,26 +1327,10 @@ function run_model(
     for tstep::Int64 = 2:tf
         _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
-        # Natural adaptation (doesn't change C_cover_t)
-        if tstep <= tf
-            adjust_DHW_distribution!(
-                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates,
-                c_mean_tol_ceil
-            )
-
-            if log_dhw_tols
-                # Log dhw tolerances if requested
-                permutedims!(_permuted_buf, c_mean_t, (2, 1, 3))
-                dhw_tol_mean_log[tstep, :, :] .= reshape(
-                    _permuted_buf, size(dhw_tol_mean_log)[2:3]
-                )
-            end
-
-            if log_cover
-                permutedims!(_permuted_buf, @view(C_cover[tstep, :, :, :]), (2, 1, 3))
-                cover_log[tstep, :, :] .= reshape(_permuted_buf, size(cover_log)[2:3])
-            end
-        end
+        _adapt_and_log!(
+            C_cover, c_mean_t, net_growth_rates, c_mean_tol_ceil, dhw_tol_mean_log,
+            cover_log, _permuted_buf, log_dhw_tols, log_cover, tstep, tf
+        )
 
         # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
         # This is the correct baseline for a_adapt enhancement: using the post-coral-aquaculture state
@@ -2161,5 +2145,41 @@ function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
         @view(C_cover_t[:, :, habitable_locs]) ./ habitable_loc_areas′
     )
     C_cover[tstep, :, :, habitable_locs] .= @view(C_cover_t[:, :, habitable_locs])
+    return nothing
+end
+
+"""
+    _adapt_and_log!(
+        C_cover, c_mean_t, net_growth_rates, c_mean_tol_ceil, dhw_tol_mean_log, cover_log,
+        _permuted_buf, log_dhw_tols, log_cover, tstep, tf
+    )
+
+Natural adaptation of the thermal tolerance means `c_mean_t` (cover is not changed), then
+the optional per-timestep tolerance and cover logs.
+"""
+function _adapt_and_log!(
+    C_cover, c_mean_t, net_growth_rates, c_mean_tol_ceil, dhw_tol_mean_log, cover_log,
+    _permuted_buf, log_dhw_tols::Bool, log_cover::Bool, tstep::Int64, tf::Int64
+)
+    # Natural adaptation (doesn't change C_cover_t)
+    if tstep <= tf
+        adjust_DHW_distribution!(
+            @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates,
+            c_mean_tol_ceil
+        )
+
+        if log_dhw_tols
+            # Log dhw tolerances if requested
+            permutedims!(_permuted_buf, c_mean_t, (2, 1, 3))
+            dhw_tol_mean_log[tstep, :, :] .= reshape(
+                _permuted_buf, size(dhw_tol_mean_log)[2:3]
+            )
+        end
+
+        if log_cover
+            permutedims!(_permuted_buf, @view(C_cover[tstep, :, :, :]), (2, 1, 3))
+            cover_log[tstep, :, :] .= reshape(_permuted_buf, size(cover_log)[2:3])
+        end
+    end
     return nothing
 end
