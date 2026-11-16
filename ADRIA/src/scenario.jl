@@ -1540,21 +1540,9 @@ function run_model(
 
         # Track cover loss for reactive strategies
         if is_guided && _is_reactive && (tstep > 1)
-            # Calculate proportional cover loss at each location
-            # due to disturbances this timestep
-            Δcover_loss_proportion .= 0.0
-            for loc = 1:n_locs
-                cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
-                cover_after = sum(@view(C_cover_t[:, :, loc]))
-
-                if cover_before > 0.0
-                    Δcover_loss_proportion[loc] =
-                        (cover_before - cover_after) / cover_before
-                end
-            end
-
-            # Store in rolling buffer
-            push!(recent_cover_losses, Δcover_loss_proportion)
+            _track_cover_loss!(
+                recent_cover_losses, Δcover_loss_proportion, ΔC_cover_t, C_cover_t, n_locs
+            )
         end
     end
 
@@ -2442,6 +2430,36 @@ function _propagate_survival!(
     recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
 
     C_cover[tstep, :, :, :] .= C_cover_t
+
+    return nothing
+end
+
+"""
+    _track_cover_loss!(
+        recent_cover_losses, Δcover_loss_proportion, ΔC_cover_t, C_cover_t, n_locs
+    )
+
+Proportional cover loss at each location due to this timestep's disturbances, pushed on the
+rolling buffer used by reactive strategies. Note that the same `Δcover_loss_proportion`
+vector is pushed every step (kept as is).
+"""
+function _track_cover_loss!(
+    recent_cover_losses, Δcover_loss_proportion, ΔC_cover_t, C_cover_t, n_locs::Int64
+)
+    # Calculate proportional cover loss at each location
+    # due to disturbances this timestep
+    Δcover_loss_proportion .= 0.0
+    for loc = 1:n_locs
+        cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
+        cover_after = sum(@view(C_cover_t[:, :, loc]))
+
+        if cover_before > 0.0
+            Δcover_loss_proportion[loc] = (cover_before - cover_after) / cover_before
+        end
+    end
+
+    # Store in rolling buffer
+    push!(recent_cover_losses, Δcover_loss_proportion)
 
     return nothing
 end
