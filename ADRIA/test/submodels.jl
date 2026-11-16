@@ -206,4 +206,17 @@ end
         @test all(isfinite, res.raw)
         @test res.aux_logs.mock_calls[tf] == tf - 1
     end
+
+    @testset "attaching a submodel adds little allocation to a run" begin
+        # Difference, not an absolute value: a run allocates a lot regardless. ShrinkMock
+        # so that `step!` and `record!` really run; the extra (slots, logs, per-cell
+        # snapshot) must stay a small fraction of the run's allocation
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.0))  # runs, leaves cover unchanged
+        ADRIA.run_scenario(d2, row)  # compile
+        detached = @allocated ADRIA.run_scenario(dom, row)
+        attached = @allocated ADRIA.run_scenario(d2, row)
+        @info "ALLOC" attached detached
+        @test attached - detached < 0.02 * detached
+    end
 end
