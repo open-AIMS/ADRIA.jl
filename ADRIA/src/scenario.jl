@@ -1529,7 +1529,7 @@ function run_model(
         if has_submodels
             _step_submodel_hooks!(
                 submodel_slots, submodel_cover_before, C_cover_t, dhw_t, vec_abs_k, tstep,
-                Int(domain.env_layer_md.timeframe[tstep])
+                Int64(domain.env_layer_md.timeframe[tstep])
             )
         end
 
