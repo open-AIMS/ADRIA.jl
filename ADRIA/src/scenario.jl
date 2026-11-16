@@ -1526,22 +1526,10 @@ function run_model(
             )
         end
 
-        # Calculate survival_rate due to env. disturbances
-        @inbounds for i in eachindex(survival_rate_cache)
-            d = ΔC_cover_t[i]
-            survival_rate_cache[i] = d == 0.0 ? 1.0 : C_cover_t[i] / d
-        end
-        @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
-
-        for loc = 1:n_locs
-            apply_mortality!(
-                functional_groups[loc], @view(survival_rate_cache[:, :, loc])
-            )
-        end
-
-        recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
-
-        C_cover[tstep, :, :, :] .= C_cover_t
+        _propagate_survival!(
+            survival_rate_cache, ΔC_cover_t, C_cover_t, functional_groups, recruitment,
+            habitable_areas, C_cover, n_locs, tstep
+        )
 
         # Track cover loss for reactive strategies
         if is_guided && _is_reactive && (tstep > 1)
@@ -2397,5 +2385,38 @@ the hooks (specialised per submodel combination) out of the compiled time loop.
     )
     _check_decrease_only(cover_before, C_cover_t, tstep)
     _record_submodels!(slots, tstep)
+    return nothing
+end
+
+"""
+    _propagate_survival!(
+        survival_rate_cache, ΔC_cover_t, C_cover_t, functional_groups, recruitment,
+        habitable_areas, C_cover, n_locs, tstep
+    )
+
+Survival propagation: the survival ratio of this step's disturbances (`C_cover_t` over its
+pre-disturbance snapshot `ΔC_cover_t`, must be <= 1) is applied to CoralBlox, to the
+pending `recruitment` (size class 1) and the cover is stored in `C_cover[tstep]`.
+"""
+function _propagate_survival!(
+    survival_rate_cache, ΔC_cover_t, C_cover_t, functional_groups, recruitment,
+    habitable_areas, C_cover, n_locs::Int64, tstep::Int64
+)
+    # Calculate survival_rate due to env. disturbances
+    @inbounds for i in eachindex(survival_rate_cache)
+        d = ΔC_cover_t[i]
+        survival_rate_cache[i] = d == 0.0 ? 1.0 : C_cover_t[i] / d
+    end
+    @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
+
+    for loc = 1:n_locs
+        apply_mortality!(
+            functional_groups[loc], @view(survival_rate_cache[:, :, loc])
+        )
+    end
+
+    recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
+
+    C_cover[tstep, :, :, :] .= C_cover_t
     return nothing
 end
