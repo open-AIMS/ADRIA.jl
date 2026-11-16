@@ -31,7 +31,7 @@ end
         @test TEST_RS.aux == NamedTuple()
         @test isnothing(TEST_RS.cots_pop_log)  # legacy accessors give nothing
         @test isnothing(TEST_RS.cots_condition_log)
-        @test_throws ErrorException TEST_RS.not_a_log
+        @test_throws "no property or auxiliary log" TEST_RS.not_a_log
     end
 
     @testset "COTS logs are declared as LogSpecs with unchanged store attributes" begin
@@ -82,6 +82,11 @@ end
         Zarr.zcreate(Float32, 2, 2; name="fog", path=joinpath(none, ADRIA.LOG_GRP))
         @test ADRIA._load_aux_logs(Zarr.zopen(joinpath(none, ADRIA.LOG_GRP))) ==
             NamedTuple()
+
+        Zarr.zcreate(Float32, 2, 2; name="no_structure", path=joinpath(none, ADRIA.LOG_GRP))
+        @test_throws "no_structure" ADRIA._load_aux_logs(
+            Zarr.zopen(joinpath(none, ADRIA.LOG_GRP))
+        )
     end
 
     @testset "per-scenario byte budget keeps the sum and adds aux logs" begin
@@ -101,7 +106,7 @@ end
         @test base.largest >= 4 * tf * ng * nl  # includes optional logs when enabled
         @test with.largest >= base.largest
 
-        # A large aux log dominates the largest-array check
+        # A large aux log is in the sum, so it limits the chunk through `total`
         big = [ADRIA.LogSpec(:big, [:timesteps, :x], [tf, 10_000_000])]
         b = ADRIA._log_bytes_per_scen(TEST_DOM, big)
         @test b.largest == 4 * tf * 10_000_000
@@ -109,5 +114,41 @@ end
             max(1, floor(Int, 1_800_000_000 / b.total))
         @test ADRIA._max_chunk_by_size_for(TEST_DOM, big) <
             ADRIA._max_chunk_by_size_for(TEST_DOM, ADRIA.LogSpec[])
+    end
+
+    @testset "chunk cap is unchanged for COTS-off runs, also with optional logs" begin
+        old_cap(tf, nl, ng, ni, nm) = max(
+            1,
+            floor(
+                Int,
+                1_800_000_000 /
+                (4 * tf * (nl * nm + ng + nl * 2 + nl * ni + ng * nl * 2))
+            )
+        )
+        tf, nl, ng, ns, ni, nm = 75, 3806, 5, 6, 3, 6
+        total = 4 * tf * (nl * nm + ng + nl * 2 + nl * ni + ng * nl * 2)
+        # largest array with both optional logs fully enabled (2-byte elements)
+        largest = max(4 * tf * nl * nm, 2 * tf * ng * ns * nl)
+        @test ADRIA._chunk_cap_by_bytes(total, largest) == old_cap(tf, nl, ng, ni, nm)
+
+        # Same on the test domain with the optional logs switched on
+        dom_cap(aux) = ADRIA._max_chunk_by_size_for(TEST_DOM, aux)
+        off = dom_cap(ADRIA.LogSpec[])
+        withenv("ADRIA_LOG_COVER" => "true", "ADRIA_LOG_DHW_TOLS" => "true") do
+            @test dom_cap(ADRIA.LogSpec[]) == off
+        end
+        @test off == old_cap(
+            length(ADRIA.timesteps(TEST_DOM)), TEST_DOM.coral_growth.n_locs,
+            TEST_DOM.coral_growth.n_groups, length(ADRIA.interventions()),
+            length(ADRIA.LOC_METRIC_NAMES)
+        )
+    end
+
+    @testset "per-array 2 GB check" begin
+        # Every counted array is part of the sum, so with real arrays `largest` can only
+        # bind through the uncounted optional logs; test the rule on synthetic sizes.
+        @test ADRIA._chunk_cap_by_bytes(1_000, 1_000) == 1_800_000
+        @test ADRIA._chunk_cap_by_bytes(1_000, 90_000_000) == 20  # per-array bound binds
+        @test ADRIA._chunk_cap_by_bytes(10_000_000_000, 1_000) == 1  # never below 1
     end
 end
