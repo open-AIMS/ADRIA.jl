@@ -1172,11 +1172,6 @@ function run_model(
         corals.mean_colony_diameter_m[corals.class_id .== 1]
     )
 
-    # Dummy vars to fill/replace with ranks of selected locations
-    selected_CAq_ranks = []
-    selected_Fog_ranks = []
-    selected_LvM_ranks = []
-
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
@@ -1357,6 +1352,11 @@ function run_model(
         LvM_strategy, LvM_pref, LvM_decision_mat, last_LvM_deployment, LvM_min_iv_locs,
         iv_LvM_N_settlers, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria, YLvM
     )
+    caq_state = (;
+        CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, CAq_volume,
+        CAq_devices_per_m2, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
+        YCAq, c_mean_reference, c_std, a_adapt, c_mean_tol_ceil
+    )
     fog_state = (;
         Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
         min_iv_locs
@@ -1504,141 +1504,10 @@ function run_model(
         #     # Estimate proportional change in cover to apply to cubes
         # end
 
-        # Coral aquaculture location selection
-        if !isnothing(CAq_strategy)
-            state = if is_guided
-                build_state(
-                    domain,
-                    CAq_strategy,
-                    (
-                        current_cover=current_loc_cover,
-                        recent_cover_losses=recent_cover_losses,
-                        last_deployment=iv_CAq_last_deployment
-                    )
-                )
-            else
-                nothing
-            end
-
-            if is_decision_year(CAq_strategy, tstep)
-                # Get candidate locations from strategy
-                candidate_locs = filter_candidate_locations(CAq_strategy, tstep, state)
-
-                # CAq_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for CAq_share in domain.CAq_target_locations
-                    share_candidate_locs = intersect(
-                        candidate_locs, CAq_share.target_locs
-                    )
-                    if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "iv_CAq") ==
-                            PeriodicStrategy
-                            @warn """
-                                tstep $tstep: Deployment with PeriodicStrategy on
-                                $(length(CAq_share.target_locs)) reefs with weight
-                                $(CAq_share.weight) skipped because no candidate reefs
-                                were found.
-                            """
-                        end
-                        continue
-                    end
-
-                    share_candidate_loc_idx = findall(
-                        in.(domain.loc_ids, Ref(share_candidate_locs))
-                    )
-
-                    if is_guided
-                        # Update decision matrix with current conditions
-                        update_criteria_values!(
-                            CAq_decision_mat[location = At(share_candidate_locs)];
-                            heat_stress=dhw_projection[share_candidate_loc_idx],
-                            wave_stress=wave_projection[share_candidate_loc_idx],
-                            coral_cover=current_loc_cover[share_candidate_loc_idx],
-                            in_connectivity=in_conn[share_candidate_loc_idx],
-                            out_connectivity=out_conn[share_candidate_loc_idx]
-                        )
-
-                        # Build state for target locations only
-                        selected_CAq_ranks = select_locations(
-                            CAq_pref,
-                            CAq_decision_mat[location = At(share_candidate_locs)],
-                            MCDA_approach,
-                            min_iv_locs
-                        )
-                    else
-                        # Unguided deployment, coral-aquaculture/fog corals anywhere, so long as available space > 0
-                        selected_CAq_ranks = unguided_selection(
-                            share_candidate_locs,
-                            min_iv_locs,
-                            vec(leftover_space_m²[share_candidate_loc_idx]),
-                            depth_criteria[share_candidate_loc_idx];
-                            rng=rng
-                        )
-                    end
-                    if !isempty(selected_CAq_ranks)
-                        log_val = is_guided ? (1:length(selected_CAq_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .=
-                            log_val
-                        selected_CAq_loc_idx = findall(
-                            in.(domain.loc_ids, Ref(selected_CAq_ranks))
-                        )
-                        iv_CAq_last_deployment[selected_CAq_loc_idx] .= tstep
-                    end
-
-                    # Check if locations are selected (can reuse previous selection)
-                    has_CAq_locs::Bool = !isempty(selected_CAq_ranks)
-
-                    # Apply coral aquaculture (assumed to occur after spawning)
-                    if has_CAq_locs  # CAq_decision_years[tstep] &&
-                        # Deploy coral aquaculture at selected locations
-                        # Selected locations can fill up over time so avoid locations with no space´
-                        CAq_loc_idx = findall(domain.loc_ids .∈ [selected_CAq_ranks])
-
-                        available_space = leftover_space_m²[CAq_loc_idx]
-                        locs_with_space = findall(available_space .> 0.0)
-
-                        # If there are locations with space to select from, then deploy what we can
-                        # Otherwise, do nothing.
-                        if length(locs_with_space) > 0
-                            # Calculate proportion for coral aquaculture based on current available space
-                            CAq_loc_idx = CAq_loc_idx[locs_with_space]
-                            available_space = available_space[locs_with_space]
-
-                            proportional_increase, n_corals_CAq = distribute_CAq_corals(
-                                vec_abs_k[CAq_loc_idx],
-                                available_space,
-                                CAq_volume .* CAq_share.weight,
-                                colony_areas[_CAq_size_groups],
-                                CAq_devices_per_m2
-                            )
-
-                            # Log estimated number of corals deployed via coral aquaculture
-                            YCAq[tstep, :, CAq_loc_idx] .= n_corals_CAq'
-
-                            # Add coral aquaculture to recruitment
-                            recruitment[:, CAq_loc_idx] .+= proportional_increase
-                            leftover_space_m²[CAq_loc_idx] .-=
-                                vec(sum(Array(proportional_increase); dims=1)) .*
-                                vec_abs_k[CAq_loc_idx]
-
-                            update_tolerance_distribution!(
-                                proportional_increase,
-                                C_cover_t,
-                                c_mean_t,
-                                c_mean_reference[:, :, end],
-                                c_std,
-                                CAq_loc_idx,
-                                _CAq_size_groups,
-                                a_adapt,
-                                c_mean_tol_ceil
-                            )
-                        end
-
-                        # Empty selected_CAq_ranks before the next iteration
-                        selected_CAq_ranks = []
-                    end
-                end
-            end
-        end
+        _apply_coral_aquaculture!(
+            caq_state, intervention_state, in_conn, out_conn, recruitment, C_cover_t,
+            c_mean_t, param_set, tstep
+        )
 
         # Apply disturbances
 
@@ -2324,6 +2193,164 @@ function _apply_larval_methods!(
 
                         # Log estimated number of corals moved
                         YLvM[tstep, :, LvM_loc_idx] .= n_LvM_corals
+                    end
+                end
+            end
+        end
+    end
+
+    return nothing
+end
+
+"""
+    _apply_coral_aquaculture!(
+        caq, ivs, in_conn, out_conn, recruitment, C_cover_t, c_mean_t, param_set, tstep
+    )
+
+Coral aquaculture: for each target share, select the locations (guided, or unguided at
+random using the scenario RNG), add the deployed corals to `recruitment`, reduce the
+leftover space (after larval methods) and mix the deployed tolerance into `c_mean_t`.
+`caq` holds the strategy and scenario constants, `ivs` the state shared by the
+intervention phases (both built before the time loop). In and out connectivity are
+`nothing` unless the scenario is guided.
+"""
+function _apply_coral_aquaculture!(
+    caq, ivs, in_conn, out_conn, recruitment, C_cover_t, c_mean_t, param_set, tstep::Int64
+)
+    (; CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, CAq_volume,
+        CAq_devices_per_m2, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
+        YCAq, c_mean_reference, c_std, a_adapt, c_mean_tol_ceil) = caq
+    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
+        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
+        iv_CAq_last_deployment, rng) = ivs
+
+    # Coral aquaculture location selection
+    if !isnothing(CAq_strategy)
+        state = if is_guided
+            build_state(
+                domain,
+                CAq_strategy,
+                (
+                    current_cover=current_loc_cover,
+                    recent_cover_losses=recent_cover_losses,
+                    last_deployment=iv_CAq_last_deployment
+                )
+            )
+        else
+            nothing
+        end
+
+        if is_decision_year(CAq_strategy, tstep)
+            # Get candidate locations from strategy
+            candidate_locs = filter_candidate_locations(CAq_strategy, tstep, state)
+
+            # CAq_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
+            for CAq_share in domain.CAq_target_locations
+                share_candidate_locs = intersect(
+                    candidate_locs, CAq_share.target_locs
+                )
+                if isempty(share_candidate_locs)
+                    if ADRIA.decision.strategy_type(param_set, "iv_CAq") ==
+                        PeriodicStrategy
+                        @warn """
+                            tstep $tstep: Deployment with PeriodicStrategy on
+                            $(length(CAq_share.target_locs)) reefs with weight
+                            $(CAq_share.weight) skipped because no candidate reefs
+                            were found.
+                        """
+                    end
+                    continue
+                end
+
+                share_candidate_loc_idx = findall(
+                    in.(domain.loc_ids, Ref(share_candidate_locs))
+                )
+
+                if is_guided
+                    # Update decision matrix with current conditions
+                    update_criteria_values!(
+                        CAq_decision_mat[location = At(share_candidate_locs)];
+                        heat_stress=dhw_projection[share_candidate_loc_idx],
+                        wave_stress=wave_projection[share_candidate_loc_idx],
+                        coral_cover=current_loc_cover[share_candidate_loc_idx],
+                        in_connectivity=in_conn[share_candidate_loc_idx],
+                        out_connectivity=out_conn[share_candidate_loc_idx]
+                    )
+
+                    # Build state for target locations only
+                    selected_CAq_ranks = select_locations(
+                        CAq_pref,
+                        CAq_decision_mat[location = At(share_candidate_locs)],
+                        MCDA_approach,
+                        min_iv_locs
+                    )
+                else
+                    # Unguided deployment, coral-aquaculture/fog corals anywhere, so long as available space > 0
+                    selected_CAq_ranks = unguided_selection(
+                        share_candidate_locs,
+                        min_iv_locs,
+                        vec(leftover_space_m²[share_candidate_loc_idx]),
+                        depth_criteria[share_candidate_loc_idx];
+                        rng=rng
+                    )
+                end
+                if !isempty(selected_CAq_ranks)
+                    log_val = is_guided ? (1:length(selected_CAq_ranks)) : 1.0
+                    log_location_ranks[tstep, At(selected_CAq_ranks), At(:caq)] .=
+                        log_val
+                    selected_CAq_loc_idx = findall(
+                        in.(domain.loc_ids, Ref(selected_CAq_ranks))
+                    )
+                    iv_CAq_last_deployment[selected_CAq_loc_idx] .= tstep
+                end
+
+                # Check if locations are selected (can reuse previous selection)
+                has_CAq_locs::Bool = !isempty(selected_CAq_ranks)
+
+                # Apply coral aquaculture (assumed to occur after spawning)
+                if has_CAq_locs  # CAq_decision_years[tstep] &&
+                    # Deploy coral aquaculture at selected locations
+                    # Selected locations can fill up over time so avoid locations with no space´
+                    CAq_loc_idx = findall(domain.loc_ids .∈ [selected_CAq_ranks])
+
+                    available_space = leftover_space_m²[CAq_loc_idx]
+                    locs_with_space = findall(available_space .> 0.0)
+
+                    # If there are locations with space to select from, then deploy what we can
+                    # Otherwise, do nothing.
+                    if length(locs_with_space) > 0
+                        # Calculate proportion for coral aquaculture based on current available space
+                        CAq_loc_idx = CAq_loc_idx[locs_with_space]
+                        available_space = available_space[locs_with_space]
+
+                        proportional_increase, n_corals_CAq = distribute_CAq_corals(
+                            vec_abs_k[CAq_loc_idx],
+                            available_space,
+                            CAq_volume .* CAq_share.weight,
+                            colony_areas[_CAq_size_groups],
+                            CAq_devices_per_m2
+                        )
+
+                        # Log estimated number of corals deployed via coral aquaculture
+                        YCAq[tstep, :, CAq_loc_idx] .= n_corals_CAq'
+
+                        # Add coral aquaculture to recruitment
+                        recruitment[:, CAq_loc_idx] .+= proportional_increase
+                        leftover_space_m²[CAq_loc_idx] .-=
+                            vec(sum(Array(proportional_increase); dims=1)) .*
+                            vec_abs_k[CAq_loc_idx]
+
+                        update_tolerance_distribution!(
+                            proportional_increase,
+                            C_cover_t,
+                            c_mean_t,
+                            c_mean_reference[:, :, end],
+                            c_std,
+                            CAq_loc_idx,
+                            _CAq_size_groups,
+                            a_adapt,
+                            c_mean_tol_ceil
+                        )
                     end
                 end
             end
