@@ -1514,22 +1514,16 @@ function run_model(
             tstep
         )
 
-        # COTS: one year of the COTS life cycle and its grazing on coral, then larval
-        # dispersal between locations and larvae arriving from outside the domain
-        cots_step!(cots, C_cover_t, tstep, Int64(domain.env_layer_md.timeframe[tstep]))
-        log_cots!(Ycots, Ycots_bc, cots, tstep)
+        _step_cots!(
+            cots, Ycots, Ycots_bc, C_cover_t, tstep,
+            Int64(domain.env_layer_md.timeframe[tstep])
+        )
 
-        # Submodels attached to the domain, in attach order, at the `AfterDisturbances`
-        # phase: they may only reduce `C_cover_t`, checked per cell by `_check_decrease_only`
         if has_submodels
-            copyto!(submodel_cover_before, C_cover_t)
-            _step_submodels!(
-                submodel_slots, AfterDisturbances(),
-                CoralStepView(C_cover_t, dhw_t, vec_abs_k),
-                tstep, Int(domain.env_layer_md.timeframe[tstep])
+            _step_submodel_hooks!(
+                submodel_slots, submodel_cover_before, C_cover_t, dhw_t, vec_abs_k, tstep,
+                Int(domain.env_layer_md.timeframe[tstep])
             )
-            _check_decrease_only(submodel_cover_before, C_cover_t, tstep)
-            _record_submodels!(submodel_slots, tstep)
         end
 
         # Calculate survival_rate due to env. disturbances
@@ -2368,5 +2362,40 @@ function _apply_disturbances!(
     # Peak cyclone period is January to March
     # TODO: Update cyclone data to hold data for relevant functional groups
     cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
+    return nothing
+end
+
+"""
+    _step_cots!(cots, Ycots, Ycots_bc, C_cover_t, tstep, year)
+
+One year of the built-in COTS life cycle and its grazing on coral (reduces `C_cover_t`),
+then larval dispersal between locations and larvae arriving from outside the domain.
+Does nothing when COTS is off (`cots` is `nothing`).
+"""
+function _step_cots!(cots, Ycots, Ycots_bc, C_cover_t, tstep::Int64, year::Int64)
+    # COTS: one year of the COTS life cycle and its grazing on coral, then larval
+    # dispersal between locations and larvae arriving from outside the domain
+    cots_step!(cots, C_cover_t, tstep, year)
+    log_cots!(Ycots, Ycots_bc, cots, tstep)
+    return nothing
+end
+
+"""
+    _step_submodel_hooks!(slots, cover_before, C_cover_t, dhw_t, vec_abs_k, tstep, year)
+
+Submodels attached to the domain, in attach order, at the `AfterDisturbances` phase:
+they may only reduce `C_cover_t`, checked per cell against the snapshot `cover_before`
+taken just before the phase. Only called when submodels are attached. `@noinline` keeps
+the hooks (specialised per submodel combination) out of the compiled time loop.
+"""
+@noinline function _step_submodel_hooks!(
+    slots::Tuple, cover_before, C_cover_t, dhw_t, vec_abs_k, tstep::Int64, year::Int64
+)
+    copyto!(cover_before, C_cover_t)
+    _step_submodels!(
+        slots, AfterDisturbances(), CoralStepView(C_cover_t, dhw_t, vec_abs_k), tstep, year
+    )
+    _check_decrease_only(cover_before, C_cover_t, tstep)
+    _record_submodels!(slots, tstep)
     return nothing
 end
