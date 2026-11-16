@@ -1345,6 +1345,10 @@ function run_model(
         dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
         iv_CAq_last_deployment, rng
     )
+    lvm_state = (;
+        LvM_strategy, LvM_pref, LvM_decision_mat, last_LvM_deployment, LvM_min_iv_locs,
+        iv_LvM_N_settlers, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria, YLvM
+    )
     fog_state = (;
         Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
         min_iv_locs
@@ -1418,124 +1422,10 @@ function run_model(
 
         _apply_fogging!(fog_state, intervention_state, in_conn, out_conn, dhw_t, tstep)
 
-        # Larval methods intervention
-        if !isnothing(LvM_strategy)
-            state = if is_guided
-                build_state(
-                    domain, LvM_strategy,
-                    (
-                        current_cover=current_loc_cover,
-                        recent_cover_losses=recent_cover_losses,
-                        last_deployment=last_LvM_deployment
-                    )
-                )
-            else
-                nothing
-            end
-
-            if is_decision_year(LvM_strategy, tstep)
-                # Get candidate locations from strategy
-                candidate_locs = filter_candidate_locations(LvM_strategy, tstep, state)
-
-                # LvM_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
-                for LvM_share in domain.LvM_target_locations
-                    share_candidate_locs = intersect(
-                        candidate_locs, LvM_share.target_locs
-                    )
-                    if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "iv_LvM") ==
-                            PeriodicStrategy
-                            @warn """
-                                tstep $tstep: Deployment with PeriodicStrategy on
-                                $(length(LvM_share.target_locs)) reefs with weight
-                                $(LvM_share.weight) skipped because no candidate reefs
-                                were found.
-                            """
-                        end
-                        continue
-                    end
-
-                    share_candidate_loc_idx = findall(
-                        in.(domain.loc_ids, Ref(share_candidate_locs))
-                    )
-
-                    if is_guided
-                        # Update decision matrix with current conditions
-                        update_criteria_values!(
-                            LvM_decision_mat[location = At(share_candidate_locs)];
-                            heat_stress=dhw_projection[share_candidate_loc_idx],
-                            wave_stress=wave_projection[share_candidate_loc_idx],
-                            coral_cover=current_loc_cover[share_candidate_loc_idx],
-                            in_connectivity=in_conn[share_candidate_loc_idx],
-                            out_connectivity=out_conn[share_candidate_loc_idx]
-                        )
-
-                        selected_LvM_ranks = select_locations(
-                            LvM_pref,
-                            LvM_decision_mat[location = At(share_candidate_locs)],
-                            MCDA_approach,
-                            LvM_min_iv_locs
-                        )
-                    else
-                        # Unguided deployment, anywhere with available space > 0
-                        selected_LvM_ranks = unguided_selection(
-                            share_candidate_locs,
-                            LvM_min_iv_locs,
-                            vec(leftover_space_m²[share_candidate_loc_idx]),
-                            depth_criteria[share_candidate_loc_idx];
-                            rng=rng
-                        )
-                    end
-                    if !isempty(selected_LvM_ranks)
-                        log_val = is_guided ? (1:length(selected_LvM_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_LvM_ranks), At(:lvm)] .=
-                            log_val
-                        selected_LvM_loc_idx = findall(
-                            in.(domain.loc_ids, Ref(selected_LvM_ranks))
-                        )
-                        last_LvM_deployment[selected_LvM_loc_idx] .= tstep
-                    end
-
-                    # Check if locations are selected
-                    has_LvM_locs::Bool = !isempty(selected_LvM_ranks)
-
-                    # Apply Larval Methods (assumed to occur after spawning)
-                    if has_LvM_locs
-                        LvM_loc_idx = findall(domain.loc_ids .∈ [selected_LvM_ranks])
-
-                        @views available_space = leftover_space_m²[LvM_loc_idx]
-
-                        locs_with_space = findall(available_space .> 0.0)
-
-                        # If there are locations with space to select from, deploy what we can
-                        if length(locs_with_space) > 0
-                            LvM_loc_idx = LvM_loc_idx[locs_with_space]
-                            available_space = available_space[locs_with_space]
-
-                            @views LvM_proportional_increase, n_LvM_corals = distribute_LvM_corals(
-                                vec_abs_k[LvM_loc_idx],
-                                available_space,
-                                iv_LvM_N_settlers * LvM_share.weight,
-                                colony_areas[_CAq_size_groups],
-                                prop_fecundity[:, LvM_loc_idx]
-                            )
-
-                            @views recruitment[:, LvM_loc_idx] .+=
-                                LvM_proportional_increase
-                            leftover_space_m²[LvM_loc_idx] .-=
-                                vec(sum(Array(LvM_proportional_increase); dims=1)) .*
-                                vec_abs_k[LvM_loc_idx]
-
-                            # Log estimated number of corals moved
-                            YLvM[tstep, :, LvM_loc_idx] .= n_LvM_corals
-                        end
-
-                        # Empty selected_LvM_ranks before the next iteration
-                        selected_LvM_ranks = []
-                    end
-                end
-            end
-        end
+        _apply_larval_methods!(
+            lvm_state, intervention_state, in_conn, out_conn, recruitment, prop_fecundity,
+            param_set, tstep
+        )
 
         # Set next settlers DHW tolerance after reproducton and larval methods intervention
         settler_DHW_tolerance!(
@@ -2285,6 +2175,141 @@ function _apply_fogging!(fog, ivs, in_conn, out_conn, dhw_t, tstep::Int64)
                 # Fog selected locations
                 Fog_locs = findall(log_location_ranks.locations .∈ [selected_Fog_ranks])
                 Fog_locations!(@view(Yfog[tstep, :]), Fog_locs, dhw_t, fogging)
+            end
+        end
+    end
+    return nothing
+end
+
+"""
+    _apply_larval_methods!(lvm, ivs, in_conn, out_conn, recruitment, prop_fecundity, param_set, tstep)
+
+Larval methods: for each target share, select the locations (guided, or unguided at
+random using the scenario RNG) and add the settlers to `recruitment`, reducing the leftover
+space. `lvm` holds the strategy and scenario constants, `ivs` the state shared by the
+intervention phases (both built before the time loop).
+"""
+function _apply_larval_methods!(
+    lvm, ivs, in_conn, out_conn, recruitment, prop_fecundity, param_set, tstep::Int64
+)
+    (; LvM_strategy, LvM_pref, LvM_decision_mat, last_LvM_deployment, LvM_min_iv_locs,
+        iv_LvM_N_settlers, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
+        YLvM) = lvm
+    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
+        dhw_projection, wave_projection, leftover_space_m², log_location_ranks, rng) = ivs
+
+    # Larval methods intervention
+    if !isnothing(LvM_strategy)
+        state = if is_guided
+            build_state(
+                domain, LvM_strategy,
+                (
+                    current_cover=current_loc_cover,
+                    recent_cover_losses=recent_cover_losses,
+                    last_deployment=last_LvM_deployment
+                )
+            )
+        else
+            nothing
+        end
+
+        if is_decision_year(LvM_strategy, tstep)
+            # Get candidate locations from strategy
+            candidate_locs = filter_candidate_locations(LvM_strategy, tstep, state)
+
+            # LvM_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
+            for LvM_share in domain.LvM_target_locations
+                share_candidate_locs = intersect(
+                    candidate_locs, LvM_share.target_locs
+                )
+                if isempty(share_candidate_locs)
+                    if ADRIA.decision.strategy_type(param_set, "iv_LvM") ==
+                        PeriodicStrategy
+                        @warn """
+                            tstep $tstep: Deployment with PeriodicStrategy on
+                            $(length(LvM_share.target_locs)) reefs with weight
+                            $(LvM_share.weight) skipped because no candidate reefs
+                            were found.
+                        """
+                    end
+                    continue
+                end
+
+                share_candidate_loc_idx = findall(
+                    in.(domain.loc_ids, Ref(share_candidate_locs))
+                )
+
+                if is_guided
+                    # Update decision matrix with current conditions
+                    update_criteria_values!(
+                        LvM_decision_mat[location = At(share_candidate_locs)];
+                        heat_stress=dhw_projection[share_candidate_loc_idx],
+                        wave_stress=wave_projection[share_candidate_loc_idx],
+                        coral_cover=current_loc_cover[share_candidate_loc_idx],
+                        in_connectivity=in_conn[share_candidate_loc_idx],
+                        out_connectivity=out_conn[share_candidate_loc_idx]
+                    )
+
+                    selected_LvM_ranks = select_locations(
+                        LvM_pref,
+                        LvM_decision_mat[location = At(share_candidate_locs)],
+                        MCDA_approach,
+                        LvM_min_iv_locs
+                    )
+                else
+                    # Unguided deployment, anywhere with available space > 0
+                    selected_LvM_ranks = unguided_selection(
+                        share_candidate_locs,
+                        LvM_min_iv_locs,
+                        vec(leftover_space_m²[share_candidate_loc_idx]),
+                        depth_criteria[share_candidate_loc_idx];
+                        rng=rng
+                    )
+                end
+                if !isempty(selected_LvM_ranks)
+                    log_val = is_guided ? (1:length(selected_LvM_ranks)) : 1.0
+                    log_location_ranks[tstep, At(selected_LvM_ranks), At(:lvm)] .=
+                        log_val
+                    selected_LvM_loc_idx = findall(
+                        in.(domain.loc_ids, Ref(selected_LvM_ranks))
+                    )
+                    last_LvM_deployment[selected_LvM_loc_idx] .= tstep
+                end
+
+                # Check if locations are selected
+                has_LvM_locs::Bool = !isempty(selected_LvM_ranks)
+
+                # Apply Larval Methods (assumed to occur after spawning)
+                if has_LvM_locs
+                    LvM_loc_idx = findall(domain.loc_ids .∈ [selected_LvM_ranks])
+
+                    @views available_space = leftover_space_m²[LvM_loc_idx]
+
+                    locs_with_space = findall(available_space .> 0.0)
+
+                    # If there are locations with space to select from, deploy what we can
+                    if length(locs_with_space) > 0
+                        LvM_loc_idx = LvM_loc_idx[locs_with_space]
+                        available_space = available_space[locs_with_space]
+
+                        @views LvM_proportional_increase, n_LvM_corals = distribute_LvM_corals(
+                            vec_abs_k[LvM_loc_idx],
+                            available_space,
+                            iv_LvM_N_settlers * LvM_share.weight,
+                            colony_areas[_CAq_size_groups],
+                            prop_fecundity[:, LvM_loc_idx]
+                        )
+
+                        @views recruitment[:, LvM_loc_idx] .+=
+                            LvM_proportional_increase
+                        leftover_space_m²[LvM_loc_idx] .-=
+                            vec(sum(Array(LvM_proportional_increase); dims=1)) .*
+                            vec_abs_k[LvM_loc_idx]
+
+                        # Log estimated number of corals moved
+                        YLvM[tstep, :, LvM_loc_idx] .= n_LvM_corals
+                    end
+                end
             end
         end
     end
