@@ -61,6 +61,8 @@ end
             :m_mode, 5, (0, 9); kind=:categorical, levels=[0, 1]
         )
         @test_throws ArgumentError ParamSpec(:m_x, 0, (0, 1); kind=:other)
+        @test_throws ArgumentError ParamSpec(:m_x, 0, (0, 1); kind=:real, ptype="integer")
+        @test_throws ArgumentError ParamSpec(:m_x, 0.5, (0, 1); kind=:bool)
 
         s = LogSpec(:l, [:timesteps, :locations], [5, 4]; units="u")
         @test s.size == [5, 4] && s.units == "u" && isempty(s.labels)

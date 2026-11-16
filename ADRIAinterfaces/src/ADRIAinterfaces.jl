@@ -94,10 +94,15 @@ does so in `ADRIA.spec_rows`).
   given (`:bool` is `"categorical"`).
 - `dist::Symbol`: sampling distribution, with parameters `dist_params` (the full range):
   `:uniform` (lo, hi), `:triang` (lo, hi, mode), `:discrete_ordered` (lo, hi, step),
-  `:discrete_uniform` (lo, hi) or `:categorical` (the levels; set from `levels`). Defaults
+  `:discrete_uniform` (lo, hi) or `:categorical` (the host uses `levels`, `dist_params` is
+  ignored). Defaults
   to `:categorical` for `:bool`/`:categorical` kinds and `:uniform` otherwise.
 - `constant::Bool`: if `true` (the default) the factor is held at `default` when sampling
   and `dist_params` is only the range it may be widened to.
+
+Note: the struct grew from 7 to 11 fields, so the positional constructor changed. Use the
+keyword constructor. Version 0.1.0 of this package has not been tagged or released (it is
+covered by the 0.2.0-dev window), so this is not a breaking release change.
 """
 struct ParamSpec
     name::Symbol
@@ -137,6 +142,12 @@ function ParamSpec(
     end
     kind in _PARAM_KINDS ||
         throw(ArgumentError("$name: kind must be one of $_PARAM_KINDS, got :$kind"))
+    if ptype !== nothing && get(_PTYPE_KIND, String(ptype), kind) !== kind &&
+        !(kind === :bool && ptype == "categorical")
+        throw(ArgumentError("$name: ptype \"$ptype\" does not match kind :$kind"))
+    end
+    kind === :bool && !(default in (0, 1)) &&
+        throw(ArgumentError("$name: a :bool factor has default 0 or 1"))
     ptype === nothing && (ptype = if kind === :real
         "real"
     elseif kind === :integer
