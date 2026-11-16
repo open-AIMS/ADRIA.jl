@@ -1371,26 +1371,13 @@ function run_model(
             dhw_t, YShd, dhw_scen, Shd_locs_mask, Shd_decision_years, apply_Shd, Shd, tstep
         )
 
+        in_conn, out_conn = nothing, nothing
         if is_guided
-            # Use modified projected DHW (may have been affected by shading)
-            dhw_p .= dhw_scen
-            dhw_p[tstep, :] .= dhw_t
-            dhw_projection .= weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
-
-            if wave_idx > 0.0
-                wave_projection .= weighted_projection(
-                    wave_scen, tstep, plan_horizon, decay, tf
-                )
-            end
-
-            # Determine connectivity strength weighting by area.
-            # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, _ = connectivity_strength(
-                area_weighted_conn, vec(_loc_coral_cover), conn_cache
+            in_conn, out_conn = _update_guided_state!(
+                dhw_projection, wave_projection, current_loc_cover, dhw_p, dhw_scen, dhw_t,
+                wave_scen, wave_idx, area_weighted_conn, _loc_coral_cover, conn_cache,
+                C_cover_t, plan_horizon, decay, tf, tstep
             )
-
-            # Calculate current location cover
-            current_loc_cover .= dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
         end
 
         # Fogging
@@ -2245,4 +2232,43 @@ function _apply_shading!(
     end
 
     return nothing
+end
+
+"""
+    _update_guided_state!(
+        dhw_projection, wave_projection, current_loc_cover, dhw_p, dhw_scen, dhw_t,
+        wave_scen, wave_idx, area_weighted_conn, _loc_coral_cover, conn_cache, C_cover_t,
+        plan_horizon, decay, tf, tstep
+    )
+
+Guided scenarios only. Update, in place, the projected DHW (with the shaded DHW of this
+step) and wave stress, and the current location cover used by the location selection.
+Returns the in and out connectivity strengths for the decision matrices.
+"""
+function _update_guided_state!(
+    dhw_projection, wave_projection, current_loc_cover, dhw_p, dhw_scen, dhw_t, wave_scen,
+    wave_idx, area_weighted_conn, _loc_coral_cover, conn_cache, C_cover_t, plan_horizon,
+    decay, tf, tstep
+)
+    # Use modified projected DHW (may have been affected by shading)
+    dhw_p .= dhw_scen
+    dhw_p[tstep, :] .= dhw_t
+    dhw_projection .= weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
+
+    if wave_idx > 0.0
+        wave_projection .= weighted_projection(
+            wave_scen, tstep, plan_horizon, decay, tf
+        )
+    end
+
+    # Determine connectivity strength weighting by area.
+    # Accounts for strength of connectivity where there is low/no coral cover
+    in_conn, out_conn, _ = connectivity_strength(
+        area_weighted_conn, vec(_loc_coral_cover), conn_cache
+    )
+
+    # Calculate current location cover
+    current_loc_cover .= dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+
+    return in_conn, out_conn
 end
