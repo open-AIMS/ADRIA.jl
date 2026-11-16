@@ -1354,6 +1354,13 @@ function run_model(
         min_iv_locs
     )
 
+    # State used by the disturbance phase
+    disturbance_state = (;
+        loc_data, eff_dhw_base, eff_dhw_mix, c_std, bleach_dhw, c_mean_tol_ceil,
+        low_dhw_bleach_reduction, low_dhw_bleach_threshold, a_adapt_ref, c_mean_reference,
+        c_mean_pre_CAq, cyclone_mortality_scen
+    )
+
     for tstep::Int64 = 2:tf
         _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
@@ -1501,52 +1508,11 @@ function run_model(
             c_mean_t, param_set, tstep
         )
 
-        # Apply disturbances
-
-        # ΔC_cover_t should only hold changes in cover due to env. disturbances
-        ΔC_cover_t .= C_cover_t
-
-        # Store current c_mean before bleaching. This will be used in the next timestep to
-        # update the settler's DHW tolerance dists.
-        c_mean_t_1 .= c_mean_t
-
-        # Bleaching mortality
-        # Calculate and apply bleaching mortality
-        # Bleaching typically occurs in the warmer months (November - February)
-        # but mortality may occur within this timeframe or some time after it.
-        # An earlier attempt to account for the cooling effect of storms / high wave
-        # activity involves a linear reduction:
-        #    `dhw_t .* (1.0 .- wave_scen[tstep, :])`
-        # `wave_scen` is normalized to the maximum value found for the given wave scenario
-        # so what causes 100% mortality can differ between runs.
-        # Wave activity is said to also promote nutrient cycling, and improve growth.
-        # Removed as I could not find any justification behind the implementation.
-        eff_dhw_t .= effective_dhw_at_depth.(
-            dhw_t, loc_data.depth_med, eff_dhw_base, eff_dhw_mix
-        )
-        bleaching_mortality!(
-            C_cover_t,
+        _apply_disturbances!(
+            disturbance_state, C_cover_t, ΔC_cover_t, c_mean_t, c_mean_t_1, dhw_t,
             eff_dhw_t,
-            c_std,
-            c_mean_t,
-            @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
-            c_mean_tol_ceil;
-            low_dhw_reduction=low_dhw_bleach_reduction,
-            low_dhw_threshold=low_dhw_bleach_threshold
+            tstep
         )
-
-        # Store current means to be used in future timesteps.
-        # Use pre-coral-aquaculture snapshot so that a_adapt enhancement is not compounded
-        # into the reference year-over-year.
-        if a_adapt_ref > 0
-            c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
-        end
-        c_mean_reference[:, :, 1] .= c_mean_pre_CAq
-
-        # Coral deaths due to selected cyclone scenario
-        # Peak cyclone period is January to March
-        # TODO: Update cyclone data to hold data for relevant functional groups
-        cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # COTS: one year of the COTS life cycle and its grazing on coral, then larval
         # dispersal between locations and larvae arriving from outside the domain
@@ -2338,5 +2304,69 @@ function _apply_coral_aquaculture!(
             end
         end
     end
+    return nothing
+end
+
+"""
+    _apply_disturbances!(ds, C_cover_t, ΔC_cover_t, c_mean_t, c_mean_t_1, dhw_t, eff_dhw_t, tstep)
+
+Environmental disturbances of a timestep: snapshot cover (`ΔC_cover_t`) and tolerance
+(`c_mean_t_1`) after all seeding and before any mortality, then bleaching mortality (on the
+depth-attenuated DHW), the tolerance reference update and cyclone mortality.
+`ds` holds the per-scenario constants and buffers built before the time loop.
+"""
+function _apply_disturbances!(
+    ds, C_cover_t, ΔC_cover_t, c_mean_t, c_mean_t_1, dhw_t, eff_dhw_t, tstep::Int64
+)
+    (; loc_data, eff_dhw_base, eff_dhw_mix, c_std, bleach_dhw, c_mean_tol_ceil,
+        low_dhw_bleach_reduction, low_dhw_bleach_threshold, a_adapt_ref, c_mean_reference,
+        c_mean_pre_CAq, cyclone_mortality_scen) = ds
+
+    # Apply disturbances
+
+    # ΔC_cover_t should only hold changes in cover due to env. disturbances
+    ΔC_cover_t .= C_cover_t
+
+    # Store current c_mean before bleaching. This will be used in the next timestep to
+    # update the settler's DHW tolerance dists.
+    c_mean_t_1 .= c_mean_t
+
+    # Bleaching mortality
+    # Calculate and apply bleaching mortality
+    # Bleaching typically occurs in the warmer months (November - February)
+    # but mortality may occur within this timeframe or some time after it.
+    # An earlier attempt to account for the cooling effect of storms / high wave
+    # activity involves a linear reduction:
+    #    `dhw_t .* (1.0 .- wave_scen[tstep, :])`
+    # `wave_scen` is normalized to the maximum value found for the given wave scenario
+    # so what causes 100% mortality can differ between runs.
+    # Wave activity is said to also promote nutrient cycling, and improve growth.
+    # Removed as I could not find any justification behind the implementation.
+    eff_dhw_t .= effective_dhw_at_depth.(
+        dhw_t, loc_data.depth_med, eff_dhw_base, eff_dhw_mix
+    )
+    bleaching_mortality!(
+        C_cover_t,
+        eff_dhw_t,
+        c_std,
+        c_mean_t,
+        @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
+        c_mean_tol_ceil;
+        low_dhw_reduction=low_dhw_bleach_reduction,
+        low_dhw_threshold=low_dhw_bleach_threshold
+    )
+
+    # Store current means to be used in future timesteps.
+    # Use pre-coral-aquaculture snapshot so that a_adapt enhancement is not compounded
+    # into the reference year-over-year.
+    if a_adapt_ref > 0
+        c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
+    end
+    c_mean_reference[:, :, 1] .= c_mean_pre_CAq
+
+    # Coral deaths due to selected cyclone scenario
+    # Peak cyclone period is January to March
+    # TODO: Update cyclone data to hold data for relevant functional groups
+    cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
     return nothing
 end
