@@ -168,7 +168,7 @@ exit(ok ? 0 : 1)
 
 These rules keep the comparison with `main` identical and keep new settings calibratable:
 
-- **Add each setting as a factor.** Add an entry to `COTS_FACTOR_SPECS` and a field to
+- **Add each setting as a factor.** Add a `ParamSpec` to `COTS_PARAM_SPECS` (from which `COTS_FACTOR_SPECS` is built) and a field to
   `CotsParams` in `ecosystem/cots/cots_factors.jl`. `_cots_factor` then makes it constant by
   default, keeps its full bounds for `set_factor_bounds!`, excludes it from the derived
   per-scenario seed, and lets the `cots` variable of a calibration NetCDF set it.
