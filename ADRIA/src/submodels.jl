@@ -26,13 +26,73 @@ Submodels attached to `domain`, in attach order (empty by default).
 attached_submodels(domain::Domain)::Vector{AttachedSubmodel} = domain.spec_store.submodels
 
 """
+Names a submodel may not have: its name is the group its logs are stored and loaded under
+(`rs.logs.<name>`). `core` is kept for the core logs; `cots` is the group of the built-in
+COTS logs, until COTS is attached like any other submodel.
+"""
+const RESERVED_SUBMODEL_NAMES = (:core, :cots)
+
+"""
+    _reserved_submodel_names()::Tuple
+
+`RESERVED_SUBMODEL_NAMES` and the names of the core log arrays (`CORE_LOG_NAMES`), which
+share the log group with the submodel subgroups.
+"""
+_reserved_submodel_names()::Tuple = (RESERVED_SUBMODEL_NAMES..., Symbol.(CORE_LOG_NAMES)...)
+
+"""
+    _check_submodel_name(domain::Domain, model::Submodel)::Symbol
+
+Name of `model` (`ADRIAinterfaces.submodel_name`), which names the group of its logs in the
+result set. Throws an `ArgumentError` if the name is not a `Symbol`, is not a valid Julia
+identifier, is reserved (`core`, `cots` or the name of a core log, see
+[`_reserved_submodel_names`](@ref)) or is already used by a submodel attached to `domain`.
+Two instances of one model type share a name unless the type defines `submodel_name` per
+instance, so such instances cannot be attached together otherwise.
+"""
+function _check_submodel_name(domain::Domain, model::Submodel)::Symbol
+    name = ADRIAinterfaces.submodel_name(model)
+    name isa Symbol || throw(
+        ArgumentError(
+            "`submodel_name` of a `$(typeof(model))` returned the $(typeof(name)) " *
+            "`$(repr(name))`; it must return a Symbol"
+        )
+    )
+
+    Base.isidentifier(name) || throw(
+        ArgumentError(
+            "Submodel name `$name` is not a valid identifier; it names the group of the " *
+            "submodel's logs in the result set"
+        )
+    )
+    reserved = _reserved_submodel_names()
+    name in reserved && throw(
+        ArgumentError(
+            "Submodel name `$name` is reserved (reserved names: $(join(reserved, ", ")))"
+        )
+    )
+
+    any(a -> ADRIAinterfaces.submodel_name(a.model) == name, attached_submodels(domain)) &&
+        throw(
+            ArgumentError(
+                "A submodel named `$name` is already attached; attached submodels need " *
+                "distinct names (define `submodel_name` for the instance)"
+            )
+        )
+
+    return name
+end
+
+"""
     _attach_submodel!(domain::Domain, model::Submodel)::Domain
 
 Interim mechanism (not the final attach API): attach `model` to `domain` after the
 already attached submodels. Calls `ADRIAinterfaces.load_inputs(model, dpkg_path)` once.
-Attached submodels are copied with the domain's `SpecStore` (`copy`/`deepcopy`).
+Attached submodels are copied with the domain's `SpecStore` (`copy`/`deepcopy`). The model's
+name must be valid and unique, and not reserved: see [`_check_submodel_name`](@ref).
 """
 function _attach_submodel!(domain::Domain, model::Submodel)::Domain
+    _check_submodel_name(domain, model)
     inputs = ADRIAinterfaces.load_inputs(model, String(domain.env_layer_md.dpkg_path))
     push!(domain.spec_store.submodels, AttachedSubmodel(model, inputs))
     return domain
@@ -133,18 +193,46 @@ function _init_submodels(
         params = _submodel_params(a.model, param_set, factor_names)
         ADRIAinterfaces.active(a.model, params) || continue
         ctx = ADRIAinterfaces.with_cache(_submodel_context(domain, a), caches[i])
-        bufs = ADRIAinterfaces.alloc_logs(ADRIAinterfaces.log_specs(a.model, ctx))
+        specs = ADRIAinterfaces.log_specs(a.model, ctx)
+        _check_unique_log_names(ADRIAinterfaces.submodel_name(a.model), specs)
+        bufs = ADRIAinterfaces.alloc_logs(specs)
         state = ADRIAinterfaces.init_state(a.model, ctx, params, rng)
         push!(slots, _SubmodelSlot(a.model, ctx, state, bufs))
     end
-    slots_t = Tuple(slots)
-    names = Tuple(k for s in slots_t for k in keys(s.bufs))
-    length(unique(names)) == length(names) ||
-        error("Submodels declare logs with the same name: $names")
-    return slots_t
+
+    return Tuple(slots)
 end
 
-_aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
+"""
+    _check_unique_log_names(submodel::Symbol, specs::AbstractVector{LogSpec})::Nothing
+
+Throw an `ArgumentError` if `specs` declares a log name twice. Log names need only be
+unique within a submodel: logs are grouped by submodel name.
+"""
+function _check_unique_log_names(submodel::Symbol, specs::AbstractVector{LogSpec})::Nothing
+    names = [s.name for s in specs]
+    length(unique(names)) == length(names) || throw(
+        ArgumentError("Submodel `$submodel` declares logs with the same name: $names")
+    )
+
+    return nothing
+end
+
+"""
+    _submodel_logs(slots::Tuple)::NamedTuple
+
+Logs of the active submodels of a run that have any, grouped by submodel name:
+`(name = (log = buffer, ...), ...)`. Returned by `run_model` as `submodel_logs`; not to be
+confused with the `submodel_logs` of the collected scenario results (the COTS logs written
+to the result store, see `_cots_log_results`).
+"""
+function _submodel_logs(slots::Tuple)::NamedTuple
+    logging = filter(s -> !isempty(s.bufs), collect(Any, slots))
+    isempty(logging) && return (;)
+
+    names = Tuple(ADRIAinterfaces.submodel_name(s.model) for s in logging)
+    return NamedTuple{names}(Tuple(s.bufs for s in logging))
+end
 
 """
     _step_submodels!(slots, phase, view, tstep, year)::Nothing

@@ -23,7 +23,7 @@ const LOC_METRIC_NAMES = [
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,LG,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -54,13 +54,13 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
-    aux::AX  # NamedTuple of auxiliary (submodel) logs by name, e.g. `cots_pop_log`; empty if none
+    logs::LG  # submodel logs by submodel, e.g. `logs.cots.pop`; empty if none
 end
 
 """
-Names of the arrays in the log group that are part of the core result set. Every other
-array in the group is an auxiliary log. `fog` and `shade` are the old (pre-`shading_log`)
-separate shading arrays.
+Names of the arrays in the log group that are part of the core result set. Submodel logs
+are in subgroups of the log group, so these names are reserved as submodel names. `fog` and
+`shade` are the old (pre-`shading_log`) separate shading arrays.
 """
 const CORE_LOG_NAMES = (
     "rankings", "larval_methods", "coral_aquaculture", "shading_log", "fog", "shade",
@@ -68,51 +68,103 @@ const CORE_LOG_NAMES = (
 )
 
 """
-Auxiliary logs that older code exposed as fields of the result set; `nothing` when absent.
+Result sets stored before logs were grouped by submodel hold the COTS logs as flat arrays
+of the log group, under their `LogSpec` names. Maps those array names to
+`(submodel, log name)`, the explicit mapping being `COTS_LOG_NAMES`. Any other flat array
+that is not a core log is not recognised (such stores never held one).
 """
-const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
+const LEGACY_LOG_NAMES = NamedTuple{keys(COTS_LOG_NAMES)}(
+    map(v -> (COTS_LOG_GROUP, v), values(COTS_LOG_NAMES))
+)
+
+"""
+Submodel logs that older code exposed as fields of the result set (`rs.cots_pop_log`),
+as `(submodel, log name)`; deprecated in favour of `rs.logs`. `nothing` when absent.
+"""
+const DEPRECATED_LOG_ACCESSORS = LEGACY_LOG_NAMES
 
 """
     Base.getproperty(rs::ADRIAResultSet, name::Symbol)
 
-Auxiliary logs are reachable as properties (`rs.cots_pop_log`); the legacy COTS names
-give `nothing` when the log is absent, as the former fields did.
+Fields, and the deprecated accessors of COTS logs (`rs.cots_pop_log`, `nothing` when
+absent as the former fields were). Logs are otherwise reached through `rs.logs`.
 """
 @inline function Base.getproperty(rs::ADRIAResultSet, name::Symbol)
     hasfield(ADRIAResultSet, name) && return getfield(rs, name)
-    aux = getfield(rs, :aux)
-    haskey(aux, name) && return aux[name]
-    name in LEGACY_AUX_NAMES && return nothing
-    error("ADRIAResultSet has no property or auxiliary log `$name`")
+    if haskey(DEPRECATED_LOG_ACCESSORS, name)
+        group, log = DEPRECATED_LOG_ACCESSORS[name]
+        logs = getfield(rs, :logs)
+        return haskey(logs, group) && haskey(logs[group], log) ? logs[group][log] : nothing
+    end
+
+    throw(
+        ArgumentError(
+            "ADRIAResultSet has no property `$name` (submodel logs are in `rs.logs`)"
+        )
+    )
 end
 
 """
     Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
 
-The fields and the auxiliary logs of the result set. This lists more names than there are
-fields when aux logs exist, so Setfield's `@set!` on such a set may fail; rebuild the set
-through its constructor instead.
+Only the fields (the deprecated accessors are omitted), so that Setfield's `@set!` works.
 """
-function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
-    return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
-end
+Base.propertynames(rs::ADRIAResultSet, private::Bool=false) = fieldnames(ADRIAResultSet)
 
 """
-    _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
+    _load_submodel_logs(log_set::Zarr.ZGroup)::NamedTuple
 
-Load the auxiliary logs of a log group: every array not in `CORE_LOG_NAMES`, with axes
-named by its `structure` attribute. Sorted by name; empty when there are none.
+Load the submodel logs of a log group, as `(submodel = (log = array, ...), ...)` with axes
+named by each array's `structure` attribute, sorted by name; empty when there are none.
+Every subgroup of the log group is a submodel and its arrays are its logs. Stores written
+before logs were grouped hold the COTS logs as flat arrays: those named in
+`LEGACY_LOG_NAMES` load as `cots.pop` and `cots.condition`. A store holding a log both flat
+and in its subgroup is rejected with an `ArgumentError`.
 """
-function _load_aux_logs(log_set::Zarr.ZGroup)::NamedTuple
-    names = sort!([n for n in keys(log_set.arrays) if !(n in CORE_LOG_NAMES)])
-    for n in names
-        haskey(log_set[n].attrs, "structure") ||
-            error("Auxiliary log `$n` has no `structure` attribute naming its axes")
+function _load_submodel_logs(log_set::Zarr.ZGroup)::NamedTuple
+    found = Dict{Symbol,Dict{Symbol,Any}}()
+    stored_as = Dict{Tuple{Symbol,Symbol},String}()  # path in the log group, for errors
+    for g in keys(log_set.groups)
+        grp = log_set.groups[g]
+        found[Symbol(g)] = Dict{Symbol,Any}(Symbol(n) => grp[n] for n in keys(grp.arrays))
+        for n in keys(grp.arrays)
+            stored_as[(Symbol(g), Symbol(n))] = "$g/$n"
+        end
     end
-    arrs = [
-        DataCube(log_set[n], Symbol.(Tuple(log_set[n].attrs["structure"]))) for n in names
-    ]
-    return NamedTuple{Tuple(Symbol.(names))}(Tuple(arrs))
+
+    for n in keys(log_set.arrays)
+        haskey(LEGACY_LOG_NAMES, Symbol(n)) || continue
+        group, log = LEGACY_LOG_NAMES[Symbol(n)]
+        haskey(stored_as, (group, log)) && throw(
+            ArgumentError(
+                "Log `$group.$log` is stored twice in the log group, as " *
+                "`$(stored_as[(group, log)])` and as the flat array `$n`"
+            )
+        )
+
+        get!(found, group, Dict{Symbol,Any}())[log] = log_set[n]
+        stored_as[(group, log)] = n
+    end
+
+    groups = sort!(collect(keys(found)))
+    loaded = map(groups) do g
+        logs = sort!(collect(keys(found[g])))
+        for l in logs
+            haskey(found[g][l].attrs, "structure") || throw(
+                ArgumentError(
+                    "Log `$g.$l` (array `$(stored_as[(g, l)])` of the log group) has no " *
+                    "`structure` attribute naming its axes"
+                )
+            )
+        end
+
+        arrs = [
+            DataCube(found[g][l], Symbol.(Tuple(found[g][l].attrs["structure"])))
+            for l in logs
+        ]
+        NamedTuple{Tuple(logs)}(Tuple(arrs))
+    end
+    return NamedTuple{Tuple(groups)}(Tuple(loaded))
 end
 
 """
@@ -265,7 +317,7 @@ function ResultSet(
                 )
             )
         end : nothing,
-        _load_aux_logs(log_set)
+        _load_submodel_logs(log_set)
     )
 end
 
@@ -337,6 +389,33 @@ function _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
 end
 
 """
+    _has_log(rs::ADRIAResultSet, group::Symbol, log::Symbol)::Bool
+
+Whether result set `rs` holds log `log` of submodel `group` (`rs.logs.<group>.<log>`).
+"""
+_has_log(rs::ADRIAResultSet, group::Symbol, log::Symbol)::Bool =
+    haskey(rs.logs, group) && haskey(rs.logs[group], log)
+
+"""
+    _source_logspec(rs::ADRIAResultSet, group::Symbol, log::Symbol)::LogSpec
+
+`LogSpec` of a submodel log of the stored result set `rs`, rebuilt from its store (a flat
+array for result sets stored before logs were grouped, see `LEGACY_LOG_NAMES`).
+"""
+function _source_logspec(rs::ADRIAResultSet, group::Symbol, log::Symbol)::LogSpec
+    log_set = zopen(joinpath(rs.env_layer_md.dpkg_path, LOG_GRP))
+    haskey(log_set.groups, String(group)) &&
+        return _logspec_from_store(log_set.groups[String(group)], log)
+
+    legacy = only(k for (k, v) in pairs(LEGACY_LOG_NAMES) if v == (group, log))
+    spec = _logspec_from_store(log_set, legacy)
+    return LogSpec(
+        log, spec.dims, spec.size;
+        labels=spec.labels, units=spec.units, description=spec.description
+    )
+end
+
+"""
     combine_results(result_sets...)::ResultSet
     combine_results(result_set_locs::Array{String})::ResultSet
 
@@ -351,11 +430,13 @@ Note: Results are stored in Zarr format. Combining data sets can be
   appearance. A factor a source does not have is filled with `NaN` for its scenarios. The
   fill value is always `NaN`, never `missing`: the stored scenario table is all `Float64`,
   so the merged table keeps `Float64` columns and an absent factor is found with `isnan`.
-- Auxiliary (submodel) logs are concatenated along scenarios. Scenarios from a source that
-  has no such log are filled with `NaN`, which tells them apart from scenarios that ran
-  with the model off (zeros). If every source has every log, the logs are zero-filled as
-  usual. The fill value is chosen once for all logs: if any source lacks any log, every aux
-  array is created with a `NaN` fill value, which only affects scenarios never written.
+- Submodel logs (`rs.logs`) are combined over the union of the (submodel, log) pairs of the
+  sources and concatenated along scenarios. Logs of different submodels never mix, even if
+  they have the same name. Scenarios from a source that has no such log are filled with
+  `NaN`, which tells them apart from scenarios that ran with the model off (zeros). If
+  every source has every log, the logs are zero-filled as usual. The fill value is chosen
+  once for all logs: if any source lacks any log, every submodel log array is created with
+  a `NaN` fill value, which only affects scenarios never written.
 - The model specification of each source is kept (`ADRIA.model_specs(rs)`), with
   `ADRIA.scenario_sources(rs)` giving the source of each scenario. `ADRIA.model_spec(rs)` is the
   union of the specifications, the first source winning for a parameter several share.
@@ -483,20 +564,27 @@ function combine_results(result_sets...)::ResultSet
     n_tf = size(rs1.iv_CAq_log, :timesteps)
     n_loc = size(rs1.iv_CAq_log, :locations)
 
-    # Auxiliary logs present in any source set, with specs rebuilt from the first source
-    # holding each log. Sources lacking a log are filled with NaN, so the fill value is
-    # NaN only when some source lacks one.
-    aux_names = sort!(unique(reduce(vcat, [collect(keys(rs.aux)) for rs in result_sets])))
-    aux_specs = LogSpec[
-        let i = findfirst(rs -> haskey(rs.aux, k), result_sets)
-            _aux_logspec_from_store(
-                zopen(joinpath(result_sets[i].env_layer_md.dpkg_path, LOG_GRP)), k
-            )
-        end for k in aux_names
-    ]
-    aux_fill =
-        any(rs -> !all(k -> haskey(rs.aux, k), aux_names), result_sets) ? Float32(NaN) :
-        Float32(0)
+    # Submodel logs present in any source set, as (submodel, log) pairs with specs rebuilt
+    # from the first source holding each log. Sources lacking a log are filled with NaN, so
+    # the fill value is NaN only when some source lacks one.
+    sub_pairs = sort!(
+        unique([
+            (g, l) for rs in result_sets for g in keys(rs.logs) for l in keys(rs.logs[g])
+        ])
+    )
+    sub_specs = Pair{Symbol,Vector{LogSpec}}[]
+    for g in unique(first.(sub_pairs))
+        specs = LogSpec[
+            _source_logspec(
+                result_sets[findfirst(rs -> _has_log(rs, g, l), result_sets)], g, l
+            ) for (g2, l) in sub_pairs if g2 == g
+        ]
+        push!(sub_specs, g => specs)
+    end
+
+    sub_fill =
+        any(rs -> !all(((g, l),) -> _has_log(rs, g, l), sub_pairs), result_sets) ?
+        Float32(NaN) : Float32(0)
     logs = (;
         zip(
             [
@@ -506,7 +594,7 @@ function combine_results(result_sets...)::ResultSet
                 :iv_Shd_log,
                 :coral_dhw_tol_log,
                 :coral_cover_log,
-                :aux
+                :submodel_logs
             ],
             setup_logs(
                 z_store,
@@ -517,8 +605,8 @@ function combine_results(result_sets...)::ResultSet
                 size(rs1.iv_CAq_log, :coral_id),
                 size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
                 batch_size;
-                aux_specs=aux_specs,
-                aux_fill=aux_fill
+                sub_specs=sub_specs,
+                sub_fill=sub_fill
             )
         )...
     )
@@ -527,9 +615,14 @@ function combine_results(result_sets...)::ResultSet
     # Pre-read all source data in parallel (reads from separate Zarr stores are
     # independent), then write sequentially to each destination ZArray.
     n_rs = length(result_sets)
-    dest_logs = Pair{Symbol,Any}[k => getfield(logs, k) for k in keys(logs) if k != :aux]
-    for (k, v) in pairs(logs.aux)
-        push!(dest_logs, k => v)
+
+    # Destination arrays, with the source log each is read from: a core log, or a
+    # (submodel, log) pair
+    dest_logs = Pair{Any,Any}[
+        k => getfield(logs, k) for k in keys(logs) if k != :submodel_logs
+    ]
+    for (g, arrs) in pairs(logs.submodel_logs), (l, arr) in pairs(arrs)
+        push!(dest_logs, (g, l) => arr)
     end
 
     for (log, n_log) in dest_logs
@@ -538,8 +631,11 @@ function combine_results(result_sets...)::ResultSet
         src = Vector{Union{Nothing,Array}}(undef, n_rs)
         Threads.@threads for i = 1:n_rs
             s =
-                log in keys(logs.aux) ?
-                get(getfield(result_sets[i], :aux), log, nothing) :
+                log isa Tuple ?
+                (
+                    _has_log(result_sets[i], log...) ? result_sets[i].logs[log[1]][log[2]] :
+                    nothing
+                ) :
                 getfield(result_sets[i], log)
             if isnothing(s)
                 src[i] = nothing
