@@ -111,17 +111,41 @@ end
     @test_throws "provenance records" ADRIA.load_results(dir)
 end
 
-@testset "Auxiliary logs" begin
-    using ADRIA: Zarr
+@testset "Submodel logs" begin
+    using ADRIA: Zarr, LogSpec
 
-    @testset "no auxiliary logs without COTS" begin
-        @test TEST_RS.aux == NamedTuple()
-        @test isnothing(TEST_RS.cots_pop_log)  # legacy accessors give nothing
-        @test isnothing(TEST_RS.cots_condition_log)
-        @test_throws ArgumentError TEST_RS.not_a_log
+    # Copy of the fixture store with its log group changed by `edit!(log_fn, n_scens)`
+    function store_with_logs(edit!)
+        dir = mktempdir()
+        cp(TEST_RS.env_layer_md.dpkg_path, dir; force=true)
+        edit!(joinpath(dir, ADRIA.LOG_GRP), size(TEST_RS.inputs, 1))
+        return ADRIA.load_results(dir)
+    end
+    ids = TEST_RS.loc_ids
+    NO_LOGS = Pair{Symbol,Vector{LogSpec}}[]
+    tf = length(ADRIA.timesteps(TEST_DOM))
+    xspec = LogSpec(:x, [:timesteps], [tf]; units="u")
+    # A store whose scenarios hold `val` in log `x` of each submodel in `groups`
+    function with_x(groups, val)
+        return store_with_logs() do log_fn, n
+            logs = ADRIA._setup_submodel_logs(
+                log_fn, [g => [xspec] for g in groups], ids, n, n
+            )
+            for g in groups
+                logs[g].x[:, :] = fill(Float32(val), tf, n)
+            end
+        end
     end
 
-    @testset "COTS logs are declared as LogSpecs with unchanged store attributes" begin
+    @testset "no submodel logs without COTS" begin
+        @test TEST_RS.logs == NamedTuple()
+        @test isnothing(TEST_RS.cots_pop_log)  # deprecated accessors give nothing
+        @test isnothing(TEST_RS.cots_condition_log)
+        @test_throws ArgumentError TEST_RS.not_a_log
+        @test propertynames(TEST_RS) == fieldnames(typeof(TEST_RS))
+    end
+
+    @testset "COTS logs are declared as LogSpecs and grouped under `cots`" begin
         specs = ADRIA.cots_log_specs(TEST_DOM)
         @test [s.name for s in specs] == [:cots_pop_log, :cots_condition_log]
         tf = length(ADRIA.timesteps(TEST_DOM))
@@ -129,22 +153,31 @@ end
         @test specs[1].size == [tf, 3, n_locs]
         @test specs[2].size == [tf, n_locs]
 
+        # The mapping to the names in the result set (`rs.logs.cots.pop`)
+        @test ADRIA.COTS_LOG_GROUP == :cots
+        gspecs = ADRIA.cots_group_log_specs(TEST_DOM)
+        @test [s.name for s in gspecs] == [:pop, :condition]
+        for (g, s) in zip(gspecs, specs)
+            @test (g.dims, g.size, g.labels, g.units, g.description) ==
+                (s.dims, s.size, s.labels, s.units, s.description)
+        end
+
         ids = ["a", "b"]
-        pop = ADRIA._aux_log_attrs(specs[1], ids)
+        pop = ADRIA._log_attrs(specs[1], ids)
         @test pop == Dict{Symbol,Any}(
             :structure => ("timesteps", "age_class", "locations", "scenarios"),
             :age_classes => ["recruits", "juveniles", "adults"],
             :units => "COTS ha^-1",
             :unique_loc_ids => ids
         )
-        @test ADRIA._aux_log_attrs(specs[2], ids) == Dict{Symbol,Any}(
+        @test ADRIA._log_attrs(specs[2], ids) == Dict{Symbol,Any}(
             :structure => ("timesteps", "locations", "scenarios"),
             :unique_loc_ids => ids
         )
     end
 
-    @testset "aux LogSpec round-trips through a store, merged attrs equal the source's" begin
-        spec = ADRIA.LogSpec(
+    @testset "LogSpec round-trips through a store, merged attrs equal the source's" begin
+        spec = LogSpec(
             :synthetic_log, [:timesteps, :stage, :locations], [2, 2, 3];
             labels=Dict(:stage => ["a", "b"]), units="u", description="d"
         )
@@ -152,78 +185,160 @@ end
         dir = mktempdir()
         Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
         log_fn = joinpath(dir, ADRIA.LOG_GRP)
-        ADRIA._setup_aux_logs(log_fn, [spec], ids, 4, 2; fill=Float32(NaN))
+        logs = ADRIA._setup_submodel_logs(
+            log_fn, [:sub => [spec]], ids, 4, 2; fill=Float32(NaN)
+        )
+        @test keys(logs) == (:sub,) && keys(logs.sub) == (:synthetic_log,)
+        # Layout: a subgroup of the log group per submodel
         grp = Zarr.zopen(log_fn)
-        spec2 = ADRIA._aux_logspec_from_store(grp, :synthetic_log)
+        @test collect(keys(grp.groups)) == ["sub"] && isempty(grp.arrays)
+        @test collect(keys(grp.groups["sub"].arrays)) == ["synthetic_log"]
+        spec2 = ADRIA._logspec_from_store(grp.groups["sub"], :synthetic_log)
         @test all(getfield(spec2, f) == getfield(spec, f) for f in fieldnames(typeof(spec)))
-        # A merged store builds its aux arrays from the rebuilt spec: same attributes
+        # A merged store builds its arrays from the rebuilt spec: same attributes
         dir2 = mktempdir()
         Zarr.zgroup(Zarr.DirectoryStore(dir2), ADRIA.LOG_GRP)
         log_fn2 = joinpath(dir2, ADRIA.LOG_GRP)
-        ADRIA._setup_aux_logs(log_fn2, [spec2], ids, 8, 2; fill=Float32(NaN))
-        a1 = Zarr.zopen(log_fn)["synthetic_log"].attrs
-        a2 = Zarr.zopen(log_fn2)["synthetic_log"].attrs
+        ADRIA._setup_submodel_logs(log_fn2, [:sub => [spec2]], ids, 8, 2; fill=Float32(NaN))
+        a1 = Zarr.zopen(log_fn).groups["sub"]["synthetic_log"].attrs
+        a2 = Zarr.zopen(log_fn2).groups["sub"]["synthetic_log"].attrs
         @test a1 == a2
     end
 
-    @testset "load_results discovers aux logs, old fog/shade arrays stay core" begin
+    @testset "submodel and log names are checked" begin
         dir = mktempdir()
-        root = Zarr.zgroup(Zarr.DirectoryStore(dir))
-        grp = Zarr.zgroup(root, ADRIA.LOG_GRP)
-        for n in ("fog", "shade", "rankings", "coral_dhw_log")
-            Zarr.zcreate(Float32, 2, 2; name=n, path=joinpath(dir, ADRIA.LOG_GRP))
-        end
-        Zarr.zcreate(
-            Float32, 2, 3, 4; name="zz_custom_log", path=joinpath(dir, ADRIA.LOG_GRP),
-            attrs=Dict("structure" => ["timesteps", "foo", "scenarios"])
-        )
-        Zarr.zcreate(
-            Float32, 2, 3; name="aa_other_log", path=joinpath(dir, ADRIA.LOG_GRP),
-            attrs=Dict("structure" => ["timesteps", "scenarios"])
-        )
-        aux = ADRIA._load_aux_logs(Zarr.zopen(joinpath(dir, ADRIA.LOG_GRP)))
-        @test keys(aux) == (:aa_other_log, :zz_custom_log)
-        @test size(aux.zz_custom_log) == (2, 3, 4)
-        @test size(aux.zz_custom_log, :foo) == 3
-
-        none = mktempdir()
-        r = Zarr.zgroup(Zarr.DirectoryStore(none))
-        Zarr.zgroup(r, ADRIA.LOG_GRP)
-        Zarr.zcreate(Float32, 2, 2; name="fog", path=joinpath(none, ADRIA.LOG_GRP))
-        @test ADRIA._load_aux_logs(Zarr.zopen(joinpath(none, ADRIA.LOG_GRP))) ==
-            NamedTuple()
-
-        Zarr.zcreate(Float32, 2, 2; name="no_structure", path=joinpath(none, ADRIA.LOG_GRP))
-        @test_throws ArgumentError ADRIA._load_aux_logs(
-            Zarr.zopen(joinpath(none, ADRIA.LOG_GRP))
-        )
+        Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
+        log_fn = joinpath(dir, ADRIA.LOG_GRP)
+        setup(pairs) = ADRIA._setup_submodel_logs(log_fn, pairs, ["a"], 2, 1)
+        @test_throws "`core` is reserved" setup([:core => [xspec]])
+        @test_throws ArgumentError setup([Symbol("a b") => [xspec]])
+        @test_throws ArgumentError setup([:a => [xspec], :a => [xspec]])
+        @test_throws "same name" setup([:a => [xspec, xspec]])
+        # The same log name in different submodels is fine
+        logs = setup([:a => [xspec], :b => [xspec]])
+        @test keys(logs) == (:a, :b) && keys(logs.a) == keys(logs.b) == (:x,)
     end
 
-    @testset "per-scenario byte budget keeps the sum and adds aux logs" begin
+    @testset "load_results discovers submodels, core arrays stay flat" begin
+        rs = with_x([:sub_b, :sub_a], 3)
+        @test keys(rs.logs) == (:sub_a, :sub_b)
+        @test keys(rs.logs.sub_a) == (:x,)
+        @test size(rs.logs.sub_a.x) == (tf, size(TEST_RS.inputs, 1))
+        @test all(==(3.0), rs.logs.sub_b.x.data)
+        @test_throws ArgumentError rs.x
+        # Core logs are untouched
+        @test rs.ranks == TEST_RS.ranks
+        # A subgroup array needs a `structure` attribute
+        @test_throws ArgumentError store_with_logs() do log_fn, n
+            Zarr.zgroup(Zarr.DirectoryStore(log_fn), "bad")
+            Zarr.zcreate(Float32, 2, 2; name="y", path=joinpath(log_fn, "bad"))
+        end
+    end
+
+    @testset "stores of the old flat layout load as logs.cots.pop / .condition" begin
+        specs = ADRIA.cots_log_specs(TEST_DOM)
+        n = size(TEST_RS.inputs, 1)
+        # Flat arrays under the LogSpec names, as written before logs were grouped
+        function write_flat(log_fn, n)
+            for (k, spec) in enumerate(specs)
+                arr = Zarr.zcreate(
+                    Float32, spec.size..., n; name=String(spec.name), path=log_fn,
+                    attrs=ADRIA._log_attrs(spec, ids)
+                )
+                arr[fill(Colon(), length(spec.size))..., :] =
+                    Float32(k) * ones(
+                        Float32, spec.size..., n
+                    )
+            end
+        end
+        old = store_with_logs(write_flat)
+        @test keys(old.logs) == (:cots,)
+        @test keys(old.logs.cots) == (:condition, :pop)
+        @test size(old.logs.cots.pop) == (specs[1].size..., n)
+        @test size(old.logs.cots.pop, :age_class) == 3
+        @test all(==(1.0), old.logs.cots.pop.data)
+        @test all(==(2.0), old.logs.cots.condition.data)
+        # The deprecated accessors see them
+        @test old.cots_pop_log === old.logs.cots.pop
+        @test old.cots_condition_log === old.logs.cots.condition
+        # A flat array that is not a known log is not mistaken for one, nor are core logs
+        @test keys(
+            store_with_logs(
+                (fn, n) -> Zarr.zcreate(Float32, 2, 2; name="zz_custom_log", path=fn)
+            ).logs
+        ) ==
+            ()
+
+        # Merging an old store with a new-layout one keeps the log values, in the new layout
+        new = store_with_logs() do log_fn, n
+            logs = ADRIA._setup_submodel_logs(
+                log_fn, [:cots => ADRIA.cots_group_log_specs(TEST_DOM)], ids, n, n
+            )
+            logs.cots.pop[:, :, :, :] = fill(Float32(7), specs[1].size..., n)
+        end
+        merged = ADRIA.combine_results(old, new)
+        @test keys(merged.logs.cots) == (:condition, :pop)
+        @test all(==(1.0), merged.logs.cots.pop[scenarios = 1:n].data)
+        @test all(==(7.0), merged.logs.cots.pop[scenarios = (n + 1):(2n)].data)
+        @test all(==(2.0), merged.logs.cots.condition[scenarios = 1:n].data)
+        @test all(==(0.0), merged.logs.cots.condition[scenarios = (n + 1):(2n)].data)
+        merged_pop = Zarr.zopen(joinpath(merged.env_layer_md.dpkg_path, ADRIA.LOG_GRP))
+        @test merged_pop.groups["cots"]["pop"].attrs["units"] == "COTS ha^-1"
+    end
+
+    @testset "merge: same log name in different submodels stays separate" begin
+        n = size(TEST_RS.inputs, 1)
+        a = with_x([:sub_a], 1)
+        b = with_x([:sub_b], 2)
+        m = ADRIA.combine_results(a, b)
+        @test keys(m.logs) == (:sub_a, :sub_b)
+        @test all(==(1.0), m.logs.sub_a.x[scenarios = 1:n].data)
+        @test all(isnan, m.logs.sub_a.x[scenarios = (n + 1):(2n)].data)
+        @test all(isnan, m.logs.sub_b.x[scenarios = 1:n].data)
+        @test all(==(2.0), m.logs.sub_b.x[scenarios = (n + 1):(2n)].data)
+        # Same submodels in all sources: no NaN
+        m2 = ADRIA.combine_results(a, with_x([:sub_a], 5))
+        @test keys(m2.logs) == (:sub_a,)
+        @test m2.logs.sub_a.x.data == hcat(fill(1.0, tf, n), fill(5.0, tf, n))
+    end
+
+    @testset "merge: a source lacking a submodel is filled with NaN" begin
+        n = size(TEST_RS.inputs, 1)
+        a = with_x([:sub_a], 1)
+        for (x, y, has, lacks) in ((a, TEST_RS, 1:n, (n + 1):(2n)),
+            (TEST_RS, a, (n + 1):(2n), 1:n))
+            m = ADRIA.combine_results(x, y)
+            @test keys(m.logs) == (:sub_a,)
+            @test all(==(1.0), m.logs.sub_a.x[scenarios = has].data)
+            @test all(isnan, m.logs.sub_a.x[scenarios = lacks].data)
+        end
+    end
+
+    @testset "per-scenario byte budget keeps the sum and adds submodel logs" begin
         tf = length(ADRIA.timesteps(TEST_DOM))
         nl = TEST_DOM.coral_growth.n_locs
         ng = TEST_DOM.coral_growth.n_groups
         n_iv = length(ADRIA.interventions())
         n_met = length(ADRIA.LOC_METRIC_NAMES)
 
-        base = ADRIA._log_bytes_per_scen(TEST_DOM, ADRIA.LogSpec[])
+        base = ADRIA._log_bytes_per_scen(TEST_DOM, NO_LOGS)
         @test base.total ==
             4 * tf * (nl * n_met + ng + nl * 2 + nl * n_iv + ng * nl * 2)
 
-        cots = ADRIA.cots_log_specs(TEST_DOM)
+        cots = [ADRIA.COTS_LOG_GROUP => ADRIA.cots_group_log_specs(TEST_DOM)]
         with = ADRIA._log_bytes_per_scen(TEST_DOM, cots)
         @test with.total == base.total + 4 * tf * (3 * nl + nl)
         @test base.largest >= 4 * tf * ng * nl  # includes optional logs when enabled
         @test with.largest >= base.largest
 
-        # A large aux log is in the sum, so it limits the chunk through `total`
-        big = [ADRIA.LogSpec(:big, [:timesteps, :x], [tf, 10_000_000])]
+        # A large submodel log is in the sum, so it limits the chunk through `total`
+        big = [:big => [LogSpec(:big, [:timesteps, :x], [tf, 10_000_000])]]
         b = ADRIA._log_bytes_per_scen(TEST_DOM, big)
         @test b.largest == 4 * tf * 10_000_000
         @test ADRIA._max_chunk_by_size_for(TEST_DOM, big) ==
             max(1, floor(Int, 1_800_000_000 / b.total))
         @test ADRIA._max_chunk_by_size_for(TEST_DOM, big) <
-            ADRIA._max_chunk_by_size_for(TEST_DOM, ADRIA.LogSpec[])
+            ADRIA._max_chunk_by_size_for(TEST_DOM, NO_LOGS)
     end
 
     @testset "chunk cap is unchanged for COTS-off runs, also with optional logs" begin
@@ -242,10 +357,10 @@ end
         @test ADRIA._chunk_cap_by_bytes(total, largest) == old_cap(tf, nl, ng, ni, nm)
 
         # Same on the test domain with the optional logs switched on
-        dom_cap(aux) = ADRIA._max_chunk_by_size_for(TEST_DOM, aux)
-        off = dom_cap(ADRIA.LogSpec[])
+        dom_cap(sub) = ADRIA._max_chunk_by_size_for(TEST_DOM, sub)
+        off = dom_cap(NO_LOGS)
         withenv("ADRIA_LOG_COVER" => "true", "ADRIA_LOG_DHW_TOLS" => "true") do
-            @test dom_cap(ADRIA.LogSpec[]) == off
+            @test dom_cap(NO_LOGS) == off
         end
         @test off == old_cap(
             length(ADRIA.timesteps(TEST_DOM)), TEST_DOM.coral_growth.n_locs,
