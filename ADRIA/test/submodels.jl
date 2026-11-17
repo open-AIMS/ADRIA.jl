@@ -13,6 +13,19 @@ if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 end
 
+# Mocks for the submodel name and log checks
+struct NamedMock <: ADRIAinterfaces.Submodel
+    name::Symbol
+end
+ADRIAinterfaces.submodel_name(m::NamedMock) = m.name
+struct DupLogMock <: ADRIAinterfaces.Submodel end
+function ADRIAinterfaces.log_specs(::DupLogMock, ctx::ADRIAinterfaces.SubmodelContext)
+    return [
+        ADRIAinterfaces.LogSpec(:same, [:timesteps], [ctx.tf]),
+        ADRIAinterfaces.LogSpec(:same, [:timesteps], [ctx.tf])
+    ]
+end
+
 # Relative cover (timesteps x locations) of a run_model/run_scenario result, as stored
 function _rel_cover(res)
     x = ADRIA.relative_cover(res.raw)
@@ -30,7 +43,25 @@ end
     end
 
     base = ADRIA.run_scenario(dom, row)
-    @test base.aux_logs == (;)
+    @test base.submodel_logs == (;)
+
+    @testset "submodel names are checked at attach time" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, NamedMock(:one))
+        ADRIA._attach_submodel!(d2, NamedMock(:two))  # same type, distinct names
+        @test length(ADRIA.attached_submodels(d2)) == 2
+        @test_throws "already attached" ADRIA._attach_submodel!(d2, NamedMock(:one))
+        @test_throws "reserved" ADRIA._attach_submodel!(d2, NamedMock(:core))
+        @test_throws "reserved" ADRIA._attach_submodel!(d2, NamedMock(:cots))
+        @test_throws ArgumentError ADRIA._attach_submodel!(d2, NamedMock(Symbol("a b")))
+        @test length(ADRIA.attached_submodels(d2)) == 2  # nothing was attached
+    end
+
+    @testset "log names must be unique within a submodel" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, DupLogMock())
+        @test_throws "same name" ADRIA.run_scenario(d2, row)
+    end
 
     @testset "attached submodels are copied with the domain's spec store" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -47,7 +78,7 @@ end
         ADRIA._attach_submodel!(d2, RecordingMock(:b, calls))
         ADRIA._attach_submodel!(d2, NoOpMock())
         rec = ADRIA._provenance_record(d2, scens)
-        @test [m["name"] for m in rec["models"]] == ["RecordingMock", "NoOpMock"]
+        @test [m["name"] for m in rec["models"]] == ["b", "NoOpMock"]
         @test all(m["module"] == "Main.MockSubmodels" for m in rec["models"])
         @test [m["type"] for m in rec["models"]] ==
             ["Main.MockSubmodels.RecordingMock", "Main.MockSubmodels.NoOpMock"]
@@ -62,7 +93,7 @@ end
         on.cots_on[1] = 1
         rec_on = ADRIA._provenance_record(d2, on)
         @test [m["name"] for m in rec_on["models"]] ==
-            ["RecordingMock", "NoOpMock", "COTS"]
+            ["b", "NoOpMock", "COTS"]
         @test rec_on == ADRIA._provenance_record(d2, on)  # deterministic
         cots = rec_on["models"][end]
         @test cots["module"] == "COTSMod"
@@ -84,7 +115,7 @@ end
         ADRIA._attach_submodel!(d2, NoOpMock())
         res = ADRIA.run_scenario(d2, row)
         @test isequal(res.raw, base.raw)
-        @test res.aux_logs == (;)
+        @test res.submodel_logs == (;)
     end
 
     @testset "hooks are called in order, once per timestep" begin
@@ -149,9 +180,10 @@ end
         @test obs.seen[1] ≈ (1 - frac) * obs0.seen[1] rtol = 1e-6
 
         # Logs of the reducer are returned among the results
-        @test keys(r1.aux_logs) == (:mock_cover, :mock_calls)
-        @test r1.aux_logs.mock_calls[2:tf] == collect(1.0:(tf - 1))
-        @test r1.aux_logs.mock_cover[2:tf] == collect(2.0:tf)
+        @test keys(r1.submodel_logs) == (:shrink_mock,)  # the observer logs nothing
+        @test keys(r1.submodel_logs.shrink_mock) == (:mock_cover, :mock_calls)
+        @test r1.submodel_logs.shrink_mock.mock_calls[2:tf] == collect(1.0:(tf - 1))
+        @test r1.submodel_logs.shrink_mock.mock_cover[2:tf] == collect(2.0:tf)
     end
 
     @testset "a submodel that adds cover trips the survival assertion" begin
@@ -242,7 +274,7 @@ end
         ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
         res = ADRIA.run_scenario(d2, sc[2, :])
         @test all(isfinite, res.raw)
-        @test res.aux_logs.mock_calls[tf] == tf - 1
+        @test res.submodel_logs.shrink_mock.mock_calls[tf] == tf - 1
     end
 
     @testset "attaching a submodel adds little allocation to a run" begin

@@ -257,6 +257,29 @@ function cots_log_specs(domain::Domain)::Vector{ADRIAinterfaces.LogSpec}
     return cots_log_specs(length(timesteps(domain)), domain.coral_growth.n_locs)
 end
 
+# Where the COTS logs live in a result set: group `cots`, with the model prefix dropped from
+# the log names (`rs.logs.cots.pop`). This is the explicit mapping from the `LogSpec` names
+# of `cots_log_specs` to the names in the group. Result sets stored before logs were grouped
+# hold the arrays flat under the `LogSpec` names (`cots_pop_log`); they load through the
+# same mapping.
+const COTS_LOG_GROUP = :cots
+const COTS_LOG_NAMES = (cots_pop_log=:pop, cots_condition_log=:condition)
+
+"""
+    cots_group_log_specs(domain::Domain)::Vector{LogSpec}
+
+[`cots_log_specs`](@ref) with the names the logs have in the `cots` group of a result set,
+as given by `COTS_LOG_NAMES` (`pop`, `condition`).
+"""
+function cots_group_log_specs(domain::Domain)::Vector{ADRIAinterfaces.LogSpec}
+    return [
+        ADRIAinterfaces.LogSpec(
+            COTS_LOG_NAMES[s.name], s.dims, s.size;
+            labels=s.labels, units=s.units, description=s.description
+        ) for s in cots_log_specs(domain)
+    ]
+end
+
 """
     larval_conn_index(forcing::CotsReefForcing, timestep::Int, mode::Int, seed::Int)::Int
 

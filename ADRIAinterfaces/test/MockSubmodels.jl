@@ -72,6 +72,7 @@ struct RecordingMock <: Submodel
     on::Bool
 end
 RecordingMock(tag::Symbol, calls; on::Bool=true) = RecordingMock(tag, calls, Float64[], on)
+submodel_name(m::RecordingMock) = m.tag  # instances with different tags can be attached together
 active(m::RecordingMock, ::NamedTuple) = m.on
 phases(::RecordingMock) = (AfterDisturbances(),)
 function load_inputs(m::RecordingMock, ::AbstractString)
