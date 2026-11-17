@@ -190,6 +190,8 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 │   ├───coral_aquaculture
 │   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
 │   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
+│   ├───cots             (one subgroup per submodel with logs, e.g. cots/pop, cots/condition;
+│   │                     only when a submodel logged)
 │   ├───larval_methods
 │   ├───rankings
 │   └───shading_log      (fog and shade combined along an intervention axis)
@@ -210,9 +212,10 @@ same domain) into one store. The sources need not have the same factors or logs:
 - **Scenario table:** the union of the columns, in order of first appearance. A factor a source
   does not have is `NaN` for its scenarios (the stored table is all `Float64`, so `NaN`
   stands in for `missing`).
-- **Auxiliary (submodel) logs**, such as the COTS logs: any log held by a source is
-  concatenated along scenarios. Scenarios from a source without the log are `NaN`, which tells
-  them apart from scenarios that ran with the model off (zeros).
+- **Submodel logs** (`rs.logs.<submodel>.<log>`), such as the COTS logs: the union of the
+  (submodel, log) pairs of the sources is concatenated along scenarios; logs of different
+  submodels never mix, even with the same name. Scenarios from a source without the log are
+  `NaN`, which tells them apart from scenarios that ran with the model off (zeros).
 - **Model specification:** `ADRIA.model_specs(rs)` holds the specification of every source
   (in order), `ADRIA.provenance(rs)` what produced each source (versions of ADRIA, Julia and
   the submodel interface, the models that ran with their package versions and manifest
