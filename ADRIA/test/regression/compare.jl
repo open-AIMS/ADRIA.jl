@@ -8,8 +8,9 @@
 # Compared, per case directory and per Zarr array: relative path set, dtype, shape, chunks,
 # fill_value and every value (NaN-aware exact equality, `isequal`), and attrs against an
 # allow-list. `model_spec/model_spec.csv` is compared as text. The geopackage is ignored.
-# Ranks, intervention logs (rankings, coral_aquaculture, larval_methods, shading_log) and the inputs table are ALWAYS exact; `--tol`
-# only relaxes the other arrays (outcomes, other logs) to a max abs difference.
+# Ranks, intervention logs (rankings, coral_aquaculture, larval_methods, shading_log) and
+# the inputs table are ALWAYS exact; `--tol` only relaxes the other arrays (outcomes,
+# other logs) to a max abs difference.
 using Zarr
 using JSON
 
@@ -127,7 +128,8 @@ end
 # Each case dir holds exactly one store directory (named with the invoke time)
 function the_store(case_dir)
     stores = filter(isdir, readdir(case_dir; join=true))
-    length(stores) == 1 || error("expected one store in $case_dir, found $(length(stores))")
+    length(stores) == 1 ||
+        throw(ArgumentError("expected one store in $case_dir, found $(length(stores))"))
     return only(stores)
 end
 

@@ -197,7 +197,8 @@ _label_attr_key(dim::Symbol)::Symbol = get(LEGACY_LABEL_ATTRS, dim, Symbol(dim, 
     _log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
 
 Zarr attributes of a submodel log: its axes (with the scenario axis appended), axis
-labels, units, description and location ids. `units` and `description` are omitted when empty.
+labels, units, description and location ids. `units` and `description` are omitted when
+empty.
 """
 function _log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
     attrs = Dict{Symbol,Any}(
