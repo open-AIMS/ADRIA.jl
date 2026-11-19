@@ -221,7 +221,7 @@ function run_scenarios(
             eachrow(_bin_edges[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         )
-        for _ = 1:n_locs
+        for _ in 1:n_locs
     ]
 
     if parallel
@@ -239,12 +239,12 @@ function run_scenarios(
         n_thread_bufs = Threads.maxthreadid()
         fg_bufs = Vector{typeof(_make_fg_buffers())}(undef, n_thread_bufs)
         sim_caches = Vector{NamedTuple}(undef, n_thread_bufs)
-        Threads.@threads :static for i = 1:Threads.nthreads()
+        Threads.@threads :static for i in 1:Threads.nthreads()
             fg_bufs[i] = _make_fg_buffers()
             sim_caches[i] = setup_cache(dom)
         end
         # Initialize remaining slots (interactive-pool threads) serially.
-        for i = (Threads.nthreads() + 1):n_thread_bufs
+        for i in (Threads.nthreads() + 1):n_thread_bufs
             fg_bufs[i] = _make_fg_buffers()
             sim_caches[i] = setup_cache(dom)
         end
@@ -289,7 +289,7 @@ function run_scenarios(
             end
 
             try
-                Threads.@threads :static for c = 0:(n_chunks - 1)
+                Threads.@threads :static for c in 0:(n_chunks - 1)
                     lo = c * chunk_size + 1
                     n_c = chunk_len(c)
                     tid = Threads.threadid()
@@ -299,7 +299,7 @@ function run_scenarios(
                         _collect_scenario_results(
                             scen_args[lo + k][1], scen_args[lo + k][3], fg;
                             sim_cache=sc, submodel_caches=submodel_caches
-                        ) for k = 0:(n_c - 1)
+                        ) for k in 0:(n_c - 1)
                     ]
                     put!(ch, (scen_args[lo][2], results))
                 end
@@ -485,8 +485,9 @@ function _log_bytes_per_scen(
     total = 4 * (sum(arrays) + sum(sub_sizes; init=0))
 
     # Largest single array, with the element sizes actually stored: Float32 for the
-    # outcome and submodel logs, UInt16 ranks, Float16 shading, and the optional DHW (Float16)
-    # and cover (UInt16) logs, which hold a single location unless enabled by env var.
+    # outcome and submodel logs, UInt16 ranks, Float16 shading, and the optional DHW
+    # (Float16) and cover (UInt16) logs, which hold a single location unless enabled by env
+    # var.
     sized = [
         4 * tf * n_locs * length(LOC_METRIC_NAMES),
         4 * tf * n_groups,
@@ -765,9 +766,9 @@ function run_model(
     bin_end = edges[:, 2:end]
     functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
     group_info = zeros(n_groups, n_sizes)
-    for i = 1:n_locs
+    for i in 1:n_locs
         fg::Vector{FunctionalGroup} = Vector(undef, n_groups)
-        for g = 1:n_groups
+        for g in 1:n_groups
             fg[g] = FunctionalGroup(
                 bin_start[g, :],
                 bin_end[g, :],
@@ -887,7 +888,7 @@ function run_model(
                 MCB_active_years = decision_frequency(
                     MCB_start_year, tf, length(MCB_years), MCB_freq
                 )
-                for t = 1:tf
+                for t in 1:tf
                     if MCB_active_years[t]
                         dhw_scen[t, MCB_loc_mask] .= dhw_treated[t, MCB_loc_mask]
                     end
@@ -1172,7 +1173,7 @@ function run_model(
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks
-    cover_view = [@view C_cover[1, :, :, loc] for loc = 1:n_locs]
+    cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
     functional_groups::Vector{Vector{FunctionalGroup}} = reuse_buffers!.(
         functional_groups, (cover_view .* vec_abs_k)
     )
@@ -1230,7 +1231,7 @@ function run_model(
 
     biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
     biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
-    for i = 1:n_cb_calib_groups
+    for i in 1:n_cb_calib_groups
         biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
         biogrp_survival[:, :, i] .= apply_survival_scaling(
             biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
@@ -1361,7 +1362,7 @@ function run_model(
         c_mean_pre_CAq, cyclone_mortality_scen
     )
 
-    for tstep::Int64 = 2:tf
+    for tstep::Int64 in 2:tf
         _grow_corals!(C_cover, C_cover_t, recruitment, growth_state, tstep)
 
         _adapt_and_log!(
@@ -1631,7 +1632,7 @@ function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
     # Growth constrains need to be calculated seperately for differen growth rates
     growth_threshold_mask_cache .=
         relative_habitable_cover_cache .>= cover_transition_ub
-    for idx = 1:n_cb_calib_groups
+    for idx in 1:n_cb_calib_groups
         cover_threshold_mask .=
             cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
 
@@ -1651,7 +1652,7 @@ function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
         cover_transition_ub
     )
     if sum(growth_threshold_mask_cache) > 0
-        for idx = 1:n_cb_calib_groups
+        for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
             transition_scale =
@@ -1683,7 +1684,7 @@ function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
     end
     growth_threshold_mask_cache .=
         relative_habitable_cover_cache .< cover_transition_lb
-    for idx = 1:n_cb_calib_groups
+    for idx in 1:n_cb_calib_groups
         cover_threshold_mask .=
             growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
         growth_constraints[cover_threshold_mask] .= growth_acceleration.(
@@ -1799,7 +1800,7 @@ function _reproduce!(
         apply_allee_effect=apply_allee_effect
     )
 
-    for l = 1:n_locs
+    for l in 1:n_locs
         s = sum(fec_scope[:, l])
         if s > 0.0
             prop_fecundity[:, l] .= fec_scope[:, l] ./ s
@@ -2397,7 +2398,7 @@ function _propagate_survival!(
     end
     @assert !any(>(1.0), survival_rate_cache) "Survival rate should be <= 1"
 
-    for loc = 1:n_locs
+    for loc in 1:n_locs
         apply_mortality!(
             functional_groups[loc], @view(survival_rate_cache[:, :, loc])
         )
@@ -2424,7 +2425,7 @@ function _track_cover_loss!(
     # Calculate proportional cover loss at each location
     # due to disturbances this timestep
     Δcover_loss_proportion .= 0.0
-    for loc = 1:n_locs
+    for loc in 1:n_locs
         cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
         cover_after = sum(@view(C_cover_t[:, :, loc]))
 

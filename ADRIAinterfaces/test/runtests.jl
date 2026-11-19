@@ -49,7 +49,8 @@ end
         @test_throws ArgumentError ParamSpec(:m_rate, 2.0, (0.0, 1.0))
         @test_throws ArgumentError ParamSpec(:m_rate, 0.5, (1.0, 0.0))
 
-        # Additive fields: defaults keep the old behaviour, kind and ptype derive from each other
+        # Additive fields: defaults keep the old behaviour, kind and ptype derive from each
+        # other
         @test p.label == "m_rate" && p.kind === :real && p.ptype == "real" && p.constant
         @test ParamSpec(:m, 1, (0, 2); ptype="integer").kind === :integer
         b = ParamSpec(:m_on, 0, (0, 1); kind=:bool)

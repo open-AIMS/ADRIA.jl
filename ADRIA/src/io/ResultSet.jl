@@ -54,7 +54,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,LG,DF} <: ResultSet
     iv_Shd_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
-    logs::LG  # NamedTuple by submodel of NamedTuples of logs, e.g. `logs.cots.pop`; empty if none
+    logs::LG  # NamedTuple (by submodel) of NamedTuples of logs, e.g. `logs.cots.pop`
 end
 
 # Result sets stored before logs were grouped by submodel hold the COTS logs as flat arrays
@@ -404,8 +404,9 @@ Note: Results are stored in Zarr format. Combining data sets can be
 !!! warning
     A merged scenario table can hold `NaN` columns. `ADRIAanalysis` functions that take
     scenario inputs do not handle them: `rsa` (Mann-Whitney path), `pawn` and `tsa` throw an
-    `ArgumentError`, while `rsa` with `method=:cramers_v` or on unordered categorical columns
-    silently treats `NaN` as a level, and a constant `NaN` column is not treated as constant.
+    `ArgumentError`, while `rsa` with `method=:cramers_v` or on unordered categorical
+    columns silently treats `NaN` as a level, and a constant `NaN` column is not treated as
+    constant.
     `find_pareto_optimal`, `find_robust` and `data_envelopment_analysis` also take the
     scenario table and should be checked likewise. Subset the table (and matching outcomes)
     to the factors all sources share, or to the scenarios of one source
@@ -581,7 +582,7 @@ function combine_results(result_sets...)::ResultSet
         isnothing(n_log) && continue
 
         src = Vector{Union{Nothing,Array}}(undef, n_rs)
-        Threads.@threads for i = 1:n_rs
+        Threads.@threads for i in 1:n_rs
             s =
                 log isa Tuple ?
                 (
@@ -599,7 +600,7 @@ function combine_results(result_sets...)::ResultSet
         end
 
         scen_id = 1
-        for i = 1:n_rs
+        for i in 1:n_rs
             rs_scen_len =
                 isnothing(src[i]) ?
                 size(result_sets[i].iv_CAq_log, :scenarios) : size(src[i], ndims(src[i]))
@@ -637,7 +638,7 @@ function combine_results(result_sets...)::ResultSet
         compressor=COMPRESSOR
     )
     loc_bufs = Vector{Array{Float32,4}}(undef, n_rs)
-    Threads.@threads for i = 1:n_rs
+    Threads.@threads for i in 1:n_rs
         rs = result_sets[i]
         rs_scen_len = size(rs.outcomes[LOC_METRIC_NAMES[1]], :scenarios)
         buf = Array{Float32}(undef, tf_len, n_locs, n_loc_metrics, rs_scen_len)
@@ -647,7 +648,7 @@ function combine_results(result_sets...)::ResultSet
         loc_bufs[i] = buf
     end
     scen_id = 1
-    for i = 1:n_rs
+    for i in 1:n_rs
         rs_scen_len = size(loc_bufs[i], 4)
         loc_store[:, :, :, scen_id:(scen_id + rs_scen_len - 1)] = loc_bufs[i]
         scen_id += rs_scen_len
@@ -668,11 +669,11 @@ function combine_results(result_sets...)::ResultSet
         compressor=COMPRESSOR
     )
     taxa_bufs = Vector{Array{Float32,3}}(undef, n_rs)
-    Threads.@threads for i = 1:n_rs
+    Threads.@threads for i in 1:n_rs
         taxa_bufs[i] = Array{Float32}(result_sets[i].outcomes[taxa_name])
     end
     scen_id = 1
-    for i = 1:n_rs
+    for i in 1:n_rs
         rs_scen_len = size(taxa_bufs[i], 3)
         taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] = taxa_bufs[i]
         scen_id += rs_scen_len
@@ -883,7 +884,8 @@ model_specs(rs::ADRIAResultSet)::Vector{DataFrame} = rs.model_specs
     provenance(rs::ADRIAResultSet)::Vector{Any}
 
 What produced each source of the result set (one record if not merged), aligned with
-`model_specs`: a `Dict` with `adria_version` (leading `v`, as the `ADRIA_VERSION` attr), `julia_version`, `interface_version`, `models`
+`model_specs`: a `Dict` with `adria_version` (leading `v`, as the `ADRIA_VERSION` attr),
+`julia_version`, `interface_version`, `models`
 (attached submodels in attach order, then COTS if it was on; each with `name`, `type`,
 `module`, `version`, `revision`) and `overrides` (always empty today). An entry is `nothing`
 for a store written before provenance was recorded.
