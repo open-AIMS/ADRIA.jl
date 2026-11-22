@@ -4,16 +4,15 @@
 # test on tags/manual runs/manifest changes (see .github/workflows/UnitTests.yml), so this
 # catches regressions before they are pushed.
 # Enable once per clone:   git config core.hooksPath .githooks
-# Skip for one push:       SKIP_PRECOMPILE_CHECK=1 git push     (or git push --no-verify)
-#                          (skips both checks; SKIP_FORMAT_CHECK=1 skips only formatting)
+# Skip for one push:       git push --no-verify                 (skips everything)
+#                          SKIP_FORMAT_CHECK=1 git push         (skips only the format check)
+#                          SKIP_PRECOMPILE_CHECK=1 git push     (skips only the precompile check)
 #
 # Runs only if the pushed commits touch ADRIA/src, ADRIA/Project.toml or the budget test,
 # so most pushes pay nothing. When it runs it takes a few minutes (cold precompile of ADRIA
 # without its workload in a throwaway environment plus the cold model-assembly JIT,
 # ~40 s on its own on a warm package depot).
 set -euo pipefail
-
-[ "${SKIP_PRECOMPILE_CHECK:-0}" = "1" ] && exit 0
 
 # Prefer the Julia version the repo commits a manifest for (1.12); fall back to default.
 if julia +1.12 --version >/dev/null 2>&1; then JULIA=(julia +1.12); else JULIA=(julia); fi
@@ -57,6 +56,10 @@ if [ "${SKIP_FORMAT_CHECK:-0}" != "1" ]; then
     fi
 fi
 
+# --- Precompile budget check (independently skippable via SKIP_PRECOMPILE_CHECK=1) ---
+if [ "${SKIP_PRECOMPILE_CHECK:-0}" = "1" ]; then
+    exit 0
+fi
 if ! grep -qE '^ADRIA/(src/|Project.toml|test/precompile_budget/)' <<<"$changed"; then
     exit 0
 fi
