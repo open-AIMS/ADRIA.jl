@@ -264,7 +264,7 @@ function outbreak_supply_by_location(
     coefficients = if forcing_idx == 0
         vec(mean(@view(forcing.outbreak_supply[:, year_idx, :]); dims=2))
     else
-        @view(forcing.outbreak_supply[:, year_idx, forcing_idx])
+        forcing.outbreak_supply[:, year_idx, forcing_idx]
     end
     return [production * coefficients[reef] for reef in forcing.site_to_reef]
 end
