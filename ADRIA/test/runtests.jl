@@ -15,6 +15,19 @@ const SHARD = get(ENV, "ADRIA_TEST_SHARD", "all")
 SHARD in ("all", "fast", "spec", "sim") || error("Unknown ADRIA_TEST_SHARD=$(repr(SHARD))")
 _in_shard(names...) = SHARD == "all" || SHARD in names
 
+# Helper: include a test file and report how long it took, on stderr (unbuffered) so the
+# progress is still visible in the shard log if the launcher kills a shard at its time limit.
+function _timed_include(path::String)
+    t0 = time()
+    println(stderr, "[test-timing] start  ", path)
+    include(path)
+    println(
+        stderr, "[test-timing] done   ", path, " in ", round(time() - t0; digits=1), " s"
+    )
+    flush(stderr)
+    return nothing
+end
+
 # Helper: abort if a tier recorded any failures or errors.
 # Uses Test.get_test_counts() available in Julia 1.9+.
 function _abort_if_failed(ts, tier_name::String)
@@ -32,17 +45,17 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 if _in_shard("fast")
     tier1 = @testset "Tier 1: Pre-Smoke" begin
-        include("mock_data/mock_data.jl")
-        include("aqua.jl")
-        include("clustering.jl")
-        include("Ecosystem.jl")
-        include("growth.jl")
-        include("ecosystem/cots.jl")
-        include("ecosystem/low_dhw_bleaching.jl")
-        include("scenario_groups.jl")
-        include("annotated_outcomes.jl")
-        include("utils/scale.jl")
-        include("utils/text_display.jl")
+        _timed_include("mock_data/mock_data.jl")
+        _timed_include("aqua.jl")
+        _timed_include("clustering.jl")
+        _timed_include("Ecosystem.jl")
+        _timed_include("growth.jl")
+        _timed_include("ecosystem/cots.jl")
+        _timed_include("ecosystem/low_dhw_bleaching.jl")
+        _timed_include("scenario_groups.jl")
+        _timed_include("annotated_outcomes.jl")
+        _timed_include("utils/scale.jl")
+        _timed_include("utils/text_display.jl")
     end
     _abort_if_failed(tier1, "Tier 1 (Pre-Smoke)")
 end
@@ -54,14 +67,14 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 if _in_shard("fast")
     tier2 = @testset "Tier 2: I/O Smokescreen" begin
-        include("data_loading.jl")
-        include("connectivity.jl")
-        include("io/inputs.jl")
-        include("io/cots_inputs.jl")
-        include("calib_params_loading.jl")
+        _timed_include("data_loading.jl")
+        _timed_include("connectivity.jl")
+        _timed_include("io/inputs.jl")
+        _timed_include("io/cots_inputs.jl")
+        _timed_include("calib_params_loading.jl")
         # Cold-JIT budget for the work done in ADRIA's @compile_workload (~1 min; spawns
         # subprocesses). Guards against 20-30 min fresh-install precompile regressions.
-        include("precompile_budget/precompile_budget.jl")
+        _timed_include("precompile_budget/precompile_budget.jl")
     end
     _abort_if_failed(tier2, "Tier 2 (I/O Smokescreen)")
 end
@@ -74,12 +87,12 @@ end
 if _in_shard("spec")
     tier3 = @testset "Tier 3: Spec & Domain Loads" begin
         @info "Starting Tier 3"
-        @time include("spec.jl")
-        @time include("sampling.jl")
-        @time include("growth_limits.jl")
-        @time include("decisions/mcda.jl")
-        @time include("decisions/location_spread.jl")
-        @time include("decisions/revisit_cadence.jl")
+        _timed_include("spec.jl")
+        _timed_include("sampling.jl")
+        _timed_include("growth_limits.jl")
+        _timed_include("decisions/mcda.jl")
+        _timed_include("decisions/location_spread.jl")
+        _timed_include("decisions/revisit_cadence.jl")
     end
     _abort_if_failed(tier3, "Tier 3 (Spec & Domain Loads)")
 end
@@ -91,10 +104,10 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 if _in_shard("sim")
     # Tier 5 metrics tests need MockData, which Tier 1 loads in the "fast" shard.
-    @isdefined(MockData) || include("mock_data/mock_data.jl")
+    @isdefined(MockData) || _timed_include("mock_data/mock_data.jl")
 
     tier4 = @testset "Tier 4: Simulation Gate" begin
-        include("run_scenarios.jl")
+        _timed_include("run_scenarios.jl")
     end
     _abort_if_failed(tier4, "Tier 4 (Simulation Gate)")
 
@@ -105,26 +118,26 @@ if _in_shard("sim")
     # viz tests have moved to ADRIAviz/test/ — run via ADRIAviz test suite instead.
     # ─────────────────────────────────────────────────────────────────────────────
     @testset "Tier 5: Simulation-Dependent" begin
-        include("domain.jl")
-        include("io/result_io.jl")
-        include("io/result_set_metadata.jl")
-        include("example_run.jl")
-        include("interventions/interventions.jl")
-        include("interventions/CAq.jl")
-        include("interventions/LvM.jl")
-        include("determinism.jl")
-        include("ecosystem/cots_scenarios.jl")
-        include("ecosystem/low_dhw_scenarios.jl")
-        include("metrics/test_metrics_helper.jl")
-        include("metrics/scenario.jl")
-        include("metrics/metrics.jl")
-        include("metrics/spatial.jl")
-        include("metrics/reef_indices.jl")
+        _timed_include("domain.jl")
+        _timed_include("io/result_io.jl")
+        _timed_include("io/result_set_metadata.jl")
+        _timed_include("example_run.jl")
+        _timed_include("interventions/interventions.jl")
+        _timed_include("interventions/CAq.jl")
+        _timed_include("interventions/LvM.jl")
+        _timed_include("determinism.jl")
+        _timed_include("ecosystem/cots_scenarios.jl")
+        _timed_include("ecosystem/low_dhw_scenarios.jl")
+        _timed_include("metrics/test_metrics_helper.jl")
+        _timed_include("metrics/scenario.jl")
+        _timed_include("metrics/metrics.jl")
+        _timed_include("metrics/spatial.jl")
+        _timed_include("metrics/reef_indices.jl")
     end
 end
 
 # TODO Fix spatial_clustering and site_selection tests
-# include("site_selection.jl")
-# include("spatial_clustering.jl")
+# _timed_include("site_selection.jl")
+# _timed_include("spatial_clustering.jl")
 
 ENV["ADRIA_TEST"] = "false"
