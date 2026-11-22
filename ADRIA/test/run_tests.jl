@@ -164,7 +164,15 @@ function main(args)
     end
 
     mkpath(LOG_DIR)
-    prepare && prepare_env()
+    if prepare
+        prepare_env()
+    elseif !isfile(joinpath(ENV_DIR, "Manifest.toml")) &&
+        !isfile(joinpath(ENV_DIR, "Manifest-v$(VERSION.major).$(VERSION.minor).toml"))
+        error(
+            "--no-prepare given but no prepared test environment found in $ENV_DIR; " *
+            "run `julia ADRIA/test/run_tests.jl --prepare-only` first."
+        )
+    end
 
     # Tasks (not threads) are enough: they spend their time in `sleep`. Cleanup on
     # Ctrl-C / error / normal `exit` kills any still-running shard process groups.

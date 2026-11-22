@@ -52,6 +52,23 @@ jobs:
         run: julia ADRIA/test/run_tests.jl --prepare-only
         env:
           ADRIA_TEST_COVERAGE: adria
+      - name: Diagnose precompile cache
+        # Prints why (if at all) .ji cache files of a few leaf packages are rejected.
+        run: |
+          julia -e 'using InteractiveUtils; versioninfo()'
+          lscpu | grep "Model name"
+          ls -la ADRIA/test/.testenv || true
+          for p in RangeArrays ExprTools Reexport; do
+            echo "=== using $p ==="
+            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using $p" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
+          done
+      - name: Save test environment
+        # julia-actions/cache only handles the depot, so the resolved test environment
+        # (Project + Manifest) is cached separately and shared with the shards.
+        uses: actions/cache/save@v4
+        with:
+          path: ADRIA/test/.testenv
+          key: adria-testenv-${{ github.run_id }}-${{ github.run_attempt }}
 
   test:
     needs: setup
@@ -91,16 +108,35 @@ jobs:
           # Same key for every shard and for the setup job (the matrix values, including
           # the timeout, would otherwise be part of it and give each its own cache).
           include-matrix: false
-      # The launcher prepares one shared test environment, then runs this shard in a
+      - name: Restore test environment from setup job
+        id: testenv
+        uses: actions/cache/restore@v4
+        with:
+          path: ADRIA/test/.testenv
+          key: adria-testenv-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+      - name: Diagnose precompile cache
+        # Prints why (if at all) .ji cache files of a few leaf packages are rejected.
+        run: |
+          julia -e 'using InteractiveUtils; versioninfo()'
+          lscpu | grep "Model name"
+          ls -la ADRIA/test/.testenv || true
+          for p in RangeArrays ExprTools Reexport; do
+            echo "=== using $p ==="
+            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using $p" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
+          done
+      # The launcher uses the environment restored above (--no-prepare) and runs this shard
+      # in a supervised subprocess with a hard per-shard kill limit., then runs this shard in a
       # supervised subprocess with a hard per-shard kill limit.
       - name: Run ${{ matrix.shard }} shard
-        run: julia ADRIA/test/run_tests.jl ${{ matrix.shard }}
+        run: julia ADRIA/test/run_tests.jl --no-prepare ${{ matrix.shard }}
         env:
           # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
           # a plain `--code-coverage=user` would discard precompiled code of all deps.
           ADRIA_TEST_COVERAGE: adria
           # Use all available cores (4 on public-repo standard runners).
           JULIA_NUM_THREADS: auto
+          JULIA_DEBUG: loading
       - name: Upload shard logs
         if: always()
         uses: actions/upload-artifact@v4
