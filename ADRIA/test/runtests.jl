@@ -20,11 +20,13 @@ _in_shard(names...) = SHARD == "all" || SHARD in names
 function _timed_include(path::String)
     t0 = time()
     println(stderr, "[test-timing] start  ", path)
+    flush(stderr)
     include(path)
     println(
         stderr, "[test-timing] done   ", path, " in ", round(time() - t0; digits=1), " s"
     )
     flush(stderr)
+    flush(stdout)
     return nothing
 end
 
