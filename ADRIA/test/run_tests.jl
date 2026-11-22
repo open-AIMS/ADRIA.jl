@@ -63,9 +63,14 @@ function prepare_env()
     mkpath(ENV_DIR)
     cp(joinpath(TEST_DIR, "Project.toml"), joinpath(ENV_DIR, "Project.toml"); force=true)
     @info "Preparing shared test environment" ENV_DIR
-    Pkg.activate(ENV_DIR) do
-        Pkg.develop(; path=ADRIA_DIR)
-        Pkg.instantiate()
+    # Pkg precompiles automatically after `develop`/`instantiate`, with the default
+    # flags (`--check-bounds=auto`, no coverage). That cache is useless to the shards
+    # (see below) and doubles the cold build, so it is switched off here.
+    withenv("JULIA_PKG_PRECOMPILE_AUTO" => "0") do
+        Pkg.activate(ENV_DIR) do
+            Pkg.develop(; path=ADRIA_DIR)
+            Pkg.instantiate()
+        end
     end
     # Precompile in a subprocess with the same flags the shards use: `--check-bounds` is
     # part of the precompile cache key, so caches built by an in-process
