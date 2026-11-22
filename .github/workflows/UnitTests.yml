@@ -60,7 +60,7 @@ jobs:
           ls -la ADRIA/test/.testenv || true
           for p in RangeArrays ExprTools Reexport; do
             echo "=== using $p ==="
-            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using $p" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
+            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using TOML; m = TOML.parsefile(\"ADRIA/test/.testenv/Manifest.toml\")[\"deps\"]; Base.require(Base.PkgId(Base.UUID(m[\"$p\"][1][\"uuid\"]), \"$p\"))" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
           done
       - name: Save test environment
         # julia-actions/cache only handles the depot, so the resolved test environment
@@ -123,7 +123,7 @@ jobs:
           ls -la ADRIA/test/.testenv || true
           for p in RangeArrays ExprTools Reexport; do
             echo "=== using $p ==="
-            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using $p" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
+            JULIA_DEBUG=loading julia --project=ADRIA/test/.testenv --check-bounds=yes --code-coverage=@$PWD/ADRIA --startup-file=no -e "using TOML; m = TOML.parsefile(\"ADRIA/test/.testenv/Manifest.toml\")[\"deps\"]; Base.require(Base.PkgId(Base.UUID(m[\"$p\"][1][\"uuid\"]), \"$p\"))" 2>&1 | grep -iE "Rejecting|Loading object cache|Precompiling|$p" | head -20 || true
           done
       # The launcher uses the environment restored above (--no-prepare) and runs this shard
       # in a supervised subprocess with a hard per-shard kill limit., then runs this shard in a
