@@ -86,8 +86,11 @@ COTS-on scenarios on a domain with the `ShrinkMock(0.1)` test submodel attached
 propagation of the reduced cover). The submodel's own logs are not written to the store;
 the case checks its effect on the outcomes.
 
-The `attached` case needs `_attach_submodel!` and `ShrinkMock` in the checkout, so a
-reference with it can only be built from revs that have the submodel hook plumbing.
+`ShrinkMock` is defined in `driver.jl` itself (a pinned copy of the test mock in
+`ADRIAinterfaces/test/MockSubmodels.jl`), so the reference and the candidate run identical
+mock code even if a stage changes the checkout's mocks. The `attached` case needs
+`_attach_submodel!` and the ADRIAinterfaces hook API in the checkout, so a reference with
+it can only be built from revs that have the submodel hook plumbing (331795c88 or later).
 
 `compare.jl` compares decoded contents, not file bytes: for every Zarr array the path set,
 dtype, shape, chunks, fill value and all values (NaN-aware exact equality); attrs against an

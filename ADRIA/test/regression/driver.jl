@@ -10,10 +10,11 @@
 #            the COTS logs.
 #   cots_off the same guided scenarios, all with COTS off (no COTS logs in the store).
 #   attached 4 of the guided scenarios with COTS off and 4 with COTS on, on a domain with
-#            `ShrinkMock(0.1)` attached (ADRIAinterfaces/test/MockSubmodels.jl): exercises
+#            `ShrinkMock(0.1)` attached (defined below, so the reference and the candidate
+#            run identical mock code whatever the checkout's test support holds): exercises
 #            the submodel hook path (step, decrease-only check, record) and the propagation
-#            of the reduced cover. Needs `_attach_submodel!` and `ShrinkMock` in the
-#            checkout (present since the hook plumbing landed).
+#            of the reduced cover. Needs `_attach_submodel!` and the ADRIAinterfaces hook
+#            API in the checkout (present since the hook plumbing landed).
 #
 # Per-stage variants: if a stage renames accessors, copy this file to e.g. driver_stage1.jl
 # and point ADRIA_REGRESSION_DRIVER at it (see README.md). Keep the ensemble identical.
@@ -21,9 +22,62 @@ using Random
 using ADRIA
 using ADRIA: ADRIAinterfaces
 
-# Mock submodels of the checkout under test (test support only, not package API)
-include(joinpath(abspath(ARGS[1]), "..", "ADRIAinterfaces", "test", "MockSubmodels.jl"))
-using .MockSubmodels: ShrinkMock
+"""
+Pinned copy of `ShrinkMock` from ADRIAinterfaces/test/MockSubmodels.jl (as of the hook
+plumbing, 331795c88): reduces all cover by `frac` at `AfterDisturbances`. Kept here, not
+included from the checkout, so that a change to the checkout's mocks cannot change the
+`attached` case. Uses only interface functions present since the hook plumbing landed;
+all of them are qualified, so the checkout's exports do not matter.
+"""
+module PinnedShrinkMock
+using Random
+using ADRIA: ADRIAinterfaces
+const AI = ADRIAinterfaces
+
+struct ShrinkMock <: AI.Submodel
+    frac::Float64
+end
+mutable struct MockState
+    nsteps::Int
+    last_tstep::Int
+end
+AI.phases(::ShrinkMock) = (AI.AfterDisturbances(),)
+AI.submodel_name(::ShrinkMock) = :shrink_mock
+AI.parameters(::ShrinkMock) = [AI.ParamSpec(:mock_on, 1.0, (0.0, 1.0); ptype="integer")]
+AI.active(::ShrinkMock, params::NamedTuple) = params.mock_on == 1.0
+AI.seed_excluded(::ShrinkMock) = [:mock_on]
+AI.load_inputs(::ShrinkMock, path::AbstractString) = (; path=String(path))
+AI.prepare(::ShrinkMock, ctx::AI.SubmodelContext) = (; n_locs=ctx.n_locs)
+function AI.log_specs(::ShrinkMock, ctx::AI.SubmodelContext)
+    return [
+        AI.LogSpec(:mock_cover, [:timesteps], [ctx.tf]; units="m2"),
+        AI.LogSpec(:mock_calls, [:timesteps], [ctx.tf])
+    ]
+end
+function AI.init_state(
+    ::ShrinkMock, ::AI.SubmodelContext, ::NamedTuple, ::Random.AbstractRNG
+)
+    return MockState(0, 0)
+end
+function AI.step!(
+    sm::ShrinkMock, ::AI.AfterDisturbances, state::MockState, ::AI.SubmodelContext,
+    view::AI.CoralStepView, tstep::Int, year::Int
+)::Nothing
+    c = AI.cover(view)
+    @inbounds for i in eachindex(c)
+        c[i] *= (1.0 - sm.frac)
+    end
+    state.nsteps += 1
+    state.last_tstep = tstep
+    return nothing
+end
+function AI.record!(::ShrinkMock, bufs::NamedTuple, state::MockState, tstep::Int)::Nothing
+    bufs.mock_calls[tstep] = state.nsteps
+    bufs.mock_cover[tstep] = state.last_tstep
+    return nothing
+end
+end # module
+using .PinnedShrinkMock: ShrinkMock
 
 const N_GUIDED = 8
 const N_UNGUIDED = 4
