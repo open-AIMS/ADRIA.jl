@@ -16,8 +16,8 @@
 # driver, driver_sha256, source) next to the case dirs. A different Julia version fails an
 # exact comparison (exit 2: results can differ in the last digits across versions); under
 # `--tol` it is a warning. A different thread count or driver is a warning (a per-stage
-# driver variant is expected to differ). A missing META fails an exact comparison (exit 2)
-# and is a warning under `--tol`.
+# driver variant is expected to differ). A missing META, or one with a missing or empty
+# value, fails an exact comparison (exit 2) and is a warning under `--tol`.
 using Zarr
 using JSON
 
@@ -148,29 +148,37 @@ function read_meta(dir)::Union{Nothing,Dict{String,String}}
     return Dict(String(k) => String(strip(v)) for (k, v) in kv)
 end
 
+# Keys every META must hold, each with a non-empty value
+const META_KEYS = ("julia_version", "threads", "driver", "driver_sha256", "source")
+
 # Print the run metadata of both sides; return false when the comparison must not go ahead
 function check_meta(ref, cand, tol)::Bool
     ma, mb = read_meta(ref), read_meta(cand)
-    missing_meta = false
+    unusable = false
     for (side, m) in (("reference", ma), ("candidate", mb))
-        if isnothing(m)
-            missing_meta = true
-            msg =
-                "no META in the $side (built before META was recorded?): Julia " *
-                "version, threads and driver cannot be checked"
-            if isnothing(tol)
-                println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. ",
-                    "Rebuild it with run_regression.sh, or pass --tol X.")
-            else
-                println("WARNING: $msg; comparing under --tol $tol")
-            end
+        problem = if isnothing(m)
+            "no META in the $side (built before META was recorded?)"
         else
+            bad = [k for k in META_KEYS if isempty(get(m, k, ""))]
+            isempty(bad) ? "" : "META of the $side lacks a value for $(join(bad, ", "))"
+        end
+        if !isnothing(m)
             println("$side: Julia ", get(m, "julia_version", "?"), ", ",
                 get(m, "threads", "?"), " threads, ", get(m, "driver", "?"), " (sha256 ",
                 first(get(m, "driver_sha256", "?"), 12), "), ", get(m, "source", "?"))
         end
+        isempty(problem) && continue
+        unusable = true
+        msg = "$problem: Julia version, threads and driver cannot be checked"
+        if isnothing(tol)
+            println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. ",
+                "Rebuild it with run_regression.sh, or pass --tol X.")
+        else
+            println("WARNING: $msg; comparing under --tol $tol")
+        end
     end
-    missing_meta && return !isnothing(tol)
+    # Empty or missing values never count as a match
+    unusable && return !isnothing(tol)
     get_(m, k) = get(m, k, "?")
     if get_(ma, "julia_version") != get_(mb, "julia_version")
         msg =

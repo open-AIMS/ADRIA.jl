@@ -22,6 +22,8 @@ DRIVER="${ADRIA_REGRESSION_DRIVER:-$HERE/driver.jl}"
 THREADS="${ADRIA_REGRESSION_THREADS:-4}"
 # Word-split on purpose, so JULIA="julia +1.12" selects a juliaup channel
 read -r -a JULIA_CMD <<< "${JULIA:-julia}"
+die() { echo "ERROR: $*" >&2; exit 2; }
+[ ${#JULIA_CMD[@]} -gt 0 ] || die "JULIA is empty or whitespace only; unset it or set e.g. JULIA=\"julia +1.12\""
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/adria-regression.XXXXXX")"
 WT=""
 cleanup() {
@@ -30,22 +32,44 @@ cleanup() {
 }
 trap cleanup EXIT
 
-run_driver() { # checkout outdir
-    # Run from an empty dir so no config.toml / Outputs is picked up from (or written to) cwd
-    mkdir -p "$SCRATCH/cwd"
+# Julia is always started from this empty dir, so no config.toml / Outputs is picked up
+# from (or written to) the cwd, and a directory-specific juliaup override applies equally
+# to the driver and to `julia_version`
+mkdir -p "$SCRATCH/cwd"
+run_driver() { # checkout outdir source
     (cd "$SCRATCH/cwd" && "${JULIA_CMD[@]}" --project="$1/ADRIA" -t "$THREADS" "$DRIVER" "$1/ADRIA" "$2")
     write_meta "$2" "$3"
 }
-driver_sha() { sha256sum "$DRIVER" | cut -d' ' -f1; }
-julia_version() { "${JULIA_CMD[@]}" --startup-file=no -e 'print(VERSION)'; }
-write_meta() { # outdir source: what compare.jl checks (Julia version, threads, driver)
+driver_sha() {
+    local sha
+    if command -v sha256sum >/dev/null; then sha="$(sha256sum "$DRIVER" | cut -d' ' -f1)"
+    elif command -v shasum >/dev/null; then sha="$(shasum -a 256 "$DRIVER" | cut -d' ' -f1)"
+    else die "neither sha256sum nor shasum found"; fi
+    [ -n "$sha" ] || die "could not checksum $DRIVER"
+    echo "$sha"
+}
+julia_version() {
+    local v
+    v="$(cd "$SCRATCH/cwd" && "${JULIA_CMD[@]}" --startup-file=no -e 'print(VERSION)')" || true
+    [ -n "$v" ] || die "could not get the Julia version from: ${JULIA_CMD[*]}"
+    echo "$v"
+}
+# outdir source: complete the META the driver wrote (its own Julia VERSION and thread
+# count) with the driver and the source; every value must be non-empty
+write_meta() {
+    [ -f "$1/META" ] || die "the driver wrote no $1/META"
+    local sha k
+    sha="$(driver_sha)"
     {
-        echo "julia_version=$(julia_version)"
-        echo "threads=$THREADS"
         echo "driver=$(basename "$DRIVER")"
-        echo "driver_sha256=$(driver_sha)"
+        echo "driver_sha256=$sha"
         echo "source=$2"
-    } > "$1/META"
+    } >> "$1/META"
+    for k in julia_version threads driver driver_sha256 source; do
+        [ -n "$(meta_get "$1" "$k")" ] || die "empty or missing $k in $1/META"
+    done
+    [ "$(meta_get "$1" threads)" = "$THREADS" ] ||
+        die "the driver ran with $(meta_get "$1" threads) threads, not $THREADS"
 }
 meta_get() { sed -n "s/^$2=//p" "$1/META" 2>/dev/null; } # dir key
 compare() { # ref cand [extra args]; uses the candidate's environment for Zarr/JSON
@@ -66,13 +90,15 @@ ref)
                  "so its Julia version, threads and driver cannot be checked." \
                  "Remove $dest to rebuild it, or use another ADRIA_REGRESSION_REF." >&2
             exit 2
-        elif [ "$(meta_get "$dest" julia_version)" != "$(julia_version)" ] ||
-             [ "$(meta_get "$dest" driver_sha256)" != "$(driver_sha)" ] ||
-             [ "$(meta_get "$dest" threads)" != "$THREADS" ]; then
+        fi
+        jv="$(julia_version)"; sha="$(driver_sha)"
+        if [ "$(meta_get "$dest" julia_version)" != "$jv" ] ||
+           [ "$(meta_get "$dest" driver_sha256)" != "$sha" ] ||
+           [ "$(meta_get "$dest" threads)" != "$THREADS" ]; then
             echo "ERROR: the cached reference was built with Julia $(meta_get "$dest" julia_version)," \
                  "$(meta_get "$dest" threads) threads, $(meta_get "$dest" driver);" \
-                 "now Julia $(julia_version), $THREADS threads, $(basename "$DRIVER") (or the driver changed)." \
-                 "Remove $dest or use another ADRIA_REGRESSION_REF." >&2
+                 "now Julia $jv, $THREADS threads, $(basename "$DRIVER") (or the driver changed)." \
+                 "Remove $dest to rebuild it, or use another ADRIA_REGRESSION_REF." >&2
             exit 2
         fi
     else

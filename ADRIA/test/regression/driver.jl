@@ -3,7 +3,8 @@
 #   julia --project=<checkout>/ADRIA -t4 driver.jl <checkout>/ADRIA <outdir>
 #
 # Writes one result store per case under <outdir>/<case>/ (ADRIA_OUTPUT_DIR is set per
-# case). Nothing is written inside the checkout. Cases:
+# case) and <outdir>/META (Julia version and thread count of this process). Nothing is
+# written inside the checkout. Cases:
 #   mixed    guided + unguided scenarios with interventions, COTS off and on (plus juvenile
 #            predation on for some rows): exercises outcomes, ranks, intervention logs and
 #            the COTS logs.
@@ -74,6 +75,12 @@ function main(checkout::String, outdir::String)
             )
         end
     end
+    # Run metadata of this process (run_regression.sh appends the driver and the source):
+    # recorded here, so it is the Julia and thread count that produced the results
+    write(
+        joinpath(outdir, "META"),
+        "julia_version=$(VERSION)\nthreads=$(Threads.nthreads())\n"
+    )
     return nothing
 end
 

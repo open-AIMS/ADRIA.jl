@@ -38,9 +38,12 @@ Julia 1.11.9 and 1.12.7, 163.9824484400013 on 1.13.4). The refactor gate is ther
 "same Julia, exact"; the reference used so far was built with Julia 1.12.7, but any
 version works as long as the reference and the candidate use the same one.
 
-Every run directory (reference and candidate) gets a `META` file: `julia_version`,
-`threads`, `driver`, `driver_sha256`, `source` (rev or checkout). `compare.jl` prints both
-and then:
+Every run directory (reference and candidate) gets a `META` file: `julia_version` and
+`threads` are written by `driver.jl` itself (`VERSION` and `Threads.nthreads()` of the
+process that produced the results), and `run_regression.sh` appends `driver`,
+`driver_sha256` (`sha256sum`, or `shasum -a 256`) and `source` (rev or checkout). The
+runner fails if any value is empty, and `compare.jl` treats a missing or empty value like
+a missing `META` (two empty values never match). `compare.jl` prints both and then:
 
 - different Julia version: fails with exit code 2 in exact mode (rebuild the reference
   with the candidate's Julia); with `--tol X` it warns and compares under the tolerance,

@@ -35,7 +35,8 @@ mktempdir() do tmp
         println("note: reference has no META; using a synthetic one for the META cases")
         write(
             joinpath(REF[], "META"),
-            "julia_version=$(VERSION)\nthreads=4\ndriver=driver.jl\ndriver_sha256=x\n"
+            "julia_version=$(VERSION)\nthreads=4\ndriver=driver.jl\ndriver_sha256=x\n" *
+            "source=synthetic\n"
         )
     end
     fresh(n) = (d=joinpath(tmp, n); cp(REF[], d); d)
