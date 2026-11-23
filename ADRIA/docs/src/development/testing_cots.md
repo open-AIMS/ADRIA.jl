@@ -43,8 +43,10 @@ values after a deliberate change in results, run it with `COTS_REGRESSION_PRINT=
 Each prints a `Test Summary` table. Any `Fail` or `Error` column means something broke.
 When this guide was written (November 2026) the files ran 71, 37, 60 and 29 checks.
 
-The scenario tests write a result store to `Outputs/` in the current folder. Delete it
-afterwards; git doesn't ignore that folder.
+The scenario tests write their result stores to temporary folders (see
+`with_temp_output_dir` in `test/output_sandbox.jl`), which are removed when Julia exits, so
+nothing is left in the current folder. If an `Outputs/` folder appears after a test run, a
+test is missing that wrapper.
 
 ## Full test suite and formatting
 
