@@ -27,8 +27,15 @@ Environment: `ADRIA_REGRESSION_REF` (cache, default `~/.cache/adria-regression`)
 
 `driver.jl` runs a fixed-seed ensemble on `Test_domain` (RCP 45): 8 guided scenarios with
 COTS off, the same 8 with COTS on (juvenile predation on for half), and 4 unguided
-scenarios with COTS off and on (`mixed` case, 24 scenarios), plus the 8 guided COTS-off
-scenarios alone (`cots_off` case, a store without COTS logs).
+scenarios with COTS off and on (`mixed` case, 24 scenarios), the 8 guided COTS-off
+scenarios alone (`cots_off` case, a store without COTS logs), and 4 guided COTS-off plus 4
+COTS-on scenarios on a domain with the `ShrinkMock(0.1)` test submodel attached
+(`attached` case: the submodel hook path, the per-cell decrease-only check and the
+propagation of the reduced cover). The submodel's own logs are not written to the store;
+the case checks its effect on the outcomes.
+
+The `attached` case needs `_attach_submodel!` and `ShrinkMock` in the checkout, so a
+reference with it can only be built from revs that have the submodel hook plumbing.
 
 `compare.jl` compares decoded contents, not file bytes: for every Zarr array the path set,
 dtype, shape, chunks, fill value and all values (NaN-aware exact equality); attrs against an

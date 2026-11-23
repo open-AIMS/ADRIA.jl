@@ -8,15 +8,26 @@
 #            predation on for some rows): exercises outcomes, ranks, intervention logs and
 #            the COTS logs.
 #   cots_off the same guided scenarios, all with COTS off (no COTS logs in the store).
+#   attached 4 of the guided scenarios with COTS off and 4 with COTS on, on a domain with
+#            `ShrinkMock(0.1)` attached (ADRIAinterfaces/test/MockSubmodels.jl): exercises
+#            the submodel hook path (step, decrease-only check, record) and the propagation
+#            of the reduced cover. Needs `_attach_submodel!` and `ShrinkMock` in the
+#            checkout (present since the hook plumbing landed).
 #
 # Per-stage variants: if a stage renames accessors, copy this file to e.g. driver_stage1.jl
 # and point ADRIA_REGRESSION_DRIVER at it (see README.md). Keep the ensemble identical.
 using Random
 using ADRIA
+using ADRIA: ADRIAinterfaces
+
+# Mock submodels of the checkout under test (test support only, not package API)
+include(joinpath(abspath(ARGS[1]), "..", "ADRIAinterfaces", "test", "MockSubmodels.jl"))
+using .MockSubmodels: ShrinkMock
 
 const N_GUIDED = 8
 const N_UNGUIDED = 4
 const SEED = 20261116
+const SHRINK_FRAC = 0.1
 
 function build_cases(dom)
     Random.seed!(SEED)
@@ -34,7 +45,8 @@ function build_cases(dom)
     unguided_on.cots_on .= 1
 
     mixed = vcat(off, on, unguided, unguided_on)
-    return Dict("mixed" => mixed, "cots_off" => off)
+    attached = vcat(off[1:4, :], on[1:4, :])
+    return Dict("mixed" => mixed, "cots_off" => off, "attached" => attached)
 end
 
 function main(checkout::String, outdir::String)
@@ -45,12 +57,17 @@ function main(checkout::String, outdir::String)
     ADRIA.setup()
     dom = ADRIA.load_domain(joinpath(checkout, "test", "data", "Test_domain"), "45")
     cases = build_cases(dom)
+    dom_attached = ADRIA.load_domain(
+        joinpath(checkout, "test", "data", "Test_domain"), "45"
+    )
+    ADRIA._attach_submodel!(dom_attached, ShrinkMock(SHRINK_FRAC))
+    domains = Dict("attached" => dom_attached)
     for name in sort!(collect(keys(cases)))
         case_dir = joinpath(outdir, name)
         mkpath(case_dir)
         withenv("ADRIA_OUTPUT_DIR" => case_dir) do
             t = @elapsed ADRIA.run_scenarios(
-                dom, cases[name], "45"; show_progress=false
+                get(domains, name, dom), cases[name], "45"; show_progress=false
             )
             println(
                 "case $(name): $(size(cases[name], 1)) scenarios, $(round(t; digits=1)) s"
