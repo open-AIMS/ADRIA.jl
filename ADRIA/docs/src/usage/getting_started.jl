@@ -68,6 +68,11 @@
 # This `config.toml` file is specific to your computer and project. It **should not be**
 # committed to version control.
 #
+# Results are saved to `ENV["ADRIA_OUTPUT_DIR"]`. `ADRIA.setup()`, which `run_scenarios`
+# calls the first time it runs, sets this from `output_dir` in `config.toml`. Without a
+# `config.toml`, a value you set beforehand (e.g. `ENV["ADRIA_OUTPUT_DIR"] = mktempdir()`)
+# is kept, and `./Outputs` is used only if it is unset.
+#
 # !!! tip "Performance"
 #     ADRIA uses an on-disk data store to hold results from model runs.
 #     Setting `output_dir` to a directory on an SSD (Solid State Drive) will maximize

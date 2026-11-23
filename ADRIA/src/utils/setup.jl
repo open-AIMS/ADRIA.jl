@@ -3,6 +3,12 @@
 
 Initialize ADRIA configuration options from `config.toml`
 or load defaults if not found.
+
+Results are saved to `ENV["ADRIA_OUTPUT_DIR"]`. A `config.toml` in the current directory
+always sets it from `output_dir`. Without one, a value already set (e.g. by the user) is
+kept, and `./Outputs` is used only if it is unset.
+
+Does nothing if setup has already run in this process, unless `force=true`.
 """
 function setup(; force::Bool=false)::Nothing
     # Don't run setup unless force is true
@@ -12,6 +18,7 @@ function setup(; force::Bool=false)::Nothing
         end
     end
 
+    preset_output_dir = get(ENV, "ADRIA_OUTPUT_DIR", nothing)
     try
         # Load in configuration settings
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
@@ -35,10 +42,16 @@ function setup(; force::Bool=false)::Nothing
         ENV["ADRIA_RNG_SEED"] =
             haskey(config_operation, "rng_seed") ? config_operation["rng_seed"] : false
     catch
-        @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
-
         # Note: anything stored in ENV will be stored as String.
-        ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
+        # Keep an ADRIA_OUTPUT_DIR set before this call (e.g. by the user before the first
+        # `run_scenarios`, which calls `setup()`); only default to `./Outputs` if unset.
+        if isnothing(preset_output_dir)
+            @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
+            ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
+        else
+            @warn "Could not find config.toml file.\nApplying default configuration and saving results to ADRIA_OUTPUT_DIR ($(preset_output_dir))."
+            ENV["ADRIA_OUTPUT_DIR"] = preset_output_dir
+        end
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
         ENV["ADRIA_DEBUG"] = false
         ENV["ADRIA_LOG_DHW_TOLS"] = false
