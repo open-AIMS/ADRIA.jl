@@ -2,7 +2,7 @@
 # Opt-in baseline regression runner (see README.md). Not part of the test suite.
 #
 #   run_regression.sh ref [REV]                 build + cache the reference for REV (default HEAD)
-#   run_regression.sh compare [CHECKOUT] [REV] [--tol X]
+#   run_regression.sh compare [CHECKOUT] [REV] [--tol X]   (--tol may come first)
 #                                               run the driver on CHECKOUT (default: this repo)
 #                                               and compare against the cached reference of REV
 #                                               (default: the one recorded by the last `ref`)
@@ -83,10 +83,19 @@ ref)
     echo "$rev" > "$CACHE/CURRENT"
     ;;
 compare)
-    cand="${1:-$REPO}"; [ $# -gt 0 ] && shift || true
-    rev=""; extra=()
-    if [ $# -gt 0 ] && [ "$1" != "--tol" ]; then rev="$1"; shift; fi
-    extra=("$@")
+    # Positional CHECKOUT then REV, each optional; options (--tol X) anywhere
+    cand=""; rev=""; extra=()
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --tol) [ $# -ge 2 ] || { echo "--tol needs a value" >&2; exit 2; }
+               extra+=("$1" "$2"); shift 2 ;;
+        --*) echo "unknown option $1" >&2; exit 2 ;;
+        *) if [ -z "$cand" ]; then cand="$1"; elif [ -z "$rev" ]; then rev="$1"; else
+               echo "too many arguments: $1" >&2; exit 2; fi
+           shift ;;
+        esac
+    done
+    cand="${cand:-$REPO}"
     [ -z "$rev" ] && rev="$(cat "$CACHE/CURRENT")"
     [ -d "$CACHE/$rev" ] || { echo "no cached reference for $rev; run: $0 ref $rev" >&2; exit 2; }
     cand_abs="$(cd "$cand" && pwd)"

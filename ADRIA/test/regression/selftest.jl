@@ -53,6 +53,23 @@ mktempdir() do tmp
     z[ntuple(_ -> 1, ndims(z))...] += 1
     expect("one outcome value perturbed", d, false)
 
+    # 1b. a perturbation within tolerance: fails exact, passes under --tol
+    d = fresh("within_tol")
+    z = zopen(first_outcome(store(d, "mixed")), "w")
+    idx = ntuple(_ -> 1, ndims(z))
+    z[idx...] = z[idx...] + eltype(z)(1e-6)
+    expect("outcome perturbed by 1e-6, exact", d, false)
+    expect("outcome perturbed by 1e-6, under --tol 1e-4", d, true, `--tol 1e-4`)
+
+    # 1c. an array missing from, or extra in, the candidate
+    d = fresh("missing")
+    rm(first_outcome(store(d, "mixed")); recursive=true)
+    expect("outcome array missing", d, false)
+    d = fresh("extra")
+    src = first_outcome(store(d, "mixed"))
+    cp(src, joinpath(dirname(src), "extra_" * basename(src)))
+    expect("extra outcome array", d, false)
+
     # 2. attr change (non-allow-listed)
     d = fresh("attr")
     f = joinpath(store(d, "mixed"), "inputs", ".zattrs")
@@ -82,12 +99,19 @@ mktempdir() do tmp
         isfile(joinpath(arr, ".zarray")) ||
             (push!(results, false); println("FAIL missing ", p); continue)
         z = zopen(arr, "w")
-        isfloat = eltype(z) <: AbstractFloat
-        isfloat || (println("skip non-float ", p); continue)
+        T = eltype(z)
         idx = ntuple(_ -> 1, ndims(z))
         v = z[idx...]
-        z[idx...] = isnan(v) ? zero(v) : nextfloat(v)   # far below any tolerance
-        expect("$p perturbed by < tol under --tol", d, false, `--tol 1e-4`)
+        if T <: AbstractFloat
+            z[idx...] = isnan(v) ? zero(v) : nextfloat(v)   # far below any tolerance
+        elseif T <: Integer
+            z[idx...] = v == typemax(T) ? v - one(T) : v + one(T)  # e.g. ranks (UInt16)
+        else
+            push!(results, false)
+            println("FAIL cannot perturb $p of eltype $T")
+            continue
+        end
+        expect("$p ($T) perturbed under --tol", d, false, `--tol 1e-4`)
     end
 
     # 6. run metadata (META, written by run_regression.sh)

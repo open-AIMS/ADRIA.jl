@@ -28,6 +28,9 @@ const ALWAYS_EXACT = [
     "logs/shading_log"
 ]
 const IGNORED_DIRS = Set(["spatial", "spatial_data"])
+# A store-relative path is ignored when any of its components is an ignored dir name (one
+# rule for arrays and groups)
+is_ignored(rel::String) = any(in(IGNORED_DIRS), splitpath(rel))
 
 mutable struct Report
     diffs::Vector{String}
@@ -37,8 +40,8 @@ end
 function find_arrays(root::String)
     found = String[]
     for (dir, dirs, files) in walkdir(root)
-        filter!(d -> d ∉ IGNORED_DIRS, dirs)
-        ".zarray" in files && push!(found, relpath(dir, root))
+        rel = relpath(dir, root)
+        ".zarray" in files && !is_ignored(rel) && push!(found, rel)
     end
     return sort!(found)
 end
@@ -113,7 +116,7 @@ function compare_store!(rep, name, ref, cand, tol)
     groups(root) = sort!(
         [
         relpath(dir, root) for (dir, dirs, files) in walkdir(root) if
-        ".zgroup" in files && !any(d -> startswith(relpath(dir, root), d), IGNORED_DIRS)
+        ".zgroup" in files && !is_ignored(relpath(dir, root))
     ]
     )
     ga, gb = groups(ref), groups(cand)

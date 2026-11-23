@@ -13,7 +13,8 @@ ADRIA/test/regression/run_regression.sh ref <rev>
 
 # 2. After changes: run the driver on a checkout and compare against the reference.
 ADRIA/test/regression/run_regression.sh compare [checkout] [rev]
-ADRIA/test/regression/run_regression.sh compare . --tol 1e-4   # fallback, see below
+ADRIA/test/regression/run_regression.sh compare --tol 1e-4     # fallback, see below
+#    (CHECKOUT and REV are optional and positional; --tol may come before or after them)
 
 # 3. Check the comparison itself.
 ADRIA/test/regression/run_regression.sh selftest
