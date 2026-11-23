@@ -27,6 +27,15 @@ concurrency:
   group: unittests-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # GitHub's runner pool is heterogeneous (AMD EPYC and Intel Xeon). By default Julia
+  # compiles package images for the CPU of the machine that builds them, and a runner
+  # with a different CPU rejects them and recompiles every dependency (9-14 min). A
+  # portable multi-target (the one Julia's official builds use) lets the cache built by
+  # the `setup` job load on any runner. It must be the same at precompile and load time,
+  # so it is set for the whole workflow. CI only: nothing outside this workflow reads it.
+  JULIA_CPU_TARGET: "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)"
+
 jobs:
   # Builds the shared test environment (install + precompile) once and saves it to the
   # cache, so the three shards below start from a warm depot instead of each doing the
