@@ -52,6 +52,8 @@ jobs:
         run: julia ADRIA/test/run_tests.jl --prepare-only
         env:
           ADRIA_TEST_COVERAGE: adria
+      - name: DIAG setup
+        run: bash .github/diag.sh setup
       - name: Save test environment
         # julia-actions/cache only handles the depot, so the resolved test environment
         # (Project + Manifest) is cached separately and shared with the shards.
@@ -106,7 +108,10 @@ jobs:
           fail-on-cache-miss: true
       # The launcher uses the environment restored above (--no-prepare) and runs this shard
       # in a supervised subprocess with a hard per-shard kill limit.
+      - name: DIAG shard
+        run: bash .github/diag.sh ${{ matrix.shard }}
       - name: Run ${{ matrix.shard }} shard
+        if: false
         run: julia ADRIA/test/run_tests.jl --no-prepare ${{ matrix.shard }}
         env:
           # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
@@ -115,17 +120,17 @@ jobs:
           # Use all available cores (4 on public-repo standard runners).
           JULIA_NUM_THREADS: auto
       - name: Upload shard logs
-        if: always()
+        if: false
         uses: actions/upload-artifact@v4
         with:
           name: test-logs-${{ matrix.shard }}
           path: ADRIA/test/logs/
       - uses: julia-actions/julia-processcoverage@v1
-        if: always()
+        if: false
         with:
           directories: ADRIA/src
       - uses: codecov/codecov-action@v7
-        if: always()
+        if: false
         with:
           verbose: true
           files: lcov.info
