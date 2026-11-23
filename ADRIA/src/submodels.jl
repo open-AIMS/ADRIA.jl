@@ -145,14 +145,19 @@ end
 
 _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
 
-# Phase hook position: after core disturbances (bleaching, cyclones), before survival is
-# propagated. Submodels step in attach order, then record.
-# Function barrier: `slots` is only known as an abstract `Tuple` in `run_model`, so each call
-# to these hooks is a dynamic dispatch. The callee is compiled for the concrete slot types
-# (once per submodel combination) and is type-stable inside, and the time loop is not
-# recompiled per combination. The dispatch boxes some arguments (tens of bytes per step).
-# `@noinline` is not what makes the barrier; it keeps the calls out-of-line, as does the
-# `@noinline` on `_check_decrease_only`, which keeps its error path out of `run_model`.
+"""
+    _step_submodels!(slots, phase, view, tstep, year)::Nothing
+
+Phase hook position: after core disturbances (bleaching, cyclones), before survival is
+propagated. Submodels step in attach order, then record.
+
+Function barrier: `slots` is only known as an abstract `Tuple` in `run_model`, so each call
+to these hooks is a dynamic dispatch. The callee is compiled for the concrete slot types
+(once per submodel combination) and is type-stable inside, and the time loop is not
+recompiled per combination. The dispatch boxes some arguments (tens of bytes per step).
+`@noinline` is not what makes the barrier; it keeps the calls out-of-line, as does the
+`@noinline` on `_check_decrease_only`, which keeps its error path out of `run_model`.
+"""
 @noinline function _step_submodels!(
     slots::Tuple, phase::ADRIAinterfaces.Phase, view::CoralStepView, tstep::Int, year::Int
 )::Nothing

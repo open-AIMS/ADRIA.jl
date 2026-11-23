@@ -19,10 +19,14 @@ function _rel_cover(res)
     return Float32.(hasproperty(x, :data) ? x.data : x)
 end
 
-# The submodel phase of the run loop (snapshot, step, decrease-only check, record) over
-# timesteps 2:tf, as `run_model` calls it. `slots_ref[]` is read inside, so with a
-# `Ref{Tuple}` the slots are only known as an abstract `Tuple` (as in `run_model`), with a
-# concretely typed `Ref` they are known exactly.
+"""
+    _hook_phase_loop!(slots_ref, before, view, tf)
+
+The submodel phase of the run loop (snapshot, step, decrease-only check, record) over
+timesteps 2:tf, as `run_model` calls it. `slots_ref[]` is read inside, so with a
+`Ref{Tuple}` the slots are only known as an abstract `Tuple` (as in `run_model`), with a
+concretely typed `Ref` they are known exactly.
+"""
 function _hook_phase_loop!(slots_ref, before, view, tf)
     for tstep in 2:tf
         slots = slots_ref[]

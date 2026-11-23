@@ -24,16 +24,25 @@
 using Zarr
 using JSON
 
-# Attr keys ignored entirely (run-specific); `*_file` attrs compare by basename
+"""Attr keys ignored entirely (run-specific); `*_file` attrs compare by basename."""
 const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION"])
-# Always-exact arrays, by store-relative path (rankings, intervention logs, inputs table)
+
+"""
+Always-exact arrays, by store-relative path (rankings, intervention logs, inputs table).
+"""
 const ALWAYS_EXACT = [
     "inputs", "logs/rankings", "logs/coral_aquaculture", "logs/larval_methods",
     "logs/shading_log"
 ]
+
 const IGNORED_DIRS = Set(["spatial", "spatial_data"])
-# A store-relative path is ignored when any of its components is an ignored dir name (one
-# rule for arrays and groups)
+
+"""
+    is_ignored(rel::String)
+
+A store-relative path is ignored when any of its components is an ignored dir name (one
+rule for arrays and groups).
+"""
 is_ignored(rel::String) = any(in(IGNORED_DIRS), splitpath(rel))
 
 mutable struct Report
@@ -102,7 +111,7 @@ function compare_array!(rep, id, path, ref_dir, cand_dir, tol)
     return nothing
 end
 
-# Lines of model_spec.csv without the `# Generated with ... on <time>` header comment
+"""Lines of model_spec.csv without the `# Generated with ... on <time>` header comment."""
 spec_lines(f) = filter(l -> !startswith(l, "#"), readlines(f))
 
 function compare_store!(rep, name, ref, cand, tol)
@@ -137,7 +146,12 @@ function compare_store!(rep, name, ref, cand, tol)
     end
 end
 
-# Each case dir holds exactly one store directory (named with the invoke time)
+"""
+    the_store(case_dir)
+
+The store directory of a case dir: each case dir holds exactly one (named with the invoke
+time).
+"""
 function the_store(case_dir)
     stores = filter(isdir, readdir(case_dir; join=true))
     length(stores) == 1 || error("expected one store in $case_dir, found $(length(stores))")
@@ -151,10 +165,14 @@ function read_meta(dir)::Union{Nothing,Dict{String,String}}
     return Dict(String(strip(k)) => String(strip(v)) for (k, v) in kv)
 end
 
-# Keys every META must hold, each with a non-empty value
+"""Keys every META must hold, each with a non-empty value."""
 const META_KEYS = ("julia_version", "threads", "driver", "driver_sha256", "source")
 
-# Print the run metadata of both sides; return false when the comparison must not go ahead
+"""
+    check_meta(ref, cand, tol, driver_variant::Bool)::Bool
+
+Print the run metadata of both sides; return false when the comparison must not go ahead.
+"""
 function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
     ma, mb = read_meta(ref), read_meta(cand)
     unusable = false

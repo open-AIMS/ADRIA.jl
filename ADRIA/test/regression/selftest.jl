@@ -15,7 +15,8 @@ isfile(joinpath(src_ref, "META")) || (
 isfile(cmp) || (println(stderr, "ERROR: $cmp not found"); exit(2))
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
-# The reference the candidates are compared against: a copy of `src_ref`
+
+"""The reference the candidates are compared against: a copy of `src_ref`."""
 const REF = Ref("")
 
 # Exit codes of compare.jl
@@ -33,7 +34,13 @@ exitcode(cand, extra=``; ref=REF[]) =
 
 store(root, c) = only(filter(isdir, readdir(joinpath(root, c); join=true)))
 results = Bool[]
-# The exact exit code is checked, so a crash (3) cannot pass as expected differences (1)
+
+"""
+    expect(name, cand, want::Int, extra=``; ref=REF[])
+
+Run compare.jl on `cand` and record whether it exits with `want`. The exact exit code is
+checked, so a crash (3) cannot pass as expected differences (1).
+"""
 function expect(name, cand, want::Int, extra=``; ref=REF[])
     got = exitcode(cand, extra; ref=ref)
     ok = got == want
