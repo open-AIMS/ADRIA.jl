@@ -19,6 +19,23 @@ function _rel_cover(res)
     return Float32.(hasproperty(x, :data) ? x.data : x)
 end
 
+# The submodel phase of the run loop (snapshot, step, decrease-only check, record) over
+# timesteps 2:tf, as `run_model` calls it. `slots_ref[]` is read inside, so with a
+# `Ref{Tuple}` the slots are only known as an abstract `Tuple` (as in `run_model`), with a
+# concretely typed `Ref` they are known exactly.
+function _hook_phase_loop!(slots_ref, before, view, tf)
+    for tstep in 2:tf
+        slots = slots_ref[]
+        copyto!(before, ADRIAinterfaces.cover(view))
+        ADRIA._step_submodels!(
+            slots, ADRIAinterfaces.AfterDisturbances(), view, tstep, 2000 + tstep
+        )
+        ADRIA._check_decrease_only(before, ADRIAinterfaces.cover(view), tstep)
+        ADRIA._record_submodels!(slots, tstep)
+    end
+    return nothing
+end
+
 @testset "Submodel hooks in the run loop" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
     scens = ADRIA.sample(dom, 4)
@@ -207,10 +224,47 @@ end
         @test res.aux_logs.mock_calls[tf] == tf - 1
     end
 
+    @testset "the submodel phase allocates nothing per step after warm-up" begin
+        # The hook calls of the time loop on their own, with slots built as `run_model`
+        # builds them for a seeded scenario row. Concrete slot types: no allocation at
+        # all. Abstract `Tuple` (as in `run_model`): the dynamic dispatch boxes a few
+        # arguments, a small bounded amount per step (48 B on Julia 1.12)
+        old_rng = copy(Random.default_rng())
+        Random.seed!(7)
+        srow = ADRIA.sample(dom, 4)[2, :]
+        copy!(Random.default_rng(), old_rng)
+
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
+        ps = ADRIA.DataCube(Vector(srow); factors=names(srow))
+        caches = ADRIA._prepare_submodels(d2)
+        slots = ADRIA._init_submodels(
+            d2, ps, collect(ps.factors.val), caches, Random.Xoshiro(1)
+        )
+        @test length(slots) == 1 && isconcretetype(typeof(slots))
+
+        cg = d2.coral_growth
+        cov = rand(Random.Xoshiro(2), cg.n_groups, cg.n_sizes, cg.n_locs)
+        before = similar(cov)
+        view = ADRIAinterfaces.CoralStepView(cov, zeros(cg.n_locs), ADRIA.loc_k_area(d2))
+
+        concrete = Ref(slots)
+        abstract = Ref{Tuple}(slots)
+        _hook_phase_loop!(concrete, before, view, tf)  # warm-up (compile)
+        _hook_phase_loop!(abstract, before, view, tf)
+        @test (@allocated _hook_phase_loop!(concrete, before, view, tf)) == 0
+        @test (@allocated _hook_phase_loop!(abstract, before, view, tf)) <= 256 * (tf - 1)
+
+        # The hooks really ran: every step reduced the cover and was recorded
+        @test slots[1].state.nsteps == 4 * (tf - 1)
+        @test slots[1].bufs.mock_calls[tf] == 4 * (tf - 1)
+    end
+
     @testset "attaching a submodel adds little allocation to a run" begin
-        # Difference, not an absolute value: a run allocates a lot regardless. ShrinkMock
-        # so that `step!` and `record!` really run; the extra (slots, logs, per-cell
-        # snapshot) must stay a small fraction of the run's allocation
+        # Loose whole-run guard (the per-step check is the test above). Difference, not an
+        # absolute value: a run allocates a lot regardless. ShrinkMock so that `step!` and
+        # `record!` really run; the extra (slots, logs, per-cell snapshot, in-line
+        # validate/prepare) must stay a small fraction of the run's allocation
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d2, ShrinkMock(0.0))  # runs, leaves cover unchanged
         ADRIA.run_scenario(d2, row)  # compile
