@@ -55,12 +55,17 @@ process that produced the results), and `run_regression.sh` appends `driver`,
 runner fails if any value is empty, and `compare.jl` treats a missing or empty value like
 a missing `META` (two empty values never match). `compare.jl` prints both and then:
 
-- different Julia version: fails with exit code 2 in exact mode (rebuild the reference
-  with the candidate's Julia); with `--tol X` it warns and compares under the tolerance,
-  which is the way to compare across versions;
-- different thread count or driver: warning (a per-stage driver variant is expected);
-- no `META` (a reference built before it was recorded): fails with exit code 2 in exact
+- different Julia version, thread count or driver: fails with exit code 2 in exact mode
+  (rebuild the reference with the candidate's Julia and `ADRIA_REGRESSION_THREADS`, or use
+  the driver it was built with); with `--tol X` it warns and compares under the
+  tolerance, which is the way to compare across Julia versions;
+- `--driver-variant` accepts a different driver in exact mode (a per-stage driver variant,
+  see below); thread count and Julia version must still match;
+- no `META`, or a `META` with a missing or empty value: fails with exit code 2 in exact
   mode; a warning under `--tol X`.
+
+Keys and values are compared with surrounding whitespace trimmed, by `compare.jl` and by
+the shell runner alike.
 
 `ref` refuses to reuse a cached reference that has no `META`, or whose `META` does not
 match the current Julia, thread count and driver (exit code 2); remove it to rebuild, or
@@ -98,5 +103,6 @@ it for result-changing stages (compare ensemble statistics instead).
 ## Per-stage driver variant
 
 If a stage renames an accessor the driver uses, copy `driver.jl` to `driver_<stage>.jl`, keep the ensemble (seed, sampling calls) identical, and set
-`ADRIA_REGRESSION_DRIVER` for the compare run. The reference is always built with the
+`ADRIA_REGRESSION_DRIVER` for the compare run, passing `--driver-variant`
+(`compare --driver-variant`), since a driver change is otherwise refused in exact mode. The reference is always built with the
 driver that existed when it was built.

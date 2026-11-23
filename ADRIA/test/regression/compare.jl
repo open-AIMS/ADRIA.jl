@@ -1,6 +1,7 @@
 # Compare two result directories written by driver.jl by decoded contents.
 #
 #   julia --project=<checkout>/ADRIA compare.jl <ref_dir> <cand_dir> [--tol 1e-4]
+#       [--driver-variant]
 #
 # Exit code 0 = identical (or within --tol for outcomes), 1 = differences, 2 = usage error
 # or an environment mismatch that makes an exact comparison meaningless (see META below),
@@ -13,12 +14,13 @@
 # Ranks, intervention logs (rankings, coral_aquaculture, larval_methods, shading_log) and the inputs table are ALWAYS exact; `--tol`
 # only relaxes the other arrays (outcomes, other logs) to a max abs difference.
 #
-# META: run_regression.sh writes `<dir>/META` (key=value lines: julia_version, threads,
-# driver, driver_sha256, source) next to the case dirs. A different Julia version fails an
-# exact comparison (exit 2: results can differ in the last digits across versions); under
-# `--tol` it is a warning. A different thread count or driver is a warning (a per-stage
-# driver variant is expected to differ). A missing META, or one with a missing or empty
-# value, fails an exact comparison (exit 2) and is a warning under `--tol`.
+# META: `<dir>/META` (key=value lines: julia_version, threads, driver, driver_sha256,
+# source; keys and values are whitespace-trimmed) next to the case dirs, written by
+# driver.jl and run_regression.sh. A different Julia version, thread count or driver, a
+# missing META, or one with a missing or empty value fails an exact comparison (exit 2) and
+# is a warning under `--tol`. `--driver-variant` accepts a different driver in exact mode
+# (a per-stage driver variant with the same ensemble). run_regression.sh `ref` applies the
+# same checks (with the same trimming) before reusing a cached reference.
 using Zarr
 using JSON
 
@@ -146,14 +148,14 @@ function read_meta(dir)::Union{Nothing,Dict{String,String}}
     f = joinpath(dir, "META")
     isfile(f) || return nothing
     kv = [split(l, "="; limit=2) for l in readlines(f) if occursin("=", l)]
-    return Dict(String(k) => String(strip(v)) for (k, v) in kv)
+    return Dict(String(strip(k)) => String(strip(v)) for (k, v) in kv)
 end
 
 # Keys every META must hold, each with a non-empty value
 const META_KEYS = ("julia_version", "threads", "driver", "driver_sha256", "source")
 
 # Print the run metadata of both sides; return false when the comparison must not go ahead
-function check_meta(ref, cand, tol)::Bool
+function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
     ma, mb = read_meta(ref), read_meta(cand)
     unusable = false
     for (side, m) in (("reference", ma), ("candidate", mb))
@@ -181,36 +183,56 @@ function check_meta(ref, cand, tol)::Bool
     # Empty or missing values never count as a match
     unusable && return !isnothing(tol)
     get_(m, k) = get(m, k, "?")
-    if get_(ma, "julia_version") != get_(mb, "julia_version")
-        msg =
-            "reference built with Julia $(get_(ma, "julia_version")), candidate run " *
-            "with Julia $(get_(mb, "julia_version")): results can differ in the last " *
-            "digits across Julia versions"
-        if isnothing(tol)
-            println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. ",
-                "Rebuild the reference with the same Julia (JULIA=...), or pass --tol X ",
-                "to compare across versions.")
+    # One rule for every environment mismatch: an error in exact mode, a warning under
+    # --tol. A driver change is accepted in exact mode only with --driver-variant.
+    function mismatch(msg, fix; allowed=false)
+        if isnothing(tol) && !allowed
+            println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. $fix")
             return false
         end
-        println("WARNING: $msg; comparing under --tol $tol")
+        println("WARNING: $msg; ",
+            isnothing(tol) ? "accepted (--driver-variant)" : "comparing under --tol $tol")
+        return true
     end
-    get_(ma, "threads") == get_(mb, "threads") || println(
-        "WARNING: thread counts differ ($(get_(ma, "threads")) vs $(get_(mb, "threads")));",
-        " use the same ADRIA_REGRESSION_THREADS for reference and candidate"
-    )
-    get_(ma, "driver_sha256") == get_(mb, "driver_sha256") || println(
-        "WARNING: drivers differ ($(get_(ma, "driver")) vs $(get_(mb, "driver"))): ",
-        "expected only for a per-stage driver variant with the same ensemble"
-    )
-    return true
+    ok = true
+    if get_(ma, "julia_version") != get_(mb, "julia_version")
+        ok &= mismatch(
+            "reference built with Julia $(get_(ma, "julia_version")), candidate run " *
+            "with Julia $(get_(mb, "julia_version")): results can differ in the last " *
+            "digits across Julia versions",
+            "Rebuild the reference with the same Julia (JULIA=...), or pass --tol X to " *
+            "compare across versions."
+        )
+    end
+    if get_(ma, "threads") != get_(mb, "threads")
+        ok &= mismatch(
+            "thread counts differ ($(get_(ma, "threads")) vs $(get_(mb, "threads")))",
+            "Use the same ADRIA_REGRESSION_THREADS for reference and candidate."
+        )
+    end
+    if get_(ma, "driver_sha256") != get_(mb, "driver_sha256")
+        ok &= mismatch(
+            "drivers differ ($(get_(ma, "driver")) vs $(get_(mb, "driver")), sha256 " *
+            "$(first(get_(ma, "driver_sha256"), 12)) vs " *
+            "$(first(get_(mb, "driver_sha256"), 12)))",
+            "Use the driver the reference was built with, or pass --driver-variant for " *
+            "a per-stage driver variant with the same ensemble.";
+            allowed=driver_variant
+        )
+    end
+    return ok
 end
 
 function main(args)
     tol = nothing
+    driver_variant = false
     pos = String[]
     i = 1
     while i <= length(args)
-        if args[i] == "--tol"
+        if args[i] == "--driver-variant"
+            driver_variant = true
+            i += 1
+        elseif args[i] == "--tol"
             i < length(args) || (println(stderr, "--tol needs a value"); return 2)
             tol = tryparse(Float64, args[i + 1])
             isnothing(tol) && (println(stderr, "--tol needs a number"); return 2)
@@ -220,10 +242,12 @@ function main(args)
             i += 1
         end
     end
-    length(pos) == 2 ||
-        (println(stderr, "usage: compare.jl ref_dir cand_dir [--tol X]"); return 2)
+    if length(pos) != 2
+        println(stderr, "usage: compare.jl ref_dir cand_dir [--tol X] [--driver-variant]")
+        return 2
+    end
     ref, cand = pos
-    check_meta(ref, cand, tol) || return 2
+    check_meta(ref, cand, tol, driver_variant) || return 2
     rep = Report(String[], 0)
     ca = sort!(filter(d -> isdir(joinpath(ref, d)), readdir(ref)))
     cb = sort!(filter(d -> isdir(joinpath(cand, d)), readdir(cand)))

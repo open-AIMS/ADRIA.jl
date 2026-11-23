@@ -2,7 +2,8 @@
 # Opt-in baseline regression runner (see README.md). Not part of the test suite.
 #
 #   run_regression.sh ref [REV]                 build + cache the reference for REV (default HEAD)
-#   run_regression.sh compare [CHECKOUT] [REV] [--tol X]   (--tol may come first)
+#   run_regression.sh compare [CHECKOUT] [REV] [--tol X] [--driver-variant]
+#                                               (options may come first)
 #                                               run the driver on CHECKOUT (default: this repo)
 #                                               and compare against the cached reference of REV
 #                                               (default: the one recorded by the last `ref`)
@@ -71,7 +72,11 @@ write_meta() {
     [ "$(meta_get "$1" threads)" = "$THREADS" ] ||
         die "the driver ran with $(meta_get "$1" threads) threads, not $THREADS"
 }
-meta_get() { sed -n "s/^$2=//p" "$1/META" 2>/dev/null; } # dir key
+# dir key: the value, with surrounding whitespace (and a CR) trimmed, as compare.jl does
+meta_get() {
+    sed -n "s/^[[:space:]]*$2[[:space:]]*=//p" "$1/META" 2>/dev/null |
+        sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | tail -n 1
+}
 compare() { # ref cand [extra args]; uses the candidate's environment for Zarr/JSON
     local ref="$1" cand="$2"; shift 2
     "${JULIA_CMD[@]}" --project="$COMPARE_ENV" "$HERE/compare.jl" "$ref" "$cand" "$@"
@@ -133,6 +138,7 @@ compare)
         case "$1" in
         --tol) [ $# -ge 2 ] || { echo "--tol needs a value" >&2; exit 2; }
                extra+=("$1" "$2"); shift 2 ;;
+        --driver-variant) extra+=("$1"); shift ;;
         --*) echo "unknown option $1" >&2; exit 2 ;;
         *) if [ -z "$cand" ]; then cand="$1"; elif [ -z "$rev" ]; then rev="$1"; else
                echo "too many arguments: $1" >&2; exit 2; fi
@@ -158,5 +164,5 @@ selftest)
     compare "$ref" "$ref"
     "${JULIA_CMD[@]}" --project="$COMPARE_ENV" "$HERE/selftest.jl" "$ref" "$HERE/compare.jl"
     ;;
-*) sed -n 2,15p "${BASH_SOURCE[0]}"; exit 2 ;;
+*) sed -n 2,16p "${BASH_SOURCE[0]}"; exit 2 ;;
 esac

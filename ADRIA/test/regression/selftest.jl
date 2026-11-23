@@ -154,9 +154,21 @@ mktempdir() do tmp
     expect("other Julia version, exact", d, REFUSED)
     expect("other Julia version, under --tol 1e-4", d, PASS, `--tol 1e-4`)
     d = with_meta("meta_threads"; threads="123")
-    expect("other thread count (warning only)", d, PASS)
+    expect("other thread count, exact", d, REFUSED)
+    expect("other thread count, under --tol 1e-4", d, PASS, `--tol 1e-4`)
     d = with_meta("meta_driver"; driver_sha256="0")
-    expect("other driver (warning only)", d, PASS)
+    expect("other driver, exact", d, REFUSED)
+    expect("other driver, exact with --driver-variant", d, PASS, `--driver-variant`)
+    expect("other driver, under --tol 1e-4", d, PASS, `--tol 1e-4`)
+    # Keys and values are compared whitespace-trimmed (also CRLF line ends)
+    d = fresh("meta_padded")
+    m = readlines(joinpath(d, "META"))
+    write(
+        joinpath(d, "META"),
+        join([" " * replace(l, "=" => " = "; count=1) * " \r"
+              for l in m], "\n") * "\n"
+    )
+    expect("META with padded keys and values and CRLF", d, PASS)
     d = fresh("meta_missing")
     rm(joinpath(d, "META"))
     expect("candidate without META, exact", d, REFUSED)
