@@ -147,9 +147,12 @@ _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
 
 # Phase hook position: after core disturbances (bleaching, cyclones), before survival is
 # propagated. Submodels step in attach order, then record.
-# `@noinline` on both hooks: `slots` is only known as an abstract `Tuple` in `run_model`, so
-# these calls are the function barrier that specialises on the concrete slot types (once
-# per submodel combination), without recompiling the whole time loop.
+# Function barrier: `slots` is only known as an abstract `Tuple` in `run_model`, so each call
+# to these hooks is a dynamic dispatch. The callee is compiled for the concrete slot types
+# (once per submodel combination) and is type-stable inside, and the time loop is not
+# recompiled per combination. The dispatch boxes some arguments (tens of bytes per step).
+# `@noinline` is not what makes the barrier; it keeps the calls out-of-line, as does the
+# `@noinline` on `_check_decrease_only`, which keeps its error path out of `run_model`.
 @noinline function _step_submodels!(
     slots::Tuple, phase::ADRIAinterfaces.Phase, view::CoralStepView, tstep::Int, year::Int
 )::Nothing
@@ -174,6 +177,12 @@ Enforce the submodel contract that cover may only decrease: per cell, `after <= 
 Only called when submodels are attached. The comparison is exact on purpose, so a
 submodel that rescales cover must not round a value up by even one ulp. NaN and negative
 values also fail.
+
+Caveat (Stage 3a, COTS onto the hooks): if the host ever handed over a negative value (it
+currently does not), this check fails whatever the submodel does, since clamping it up to
+`0.0` is an increase and leaving it is negative. Today COTSMod's
+`clamp!(C_cover_t, 0.0, 1.0)` silently repairs such values on the unchecked COTS path; on
+the hook path the same input would raise here instead.
 """
 @noinline function _check_decrease_only(
     before::AbstractArray{Float64,3}, after::AbstractArray{Float64,3}, tstep::Int
