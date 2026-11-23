@@ -5,10 +5,17 @@
 using Zarr
 using JSON
 
+length(ARGS) == 2 || (println(stderr, "usage: selftest.jl ref_dir compare.jl"); exit(2))
 src_ref, cmp = ARGS
+isdir(src_ref) || (println(stderr, "ERROR: reference folder $src_ref not found"); exit(2))
+isfile(joinpath(src_ref, "META")) || (
+    println(stderr, "ERROR: reference $src_ref has no META (built before META was ",
+        "recorded); rebuild it with run_regression.sh ref"); exit(2)
+)
+isfile(cmp) || (println(stderr, "ERROR: $cmp not found"); exit(2))
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
-# The reference the candidates are compared against: a copy of `src_ref` with a META file
+# The reference the candidates are compared against: a copy of `src_ref`
 const REF = Ref("")
 
 # Exit codes of compare.jl
@@ -38,16 +45,6 @@ end
 mktempdir() do tmp
     REF[] = joinpath(tmp, "ref")
     cp(src_ref, REF[])
-    if !isfile(joinpath(REF[], "META"))
-        # A reference built before META was recorded: give the copy one, so that the META
-        # cases below test the check rather than the "no META" warning
-        println("note: reference has no META; using a synthetic one for the META cases")
-        write(
-            joinpath(REF[], "META"),
-            "julia_version=$(VERSION)\nthreads=4\ndriver=driver.jl\ndriver_sha256=x\n" *
-            "source=synthetic\n"
-        )
-    end
     fresh(n) = (d=joinpath(tmp, n); cp(REF[], d); d)
     expect("identical copy", fresh("same"), PASS)
 

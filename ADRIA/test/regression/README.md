@@ -20,6 +20,10 @@ ADRIA/test/regression/run_regression.sh compare --tol 1e-4     # fallback, see b
 ADRIA/test/regression/run_regression.sh selftest
 ```
 
+`compare` and `selftest` use the rev recorded by the last `ref` (the cache's `CURRENT`)
+unless `compare` is given a REV, which is resolved in this repository like the one of
+`ref`; a missing `CURRENT`, reference folder or `META` is reported as an error (exit 2).
+
 `compare` exits with 0 (identical, or within `--tol`), 1 (differences), 2 (usage error, or
 a refusal: an environment mismatch or missing run metadata, see below) or 3 (`compare.jl`
 itself failed). `selftest` checks the exact exit code of each case, so a crash cannot pass

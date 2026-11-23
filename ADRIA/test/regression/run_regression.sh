@@ -77,11 +77,26 @@ compare() { # ref cand [extra args]; uses the candidate's environment for Zarr/J
     "${JULIA_CMD[@]}" --project="$COMPARE_ENV" "$HERE/compare.jl" "$ref" "$cand" "$@"
 }
 COMPARE_ENV="${COMPARE_ENV:-$REPO/ADRIA}"
+resolve_rev() { # rev-ish -> full commit sha, resolved in this repository
+    git -C "$REPO" rev-parse --verify --quiet "$1^{commit}" ||
+        die "cannot resolve '$1' to a commit in $REPO"
+}
+current_rev() { # the rev recorded by the last `ref`
+    [ -f "$CACHE/CURRENT" ] ||
+        die "no reference recorded in $CACHE (no CURRENT file); run: $0 ref <rev>"
+    local rev
+    rev="$(tr -d '[:space:]' < "$CACHE/CURRENT")"
+    [ -n "$rev" ] || die "$CACHE/CURRENT is empty; run: $0 ref <rev>"
+    echo "$rev"
+}
+require_ref() { # rev: the cached reference folder must exist
+    [ -d "$CACHE/$1" ] || die "no cached reference for $1 in $CACHE; run: $0 ref $1"
+}
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
 ref)
-    rev="$(git -C "$REPO" rev-parse "${1:-HEAD}")"
+    rev="$(resolve_rev "${1:-HEAD}")"
     dest="$CACHE/$rev"
     if [ -d "$dest" ]; then
         echo "reference $rev already cached at $dest"
@@ -125,8 +140,9 @@ compare)
         esac
     done
     cand="${cand:-$REPO}"
-    [ -z "$rev" ] && rev="$(cat "$CACHE/CURRENT")"
-    [ -d "$CACHE/$rev" ] || { echo "no cached reference for $rev; run: $0 ref $rev" >&2; exit 2; }
+    if [ -n "$rev" ]; then rev="$(resolve_rev "$rev")"; else rev="$(current_rev)"; fi
+    require_ref "$rev"
+    [ -d "$cand/ADRIA" ] || die "$cand is not an ADRIA checkout (no ADRIA/ folder)"
     cand_abs="$(cd "$cand" && pwd)"
     cand_rev="$(git -C "$cand_abs" rev-parse HEAD 2>/dev/null || echo unknown)"
     [ -n "$(git -C "$cand_abs" status --porcelain --untracked-files=no 2>/dev/null)" ] && cand_rev="$cand_rev+dirty"
@@ -135,7 +151,8 @@ compare)
     compare "$CACHE/$rev" "$SCRATCH/cand" ${extra[@]+"${extra[@]}"}
     ;;
 selftest)
-    rev="$(cat "$CACHE/CURRENT")"
+    rev="$(current_rev)"
+    require_ref "$rev"
     ref="$CACHE/$rev"
     echo "== reference vs itself (must pass)"
     compare "$ref" "$ref"
