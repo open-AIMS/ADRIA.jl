@@ -23,6 +23,31 @@ Environment: `ADRIA_REGRESSION_REF` (cache, default `~/.cache/adria-regression`)
 `ADRIA_REGRESSION_DRIVER` (driver script, default `driver.jl`), `ADRIA_REGRESSION_THREADS`
 (default 4; use the same value for reference and candidate), `JULIA`, `TMPDIR`.
 
+`JULIA` is the Julia command and is split on spaces, so a juliaup channel can be selected
+(`JULIA="julia +1.12"`) as well as a binary (`JULIA=/path/to/julia-1.12.7/bin/julia`, a
+path without spaces). Use the same Julia for `ref` and `compare`.
+
+## Julia version and run metadata
+
+Exact equality holds only for the same Julia version: the last digits of results can
+differ between versions (for example a fixed-seed cover total is 163.98244844000132 on
+Julia 1.11.9 and 1.12.7, 163.9824484400013 on 1.13.4). The refactor gate is therefore
+"same Julia, exact"; the reference used so far was built with Julia 1.12.7, but any
+version works as long as the reference and the candidate use the same one.
+
+Every run directory (reference and candidate) gets a `META` file: `julia_version`,
+`threads`, `driver`, `driver_sha256`, `source` (rev or checkout). `compare.jl` prints both
+and then:
+
+- different Julia version: fails with exit code 2 in exact mode (rebuild the reference
+  with the candidate's Julia); with `--tol X` it warns and compares under the tolerance,
+  which is the way to compare across versions;
+- different thread count or driver: warning (a per-stage driver variant is expected);
+- no `META` (a reference built before it was recorded): warning.
+
+`ref` refuses to reuse a cached reference whose `META` does not match the current Julia,
+thread count and driver; remove it or point `ADRIA_REGRESSION_REF` elsewhere.
+
 ## What is compared
 
 `driver.jl` runs a fixed-seed ensemble on `Test_domain` (RCP 45): 8 guided scenarios with

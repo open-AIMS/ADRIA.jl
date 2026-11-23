@@ -1,17 +1,20 @@
 # Self-test for compare.jl: perturbed copies of a reference must FAIL, the unperturbed copy
-# must PASS.  julia --project=<ADRIA env> selftest.jl <ref_dir> <compare.jl>
+# (and changes compare.jl is meant to accept) must PASS.
+#   julia --project=<ADRIA env> selftest.jl <ref_dir> <compare.jl>
 using Zarr
 using JSON
 
-ref, cmp = ARGS
+src_ref, cmp = ARGS
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
+# The reference the candidates are compared against: a copy of `src_ref` with a META file
+const REF = Ref("")
 
 passes(cand, extra=``) =
     run(
         pipeline(
-            ignorestatus(`$julia --project=$project $cmp $ref $cand $extra`);
-            stdout=devnull
+            ignorestatus(`$julia --project=$project $cmp $(REF[]) $cand $extra`);
+            stdout=devnull, stderr=devnull
         )
     ).exitcode == 0
 
@@ -24,17 +27,29 @@ function expect(name, cand, want, extra=``)
 end
 
 mktempdir() do tmp
-    fresh(n) = (d=joinpath(tmp, n); cp(ref, d); d)
+    REF[] = joinpath(tmp, "ref")
+    cp(src_ref, REF[])
+    if !isfile(joinpath(REF[], "META"))
+        # A reference built before META was recorded: give the copy one, so that the META
+        # cases below test the check rather than the "no META" warning
+        println("note: reference has no META; using a synthetic one for the META cases")
+        write(
+            joinpath(REF[], "META"),
+            "julia_version=$(VERSION)\nthreads=4\ndriver=driver.jl\ndriver_sha256=x\n"
+        )
+    end
+    fresh(n) = (d=joinpath(tmp, n); cp(REF[], d); d)
     expect("identical copy", fresh("same"), true)
 
-    # 1. one value in the first float outcome array
-    d = fresh("value")
-    s = store(d, "mixed")
-    arr = first(
+    # First outcome array of a store
+    first_outcome(s) = first(
         p for
         p in readdir(joinpath(s, "results"); join=true) if isfile(joinpath(p, ".zarray"))
     )
-    z = zopen(arr, "w")
+
+    # 1. one value in the first float outcome array
+    d = fresh("value")
+    z = zopen(first_outcome(store(d, "mixed")), "w")
     z[ntuple(_ -> 1, ndims(z))...] += 1
     expect("one outcome value perturbed", d, false)
 
@@ -74,6 +89,23 @@ mktempdir() do tmp
         z[idx...] = isnan(v) ? zero(v) : nextfloat(v)   # far below any tolerance
         expect("$p perturbed by < tol under --tol", d, false, `--tol 1e-4`)
     end
+
+    # 6. run metadata (META, written by run_regression.sh)
+    function with_meta(name; kw...)
+        d = fresh(name)
+        meta = isfile(joinpath(d, "META")) ? readlines(joinpath(d, "META")) : String[]
+        filter!(l -> !any(k -> startswith(l, string(k) * "="), keys(kw)), meta)
+        append!(meta, ["$k=$v" for (k, v) in kw])
+        write(joinpath(d, "META"), join(meta, "\n") * "\n")
+        return d
+    end
+    d = with_meta("meta_version"; julia_version="0.0.1")
+    expect("other Julia version, exact", d, false)
+    expect("other Julia version, under --tol 1e-4", d, true, `--tol 1e-4`)
+    d = with_meta("meta_threads"; threads="123")
+    expect("other thread count (warning only)", d, true)
+    d = with_meta("meta_driver"; driver_sha256="0")
+    expect("other driver (warning only)", d, true)
 end
 all(results) || (println("SELFTEST FAILED"); exit(1))
 println("SELFTEST PASSED")
