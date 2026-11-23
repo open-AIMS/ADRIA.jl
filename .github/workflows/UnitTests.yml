@@ -34,6 +34,9 @@ env:
   # portable multi-target (the one Julia's official builds use) lets the cache built by
   # the `setup` job load on any runner. It must be the same at precompile and load time,
   # so it is set for the whole workflow. CI only: nothing outside this workflow reads it.
+  # NB: caches built without it are not rejected by Julia on the builder's CPU, so the
+  # cache-name (below, `adria-setup-cache-cpu`) was changed to force one rebuild; change it
+  # again if this value changes.
   JULIA_CPU_TARGET: "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)"
 
 jobs:
@@ -55,7 +58,7 @@ jobs:
           version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: adria-setup-cache
+          cache-name: adria-setup-cache-cpu
           include-matrix: false
       - name: Prepare test environment
         run: julia ADRIA/test/run_tests.jl --prepare-only
@@ -103,7 +106,7 @@ jobs:
           version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: adria-setup-cache
+          cache-name: adria-setup-cache-cpu
           # Same key for every shard and for the setup job (the matrix values, including
           # the timeout, would otherwise be part of it and give each its own cache).
           include-matrix: false
