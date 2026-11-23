@@ -62,7 +62,10 @@ ref)
     if [ -d "$dest" ]; then
         echo "reference $rev already cached at $dest"
         if [ ! -f "$dest/META" ]; then
-            echo "WARNING: it has no META (built before META was recorded); rebuild it to check versions" >&2
+            echo "ERROR: the cached reference has no META (built before META was recorded)," \
+                 "so its Julia version, threads and driver cannot be checked." \
+                 "Remove $dest to rebuild it, or use another ADRIA_REGRESSION_REF." >&2
+            exit 2
         elif [ "$(meta_get "$dest" julia_version)" != "$(julia_version)" ] ||
              [ "$(meta_get "$dest" driver_sha256)" != "$(driver_sha)" ] ||
              [ "$(meta_get "$dest" threads)" != "$THREADS" ]; then

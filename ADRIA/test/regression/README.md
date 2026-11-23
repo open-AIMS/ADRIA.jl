@@ -26,7 +26,9 @@ Environment: `ADRIA_REGRESSION_REF` (cache, default `~/.cache/adria-regression`)
 
 `JULIA` is the Julia command and is split on spaces, so a juliaup channel can be selected
 (`JULIA="julia +1.12"`) as well as a binary (`JULIA=/path/to/julia-1.12.7/bin/julia`, a
-path without spaces). Use the same Julia for `ref` and `compare`.
+path without spaces). Use the same Julia for `ref` and `compare`. The default `julia` is
+whatever juliaup (or `PATH`) resolves, which may not be 1.12; to match the 1.12.7 reference
+pass `JULIA="julia +1.12"` explicitly.
 
 ## Julia version and run metadata
 
@@ -44,10 +46,16 @@ and then:
   with the candidate's Julia); with `--tol X` it warns and compares under the tolerance,
   which is the way to compare across versions;
 - different thread count or driver: warning (a per-stage driver variant is expected);
-- no `META` (a reference built before it was recorded): warning.
+- no `META` (a reference built before it was recorded): fails with exit code 2 in exact
+  mode; a warning under `--tol X`.
 
-`ref` refuses to reuse a cached reference whose `META` does not match the current Julia,
-thread count and driver; remove it or point `ADRIA_REGRESSION_REF` elsewhere.
+`ref` refuses to reuse a cached reference that has no `META`, or whose `META` does not
+match the current Julia, thread count and driver (exit code 2); remove it to rebuild, or
+point `ADRIA_REGRESSION_REF` elsewhere.
+
+**Existing caches must be rebuilt after this change**: a reference cached by an earlier
+version of the harness has no `META` (or an older one) and is refused by `ref`. Remove the
+cached `<rev>` directory and run `ref <rev>` again.
 
 ## What is compared
 

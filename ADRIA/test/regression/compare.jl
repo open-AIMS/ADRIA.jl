@@ -16,7 +16,8 @@
 # driver, driver_sha256, source) next to the case dirs. A different Julia version fails an
 # exact comparison (exit 2: results can differ in the last digits across versions); under
 # `--tol` it is a warning. A different thread count or driver is a warning (a per-stage
-# driver variant is expected to differ). A missing META is a warning.
+# driver variant is expected to differ). A missing META fails an exact comparison (exit 2)
+# and is a warning under `--tol`.
 using Zarr
 using JSON
 
@@ -150,18 +151,26 @@ end
 # Print the run metadata of both sides; return false when the comparison must not go ahead
 function check_meta(ref, cand, tol)::Bool
     ma, mb = read_meta(ref), read_meta(cand)
+    missing_meta = false
     for (side, m) in (("reference", ma), ("candidate", mb))
         if isnothing(m)
-            println(
-                "WARNING: no META in the $side ($side built before META was recorded?): ",
-                "Julia version, threads and driver cannot be checked")
+            missing_meta = true
+            msg =
+                "no META in the $side (built before META was recorded?): Julia " *
+                "version, threads and driver cannot be checked"
+            if isnothing(tol)
+                println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. ",
+                    "Rebuild it with run_regression.sh, or pass --tol X.")
+            else
+                println("WARNING: $msg; comparing under --tol $tol")
+            end
         else
             println("$side: Julia ", get(m, "julia_version", "?"), ", ",
                 get(m, "threads", "?"), " threads, ", get(m, "driver", "?"), " (sha256 ",
                 first(get(m, "driver_sha256", "?"), 12), "), ", get(m, "source", "?"))
         end
     end
-    (isnothing(ma) || isnothing(mb)) && return true
+    missing_meta && return !isnothing(tol)
     get_(m, k) = get(m, k, "?")
     if get_(ma, "julia_version") != get_(mb, "julia_version")
         msg =
