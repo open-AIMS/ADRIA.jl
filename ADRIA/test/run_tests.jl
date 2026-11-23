@@ -63,9 +63,14 @@ function prepare_env()
     mkpath(ENV_DIR)
     cp(joinpath(TEST_DIR, "Project.toml"), joinpath(ENV_DIR, "Project.toml"); force=true)
     @info "Preparing shared test environment" ENV_DIR
-    Pkg.activate(ENV_DIR) do
-        Pkg.develop(; path=ADRIA_DIR)
-        Pkg.instantiate()
+    # Pkg precompiles automatically after `develop`/`instantiate`, with the default
+    # flags (`--check-bounds=auto`, no coverage). That cache is useless to the shards
+    # (see below) and doubles the cold build, so it is switched off here.
+    withenv("JULIA_PKG_PRECOMPILE_AUTO" => "0") do
+        Pkg.activate(ENV_DIR) do
+            Pkg.develop(; path=ADRIA_DIR)
+            Pkg.instantiate()
+        end
     end
     # Precompile in a subprocess with the same flags the shards use: `--check-bounds` is
     # part of the precompile cache key, so caches built by an in-process
@@ -164,7 +169,15 @@ function main(args)
     end
 
     mkpath(LOG_DIR)
-    prepare && prepare_env()
+    if prepare
+        prepare_env()
+    elseif !isfile(joinpath(ENV_DIR, "Manifest.toml")) &&
+        !isfile(joinpath(ENV_DIR, "Manifest-v$(VERSION.major).$(VERSION.minor).toml"))
+        error(
+            "--no-prepare given but no prepared test environment found in $ENV_DIR; " *
+            "run `julia ADRIA/test/run_tests.jl --prepare-only` first."
+        )
+    end
 
     # Tasks (not threads) are enough: they spend their time in `sleep`. Cleanup on
     # Ctrl-C / error / normal `exit` kills any still-running shard process groups.

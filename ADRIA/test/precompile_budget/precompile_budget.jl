@@ -52,12 +52,16 @@ using Test
 
         julia = joinpath(Sys.BINDIR, Base.julia_exename())
         project = envdir
+        # Same `--check-bounds` as the test shards: it is part of the precompile cache
+        # key, so with the default (`auto`) every dependency would be precompiled again
+        # here instead of reusing the cache built for the shards (many minutes cold).
+        flags = ["--check-bounds=yes"]
 
         # Precompile without the workload first, so only JIT time is measured below.
-        run(`$julia --project=$project -e "using ADRIA"`)
+        run(`$julia --project=$project $flags -e "using ADRIA"`)
 
         out = IOBuffer()
-        cmd = `$julia --project=$project $script $budget`
+        cmd = `$julia --project=$project $flags $script $budget`
         proc = run(pipeline(ignorestatus(cmd); stdout=out, stderr=stderr))
         output = String(take!(out))
         m = match(r"COLD_MODEL_ASSEMBLY_SECONDS=([\d.]+)", output)

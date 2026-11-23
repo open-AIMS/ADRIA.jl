@@ -27,6 +27,18 @@ concurrency:
   group: unittests-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # GitHub's runner pool is heterogeneous (AMD EPYC and Intel Xeon). By default Julia
+  # compiles package images for the CPU of the machine that builds them, and a runner
+  # with a different CPU rejects them and recompiles every dependency (9-14 min). A
+  # portable multi-target (the one Julia's official builds use) lets the cache built by
+  # the `setup` job load on any runner. It must be the same at precompile and load time,
+  # so it is set for the whole workflow. CI only: nothing outside this workflow reads it.
+  # NB: caches built without it are not rejected by Julia on the builder's CPU, so the
+  # cache-name (below, `adria-setup-cache-cpu`) was changed to force one rebuild; change it
+  # again if this value changes.
+  JULIA_CPU_TARGET: "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)"
+
 jobs:
   # Builds the shared test environment (install + precompile) once and saves it to the
   # cache, so the three shards below start from a warm depot instead of each doing the
@@ -46,12 +58,19 @@ jobs:
           version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: adria-setup-cache
+          cache-name: adria-setup-cache-cpu
           include-matrix: false
       - name: Prepare test environment
         run: julia ADRIA/test/run_tests.jl --prepare-only
         env:
           ADRIA_TEST_COVERAGE: adria
+      - name: Save test environment
+        # julia-actions/cache only handles the depot, so the resolved test environment
+        # (Project + Manifest) is cached separately and shared with the shards.
+        uses: actions/cache/save@v4
+        with:
+          path: ADRIA/test/.testenv
+          key: adria-testenv-${{ github.run_id }}
 
   test:
     needs: setup
@@ -87,14 +106,20 @@ jobs:
           version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: adria-setup-cache
+          cache-name: adria-setup-cache-cpu
           # Same key for every shard and for the setup job (the matrix values, including
           # the timeout, would otherwise be part of it and give each its own cache).
           include-matrix: false
-      # The launcher prepares one shared test environment, then runs this shard in a
-      # supervised subprocess with a hard per-shard kill limit.
+      - name: Restore test environment from setup job
+        uses: actions/cache/restore@v4
+        with:
+          path: ADRIA/test/.testenv
+          key: adria-testenv-${{ github.run_id }}
+          fail-on-cache-miss: true
+      # The launcher uses the environment restored above (--no-prepare) and runs this shard
+      # in a supervised subprocess with a hard per-shard kill limit.
       - name: Run ${{ matrix.shard }} shard
-        run: julia ADRIA/test/run_tests.jl ${{ matrix.shard }}
+        run: julia ADRIA/test/run_tests.jl --no-prepare ${{ matrix.shard }}
         env:
           # Launcher maps this to `--code-coverage=@<ADRIA dir>` (ADRIA sources only);
           # a plain `--code-coverage=user` would discard precompiled code of all deps.
