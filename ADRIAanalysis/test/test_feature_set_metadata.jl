@@ -20,7 +20,12 @@ else
     @testset "feature_set colmetadata tagging" begin
         dom = ADRIA.load_domain(domain_path, "45")
         scens = ADRIA.sample(dom, 8)
-        rs = ADRIA.run_scenarios(dom, scens, "45")
+        # Keep the result store out of the repository. `run_scenarios` calls `setup()`,
+        # which would reset ADRIA_OUTPUT_DIR, so run it first.
+        ADRIA.setup()
+        rs = withenv("ADRIA_OUTPUT_DIR" => mktempdir()) do
+            ADRIA.run_scenarios(dom, scens, "45")
+        end
 
         fs = ADRIAanalysis.feature_set(rs)
         @test fs isa DataFrame
