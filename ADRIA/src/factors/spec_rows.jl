@@ -78,6 +78,7 @@ function spec_rows(
                 "$(s.name): dist :$(s.dist) needs $n dist_params, got $(length(full))"
             )
         )
+
         val = get(overrides, String(s.name), s.default)
         push!(
             rows,

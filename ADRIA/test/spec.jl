@@ -285,6 +285,7 @@ end
     @test r.ptype == "continuous" && r.dist == ADRIA.TriangularDist && r.name == "A"
     @test r.val == 1.5 && r.dist_params == [1.5, 1.5, 1.5]
     @test r.default_dist_params == [0.5, 2.5, 1.5]
+
     # ... or sampled when not constant; overrides replace the value only
     r = row(
         PS(
@@ -329,6 +330,7 @@ end
         :cots_on, :cots_bh_a, :cots_senescence_age, :cots_larval_conn_seed,
         :cots_initial_state_scale
     )
+
     # Literal rows from before the ParamSpec declaration: triang, discrete_ordered, bool,
     # categorical and discrete_uniform
     @test fs.cots_bh_a == (val=1.5, ptype="continuous", dist=ADRIA.TriangularDist,
