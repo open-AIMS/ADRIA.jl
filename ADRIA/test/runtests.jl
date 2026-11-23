@@ -7,6 +7,19 @@ using ADRIA: CSV, DataFrames, YAXArrays, YAXArrays.At
 ENV["ADRIA_TEST"] = "true"
 
 include("test_constants.jl")
+include("output_sandbox.jl")
+
+# Tests must write result stores to temporary directories (see output_sandbox.jl), never to
+# the default `./Outputs` or the `./outputs` set in test/config.toml. Record what is in
+# those places now, so the end of the run can check that nothing was added.
+const _DEFAULT_OUTPUT_DIRS = unique(
+    abspath.([
+        joinpath(d, n) for d in (pwd(), pkgdir(ADRIA)) for n in ("Outputs", "outputs")
+    ])
+)
+_output_dir_contents() =
+    Dict(d => (isdir(d) ? Set(readdir(d)) : nothing) for d in _DEFAULT_OUTPUT_DIRS)
+const _OUTPUT_DIRS_BEFORE = _output_dir_contents()
 
 # Test sharding, used by `run_tests.jl` to run groups of tiers in separate processes.
 # ADRIA_TEST_SHARD: "all" (default) | "fast" (tiers 1-2) | "spec" (tier 3) | "sim" (tiers 4-5)
@@ -143,5 +156,10 @@ end
 # TODO Fix spatial_clustering and site_selection tests
 # _timed_include("site_selection.jl")
 # _timed_include("spatial_clustering.jl")
+
+# On failure the two listings show what was written where. Use `with_temp_output_dir`.
+@testset "No result stores written outside temporary directories" begin
+    @test _output_dir_contents() == _OUTPUT_DIRS_BEFORE
+end
 
 ENV["ADRIA_TEST"] = "false"
