@@ -5,6 +5,7 @@ version = "0.20.0"
 
 [deps]
 ADRIAIndicators = "05ad51df-066f-4748-8c47-f6b67db83211"
+ADRIAinterfaces = "614a4c2d-c4df-40cc-95b9-f7070135fec7"
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 COTSMod = "83d48a2b-3f7b-4d52-9f7e-4f2d9b0b8f91"
@@ -65,6 +66,7 @@ BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 
 [compat]
 ADRIAIndicators = "0.2.1"
+ADRIAinterfaces = "0.1"
 Aqua = "0.8, 0.9"
 ArchGDAL = "0.9, 0.10"
 BlackBoxOptim = "0.6"
@@ -140,4 +142,5 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 test = ["Aqua", "InteractiveUtils", "WGLMakie", "GeoMakie", "GraphMakie", "Test", "IterTools"]
 
 [sources]
+ADRIAinterfaces = {path = "../ADRIAinterfaces"}
 COTSMod = {url = "https://github.com/open-AIMS/COTSMod.jl", rev = "d29824dd3c72590bcca015bbc86696b4e68b68c4"}

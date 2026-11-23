@@ -12,10 +12,11 @@ already compiled; the first `using ADRIA` in a new checkout takes 5 to 10 minute
 
 | You changed | Run | Time |
 | --- | --- | --- |
-| COTS factors or the adapter (`ecosystem/cots_factors.jl`, `ExtInterface/COTSMod/cots.jl`) | `test/ecosystem/cots.jl` | about 30 seconds |
-| Data-package loading (`io/cots_inputs.jl`, `Domain.jl`) | `test/io/cots_inputs.jl` | about 1 minute |
+| COTS factors or the adapter (`ecosystem/cots/cots_factors.jl`, `ecosystem/cots/cots_dynamics.jl`) | `test/ecosystem/cots.jl` | about 30 seconds |
+| Data-package loading (`ecosystem/cots/cots_inputs.jl`, `Domain.jl`) | `test/io/cots_inputs.jl` | about 1 minute |
 | Calibration-file loading or the low-DHW bleaching reduction (`calib_params.jl`, `growth.jl`) | `test/calib_params_loading.jl` | about 4 minutes |
 | The COTS step in `run_model` (`scenario.jl`) or the COTS result logs | `test/ecosystem/cots_scenarios.jl` | about 3 minutes |
+| Anything that could change COTS results (on or off) | `test/ecosystem/cots_regression.jl` | about 40 seconds |
 | Anything that could change results with COTS off | the comparison with `main` | about 10 minutes |
 | Anything, before pushing | the full test suite and the formatter | 20 to 30 minutes |
 
@@ -28,7 +29,16 @@ julia --project=. -e 'include("test/ecosystem/cots.jl")'
 julia --project=. -e 'include("test/io/cots_inputs.jl")'
 julia --project=. -e 'using Test, ADRIA; include("test/calib_params_loading.jl")'
 julia --project=. -e 'include("test/ecosystem/cots_scenarios.jl")'
+julia --project=. -e 'include("test/ecosystem/cots_regression.jl")'
 ```
+
+`cots_regression.jl` is a fixed-seed regression test. It runs paired COTS-off and COTS-on
+scenarios on Test_domain (derived and fixed `ADRIA_RNG_SEED` seeds) and on a copy of it
+with every COTS input in the data package (all annual-forcing modes, derived and fixed
+larval seeds). It checks the sums and extrema of relative cover and the COTS logs against
+values recorded before the COTS code was restructured (`rtol=1e-12`), and that COTS lowers
+coral cover. Its results do not depend on the number of threads. To record new reference
+values after a deliberate change in results, run it with `COTS_REGRESSION_PRINT=true`.
 
 Each prints a `Test Summary` table. Any `Fail` or `Error` column means something broke.
 When this guide was written (November 2026) the files ran 71, 37, 60 and 29 checks.
@@ -159,7 +169,7 @@ exit(ok ? 0 : 1)
 These rules keep the comparison with `main` identical and keep new settings calibratable:
 
 - **Add each setting as a factor.** Add an entry to `COTS_FACTOR_SPECS` and a field to
-  `CotsParams` in `ecosystem/cots_factors.jl`. `_cots_factor` then makes it constant by
+  `CotsParams` in `ecosystem/cots/cots_factors.jl`. `_cots_factor` then makes it constant by
   default, keeps its full bounds for `set_factor_bounds!`, excludes it from the derived
   per-scenario seed, and lets the `cots` variable of a calibration NetCDF set it.
 - **Give it a default that changes nothing:** off (0), a multiplier of 1, or a rate of 0.
@@ -167,7 +177,7 @@ These rules keep the comparison with `main` identical and keep new settings cali
 - **Keep COTS code inside `if cots_on` in `run_model`.** Don't draw from the scenario's
   `rng` outside that block, or coral-only scenarios will change.
 - **Make new data optional.** Add it as a field of `CotsInputs` and load it in
-  `load_cots_inputs` (`io/cots_inputs.jl`). A missing file gives `nothing`, not an error.
+  `load_cots_inputs` (`ecosystem/cots/cots_inputs.jl`). A missing file gives `nothing`, not an error.
 - **Give any new domain type a `CotsParams` component.** `run_model` reads `cots_on` in
   every scenario. `ADRIADomain`, `RMEDomain` and `ReefModDomain` get it from
   `load_calib_params`.

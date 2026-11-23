@@ -232,3 +232,39 @@ function log_cots!(
     end
     return nothing
 end
+
+"""
+    larval_conn_index(forcing::CotsReefForcing, timestep::Int, mode::Int, seed::Int)::Int
+
+Index of the annual reef matrix used at `timestep`: in turn (`mode` 1) or drawn with a
+generator seeded by `seed + timestep` (`mode` 2), so the draws do not depend on other
+random numbers in the scenario.
+"""
+function larval_conn_index(
+    forcing::CotsReefForcing, timestep::Int, mode::Int, seed::Int
+)::Int
+    mode == 1 && return mod1(timestep, length(forcing.years))
+    mode == 2 && return rand(MersenneTwister(seed + timestep), eachindex(forcing.years))
+    throw(ArgumentError("Larval connectivity mode must be 1 or 2 for annual matrices"))
+end
+
+"""
+    outbreak_supply_by_location(forcing, forcing_idx, calendar_year, production)::Vector{Float64}
+
+Larvae arriving at each location from outbreaks outside the domain in `calendar_year`:
+`production` times the reef's outbreak-boundary coefficient for that year, under annual
+matrix `forcing_idx` (0 = the mean over the annual matrices). Zero in years the boundary
+does not cover.
+"""
+function outbreak_supply_by_location(
+    forcing::CotsReefForcing, forcing_idx::Int, calendar_year::Int, production::Float64
+)::Vector{Float64}
+    year_idx = findfirst(==(calendar_year), forcing.outbreak_years)
+    isnothing(year_idx) && return zeros(Float64, length(forcing.site_to_reef))
+    coefficients = if forcing_idx == 0
+        vec(mean(@view(forcing.outbreak_supply[:, year_idx, :]); dims=2))
+    else
+        forcing.outbreak_supply[:, year_idx, forcing_idx]
+    end
+    return [production * coefficients[reef] for reef in forcing.site_to_reef]
+end

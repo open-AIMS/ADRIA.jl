@@ -1,0 +1,27 @@
+name: ADRIAinterfaces Tests
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'ADRIAinterfaces/**'
+      - '.github/workflows/ADRIAinterfacesTests.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: adriainterfaces-setup-cache-v1
+      # ADRIAinterfaces has no dependency on ADRIA; it only needs Pkg.test's own environment.
+      - name: Test ADRIAinterfaces
+        run: |
+          cd ADRIAinterfaces
+          julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
