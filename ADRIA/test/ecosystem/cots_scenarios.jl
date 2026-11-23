@@ -35,6 +35,7 @@ end
         @test all(pop[scenarios = 4].data .== 0.0)
         @test all(isfinite, pop.data)
         @test all(rs.cots_condition_log[scenarios = 3].data .== 0.0)
+
         # The logs are auxiliary logs of the result set, also reachable as properties
         @test keys(rs.aux) == (:cots_condition_log, :cots_pop_log)
         @test rs.aux.cots_pop_log === rs.cots_pop_log

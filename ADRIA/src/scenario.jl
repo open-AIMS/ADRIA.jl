@@ -495,6 +495,7 @@ function _log_bytes_per_scen(
         4 * tf * n_groups * n_locs
     ]
     aux_bytes = [4 * prod(s.size) for s in aux_specs]
+
     dhw_locs = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) ? n_locs : 1
     cover_locs = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) ? n_locs : 1
     optional = [

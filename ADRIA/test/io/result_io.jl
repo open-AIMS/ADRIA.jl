@@ -127,6 +127,7 @@ end
         )
         tf, nl, ng, ns, ni, nm = 75, 3806, 5, 6, 3, 6
         total = 4 * tf * (nl * nm + ng + nl * 2 + nl * ni + ng * nl * 2)
+
         # largest array with both optional logs fully enabled (2-byte elements)
         largest = max(4 * tf * nl * nm, 2 * tf * ng * ns * nl)
         @test ADRIA._chunk_cap_by_bytes(total, largest) == old_cap(tf, nl, ng, ni, nm)

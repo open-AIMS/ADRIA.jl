@@ -389,10 +389,12 @@ function combine_results(result_sets...)::ResultSet
     # ── Setup log Zarr stores ─────────────────────────────────────────────────
     n_tf = size(rs1.iv_CAq_log, :timesteps)
     n_loc = size(rs1.iv_CAq_log, :locations)
+
     # Auxiliary logs present in any source set (only the COTS logs have known specs here)
     aux_specs = filter(
         sp -> any(rs -> haskey(rs.aux, sp.name), result_sets), cots_log_specs(n_tf, n_loc)
     )
+
     known = Set(sp.name for sp in cots_log_specs(n_tf, n_loc))
     for rs in result_sets, k in keys(rs.aux)
         k in known ||
@@ -433,6 +435,7 @@ function combine_results(result_sets...)::ResultSet
     for (k, v) in pairs(logs.aux)
         push!(dest_logs, k => v)
     end
+
     for (log, n_log) in dest_logs
         isnothing(n_log) && continue
 
