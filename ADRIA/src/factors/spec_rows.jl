@@ -1,12 +1,19 @@
 using ADRIAinterfaces: ParamSpec
 
-# `ParamSpec` kind => `ptype` of the parameter table
+"""
+`ParamSpec` kind => `ptype` of the parameter table.
+"""
 const _KIND_PTYPE = (
     real="continuous", integer="ordered discrete", bool="unordered categorical",
     categorical="unordered categorical"
 )
 
-# `ParamSpec` dist symbol => (`dist` of the parameter table, number of `dist_params`)
+"""
+    _spec_dist(spec::ParamSpec)
+
+Map the `dist` symbol of a `ParamSpec` to the tuple (`dist` of the parameter table, number
+of `dist_params`).
+"""
 function _spec_dist(spec::ParamSpec)
     d = spec.dist
     d === :uniform && return Uniform, 2

@@ -1,5 +1,11 @@
-# Helpers declaring each factor as a `ParamSpec` (constant at its default unless made
-# otherwise, with its full range in `dist_params`); `spec_rows` maps them to table rows.
+"""
+    _cots_real(name, val, (lo, hi), label, description)
+
+Declare a continuous COTS factor as a `ParamSpec` (constant at its default unless made
+otherwise, with its full range in `dist_params`); `spec_rows` maps it to a table row.
+Siblings `_cots_switch`, `_cots_levels`, `_cots_ordered` and `_cots_discrete` do the same
+for on/off switches, categorical levels, ordered integers and uniform integers.
+"""
 _cots_real(name, val, (lo, hi), label, description) = ParamSpec(
     name, val, (lo, hi); kind=:real, dist=:triang, dist_params=[lo, hi, val],
     label=label, description=description
@@ -194,8 +200,10 @@ const COTS_PARAM_SPECS = ParamSpec[
         "Multiplier on the starting COTS densities in the data package.")
 ]
 
-# Table-row view of `COTS_PARAM_SPECS`: per factor, the value, `ptype`, `dist`, full-range
-# `dist_params`, `name` and `description` (what `_cots_spec` collapses to constants).
+"""
+Table-row view of `COTS_PARAM_SPECS`: per factor, the value, `ptype`, `dist`, full-range
+`dist_params`, `name` and `description` (what `_cots_spec` collapses to constants).
+"""
 const COTS_FACTOR_SPECS = NamedTuple(
     fn => (;
         val=sp.val, ptype=sp.ptype, dist=sp.dist,
