@@ -15,15 +15,20 @@
 # only relaxes the other arrays (outcomes, other logs) to a max abs difference.
 #
 # META: `<dir>/META` (key=value lines: julia_version, threads, driver, driver_sha256,
-# source; keys and values are whitespace-trimmed) next to the case dirs, written by
-# driver.jl and run_regression.sh. A different Julia version, thread count or driver, a
+# source, os, arch; keys and values are whitespace-trimmed) next to the case dirs, written
+# by driver.jl and run_regression.jl. A different Julia version, thread count or driver, a
 # missing META, or one with a missing or empty value fails an exact comparison (exit 2) and
-# is a warning under `--tol`. `--driver-variant` accepts a different driver in exact mode
-# (a per-stage driver variant with the same ensemble). run_regression.sh `ref` applies the
-# same checks (with the same trimming) before reusing a cached reference.
+# is a warning under `--tol`. A different os or arch is always refused (exit 2), `--tol` or
+# not. `--driver-variant` accepts a different driver in exact mode (a per-stage driver
+# variant with the same ensemble). run_regression.jl `ref` applies the same checks (with
+# the same trimming) before reusing a cached reference.
 
-using Zarr
-using JSON
+# Zarr and JSON come from the active environment, unless the including module (the test
+# suite, whose project does not list them) already provides them
+isdefined(@__MODULE__, :Zarr) || using Zarr
+isdefined(@__MODULE__, :JSON) || using JSON
+
+include(joinpath(@__DIR__, "meta.jl"))
 
 """Attr keys ignored entirely (run-specific); `*_file` attrs compare by basename."""
 const IGNORED_ATTRS = Set(["invoke_time", "ADRIA_VERSION"])
@@ -161,16 +166,6 @@ function the_store(case_dir)
     return only(stores)
 end
 
-function read_meta(dir)::Union{Nothing,Dict{String,String}}
-    f = joinpath(dir, "META")
-    isfile(f) || return nothing
-    kv = [split(l, "="; limit=2) for l in readlines(f) if occursin("=", l)]
-    return Dict(String(strip(k)) => String(strip(v)) for (k, v) in kv)
-end
-
-"""Keys every META must hold, each with a non-empty value."""
-const META_KEYS = ("julia_version", "threads", "driver", "driver_sha256", "source")
-
 """
     check_meta(ref, cand, tol, driver_variant::Bool)::Bool
 
@@ -208,9 +203,10 @@ function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
     get_(m, k) = get(m, k, "?")
 
     # One rule for every environment mismatch: an error in exact mode, a warning under
-    # --tol. A driver change is accepted in exact mode only with --driver-variant.
-    function mismatch(msg, fix; allowed=false)
-        if isnothing(tol) && !allowed
+    # --tol. A driver change is accepted in exact mode only with --driver-variant. A
+    # different os or arch is an error even under --tol (`always`).
+    function mismatch(msg, fix; allowed=false, always=false)
+        if always || (isnothing(tol) && !allowed)
             println(stderr, "ERROR: $msg, so an exact comparison is not meaningful. $fix")
             return false
         end
@@ -225,8 +221,8 @@ function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
             "reference built with Julia $(get_(ma, "julia_version")), candidate run " *
             "with Julia $(get_(mb, "julia_version")): results can differ in the last " *
             "digits across Julia versions",
-            "Rebuild the reference with the same Julia (JULIA=...), or pass --tol X to " *
-            "compare across versions."
+            "Rebuild the reference under the same Julia (run_regression.jl uses the " *
+            "Julia that launched it), or pass --tol X to compare across versions."
         )
     end
     if get_(ma, "threads") != get_(mb, "threads")
@@ -243,6 +239,15 @@ function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
             "Use the driver the reference was built with, or pass --driver-variant for " *
             "a per-stage driver variant with the same ensemble.";
             allowed=driver_variant
+        )
+    end
+    for k in ("os", "arch")
+        get_(ma, k) == get_(mb, k) && continue
+        ok &= mismatch(
+            "$k differs ($(get_(ma, k)) vs $(get_(mb, k)))",
+            "Build the reference on the same OS and architecture as the candidate; " *
+            "this is refused under --tol too.";
+            always=true
         )
     end
     return ok
@@ -296,15 +301,21 @@ function main(args)
     return 1
 end
 
-# Any exception (unreadable store, unexpected layout, ...) exits with 3, so that a crash is
-# never mistaken for "differences found" (1) or a refusal (2)
-exit(
-    try
-        main(ARGS)
+"""
+    run_main(args)::Int
+
+`main(args)`, with any exception (unreadable store, unexpected layout, ...) turned into
+exit code 3, so that a crash is never mistaken for "differences found" (1) or a refusal (2).
+"""
+function run_main(args)::Int
+    return try
+        main(args)
     catch err
         println(stderr, "ERROR: compare.jl failed:")
         showerror(stderr, err, catch_backtrace())
         println(stderr)
         3
     end
-)
+end
+
+abspath(PROGRAM_FILE) == (@__FILE__) && exit(run_main(ARGS))

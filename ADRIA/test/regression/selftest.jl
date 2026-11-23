@@ -1,19 +1,21 @@
-# Self-test for compare.jl: perturbed copies of a reference must fail with exit code 1
-# (differences), environment mismatches with 2 (refusal), and the unperturbed copy (and
-# changes compare.jl is meant to accept) must pass (0). Exit codes are checked exactly.
-#   julia --project=<ADRIA env> selftest.jl <ref_dir> <compare.jl>
+# Self-test for the comparison, run through run_regression.jl (`compare-dirs`): perturbed
+# copies of a reference must fail with exit code 1 (differences), environment mismatches
+# with 2 (refusal), and the unperturbed copy (and changes the comparison is meant to accept)
+# must pass (0). Exit codes are checked exactly.
+#   julia --project=<ADRIA env> selftest.jl <ref_dir> <run_regression.jl>
 
 using Zarr
 using JSON
 
-length(ARGS) == 2 || (println(stderr, "usage: selftest.jl ref_dir compare.jl"); exit(2))
-src_ref, cmp = ARGS
+length(ARGS) == 2 ||
+    (println(stderr, "usage: selftest.jl ref_dir run_regression.jl"); exit(2))
+src_ref, runner = ARGS
 isdir(src_ref) || (println(stderr, "ERROR: reference folder $src_ref not found"); exit(2))
 isfile(joinpath(src_ref, "META")) || (
     println(stderr, "ERROR: reference $src_ref has no META (built before META was ",
-        "recorded); rebuild it with run_regression.sh ref"); exit(2)
+        "recorded); rebuild it with run_regression.jl ref"); exit(2)
 )
-isfile(cmp) || (println(stderr, "ERROR: $cmp not found"); exit(2))
+isfile(runner) || (println(stderr, "ERROR: $runner not found"); exit(2))
 
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
@@ -21,7 +23,7 @@ project = dirname(Base.active_project())
 """The reference the candidates are compared against: a copy of `src_ref`."""
 const REF = Ref("")
 
-# Exit codes of compare.jl
+# Exit codes of the runner (those of compare.jl, passed through)
 const PASS, DIFF, REFUSED, CRASH = 0, 1, 2, 3
 const CODE_NAMES = Dict(PASS => "pass", DIFF => "differences", REFUSED => "refusal",
     CRASH => "crash")
@@ -29,7 +31,9 @@ const CODE_NAMES = Dict(PASS => "pass", DIFF => "differences", REFUSED => "refus
 exitcode(cand, extra=``; ref=REF[]) =
     run(
         pipeline(
-            ignorestatus(`$julia --project=$project $cmp $ref $cand $extra`);
+            ignorestatus(
+                `$julia --project=$project $runner compare-dirs $ref $cand $extra`
+            );
             stdout=devnull, stderr=devnull
         )
     ).exitcode
@@ -40,8 +44,8 @@ results = Bool[]
 """
     expect(name, cand, want::Int, extra=``; ref=REF[])
 
-Run compare.jl on `cand` and record whether it exits with `want`. The exact exit code is
-checked, so a crash (3) cannot pass as expected differences (1).
+Run the runner's `compare-dirs` on `cand` and record whether it exits with `want`. The
+exact exit code is checked, so a crash (3) cannot pass as expected differences (1).
 """
 function expect(name, cand, want::Int, extra=``; ref=REF[])
     got = exitcode(cand, extra; ref=ref)
@@ -126,7 +130,7 @@ mktempdir() do tmp
     d = fresh("two_stores")
     s1 = store(d, "cots_off")
     cp(s1, s1 * "_copy")
-    expect("two stores in a case (compare.jl error)", d, CRASH)
+    expect("two stores in a case (compare.jl crash)", d, CRASH)
 
     # 5. --tol must still require exact inputs table and intervention logs
     for p in ("inputs", joinpath("logs", "shading_log"), joinpath("logs", "rankings"))
@@ -150,7 +154,7 @@ mktempdir() do tmp
         expect("$p ($T) perturbed under --tol", d, DIFF, `--tol 1e-4`)
     end
 
-    # 6. run metadata (META, written by run_regression.sh)
+    # 6. run metadata (META, written by driver.jl and run_regression.jl)
     function with_meta(name; kw...)
         d = fresh(name)
         meta = isfile(joinpath(d, "META")) ? readlines(joinpath(d, "META")) : String[]
@@ -170,6 +174,14 @@ mktempdir() do tmp
     expect("other driver, exact", d, REFUSED)
     expect("other driver, exact with --driver-variant", d, PASS, `--driver-variant`)
     expect("other driver, under --tol 1e-4", d, PASS, `--tol 1e-4`)
+
+    # A different OS or architecture is refused even under --tol
+    d = with_meta("meta_os"; os="Plan9")
+    expect("other OS, exact", d, REFUSED)
+    expect("other OS, under --tol 1e-4", d, REFUSED, `--tol 1e-4`)
+    d = with_meta("meta_arch"; arch="riscv64")
+    expect("other architecture, exact", d, REFUSED)
+    expect("other architecture, under --tol 1e-4", d, REFUSED, `--tol 1e-4`)
 
     # Keys and values are compared whitespace-trimmed (also CRLF line ends)
     d = fresh("meta_padded")

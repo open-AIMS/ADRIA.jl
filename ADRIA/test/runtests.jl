@@ -74,6 +74,7 @@ if _in_shard("fast")
         _timed_include("io/inputs.jl")
         _timed_include("io/cots_inputs.jl")
         _timed_include("calib_params_loading.jl")
+        _timed_include("regression_harness.jl")
         # Cold-JIT budget for the work done in ADRIA's @compile_workload (~1 min; spawns
         # subprocesses). Guards against 20-30 min fresh-install precompile regressions.
         _timed_include("precompile_budget/precompile_budget.jl")
