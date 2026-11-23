@@ -3,7 +3,8 @@
 #   julia --project=<checkout>/ADRIA compare.jl <ref_dir> <cand_dir> [--tol 1e-4]
 #
 # Exit code 0 = identical (or within --tol for outcomes), 1 = differences, 2 = usage error
-# or an environment mismatch that makes an exact comparison meaningless (see META below).
+# or an environment mismatch that makes an exact comparison meaningless (see META below),
+# 3 = compare.jl itself failed (an exception).
 # Uses only Zarr, JSON (direct ADRIA dependencies), so any ADRIA project environment works.
 #
 # Compared, per case directory and per Zarr array: relative path set, dtype, shape, chunks,
@@ -211,7 +212,8 @@ function main(args)
     while i <= length(args)
         if args[i] == "--tol"
             i < length(args) || (println(stderr, "--tol needs a value"); return 2)
-            tol = parse(Float64, args[i + 1])
+            tol = tryparse(Float64, args[i + 1])
+            isnothing(tol) && (println(stderr, "--tol needs a number"); return 2)
             i += 2
         else
             push!(pos, args[i])
@@ -241,4 +243,15 @@ function main(args)
     return 1
 end
 
-exit(main(ARGS))
+# Any exception (unreadable store, unexpected layout, ...) exits with 3, so that a crash is
+# never mistaken for "differences found" (1) or a refusal (2)
+exit(
+    try
+        main(ARGS)
+    catch err
+        println(stderr, "ERROR: compare.jl failed:")
+        showerror(stderr, err, catch_backtrace())
+        println(stderr)
+        3
+    end
+)

@@ -20,6 +20,12 @@ ADRIA/test/regression/run_regression.sh compare --tol 1e-4     # fallback, see b
 ADRIA/test/regression/run_regression.sh selftest
 ```
 
+`compare` exits with 0 (identical, or within `--tol`), 1 (differences), 2 (usage error, or
+a refusal: an environment mismatch or missing run metadata, see below) or 3 (`compare.jl`
+itself failed). `selftest` checks the exact exit code of each case, so a crash cannot pass
+as an expected difference; it covers value, array, attr, `model_spec.csv`, case-set and
+`attached`-case perturbations, the always-exact arrays under `--tol`, and the `META` rules.
+
 Environment: `ADRIA_REGRESSION_REF` (cache, default `~/.cache/adria-regression`),
 `ADRIA_REGRESSION_DRIVER` (driver script, default `driver.jl`), `ADRIA_REGRESSION_THREADS`
 (default 4; use the same value for reference and candidate), `JULIA`, `TMPDIR`.
