@@ -178,6 +178,15 @@ values also fail.
 @noinline function _check_decrease_only(
     before::AbstractArray{Float64,3}, after::AbstractArray{Float64,3}, tstep::Int
 )::Nothing
+    # Fast path: branch-free reduction (vectorises); same condition as the loop below
+    ok = true
+    @inbounds @simd for i in eachindex(before, after)
+        a = after[i]
+        ok &= (a <= before[i]) & !(a < 0.0)
+    end
+    ok && return nothing
+
+    # Slow path, only on a violation: find the first offending cell and report it
     @inbounds for i in eachindex(before, after)
         if !(after[i] <= before[i]) || after[i] < 0.0
             throw(
