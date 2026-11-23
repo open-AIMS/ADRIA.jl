@@ -21,10 +21,12 @@ REPO="$(git -C "$HERE" rev-parse --show-toplevel)"
 CACHE="${ADRIA_REGRESSION_REF:-$HOME/.cache/adria-regression}"
 DRIVER="${ADRIA_REGRESSION_DRIVER:-$HERE/driver.jl}"
 THREADS="${ADRIA_REGRESSION_THREADS:-4}"
+
 # Word-split on purpose, so JULIA="julia +1.12" selects a juliaup channel
 read -r -a JULIA_CMD <<< "${JULIA:-julia}"
 die() { echo "ERROR: $*" >&2; exit 2; }
 [ ${#JULIA_CMD[@]} -gt 0 ] || die "JULIA is empty or whitespace only; unset it or set e.g. JULIA=\"julia +1.12\""
+
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/adria-regression.XXXXXX")"
 WT=""
 cleanup() {
@@ -41,6 +43,7 @@ run_driver() { # checkout outdir source
     (cd "$SCRATCH/cwd" && "${JULIA_CMD[@]}" --project="$1/ADRIA" -t "$THREADS" "$DRIVER" "$1/ADRIA" "$2")
     write_meta "$2" "$3"
 }
+
 driver_sha() {
     local sha
     if command -v sha256sum >/dev/null; then sha="$(sha256sum "$DRIVER" | cut -d' ' -f1)"
@@ -49,12 +52,14 @@ driver_sha() {
     [ -n "$sha" ] || die "could not checksum $DRIVER"
     echo "$sha"
 }
+
 julia_version() {
     local v
     v="$(cd "$SCRATCH/cwd" && "${JULIA_CMD[@]}" --startup-file=no -e 'print(VERSION)')" || true
     [ -n "$v" ] || die "could not get the Julia version from: ${JULIA_CMD[*]}"
     echo "$v"
 }
+
 # outdir source: complete the META the driver wrote (its own Julia VERSION and thread
 # count) with the driver and the source; every value must be non-empty
 write_meta() {
@@ -72,20 +77,24 @@ write_meta() {
     [ "$(meta_get "$1" threads)" = "$THREADS" ] ||
         die "the driver ran with $(meta_get "$1" threads) threads, not $THREADS"
 }
+
 # dir key: the value, with surrounding whitespace (and a CR) trimmed, as compare.jl does
 meta_get() {
     sed -n "s/^[[:space:]]*$2[[:space:]]*=//p" "$1/META" 2>/dev/null |
         sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | tail -n 1
 }
+
 compare() { # ref cand [extra args]; uses the candidate's environment for Zarr/JSON
     local ref="$1" cand="$2"; shift 2
     "${JULIA_CMD[@]}" --project="$COMPARE_ENV" "$HERE/compare.jl" "$ref" "$cand" "$@"
 }
 COMPARE_ENV="${COMPARE_ENV:-$REPO/ADRIA}"
+
 resolve_rev() { # rev-ish -> full commit sha, resolved in this repository
     git -C "$REPO" rev-parse --verify --quiet "$1^{commit}" ||
         die "cannot resolve '$1' to a commit in $REPO"
 }
+
 current_rev() { # the rev recorded by the last `ref`
     [ -f "$CACHE/CURRENT" ] ||
         die "no reference recorded in $CACHE (no CURRENT file); run: $0 ref <rev>"
@@ -94,6 +103,7 @@ current_rev() { # the rev recorded by the last `ref`
     [ -n "$rev" ] || die "$CACHE/CURRENT is empty; run: $0 ref <rev>"
     echo "$rev"
 }
+
 require_ref() { # rev: the cached reference folder must exist
     [ -d "$CACHE/$1" ] || die "no cached reference for $1 in $CACHE; run: $0 ref $1"
 }
@@ -145,6 +155,7 @@ compare)
            shift ;;
         esac
     done
+
     cand="${cand:-$REPO}"
     if [ -n "$rev" ]; then rev="$(resolve_rev "$rev")"; else rev="$(current_rev)"; fi
     require_ref "$rev"

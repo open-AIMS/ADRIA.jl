@@ -1225,6 +1225,7 @@ function run_model(
     # Optional submodels attached to the domain (ADRIAinterfaces); `()` when none
     submodel_slots = _init_submodels(domain, param_set, factor_names, submodel_caches, rng)
     has_submodels = !isempty(submodel_slots)
+
     # Per-cell cover before the submodel phase, to enforce decrease-only; empty (no
     # allocation of note, same type) when nothing is attached
     submodel_cover_before = zeros(has_submodels ? size(C_cover_t) : (0, 0, 0))

@@ -21,6 +21,7 @@
 # is a warning under `--tol`. `--driver-variant` accepts a different driver in exact mode
 # (a per-stage driver variant with the same ensemble). run_regression.sh `ref` applies the
 # same checks (with the same trimming) before reusing a cached reference.
+
 using Zarr
 using JSON
 
@@ -125,6 +126,7 @@ function compare_store!(rep, name, ref, cand, tol)
     for p in intersect(ra, rb)
         compare_array!(rep, "$name/$p", p, joinpath(ref, p), joinpath(cand, p), tol)
     end
+
     # Group-level attrs (store root, logs/, ...)
     groups(root) = sort!(
         [
@@ -137,6 +139,7 @@ function compare_store!(rep, name, ref, cand, tol)
     for g in intersect(ga, gb)
         compare_attrs!(rep, "$name/$g (group)", joinpath(ref, g), joinpath(cand, g))
     end
+
     ms = joinpath("model_spec", "model_spec.csv")
     fa, fb = joinpath(ref, ms), joinpath(cand, ms)
     if isfile(fa) != isfile(fb)
@@ -198,9 +201,12 @@ function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
             println("WARNING: $msg; comparing under --tol $tol")
         end
     end
+
     # Empty or missing values never count as a match
     unusable && return !isnothing(tol)
+
     get_(m, k) = get(m, k, "?")
+
     # One rule for every environment mismatch: an error in exact mode, a warning under
     # --tol. A driver change is accepted in exact mode only with --driver-variant.
     function mismatch(msg, fix; allowed=false)
@@ -212,6 +218,7 @@ function check_meta(ref, cand, tol, driver_variant::Bool)::Bool
             isnothing(tol) ? "accepted (--driver-variant)" : "comparing under --tol $tol")
         return true
     end
+
     ok = true
     if get_(ma, "julia_version") != get_(mb, "julia_version")
         ok &= mismatch(
@@ -260,12 +267,15 @@ function main(args)
             i += 1
         end
     end
+
     if length(pos) != 2
         println(stderr, "usage: compare.jl ref_dir cand_dir [--tol X] [--driver-variant]")
         return 2
     end
+
     ref, cand = pos
     check_meta(ref, cand, tol, driver_variant) || return 2
+
     rep = Report(String[], 0)
     ca = sort!(filter(d -> isdir(joinpath(ref, d)), readdir(ref)))
     cb = sort!(filter(d -> isdir(joinpath(cand, d)), readdir(cand)))
@@ -275,6 +285,7 @@ function main(args)
             rep, c, the_store(joinpath(ref, c)), the_store(joinpath(cand, c)), tol
         )
     end
+
     mode = isnothing(tol) ? "exact" : "tol=$tol (outcomes only)"
     if isempty(rep.diffs)
         println("PASS ($mode): $(rep.n_arrays) arrays compared")

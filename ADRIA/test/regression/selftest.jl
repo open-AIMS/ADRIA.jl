@@ -2,6 +2,7 @@
 # (differences), environment mismatches with 2 (refusal), and the unperturbed copy (and
 # changes compare.jl is meant to accept) must pass (0). Exit codes are checked exactly.
 #   julia --project=<ADRIA env> selftest.jl <ref_dir> <compare.jl>
+
 using Zarr
 using JSON
 
@@ -13,6 +14,7 @@ isfile(joinpath(src_ref, "META")) || (
         "recorded); rebuild it with run_regression.sh ref"); exit(2)
 )
 isfile(cmp) || (println(stderr, "ERROR: $cmp not found"); exit(2))
+
 julia = Base.julia_cmd()
 project = dirname(Base.active_project())
 
@@ -157,6 +159,7 @@ mktempdir() do tmp
         write(joinpath(d, "META"), join(meta, "\n") * "\n")
         return d
     end
+
     d = with_meta("meta_version"; julia_version="0.0.1")
     expect("other Julia version, exact", d, REFUSED)
     expect("other Julia version, under --tol 1e-4", d, PASS, `--tol 1e-4`)
@@ -167,6 +170,7 @@ mktempdir() do tmp
     expect("other driver, exact", d, REFUSED)
     expect("other driver, exact with --driver-variant", d, PASS, `--driver-variant`)
     expect("other driver, under --tol 1e-4", d, PASS, `--tol 1e-4`)
+
     # Keys and values are compared whitespace-trimmed (also CRLF line ends)
     d = fresh("meta_padded")
     m = readlines(joinpath(d, "META"))
@@ -176,16 +180,19 @@ mktempdir() do tmp
               for l in m], "\n") * "\n"
     )
     expect("META with padded keys and values and CRLF", d, PASS)
+
     d = fresh("meta_missing")
     rm(joinpath(d, "META"))
     expect("candidate without META, exact", d, REFUSED)
     expect("candidate without META, under --tol 1e-4", d, PASS, `--tol 1e-4`)
     expect("reference without META, exact", REF[], REFUSED; ref=d)
+
     # Empty values on both sides must not count as a match
     d = with_meta("meta_empty"; julia_version="")
     expect("empty julia_version on both sides, exact", d, REFUSED; ref=d)
     d = with_meta("meta_no_source"; source="")
     expect("empty source in candidate, exact", d, REFUSED)
 end
+
 all(results) || (println("SELFTEST FAILED"); exit(1))
 println("SELFTEST PASSED")
