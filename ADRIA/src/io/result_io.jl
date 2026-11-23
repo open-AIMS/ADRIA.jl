@@ -182,7 +182,9 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
     )
 end
 
-# Attribute names under which stores written so far hold axis labels
+"""
+Attribute names under which stores written so far hold axis labels.
+"""
 const LEGACY_LABEL_ATTRS = Dict(:age_class => :age_classes)
 
 """

@@ -54,19 +54,27 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     aux::AX  # NamedTuple of auxiliary (submodel) logs by name, e.g. `cots_pop_log`; empty if none
 end
 
-# Names of the arrays in the log group that are part of the core result set. Every other
-# array in the group is an auxiliary log. `fog` and `shade` are the old (pre-`shading_log`)
-# separate shading arrays.
+"""
+Names of the arrays in the log group that are part of the core result set. Every other
+array in the group is an auxiliary log. `fog` and `shade` are the old (pre-`shading_log`)
+separate shading arrays.
+"""
 const CORE_LOG_NAMES = (
     "rankings", "larval_methods", "coral_aquaculture", "shading_log", "fog", "shade",
     "coral_dhw_log", "coral_cover_log"
 )
 
-# Auxiliary logs that older code exposed as fields of the result set; `nothing` when absent
+"""
+Auxiliary logs that older code exposed as fields of the result set; `nothing` when absent.
+"""
 const LEGACY_AUX_NAMES = (:cots_pop_log, :cots_condition_log)
 
-# Auxiliary logs are reachable as properties (`rs.cots_pop_log`); the legacy COTS names
-# give `nothing` when the log is absent, as the former fields did.
+"""
+    Base.getproperty(rs::ADRIAResultSet, name::Symbol)
+
+Auxiliary logs are reachable as properties (`rs.cots_pop_log`); the legacy COTS names
+give `nothing` when the log is absent, as the former fields did.
+"""
 @inline function Base.getproperty(rs::ADRIAResultSet, name::Symbol)
     hasfield(ADRIAResultSet, name) && return getfield(rs, name)
     aux = getfield(rs, :aux)
