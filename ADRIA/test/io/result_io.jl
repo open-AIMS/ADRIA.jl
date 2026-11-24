@@ -40,9 +40,15 @@ end
         n_a, n_b = size(a.inputs, 1), size(b.inputs, 1)
         @test size(combined.inputs, 1) == n_a + n_b
 
-        # Union of the columns, in order of first appearance, all Float64
-        @test names(combined.inputs) ==
-            names(DataFrames.vcat(a.inputs, b.inputs; cols=:union))
+        # Union of the columns, in order of first appearance, all Float64: the columns of
+        # the first source, then those only the second has, in its order
+        in_dropped = in(string.(dropped))
+        expected = if a === rs_a
+            [names(rs_a.inputs); filter(in_dropped, names(TEST_RS.inputs))]
+        else
+            names(TEST_RS.inputs)
+        end
+        @test names(combined.inputs) == expected
         @test all(eltype(c) == Float64 for c in eachcol(combined.inputs))
 
         # Missing factors are NaN for the source lacking them, values kept elsewhere
@@ -58,11 +64,38 @@ end
         @test ADRIA.scenario_sources(combined) == [fill(1, n_a); fill(2, n_b)]
     end
 
-    # The union specification lists every factor once
-    combined = with_temp_output_dir(() -> ADRIA.combine_results(rs_a, TEST_RS))
+    # Two sources with different specifications: one lacks the dropped factors, and the
+    # two disagree on the default value of a factor they share
+    shared = TEST_RS.model_spec.fieldname[1]
+    spec_a = filter(r -> !(r.fieldname in dropped), TEST_RS.model_spec)
+    spec_a[spec_a.fieldname .== shared, :val] .= 99.0
+    rs_b = let r = rs_a
+        ADRIA.@set! r.model_spec = spec_a
+        ADRIA.@set! r.model_specs = [spec_a]
+        r
+    end
+
+    combined = with_temp_output_dir(() -> ADRIA.combine_results(rs_b, TEST_RS))
     ms = ADRIA.model_spec(combined)
+    val_of(spec, f) = only(spec[spec.fieldname .== f, :val])
+
+    # The union lists every factor of either source once, in order of first appearance
     @test allunique(zip(ms.component, ms.fieldname))
-    @test issubset(TEST_RS.model_spec.fieldname, ms.fieldname)
+    @test ms.fieldname ==
+        [spec_a.fieldname; filter(in(dropped), TEST_RS.model_spec.fieldname)]
+
+    # The first source wins for a shared factor; a factor only the second has is taken
+    # from it
+    @test val_of(ms, shared) == 99.0
+    @test val_of(ms, :cots_on) == val_of(TEST_RS.model_spec, :cots_on)
+    flipped = with_temp_output_dir(() -> ADRIA.combine_results(TEST_RS, rs_b))
+    @test val_of(ADRIA.model_spec(flipped), shared) == val_of(TEST_RS.model_spec, shared)
+
+    # Each source keeps its own specification
+    specs = ADRIA.model_specs(combined)
+    @test specs[1].fieldname == spec_a.fieldname && val_of(specs[1], shared) == 99.0
+    @test specs[2].fieldname == TEST_RS.model_spec.fieldname
+    @test val_of(specs[2], shared) == val_of(TEST_RS.model_spec, shared)
 
     # Sets that are not merged have a single source
     @test length(ADRIA.model_specs(TEST_RS)) == 1
@@ -376,6 +409,31 @@ end
             @test all(==(1.0), m.logs.sub_a.x[scenarios = has].data)
             @test all(isnan, m.logs.sub_a.x[scenarios = lacks].data)
         end
+    end
+
+    @testset "re-merge: logs, NaN fill and sources carry through" begin
+        n = size(TEST_RS.inputs, 1)
+        a = with_x([:sub_a], 1)
+        b = with_x([:sub_b], 2)
+        ab = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
+
+        # Merging the merged set with a third source: three sources, aligned records
+        c = with_x([:sub_a], 3)
+        abc = with_temp_output_dir(() -> ADRIA.combine_results(ab, c))
+        @test abc.source_sizes == [n, n, n]
+        @test length(ADRIA.model_specs(abc)) == 3
+        @test length(ADRIA.provenance(abc)) == 3
+        @test ADRIA.scenario_sources(abc) == [fill(1, n); fill(2, n); fill(3, n)]
+
+        # Values and the NaN fill of the first merge are kept; the new source lacks sub_b
+        @test keys(abc.logs) == (:sub_a, :sub_b)
+        x_a, x_b = abc.logs.sub_a.x, abc.logs.sub_b.x
+        @test all(==(1.0), x_a[scenarios = 1:n].data)
+        @test all(isnan, x_a[scenarios = (n + 1):(2n)].data)
+        @test all(==(3.0), x_a[scenarios = (2n + 1):(3n)].data)
+        @test all(isnan, x_b[scenarios = 1:n].data)
+        @test all(==(2.0), x_b[scenarios = (n + 1):(2n)].data)
+        @test all(isnan, x_b[scenarios = (2n + 1):(3n)].data)
     end
 
     @testset "per-scenario byte budget keeps the sum and adds submodel logs" begin
