@@ -360,6 +360,8 @@ Note: Results are stored in Zarr format. Combining data sets can be
   `ADRIA.scenario_sources(rs)` giving the source of each scenario. `ADRIA.model_spec(rs)` is the
   union of the specifications, the first source winning for a parameter several share.
   The previous behaviour of keeping only the first set's specification is gone.
+- The provenance record of each source is kept as well (`ADRIA.provenance(rs)`, aligned
+  with `ADRIA.model_specs(rs)`; `nothing` for a source stored without one).
 
 !!! warning
     A merged scenario table can hold `NaN` columns. `ADRIAanalysis` functions that take
@@ -845,11 +847,16 @@ scenario_sources(rs::ADRIAResultSet)::Vector{Int} = reduce(
 """
     provenance(rs::ADRIAResultSet)::Vector{Any}
 
-What produced each source of the result set (one record if not merged), aligned with
-`model_specs`: a `Dict` with `adria_version` (leading `v`, as the `ADRIA_VERSION` attr), `julia_version`, `interface_version`, `models`
-(attached submodels in attach order, then COTS if it was on; each with `name`, `type`,
-`module`, `version`, `revision`) and `overrides` (always empty today). An entry is `nothing`
-for a store written before provenance was recorded.
+What produced each source of the result set, aligned with [`model_specs`](@ref): a
+`Dict` with `adria_version` (leading `v`, as the `ADRIA_VERSION` attr), `julia_version`,
+`interface_version`, `models` (attached submodels in attach order, then COTS if it was on;
+each with `name`, `type`, `module`, `version`, `revision`) and `overrides` (always empty
+today).
+
+A result set that is not merged has one record. A set made by [`combine_results`](@ref)
+has one record per source, in source order; merging a merged set adds its records, not one
+record for the whole set. An entry is `nothing` for a source stored before provenance was
+recorded.
 """
 provenance(rs::ADRIAResultSet)::Vector{Any} = rs.provenance
 

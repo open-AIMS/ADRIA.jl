@@ -878,6 +878,7 @@ function _load_results(result_loc::String)::ResultSet
     source_sizes::Vector{Int} = Int.(
         get(input_set.attrs, "source_sizes", [nrow(inputs_used)])
     )
+
     # Provenance, one record per source (`nothing` for stores written without it)
     prov = get(input_set.attrs, "provenance", nothing)
     provenance::Vector{Any} = if prov isa AbstractVector
@@ -893,6 +894,7 @@ function _load_results(result_loc::String)::ResultSet
         )
         provenance = fill(nothing, length(source_sizes))
     end
+
     sum(source_sizes) == nrow(inputs_used) || error(
         "Result set at $(result_loc) is inconsistent: its sources hold $(sum(source_sizes)) " *
         "scenarios but the scenario table has $(nrow(inputs_used))"

@@ -263,12 +263,12 @@ end
     _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
 
 What produced a run, written to the result store: ADRIA (with a leading `v`, like the
-`ADRIA_VERSION` attr; other versions are plain), Julia and submodel interface
-versions; `models`, the attached submodels in attach order followed by the built-in COTS
-model (`COTSMod`, with its package version and manifest revision) when any scenario has
-`cots_on = 1`; and `overrides` (always empty: there is no
-mechanism to override submodel parameters except the scenario table, which is stored in
-`inputs`). Deterministic for a given run apart from the versions.
+`ADRIA_VERSION` attr; other versions are plain), Julia and submodel interface versions;
+`models`, the attached submodels in attach order followed by the built-in COTS model
+(`COTSMod`, with its package version and manifest revision) when any scenario has
+`cots_on = 1`; and `overrides` (always empty: there is no mechanism to override submodel
+parameters except the scenario table, which is stored in `inputs`). Deterministic for a
+given run apart from the versions.
 """
 function _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
     models = Dict{String,Any}[
