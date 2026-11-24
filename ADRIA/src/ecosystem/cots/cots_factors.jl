@@ -1,4 +1,32 @@
 """
+    _cots_real(name, val, (lo, hi), label, description)
+
+Declare a continuous COTS factor as a `ParamSpec` (constant at its default unless made
+otherwise, with its full range in `dist_params`); `spec_rows` maps it to a table row.
+Siblings `_cots_switch`, `_cots_levels`, `_cots_ordered` and `_cots_discrete` do the same
+for on/off switches, categorical levels, ordered integers and uniform integers.
+"""
+_cots_real(name, val, (lo, hi), label, description) = ParamSpec(
+    name, val, (lo, hi); kind=:real, dist=:triang, dist_params=[lo, hi, val],
+    label=label, description=description
+)
+_cots_switch(name, val, label, description) = ParamSpec(
+    name, val, (0, 1); kind=:bool, label=label, description=description
+)
+_cots_levels(name, val, levels, label, description) = ParamSpec(
+    name, val, (minimum(levels), maximum(levels)); kind=:categorical, levels=levels,
+    label=label, description=description
+)
+_cots_ordered(name, val, (lo, hi, step), label, description) = ParamSpec(
+    name, val, (lo, hi); kind=:integer, dist=:discrete_ordered,
+    dist_params=[lo, hi, step], label=label, description=description
+)
+_cots_discrete(name, val, (lo, hi), label, description) = ParamSpec(
+    name, val, (lo, hi); kind=:integer, dist=:discrete_uniform, dist_params=[lo, hi],
+    label=label, description=description
+)
+
+"""
 Model factors of the crown-of-thorns starfish (COTS) submodel, run by COTSMod.jl.
 
 `cots_on` switches the submodel on (1) or off (0, the default). With it off, ADRIA runs the
@@ -14,176 +42,174 @@ factors directly.
 Units follow COTSMod: population densities and the Allee threshold are COTS ha^-1, and
 immigration is COTS ha^-1 per timestep.
 """
-const COTS_FACTOR_SPECS = (
-    cots_on=(val=0, ptype="unordered categorical", dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="COTS On",
-        description="Run the COTS submodel (1) or the coral-only model (0)."),
+const COTS_PARAM_SPECS = ParamSpec[
+    _cots_switch(:cots_on, 0,
+        "COTS On",
+        "Run the COTS submodel (1) or the coral-only model (0)."),
 
     # Core demographic parameters
-    cots_bh_a=(val=1.5, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.5, 2.5, 1.5),
-        name="COTS Beverton-Holt a", description="Beverton-Holt recruitment parameter 'a'."
-    ),
-    cots_bh_b=(val=0.5, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.1, 1.0, 0.5),
-        name="COTS Beverton-Holt b", description="Beverton-Holt density dependence 'b'."),
-    cots_ricker_a=(val=6.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(2.0, 10.0, 6.0),
-        name="COTS Ricker a", description="Ricker recruitment maximum parameter."),
-    cots_ricker_b=(val=0.1, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.01, 0.5, 0.1),
-        name="COTS Ricker b", description="Ricker density dependence parameter."),
-    cots_allee_threshold=(val=1.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.1, 5.0, 1.0), name="Allee Threshold",
-        description="Allee half-saturation density (COTS ha^-1)."),
-    cots_fecundity_gate=(val=0, ptype="unordered categorical", dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Fecundity Gate",
-        description="Gate fecundity on maternal condition (0 = off, 1 = on)."),
+    _cots_real(:cots_bh_a, 1.5, (0.5, 2.5),
+        "COTS Beverton-Holt a",
+        "Beverton-Holt recruitment parameter 'a'."),
+    _cots_real(:cots_bh_b, 0.5, (0.1, 1.0),
+        "COTS Beverton-Holt b",
+        "Beverton-Holt density dependence 'b'."),
+    _cots_real(:cots_ricker_a, 6.0, (2.0, 10.0),
+        "COTS Ricker a",
+        "Ricker recruitment maximum parameter."),
+    _cots_real(:cots_ricker_b, 0.1, (0.01, 0.5),
+        "COTS Ricker b",
+        "Ricker density dependence parameter."),
+    _cots_real(:cots_allee_threshold, 1.0, (0.1, 5.0),
+        "Allee Threshold",
+        "Allee half-saturation density (COTS ha^-1)."),
+    _cots_switch(:cots_fecundity_gate, 0,
+        "Fecundity Gate",
+        "Gate fecundity on maternal condition (0 = off, 1 = on)."),
 
     # Mortality and starvation
-    cots_mortality_recruit=(val=0.4, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.1, 0.9, 0.4),
-        name="COTS Recruit Mortality",
-        description="Background mortality of age 0 (recruits)."),
-    cots_mortality_juvenile=(val=0.2, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.05, 0.5, 0.2),
-        name="COTS Juvenile Mortality",
-        description="Background mortality of age 1 (juveniles)."),
-    cots_mortality_adult=(val=0.1, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.05, 0.3, 0.1),
-        name="COTS Adult Mortality", description="Background mortality of age 2+ (adults)."
-    ),
-    cots_starvation_max_fraction=(val=0.97, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.8, 1.0, 0.97),
-        name="Starvation Max Fraction",
-        description="Maximum fraction of mortality attributable to starvation."),
-    cots_max_food_cover=(val=0.8, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.4, 1.0, 0.8),
-        name="COTS Max Food Cover",
-        description="Coral cover giving maximum food availability."),
-    cots_starvation_exponent=(val=2.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 5.0, 2.0),
-        name="Starvation Exponent",
-        description="Shape of the starvation threshold function."),
-    cots_condition_timescale=(val=5.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 10.0, 5.0), name="Condition Timescale",
-        description="Timescale (years) of the maternal-condition moving average."),
+    _cots_real(:cots_mortality_recruit, 0.4, (0.1, 0.9),
+        "COTS Recruit Mortality",
+        "Background mortality of age 0 (recruits)."),
+    _cots_real(:cots_mortality_juvenile, 0.2, (0.05, 0.5),
+        "COTS Juvenile Mortality",
+        "Background mortality of age 1 (juveniles)."),
+    _cots_real(:cots_mortality_adult, 0.1, (0.05, 0.3),
+        "COTS Adult Mortality",
+        "Background mortality of age 2+ (adults)."),
+    _cots_real(:cots_starvation_max_fraction, 0.97, (0.8, 1.0),
+        "Starvation Max Fraction",
+        "Maximum fraction of mortality attributable to starvation."),
+    _cots_real(:cots_max_food_cover, 0.8, (0.4, 1.0),
+        "COTS Max Food Cover",
+        "Coral cover giving maximum food availability."),
+    _cots_real(:cots_starvation_exponent, 2.0, (1.0, 5.0),
+        "Starvation Exponent",
+        "Shape of the starvation threshold function."),
+    _cots_real(:cots_condition_timescale, 5.0, (1.0, 10.0),
+        "Condition Timescale",
+        "Timescale (years) of the maternal-condition moving average."),
 
     # Predation (functional response)
-    cots_consumption_rate_fast=(val=0.6, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.1, 1.0, 0.6),
-        name="Fast Consumption Rate",
-        description="Consumption rate coefficient for fast-growing corals."),
-    cots_consumption_rate_slow=(val=0.15, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.01, 0.5, 0.15),
-        name="Slow Consumption Rate",
-        description="Consumption rate coefficient for slow-growing corals."),
-    cots_handling_time=(val=0.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.0, 1.0, 0.0),
-        name="Handling Time", description="Predator handling time (Holling type II/III)."),
-    cots_consumption_exponent_fast=(val=1.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 3.0, 1.0),
-        name="Fast Consumption Exponent",
-        description="Shape exponent for fast-coral consumption (type II/III switch)."),
-    cots_consumption_exponent_slow=(val=1.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 3.0, 1.0),
-        name="Slow Consumption Exponent",
-        description="Shape exponent for slow-coral consumption (type II/III switch)."),
+    _cots_real(:cots_consumption_rate_fast, 0.6, (0.1, 1.0),
+        "Fast Consumption Rate",
+        "Consumption rate coefficient for fast-growing corals."),
+    _cots_real(:cots_consumption_rate_slow, 0.15, (0.01, 0.5),
+        "Slow Consumption Rate",
+        "Consumption rate coefficient for slow-growing corals."),
+    _cots_real(:cots_handling_time, 0.0, (0.0, 1.0),
+        "Handling Time",
+        "Predator handling time (Holling type II/III)."),
+    _cots_real(:cots_consumption_exponent_fast, 1.0, (1.0, 3.0),
+        "Fast Consumption Exponent",
+        "Shape exponent for fast-coral consumption (type II/III " *
+        "switch)."),
+    _cots_real(:cots_consumption_exponent_slow, 1.0, (1.0, 3.0),
+        "Slow Consumption Exponent",
+        "Shape exponent for slow-coral consumption (type II/III " *
+        "switch)."),
 
     # Immigration
-    cots_immigration_base=(val=0.002, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.0, 0.01, 0.002),
-        name="Base Immigration",
-        description="Background recruit immigration (COTS ha^-1 per timestep)."),
-    cots_immigration_threshold=(val=0.35, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.1, 0.8, 0.35), name="Immigration Threshold",
-        description="Coral cover fraction below which immigration drops off."),
-    cots_immigration_exponent=(val=2.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 5.0, 2.0),
-        name="Immigration Exponent", description="Shape of the immigration gating function."
-    ),
+    _cots_real(:cots_immigration_base, 0.002, (0.0, 0.01),
+        "Base Immigration",
+        "Background recruit immigration (COTS ha^-1 per timestep)."),
+    _cots_real(:cots_immigration_threshold, 0.35, (0.1, 0.8),
+        "Immigration Threshold",
+        "Coral cover fraction below which immigration drops off."),
+    _cots_real(:cots_immigration_exponent, 2.0, (1.0, 5.0),
+        "Immigration Exponent",
+        "Shape of the immigration gating function."),
 
     # Opt-in COTSMod mechanisms and their parameters
-    cots_adult_senescence=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Adult Senescence",
-        description="Extra mortality of adults older than the senescence age (0 = off, 1 = on)."
-    ),
-    cots_senescence_age=(val=6, ptype="ordered discrete", dist=DiscreteOrderedUniformDist,
-        dist_params=(3.0, 10.0, 1.0), name="Senescence Age",
-        description="Adult age (years) from which senescence mortality applies."),
-    cots_senescence_mortality=(val=0.8, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.5, 1.0, 0.8), name="Senescence Mortality",
-        description="Annual mortality of senescent adults."),
-    cots_allee_stretched=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Gradual Allee Effect",
-        description="Use the stretched (gradual) Allee function (0 = off, 1 = on)."),
-    cots_allee_exponent=(val=0.5, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.25, 1.0, 0.5), name="Allee Exponent",
-        description="Exponent of the stretched Allee function."),
-    cots_juvenile_predation=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Juvenile Predation",
-        description="Saturating predation on juveniles, a predator pit (0 = off, 1 = on)."),
-    cots_juvenile_predation_capacity=(val=20.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(5.0, 50.0, 20.0), name="Predator Pit Capacity",
-        description="Juveniles predators can remove (COTS ha^-1 yr^-1)."),
-    cots_per_capita_consumption=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Per-capita Consumption",
-        description="Graze coral at a fixed area per adult per year (0 = off, 1 = on)."),
-    cots_consumption_m2_per_adult_year=(val=10.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(5.0, 20.0, 10.0), name="Consumption per Adult",
-        description="Coral area consumed per adult per year (m^2)."),
-    cots_preferred_condition=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0), name="Preferred-coral Condition",
-        description="Drive body condition by preferred (fast) coral (0 = off, 1 = on)."),
-    cots_condition_saturation=(val=0.10, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.05, 0.5, 0.10), name="Condition Saturation",
-        description="Preferred-coral cover fraction at which condition saturates."),
-    cots_condition_memory_years=(val=1.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.5, 3.0, 1.0), name="Condition Memory",
-        description="Memory (years) of preferred-coral availability for condition."),
-    cots_preferred_prey_starvation=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution, dist_params=(0.0, 1.0),
-        name="Preferred-prey Starvation",
-        description="Drive starvation by remembered preferred coral (0 = off, 1 = on)."),
-    cots_starvation_preferred_threshold=(val=0.05, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.01, 0.2, 0.05), name="Starvation Threshold",
-        description="Preferred-coral cover fraction below which starvation applies."),
-    cots_starvation_memory_years=(val=0.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.0, 3.0, 0.0), name="Starvation Memory",
-        description="Memory (years) of preferred-coral cover for starvation; 0 = current year."
-    ),
+    _cots_switch(:cots_adult_senescence, 0,
+        "Adult Senescence",
+        "Extra mortality of adults older than the senescence age (0 = " *
+        "off, 1 = on)."),
+    _cots_ordered(:cots_senescence_age, 6, (3, 10, 1),
+        "Senescence Age",
+        "Adult age (years) from which senescence mortality applies."),
+    _cots_real(:cots_senescence_mortality, 0.8, (0.5, 1.0),
+        "Senescence Mortality",
+        "Annual mortality of senescent adults."),
+    _cots_switch(:cots_allee_stretched, 0,
+        "Gradual Allee Effect",
+        "Use the stretched (gradual) Allee function (0 = off, 1 = on)."),
+    _cots_real(:cots_allee_exponent, 0.5, (0.25, 1.0),
+        "Allee Exponent",
+        "Exponent of the stretched Allee function."),
+    _cots_switch(:cots_juvenile_predation, 0,
+        "Juvenile Predation",
+        "Saturating predation on juveniles, a predator pit (0 = off, 1 " *
+        "= on)."),
+    _cots_real(:cots_juvenile_predation_capacity, 20.0, (5.0, 50.0),
+        "Predator Pit Capacity",
+        "Juveniles predators can remove (COTS ha^-1 yr^-1)."),
+    _cots_switch(:cots_per_capita_consumption, 0,
+        "Per-capita Consumption",
+        "Graze coral at a fixed area per adult per year (0 = off, 1 = " *
+        "on)."),
+    _cots_real(:cots_consumption_m2_per_adult_year, 10.0, (5.0, 20.0),
+        "Consumption per Adult",
+        "Coral area consumed per adult per year (m^2)."),
+    _cots_switch(:cots_preferred_condition, 0,
+        "Preferred-coral Condition",
+        "Drive body condition by preferred (fast) coral (0 = off, 1 = " *
+        "on)."),
+    _cots_real(:cots_condition_saturation, 0.1, (0.05, 0.5),
+        "Condition Saturation",
+        "Preferred-coral cover fraction at which condition saturates."),
+    _cots_real(:cots_condition_memory_years, 1.0, (0.5, 3.0),
+        "Condition Memory",
+        "Memory (years) of preferred-coral availability for condition."),
+    _cots_switch(:cots_preferred_prey_starvation, 0,
+        "Preferred-prey Starvation",
+        "Drive starvation by remembered preferred coral (0 = off, 1 = " *
+        "on)."),
+    _cots_real(:cots_starvation_preferred_threshold, 0.05, (0.01, 0.2),
+        "Starvation Threshold",
+        "Preferred-coral cover fraction below which starvation applies."),
+    _cots_real(:cots_starvation_memory_years, 0.0, (0.0, 3.0),
+        "Starvation Memory",
+        "Memory (years) of preferred-coral cover for starvation; 0 = " *
+        "current year."),
 
     # Inputs from the data package (see `CotsInputs`); each is neutral by default
-    cots_separated_recruitment=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution, dist_params=(0.0, 1.0),
-        name="Separated Recruitment",
-        description="Settle larvae only through reef-scale dispersal, not locally " *
-                    "(0 = off, 1 = on). Needs annual reef connectivity in the data package."
-    ),
-    cots_larval_fecundity=(val=6.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(1.0, 60.0, 6.0), name="Larval Fecundity",
-        description="Larvae produced per adult before dispersal, with separated recruitment."
-    ),
-    cots_larval_conn_mode=(val=0, ptype="unordered categorical",
-        dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0, 2.0), name="Larval Connectivity Mode",
-        description="COTS larval connectivity: 0 = mean, 1 = annual matrices in turn, " *
-                    "2 = an annual matrix drawn each year."),
-    cots_larval_conn_seed=(val=0, ptype="ordered discrete", dist=DiscreteUniform,
-        dist_params=(0.0, 1.0e9), name="Larval Connectivity Seed",
-        description="Seed of the annual-matrix draws in mode 2."),
-    cots_external_outbreak_production=(val=0.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.0, 50000.0, 0.0), name="External Outbreak Production",
-        description="Larval production of outbreaks outside the domain, scaling the " *
-                    "outbreak boundary in the data package. Needs separated recruitment."),
-    cots_initial_state_scale=(val=1.0, ptype="continuous", dist=TriangularDist,
-        dist_params=(0.0, 10.0, 1.0), name="Initial State Scale",
-        description="Multiplier on the starting COTS densities in the data package.")
+    _cots_switch(:cots_separated_recruitment, 0,
+        "Separated Recruitment",
+        "Settle larvae only through reef-scale dispersal, not locally " *
+        "(0 = off, 1 = on). Needs annual reef connectivity in the data " *
+        "package."),
+    _cots_real(:cots_larval_fecundity, 6.0, (1.0, 60.0),
+        "Larval Fecundity",
+        "Larvae produced per adult before dispersal, with separated " *
+        "recruitment."),
+    _cots_levels(:cots_larval_conn_mode, 0, [0, 1, 2],
+        "Larval Connectivity Mode",
+        "COTS larval connectivity: 0 = mean, 1 = annual matrices in " *
+        "turn, 2 = an annual matrix drawn each year."),
+    _cots_discrete(:cots_larval_conn_seed, 0, (0, 1.0e9),
+        "Larval Connectivity Seed",
+        "Seed of the annual-matrix draws in mode 2."),
+    _cots_real(:cots_external_outbreak_production, 0.0, (0.0, 50000.0),
+        "External Outbreak Production",
+        "Larval production of outbreaks outside the domain, scaling the " *
+        "outbreak boundary in the data package. Needs separated " *
+        "recruitment."),
+    _cots_real(:cots_initial_state_scale, 1.0, (0.0, 10.0),
+        "Initial State Scale",
+        "Multiplier on the starting COTS densities in the data package.")
+]
+
+"""
+Table-row view of `COTS_PARAM_SPECS`: per factor, the value, `ptype`, `dist`, full-range
+`dist_params`, `name` and `description` (what `_cots_spec` collapses to constants).
+"""
+const COTS_FACTOR_SPECS = NamedTuple(
+    fn => (;
+        val=sp.val, ptype=sp.ptype, dist=sp.dist,
+        dist_params=Tuple(sp.default_dist_params),
+        name=sp.name, description=sp.description
+    ) for (fn, sp) in spec_rows(COTS_PARAM_SPECS)
 )
 
 # Each factor is constant at its value by default (its sampling bounds collapse to the

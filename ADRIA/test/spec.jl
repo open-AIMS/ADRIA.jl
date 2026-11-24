@@ -275,3 +275,91 @@ end
     end
     @test _ModelFieldDomain(3).model == 3
 end
+
+@testset "ParamSpec to table rows (`spec_rows`)" begin
+    PS = ADRIA.ADRIAinterfaces.ParamSpec
+    row(ps; kw...) = only(ADRIA.spec_rows([ps]; kw...))[2]
+
+    # Real, triangular: constant by default (collapsed dist_params), full range kept
+    r = row(PS(:x_a, 1.5, (0.5, 2.5); dist=:triang, dist_params=[0.5, 2.5, 1.5], label="A"))
+    @test r.ptype == "continuous" && r.dist == ADRIA.TriangularDist && r.name == "A"
+    @test r.val == 1.5 && r.dist_params == [1.5, 1.5, 1.5]
+    @test r.default_dist_params == [0.5, 2.5, 1.5]
+
+    # ... or sampled when not constant; overrides replace the value only
+    r = row(
+        PS(
+            :x_a, 1.5, (0.5, 2.5); dist=:triang, dist_params=[0.5, 2.5, 1.5], constant=false
+        );
+        overrides=Dict("x_a" => 2.0))
+    @test r.val == 2.0 && r.dist_params == r.default_dist_params == [0.5, 2.5, 1.5]
+    @test row(PS(:x_a, 1.5, (0.5, 2.5))).name == "x_a"  # label defaults to the name
+
+    # Uniform (the default dist) and the discrete dists
+    r = row(PS(:x_u, 1, (0, 2)))
+    @test r.dist == ADRIA.Uniform && r.dist_params == [1.0, 1.0]
+    @test r.default_dist_params == [0.0, 2.0]
+    r = row(
+        PS(:x_i, 6, (3, 10); kind=:integer, dist=:discrete_ordered, dist_params=[3, 10, 1])
+    )
+    @test r.ptype == "ordered discrete" && r.dist == ADRIA.DiscreteOrderedUniformDist
+    @test r.dist_params == [6.0, 6.0, 6.0] && r.default_dist_params == [3.0, 10.0, 1.0]
+    r = row(PS(:x_d, 0, (0, 1e9); kind=:integer, dist=:discrete_uniform))
+    @test r.ptype == "ordered discrete" && r.dist == ADRIA.DiscreteUniform
+    @test r.default_dist_params == [0.0, 1.0e9]
+
+    # Bool and categorical: parameters are the levels
+    r = row(PS(:x_b, 0, (0, 1); kind=:bool))
+    @test r.ptype == "unordered categorical" && r.dist == ADRIA.CategoricalDistribution
+    @test r.dist_params == [0.0, 0.0] && r.default_dist_params == [0.0, 1.0]
+    r = row(PS(:x_c, 1, (0, 2); kind=:categorical, levels=[0, 1, 2]))
+    @test r.dist_params == [1.0, 1.0, 1.0] && r.default_dist_params == [0.0, 1.0, 2.0]
+
+    # Wrong number of parameters or a kind/dist mismatch is an error
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:triang)])
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:categorical)])
+    @test_throws ArgumentError ADRIA.spec_rows([PS(:x_t, 1, (0, 2); dist=:nope)])
+
+    # COTS declares its factors as ParamSpecs: the row view and `spec_rows` agree
+    fs = ADRIA.COTS_FACTOR_SPECS
+    @test length(ADRIA.COTS_PARAM_SPECS) == 43 == length(fs)
+    @test first.(ADRIA.spec_rows(ADRIA.COTS_PARAM_SPECS)) ==
+        collect(fieldnames(ADRIA.CotsParams)) == collect(keys(fs))
+    @test (keys(fs)[1], keys(fs)[2], keys(fs)[24], keys(fs)[41], keys(fs)[43]) ==
+        (
+        :cots_on, :cots_bh_a, :cots_senescence_age, :cots_larval_conn_seed,
+        :cots_initial_state_scale
+    )
+
+    # Literal rows from before the ParamSpec declaration: triang, discrete_ordered, bool,
+    # categorical and discrete_uniform
+    @test fs.cots_bh_a == (val=1.5, ptype="continuous", dist=ADRIA.TriangularDist,
+        dist_params=(0.5, 2.5, 1.5), name="COTS Beverton-Holt a",
+        description="Beverton-Holt recruitment parameter 'a'.")
+    @test (fs.cots_senescence_age.val, fs.cots_senescence_age.ptype,
+        fs.cots_senescence_age.dist, fs.cots_senescence_age.dist_params) ==
+        (6.0, "ordered discrete", ADRIA.DiscreteOrderedUniformDist, (3.0, 10.0, 1.0))
+    @test (fs.cots_on.val, fs.cots_on.ptype, fs.cots_on.dist, fs.cots_on.dist_params,
+        fs.cots_on.name) ==
+        (
+        0.0, "unordered categorical", ADRIA.CategoricalDistribution, (0.0, 1.0), "COTS On"
+    )
+    @test fs.cots_larval_conn_mode.dist_params == (0.0, 1.0, 2.0)
+    @test (fs.cots_larval_conn_seed.ptype, fs.cots_larval_conn_seed.dist,
+        fs.cots_larval_conn_seed.dist_params) ==
+        ("ordered discrete", ADRIA.DiscreteUniform, (0.0, 1.0e9))
+
+    # Edge cases: equal bounds, non-constant bool/categorical, parameter counts
+    r = row(PS(:x_e, 1, (1, 1)))
+    @test r.dist_params == [1.0, 1.0] == r.default_dist_params
+    r = row(PS(:x_b, 1, (0, 1); kind=:bool, constant=false))
+    @test r.dist_params == r.default_dist_params == [0.0, 1.0]
+    r = row(PS(:x_c, 1, (0, 2); kind=:categorical, levels=[0, 1, 2], constant=false))
+    @test r.dist_params == [0.0, 1.0, 2.0]
+    @test_throws ArgumentError ADRIA.spec_rows(
+        [PS(:x_o, 1, (0, 5); kind=:integer, dist=:discrete_ordered)]
+    )
+    @test_throws ArgumentError ADRIA.spec_rows(
+        [PS(:x_o, 1, (0, 5); dist=:uniform, dist_params=[0, 2, 5])]
+    )
+end

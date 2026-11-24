@@ -49,6 +49,21 @@ end
         @test_throws ArgumentError ParamSpec(:m_rate, 2.0, (0.0, 1.0))
         @test_throws ArgumentError ParamSpec(:m_rate, 0.5, (1.0, 0.0))
 
+        # Additive fields: defaults keep the old behaviour, kind and ptype derive from each other
+        @test p.label == "m_rate" && p.kind === :real && p.ptype == "real" && p.constant
+        @test ParamSpec(:m, 1, (0, 2); ptype="integer").kind === :integer
+        b = ParamSpec(:m_on, 0, (0, 1); kind=:bool)
+        @test b.ptype == "categorical" && b.levels == [0.0, 1.0] && b.dist === :categorical
+        c = ParamSpec(:m_mode, 2, (0, 2); kind=:categorical, levels=[0, 1, 2], label="Mode")
+        @test c.label == "Mode" && c.levels == [0.0, 1.0, 2.0]
+        @test_throws ArgumentError ParamSpec(:m_mode, 0, (0, 2); kind=:categorical)
+        @test_throws ArgumentError ParamSpec(
+            :m_mode, 5, (0, 9); kind=:categorical, levels=[0, 1]
+        )
+        @test_throws ArgumentError ParamSpec(:m_x, 0, (0, 1); kind=:other)
+        @test_throws ArgumentError ParamSpec(:m_x, 0, (0, 1); kind=:real, ptype="integer")
+        @test_throws ArgumentError ParamSpec(:m_x, 0.5, (0, 1); kind=:bool)
+
         s = LogSpec(:l, [:timesteps, :locations], [5, 4]; units="u")
         @test s.size == [5, 4] && s.units == "u" && isempty(s.labels)
         @test_throws ArgumentError LogSpec(:l, [:timesteps], [5, 4])
