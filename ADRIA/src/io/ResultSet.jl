@@ -544,6 +544,17 @@ Note: Results are stored in Zarr format. Combining data sets can be
     (`scenario_sources`), first.
 """
 function combine_results(result_sets...)::ResultSet
+    return _combine_results(collect(ResultSet, result_sets))
+end
+
+"""
+    _combine_results(result_sets::Vector{ResultSet})::ResultSet
+
+[`combine_results`](@ref), for the result sets as an abstractly typed vector. The type of
+an `ADRIAResultSet` depends on the submodel logs it holds, so specialising on the argument
+types would compile this (large) function again for every mix of sources.
+"""
+function _combine_results(result_sets::Vector{ResultSet})::ResultSet
     # ── Validation ────────────────────────────────────────────────────────────
     # Check first vs last only — comparing all N*(N-1)/2 pairs is O(N) dict comparisons
     # and at ~200ms each (large dicts) adds 20+ seconds for 94 result sets.
