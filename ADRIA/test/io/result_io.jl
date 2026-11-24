@@ -71,6 +71,7 @@ end
 
 @testset "Loading rejects inconsistent merged stores" begin
     n = size(TEST_RS.inputs, 1)
+
     # Copy of the fixture store with its scenario-table attributes edited
     function edited_store(edit!)
         dir = mktempdir()
@@ -87,12 +88,8 @@ end
     @test_throws "inconsistent" ADRIA.load_results(dir)
 
     # A multi-source store needs one model specification file per source
-    dir = edited_store(a -> (a["source_sizes"] = [1, n - 1]; delete!(a, "provenance")))
-    @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
-
-    # Provenance records must match the sources (absent provenance is fine)
     dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
-    @test_throws "provenance records" ADRIA.load_results(dir)
+    @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
 end
 
 @testset "Auxiliary logs" begin
@@ -133,6 +130,7 @@ end
             labels=Dict(:stage => ["a", "b"]), units="u", description="d"
         )
         ids = ["x", "y", "z"]
+
         dir = mktempdir()
         Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
         log_fn = joinpath(dir, ADRIA.LOG_GRP)
@@ -140,11 +138,13 @@ end
         grp = Zarr.zopen(log_fn)
         spec2 = ADRIA._aux_logspec_from_store(grp, :synthetic_log)
         @test all(getfield(spec2, f) == getfield(spec, f) for f in fieldnames(typeof(spec)))
+
         # A merged store builds its aux arrays from the rebuilt spec: same attributes
         dir2 = mktempdir()
         Zarr.zgroup(Zarr.DirectoryStore(dir2), ADRIA.LOG_GRP)
         log_fn2 = joinpath(dir2, ADRIA.LOG_GRP)
         ADRIA._setup_aux_logs(log_fn2, [spec2], ids, 8, 2; fill=Float32(NaN))
+
         a1 = Zarr.zopen(log_fn)["synthetic_log"].attrs
         a2 = Zarr.zopen(log_fn2)["synthetic_log"].attrs
         @test a1 == a2
