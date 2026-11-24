@@ -16,6 +16,7 @@ end
         rs_off = ADRIA.run_scenarios(dom, scens[1:2, :], "45")
         @test isnothing(rs_off.cots_pop_log)
         @test isnothing(rs_off.cots_condition_log)
+        @test rs_off.aux == NamedTuple()
     end
 
     # Scenarios 1 and 2 run COTS (with juvenile predation on in scenario 2); 3 and 4 do not
@@ -34,6 +35,11 @@ end
         @test all(pop[scenarios = 4].data .== 0.0)
         @test all(isfinite, pop.data)
         @test all(rs.cots_condition_log[scenarios = 3].data .== 0.0)
+
+        # The logs are auxiliary logs of the result set, also reachable as properties
+        @test keys(rs.aux) == (:cots_condition_log, :cots_pop_log)
+        @test rs.aux.cots_pop_log === rs.cots_pop_log
+        @test rs.aux.cots_condition_log === rs.cots_condition_log
     end
 
     @testset "result sets with COTS logs combine" begin

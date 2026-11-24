@@ -234,6 +234,30 @@ function log_cots!(
 end
 
 """
+    cots_log_specs(tf::Int, n_locs::Int)::Vector{LogSpec}
+    cots_log_specs(domain::Domain)::Vector{LogSpec}
+
+The output logs of the COTS submodel, as `LogSpec`s: `cots_pop_log` (COTS density by age
+class, per hectare) and `cots_condition_log` (body condition). The result store names are
+unchanged. Core function until COTS is a submodel that declares its own `log_specs`.
+"""
+function cots_log_specs(tf::Int, n_locs::Int)::Vector{ADRIAinterfaces.LogSpec}
+    return [
+        ADRIAinterfaces.LogSpec(
+            :cots_pop_log, [:timesteps, :age_class, :locations], [tf, 3, n_locs];
+            labels=Dict(:age_class => ["recruits", "juveniles", "adults"]),
+            units="COTS ha^-1"
+        ),
+        ADRIAinterfaces.LogSpec(
+            :cots_condition_log, [:timesteps, :locations], [tf, n_locs]
+        )
+    ]
+end
+function cots_log_specs(domain::Domain)::Vector{ADRIAinterfaces.LogSpec}
+    return cots_log_specs(length(timesteps(domain)), domain.coral_growth.n_locs)
+end
+
+"""
     larval_conn_index(forcing::CotsReefForcing, timestep::Int, mode::Int, seed::Int)::Int
 
 Index of the annual reef matrix used at `timestep`: in turn (`mode` 1) or drawn with a

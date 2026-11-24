@@ -176,27 +176,11 @@ function run_scenarios(
     # contention. In serial mode: fall back to the env var (default 1).
     active_threads::Int = Threads.nthreads()
 
-    # Estimate the uncompressed size of one scenario's worth of Float32 output arrays to
-    # derive the largest chunk count that keeps every Zarr chunk file below the 2 GB limit
-    # enforced by BloscCompressor.  Only the always-present arrays are counted; the
-    # optional coral_dhw_log / coral_cover_log arrays are excluded, so the estimate is
-    # a lower bound and the cap is slightly conservative.
-    _n_locs_cz = dom.coral_growth.n_locs
-    _n_groups_cz = dom.coral_growth.n_groups
-    _tf_cz = length(timesteps(dom))
-    _n_ivs_cz = length(interventions())
-    _n_metrics_cz = length(LOC_METRIC_NAMES)
-    _bytes_per_scen::Int =
-        4 * _tf_cz *
-        (
-            _n_locs_cz * _n_metrics_cz +   # loc_out
-            _n_groups_cz +                  # relative_taxa_cover
-            _n_locs_cz * 2 +               # shading_log (fog + Shd channels)
-            _n_locs_cz * _n_ivs_cz +       # site_ranks
-            _n_groups_cz * _n_locs_cz * 2  # LvM_log + CAq_log
-        )
-    # Stay below the hard 2 GB limit with a conservative 1.8 GB working budget
-    _max_chunk_by_size::Int = max(1, floor(Int, 1_800_000_000 / _bytes_per_scen))
+    # Cap the chunk size so that the per-thread batch buffers stay within a working budget
+    # and every Zarr chunk file stays below the 2 GB limit enforced by BloscCompressor
+    # (see `_max_chunk_by_size`).
+    aux_specs = _aux_log_specs(dom, scens)
+    _max_chunk_by_size::Int = _max_chunk_by_size_for(dom, aux_specs)
 
     env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
     chunk_size::Int = if env_chunk > 0
@@ -466,6 +450,96 @@ function _collect_scenario_results(
         CAq_log=CAq_vals,
         coral_dhw_log=dhw_vals,
         coral_cover_log=cover_vals,
+        aux=_aux_results(result_set)
+    )
+end
+
+"""
+    _log_bytes_per_scen(domain::Domain, aux_specs)::NamedTuple
+
+Uncompressed bytes one scenario adds to the result store, assuming 4 bytes per value:
+`total` is the sum over the always-present arrays plus the auxiliary logs in `aux_specs`
+(the per-thread batch budget; the optional coral_dhw_log / coral_cover_log arrays are not
+counted, so it is a lower bound) and `largest` is the largest single array, including the
+optional logs when enabled by environment variable.
+"""
+function _log_bytes_per_scen(
+    domain::Domain, aux_specs::AbstractVector{LogSpec}
+)::NamedTuple
+    n_locs = domain.coral_growth.n_locs
+    n_groups = domain.coral_growth.n_groups
+    n_sizes = domain.coral_growth.n_sizes
+    tf = length(timesteps(domain))
+    n_ivs = length(interventions())
+
+    arrays = [
+        tf * n_locs * length(LOC_METRIC_NAMES),  # loc_outcomes
+        tf * n_groups,                           # relative_taxa_cover
+        tf * n_locs * 2,                         # shading_log (fog + shade channels)
+        tf * n_locs * n_ivs,                     # site_ranks
+        tf * n_groups * n_locs,                  # LvM_log
+        tf * n_groups * n_locs                   # CAq_log
+    ]
+    aux = [prod(s.size) for s in aux_specs]
+    total = 4 * (sum(arrays) + sum(aux; init=0))
+
+    # Largest single array, with the element sizes actually stored: Float32 for the
+    # outcome and aux logs, UInt16 ranks, Float16 shading, and the optional DHW (Float16)
+    # and cover (UInt16) logs, which hold a single location unless enabled by env var.
+    sized = [
+        4 * tf * n_locs * length(LOC_METRIC_NAMES),
+        4 * tf * n_groups,
+        2 * tf * n_locs * 2,
+        2 * tf * n_locs * n_ivs,
+        4 * tf * n_groups * n_locs,
+        4 * tf * n_groups * n_locs
+    ]
+    aux_bytes = [4 * prod(s.size) for s in aux_specs]
+
+    dhw_locs = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) ? n_locs : 1
+    cover_locs = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) ? n_locs : 1
+    optional = [
+        2 * tf * n_groups * n_sizes * dhw_locs,
+        2 * tf * n_groups * n_sizes * cover_locs
+    ]
+    largest = maximum(vcat(sized, aux_bytes, optional))
+
+    return (; total, largest)
+end
+
+"""
+    _max_chunk_by_size_for(domain::Domain, aux_specs)::Int
+
+Largest number of scenarios per chunk (and per in-memory batch) within a 1.8 GB working
+budget, below the hard 2 GB limit per array: see [`_chunk_cap_by_bytes`](@ref).
+"""
+function _max_chunk_by_size_for(domain::Domain, aux_specs::AbstractVector{LogSpec})::Int
+    b = _log_bytes_per_scen(domain, aux_specs)
+    return _chunk_cap_by_bytes(b.total, b.largest)
+end
+
+"""
+    _chunk_cap_by_bytes(total::Int, largest::Int)::Int
+
+Scenarios per chunk within the 1.8 GB working budget: the cap from the summed bytes per
+scenario (the batch budget), and the separate cap from the largest array (2 GB per array).
+As every counted array is part of the sum, the second binds only for arrays that are not
+counted in `total` (the optional logs), and only when one really nears the limit.
+"""
+function _chunk_cap_by_bytes(total::Int, largest::Int)::Int
+    budget = 1_800_000_000
+    return max(1, min(floor(Int, budget / total), floor(Int, budget / largest)))
+end
+
+"""
+    _aux_results(result_set)::NamedTuple
+
+Auxiliary (submodel) logs of a model run as Float32 arrays keyed by log name (the names of
+the `LogSpec`s, see [`cots_log_specs`](@ref)). Until COTS is a submodel its two logs are
+taken from the run's COTS buffers.
+"""
+function _aux_results(result_set)::NamedTuple
+    return (
         cots_pop_log=Float32.(result_set.cots_log),
         cots_condition_log=Float32.(result_set.cots_condition_log)
     )
@@ -556,16 +630,15 @@ function _write_batch!(
         end
     end
 
-    # COTS logs (present only when a scenario in the run switched COTS on)
-    if !isnothing(data_store.cots_pop_log)
-        cots_batch = Array{Float32}(undef, size(results[1].cots_pop_log)..., n)
-        bc_batch = Array{Float32}(undef, size(results[1].cots_condition_log)..., n)
+    # Auxiliary logs (those declared for this run; scenarios axis is last)
+    for (name, arr) in pairs(data_store.aux)
+        r1 = getfield(results[1].aux, name)
+        aux_batch = Array{Float32}(undef, size(r1)..., n)
+        lead = ntuple(_ -> Colon(), ndims(r1))
         for (i, r) in enumerate(results)
-            cots_batch[:, :, :, i] .= r.cots_pop_log
-            bc_batch[:, :, i] .= r.cots_condition_log
+            aux_batch[lead..., i] .= getfield(r.aux, name)
         end
-        data_store.cots_pop_log[:, :, :, idx_range] .= cots_batch
-        data_store.cots_condition_log[:, :, idx_range] .= bc_batch
+        arr[lead..., idx_range] .= aux_batch
     end
 
     return nothing
