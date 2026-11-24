@@ -188,6 +188,62 @@ end
         end
     end
 
+    @testset "a model type in a submodule of a package resolves to the package" begin
+        # Fake package `FakeModelPkg` with an empty submodule `Models`, loaded from a path
+        # but recorded in the manifest with a revision and tree hash as if from git
+        dir = mktempdir()
+        pkg_dir = joinpath(dir, "FakeModelPkg")
+        mkpath(joinpath(pkg_dir, "src"))
+        uuid = "00000000-0000-0000-0000-0000000000f1"
+        write(
+            joinpath(pkg_dir, "Project.toml"),
+            "name = \"FakeModelPkg\"\nuuid = \"$uuid\"\nversion = \"0.3.1\"\n"
+        )
+        write(
+            joinpath(pkg_dir, "src", "FakeModelPkg.jl"),
+            "__precompile__(false)\nmodule FakeModelPkg\nmodule Models end\nend\n"
+        )
+        write(joinpath(dir, "Project.toml"), "[deps]\nFakeModelPkg = \"$uuid\"\n")
+        write(
+            joinpath(dir, "Manifest.toml"),
+            """
+            manifest_format = "2.0"
+
+            [[deps.FakeModelPkg]]
+            git-tree-sha1 = "1111111111111111111111111111111111111111"
+            path = "$(escape_string(pkg_dir))"
+            repo-rev = "v0.3.1"
+            uuid = "$uuid"
+            version = "0.3.1"
+            """
+        )
+
+        # The package is found through the temporary environment, pushed onto LOAD_PATH
+        # (not through "@", which need not be in LOAD_PATH); the active project is set to
+        # it as well because the manifest lookup reads the active environment's manifest
+        old = Base.ACTIVE_PROJECT[]
+        env = joinpath(dir, "Project.toml")
+        try
+            push!(LOAD_PATH, env)
+            Base.ACTIVE_PROJECT[] = env
+            fake = Base.require(Main, :FakeModelPkg)
+
+            # The model type lives in the submodule, not the package's root module
+            models = Base.invokelatest(getproperty, fake, :Models)
+            Core.eval(models, :(struct FakeModel <: $(ADRIAinterfaces.Submodel) end))
+            model = Base.invokelatest(() -> models.FakeModel())
+            prov = ADRIA._model_provenance(model)
+            @test prov["module"] == "FakeModelPkg.Models"
+            @test prov["type"] == "FakeModelPkg.Models.FakeModel"
+            @test prov["version"] == "0.3.1"
+            @test prov["revision"] == "v0.3.1"
+            @test prov["tree_hash"] == "1111111111111111111111111111111111111111"
+        finally
+            filter!(!=(env), LOAD_PATH)
+            Base.ACTIVE_PROJECT[] = old
+        end
+    end
+
     @testset "attached submodels are written to the store and read back" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d2, NoOpMock())
