@@ -924,25 +924,32 @@ function _load_results(result_loc::String)::ResultSet
     end
     if length(provenance) != length(source_sizes)
         # Only a store without provenance may lack records; anything else is inconsistent
-        isnothing(prov) || error(
-            "Result set at $(result_loc) has $(length(provenance)) provenance records " *
-            "for $(length(source_sizes)) sources"
+        isnothing(prov) || throw(
+            ArgumentError(
+                "Result set at $(result_loc) has $(length(provenance)) provenance " *
+                "records for $(length(source_sizes)) sources"
+            )
         )
         provenance = fill(nothing, length(source_sizes))
     end
 
-    sum(source_sizes) == nrow(inputs_used) || error(
-        "Result set at $(result_loc) is inconsistent: its sources hold $(sum(source_sizes)) " *
-        "scenarios but the scenario table has $(nrow(inputs_used))"
+    sum(source_sizes) == nrow(inputs_used) || throw(
+        DimensionMismatch(
+            "Result set at $(result_loc) is inconsistent: its sources hold " *
+            "$(sum(source_sizes)) scenarios but the scenario table has " *
+            "$(nrow(inputs_used))"
+        )
     )
 
     spec_dir = joinpath(result_loc, MODEL_SPEC)
     model_specs = if length(source_sizes) > 1
         map(1:length(source_sizes)) do i
             fn = joinpath(spec_dir, "model_spec_source_$(i).csv")
-            isfile(fn) || error(
-                "Result set at $(result_loc) has $(length(source_sizes)) sources but " *
-                "$(fn) is missing"
+            isfile(fn) || throw(
+                ArgumentError(
+                    "Result set at $(result_loc) has $(length(source_sizes)) sources " *
+                    "but $(fn) is missing"
+                )
             )
 
             ms = CSV.read(fn, DataFrame; comment="#")
