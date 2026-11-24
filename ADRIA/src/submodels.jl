@@ -145,9 +145,20 @@ end
 
 _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
 
-# Phase hook position: after core disturbances (bleaching, cyclones), before survival is
-# propagated. Submodels step in attach order, then record.
-@inline function _step_submodels!(
+"""
+    _step_submodels!(slots, phase, view, tstep, year)::Nothing
+
+Phase hook position: after core disturbances (bleaching, cyclones), before survival is
+propagated. Submodels step in attach order, then record.
+
+Function barrier: `slots` is only known as an abstract `Tuple` in `run_model`, so each call
+to these hooks is a dynamic dispatch. The callee is compiled for the concrete slot types
+(once per submodel combination) and is type-stable inside, and the time loop is not
+recompiled per combination. The dispatch boxes some arguments (tens of bytes per step).
+`@noinline` is not what makes the barrier; it keeps the calls out-of-line, as does the
+`@noinline` on `_check_decrease_only`, which keeps its error path out of `run_model`.
+"""
+@noinline function _step_submodels!(
     slots::Tuple, phase::ADRIAinterfaces.Phase, view::CoralStepView, tstep::Int, year::Int
 )::Nothing
     foreach(slots) do s
@@ -158,7 +169,48 @@ _aux_logs(slots::Tuple)::NamedTuple = merge((s.bufs for s in slots)..., (;))
     return nothing
 end
 
-@inline function _record_submodels!(slots::Tuple, tstep::Int)::Nothing
+@noinline function _record_submodels!(slots::Tuple, tstep::Int)::Nothing
     foreach(s -> ADRIAinterfaces.record!(s.model, s.bufs, s.state, tstep), slots)
+    return nothing
+end
+
+"""
+    _check_decrease_only(before, after, tstep)
+
+Enforce the submodel contract that cover may only decrease: per cell, `after <= before`
+(exact), where `before` is the cover snapshot taken just before the submodel phase.
+Only called when submodels are attached. The comparison is exact on purpose, so a
+submodel that rescales cover must not round a value up by even one ulp. NaN and negative
+values also fail.
+
+Caveat (Stage 3a, COTS onto the hooks): if the host ever handed over a negative value (it
+currently does not), this check fails whatever the submodel does, since clamping it up to
+`0.0` is an increase and leaving it is negative. Today COTSMod's
+`clamp!(C_cover_t, 0.0, 1.0)` silently repairs such values on the unchecked COTS path; on
+the hook path the same input would raise here instead.
+"""
+@noinline function _check_decrease_only(
+    before::AbstractArray{Float64,3}, after::AbstractArray{Float64,3}, tstep::Int
+)::Nothing
+    # Fast path: branch-free reduction (vectorises); same condition as the loop below
+    ok = true
+    @inbounds @simd for i in eachindex(before, after)
+        a = after[i]
+        ok &= (a <= before[i]) & !(a < 0.0)
+    end
+    ok && return nothing
+
+    # Slow path, only on a violation: find the first offending cell and report it
+    @inbounds for i in eachindex(before, after)
+        if !(after[i] <= before[i]) || after[i] < 0.0
+            throw(
+                AssertionError(
+                    "Submodel increased (or invalidated) coral cover at timestep $(tstep) (cell " *
+                    "$(Tuple(CartesianIndices(before)[i]))): $(before[i]) -> $(after[i]). " *
+                    "Submodels may only reduce cover."
+                )
+            )
+        end
+    end
     return nothing
 end

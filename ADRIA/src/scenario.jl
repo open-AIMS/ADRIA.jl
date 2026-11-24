@@ -1226,6 +1226,10 @@ function run_model(
     submodel_slots = _init_submodels(domain, param_set, factor_names, submodel_caches, rng)
     has_submodels = !isempty(submodel_slots)
 
+    # Per-cell cover before the submodel phase, to enforce decrease-only; empty (no
+    # allocation of note, same type) when nothing is attached
+    submodel_cover_before = zeros(has_submodels ? size(C_cover_t) : (0, 0, 0))
+
     # COTS submodel (COTSMod.jl), run only when the scenario sets `cots_on` = 1
     cots = param_set[At("cots_on")] == 1 ? CotsRun(domain, param_set, rng) : nothing
     # COTS densities (timesteps x 3 age classes x locations, COTS ha^-1) and body condition
@@ -1951,13 +1955,15 @@ function run_model(
         log_cots!(Ycots, Ycots_bc, cots, tstep)
 
         # Submodels attached to the domain, in attach order, at the `AfterDisturbances`
-        # phase: they may only reduce `C_cover_t` (checked by the survival assertion below)
+        # phase: they may only reduce `C_cover_t`, checked per cell by `_check_decrease_only`
         if has_submodels
+            copyto!(submodel_cover_before, C_cover_t)
             _step_submodels!(
                 submodel_slots, AfterDisturbances(),
                 CoralStepView(C_cover_t, dhw_t, vec_abs_k),
                 tstep, Int(domain.env_layer_md.timeframe[tstep])
             )
+            _check_decrease_only(submodel_cover_before, C_cover_t, tstep)
             _record_submodels!(submodel_slots, tstep)
         end
 

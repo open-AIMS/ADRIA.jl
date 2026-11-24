@@ -19,6 +19,27 @@ function _rel_cover(res)
     return Float32.(hasproperty(x, :data) ? x.data : x)
 end
 
+"""
+    _hook_phase_loop!(slots_ref, before, view, tf)
+
+The submodel phase of the run loop (snapshot, step, decrease-only check, record) over
+timesteps 2:tf, as `run_model` calls it. `slots_ref[]` is read inside, so with a
+`Ref{Tuple}` the slots are only known as an abstract `Tuple` (as in `run_model`), with a
+concretely typed `Ref` they are known exactly.
+"""
+function _hook_phase_loop!(slots_ref, before, view, tf)
+    for tstep in 2:tf
+        slots = slots_ref[]
+        copyto!(before, ADRIAinterfaces.cover(view))
+        ADRIA._step_submodels!(
+            slots, ADRIAinterfaces.AfterDisturbances(), view, tstep, 2000 + tstep
+        )
+        ADRIA._check_decrease_only(before, ADRIAinterfaces.cover(view), tstep)
+        ADRIA._record_submodels!(slots, tstep)
+    end
+    return nothing
+end
+
 @testset "Submodel hooks in the run loop" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
     scens = ADRIA.sample(dom, 4)
@@ -122,6 +143,35 @@ end
         @test_throws AssertionError ADRIA.run_scenario(d1, row)
     end
 
+    @testset "an increase that the survival ratio cannot see is caught per cell" begin
+        # Cells holding no cover: survival stays 1 whatever is added, so only the
+        # per-cell snapshot check can catch it
+        d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d1, FillMock(1e-6))
+        err = try
+            ADRIA.run_scenario(d1, row)
+            nothing
+        catch e
+            e
+        end
+        @test err isa AssertionError
+        @test occursin("increased (or invalidated) coral cover", err.msg)
+
+        # An increase that only offsets a disturbance loss (survival 0.9 <= 1 would pass)
+        before = fill(0.5, 1, 1, 1)
+        @test ADRIA._check_decrease_only(before, fill(0.5, 1, 1, 1), 2) === nothing
+        @test ADRIA._check_decrease_only(before, fill(0.4, 1, 1, 1), 2) === nothing
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(0.5 + 1e-12, 1, 1, 1), 2
+        )
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(NaN, 1, 1, 1), 2
+        )
+        @test_throws AssertionError ADRIA._check_decrease_only(
+            before, fill(-0.1, 1, 1, 1), 2
+        )
+    end
+
     @testset "run_scenario equals the matching slice of run_scenarios" begin
         d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d1, ShrinkMock(0.1))
@@ -162,5 +212,86 @@ end
         # Attached and run: the run is unchanged
         res = ADRIA.run_scenario(d2, row)
         @test isequal(res.raw, base.raw)
+    end
+
+    @testset "a guided reactive scenario runs with a submodel attached" begin
+        # Reactive strategies use run_model locals (cover losses etc.) next to the hook
+        # phase; a name clash there broke attached runs once
+        sc = ADRIA.sample_guided(dom, 4)
+        for f in ("iv_CAq_strategy", "iv_Fog_strategy", "iv_LvM_strategy")
+            sc[!, f] .= 2.0
+        end
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
+        res = ADRIA.run_scenario(d2, sc[2, :])
+        @test all(isfinite, res.raw)
+        @test res.aux_logs.mock_calls[tf] == tf - 1
+    end
+
+    @testset "the submodel phase allocates nothing per step after warm-up" begin
+        # The hook calls of the time loop on their own, with slots built as `run_model`
+        # builds them for a seeded scenario row. Concrete slot types: no allocation at
+        # all. Abstract `Tuple` (as in `run_model`): the dynamic dispatch boxes a few
+        # arguments, a small bounded amount per step (48 B on Julia 1.12)
+        old_rng = copy(Random.default_rng())
+        Random.seed!(7)
+        srow = ADRIA.sample(dom, 4)[2, :]
+        copy!(Random.default_rng(), old_rng)
+
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
+        ps = ADRIA.DataCube(Vector(srow); factors=names(srow))
+        caches = ADRIA._prepare_submodels(d2)
+        slots = ADRIA._init_submodels(
+            d2, ps, collect(ps.factors.val), caches, Random.Xoshiro(1)
+        )
+        @test length(slots) == 1 && isconcretetype(typeof(slots))
+
+        cg = d2.coral_growth
+        cov = rand(Random.Xoshiro(2), cg.n_groups, cg.n_sizes, cg.n_locs)
+        before = similar(cov)
+        view = ADRIAinterfaces.CoralStepView(cov, zeros(cg.n_locs), ADRIA.loc_k_area(d2))
+
+        concrete = Ref(slots)
+        abstract = Ref{Tuple}(slots)
+        _hook_phase_loop!(concrete, before, view, tf)  # warm-up (compile)
+        _hook_phase_loop!(abstract, before, view, tf)
+        @test (@allocated _hook_phase_loop!(concrete, before, view, tf)) == 0
+        @test (@allocated _hook_phase_loop!(abstract, before, view, tf)) <= 256 * (tf - 1)
+
+        # The hooks really ran: every step reduced the cover and was recorded
+        @test slots[1].state.nsteps == 4 * (tf - 1)
+        @test slots[1].bufs.mock_calls[tf] == 4 * (tf - 1)
+    end
+
+    @testset "attaching a submodel adds little allocation to a run" begin
+        # Loose whole-run guard (the per-step check is the test above). Difference, not an
+        # absolute value: a run allocates a lot regardless. ShrinkMock so that `step!` and
+        # `record!` really run; the extra (slots, logs, per-cell snapshot, in-line
+        # validate/prepare) must stay a small fraction of the run's allocation
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, ShrinkMock(0.0))  # runs, leaves cover unchanged
+        ADRIA.run_scenario(d2, row)  # compile
+        detached = @allocated ADRIA.run_scenario(dom, row)
+        attached = @allocated ADRIA.run_scenario(d2, row)
+        @test attached - detached < 0.02 * detached
+    end
+
+    @testset "fixed-seed checksum of a short run (detached)" begin
+        # Total of the raw cover array of scenario 2 of a seeded 4-scenario sample on
+        # Test_domain RCP 45 (75 timesteps). Generated from the current code (7490170f
+        # plus Stage 0): a change here means simulation results changed, which needs a
+        # deliberate decision; update the value only for an intended result change.
+        # Not exact on purpose: the last digits differ across Julia versions (1.11.9 and
+        # 1.12.7 give 163.98244844000132, 1.13.4 gives 163.9824484400013); rtol 1e-10 is
+        # far above that and far below any real result change. The regression harness
+        # (test/regression) is the exact, same-version gate.
+        old_rng = copy(Random.default_rng())
+        Random.seed!(42)
+        s42 = ADRIA.sample(dom, 4)
+        copy!(Random.default_rng(), old_rng)
+        res = ADRIA.run_scenario(dom, s42[2, :])
+        @test size(res.raw) == (75, 5, 7, 10)
+        @test isapprox(sum(res.raw), 163.9824484400013; rtol=1e-10)
     end
 end
