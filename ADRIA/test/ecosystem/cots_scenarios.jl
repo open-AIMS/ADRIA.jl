@@ -4,6 +4,7 @@ using ADRIA
 if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 end
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
 
 @testset "COTS submodel in scenario runs" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -13,7 +14,7 @@ end
     @test all(scens.cots_on .== 0)
 
     @testset "no COTS logs when every scenario has COTS off" begin
-        rs_off = ADRIA.run_scenarios(dom, scens[1:2, :], "45")
+        rs_off = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens[1:2, :], "45"))
         @test isnothing(rs_off.cots_pop_log)
         @test isnothing(rs_off.cots_condition_log)
         @test rs_off.aux == NamedTuple()
@@ -22,7 +23,7 @@ end
     # Scenarios 1 and 2 run COTS (with juvenile predation on in scenario 2); 3 and 4 do not
     scens.cots_on[1:2] .= 1
     scens.cots_juvenile_predation[2] = 1
-    rs = ADRIA.run_scenarios(dom, scens, "45")
+    rs = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
 
     @testset "COTS logs are written for COTS scenarios only" begin
         @test !isnothing(rs.cots_pop_log)
@@ -43,7 +44,7 @@ end
     end
 
     @testset "result sets with COTS logs combine" begin
-        combined = ADRIA.combine_results(rs, rs)
+        combined = with_temp_output_dir(() -> ADRIA.combine_results(rs, rs))
         @test size(combined.cots_pop_log, :scenarios) == 8
         @test size(combined.cots_condition_log, :scenarios) == 8
         @test combined.cots_pop_log[scenarios = 5].data ==
@@ -70,7 +71,7 @@ end
         pkg_scens.cots_larval_conn_mode[5] = 1
         pkg_scens.cots_larval_conn_mode[6] = 2
         pkg_scens.cots_larval_conn_seed[6] = 20260930
-        pkg_rs = ADRIA.run_scenarios(pkg_dom, pkg_scens, "45")
+        pkg_rs = with_temp_output_dir(() -> ADRIA.run_scenarios(pkg_dom, pkg_scens, "45"))
 
         pop = pkg_rs.cots_pop_log
         for i in 4:6

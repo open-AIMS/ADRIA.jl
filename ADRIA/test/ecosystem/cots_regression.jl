@@ -19,6 +19,7 @@ using ADRIA
 if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 end
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
 
 # Printed by this file (COTS_REGRESSION_PRINT=true) at ac75f51a: (sum, minimum, maximum)
 const EXPECTED = Dict{String,NTuple{3,Float64}}(
@@ -58,9 +59,7 @@ const EXPECTED = Dict{String,NTuple{3,Float64}}(
         end
     end
     function run_in_scratch(dom, scens)
-        return withenv("ADRIA_OUTPUT_DIR" => mktempdir()) do
-            ADRIA.run_scenarios(dom, scens, "45")
-        end
+        return with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
     end
     cover(rs, i) = rs.outcomes[:relative_cover][scenarios = i].data
     # Total relative cover over time and locations of scenario `i`

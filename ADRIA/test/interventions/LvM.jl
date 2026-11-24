@@ -3,6 +3,12 @@ using Test
 using ADRIA
 using ADRIA: At
 
+if !@isdefined(TEST_DOMAIN_PATH)
+    const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
+end
+
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
+
 if !@isdefined(ADRIA_DOM_45)
     const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 end
@@ -36,7 +42,7 @@ end
 
     num_samples = 4
     scens = ADRIA.sample_guided(dom, num_samples)
-    rs = ADRIA.run_scenarios(dom, scens, "45")
+    rs = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
 
     # Total larval methods settlers requested per scenario
     N_LvM = vec(scens.iv_LvM_N_settlers)

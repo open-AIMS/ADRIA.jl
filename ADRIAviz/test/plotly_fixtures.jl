@@ -261,7 +261,12 @@ function _plotly_scenarios_rs()
     try
         dom = ADRIA.load_domain(domain_path, "45")
         scens = ADRIA.sample(dom, 4)
-        return ADRIA.run_scenarios(dom, scens, "45")
+        # Keep the result store out of the repository. `run_scenarios` calls
+        # `setup()`, which would reset ADRIA_OUTPUT_DIR, so run it first.
+        ADRIA.setup()
+        return withenv("ADRIA_OUTPUT_DIR" => mktempdir()) do
+            ADRIA.run_scenarios(dom, scens, "45")
+        end
     catch
         return nothing
     end
@@ -280,7 +285,12 @@ function _plotly_taxonomy_rs()
     try
         dom = ADRIA.load_domain(domain_path, "45")
         scens = ADRIA.sample(dom, 4)
-        return ADRIA.run_scenarios(dom, scens, "45")
+        # Keep the result store out of the repository. `run_scenarios` calls
+        # `setup()`, which would reset ADRIA_OUTPUT_DIR, so run it first.
+        ADRIA.setup()
+        return withenv("ADRIA_OUTPUT_DIR" => mktempdir()) do
+            ADRIA.run_scenarios(dom, scens, "45")
+        end
     catch
         return nothing
     end

@@ -11,6 +11,8 @@ using ADRIA: At
 
 using DataStructures: CircularBuffer
 
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
+
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
@@ -297,7 +299,7 @@ end
     # on every decision year. Used to check cadence + correct-ID/ordering behaviour.
     dom_a = _configure!(deepcopy(dom), 3)
     scens_a = ADRIA.sample_guided(dom_a, num_samples)
-    rs_a = ADRIA.run_scenarios(dom_a, scens_a, "45")
+    rs_a = with_temp_output_dir(() -> ADRIA.run_scenarios(dom_a, scens_a, "45"))
     # rs.ranks structure: (timesteps, locations, interventions, scenarios); rank > 0
     # (stored as UInt16) indicates the location was selected for deployment at that
     # timestep for that intervention type.
@@ -363,7 +365,7 @@ end
     min_iv_locations_b = 8
     dom_b = _configure!(deepcopy(dom), min_iv_locations_b)
     scens_b = ADRIA.sample_guided(dom_b, num_samples)
-    rs_b = ADRIA.run_scenarios(dom_b, scens_b, "45")
+    rs_b = with_temp_output_dir(() -> ADRIA.run_scenarios(dom_b, scens_b, "45"))
     CAq_ranks_b = rs_b.ranks[intervention = At(:caq)]
 
     @testset "Periodic backfill fills the aggregate pool when needed" begin

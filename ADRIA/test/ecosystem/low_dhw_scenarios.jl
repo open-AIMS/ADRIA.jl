@@ -4,6 +4,7 @@ using ADRIA
 if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 end
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
 
 @testset "Low-DHW bleaching reduction in scenario runs" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -16,7 +17,7 @@ end
     # The scenarios differ in these factors, so pin the seed: otherwise the derived seed
     # would differ too and the runs would not be comparable
     rs = withenv("ADRIA_RNG_SEED" => "20260930") do
-        ADRIA.run_scenarios(dom, scens, "45")
+        with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
     end
 
     cover = ADRIA.metrics.scenario_total_cover(rs)

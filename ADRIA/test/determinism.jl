@@ -6,21 +6,14 @@ if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
     const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
 end
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "output_sandbox.jl"))
 
 function _run_twice(dom, samples)
-    prev_output_dir = get(ENV, "ADRIA_OUTPUT_DIR", nothing)
-    try
-        # Separate output directories so back-to-back runs cannot collide
-        ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
-        rs_1 = ADRIA.run_scenarios(dom, samples, "45")
-        ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
-        rs_2 = ADRIA.run_scenarios(dom, samples, "45")
+    # Separate output directories so back-to-back runs cannot collide
+    rs_1 = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, samples, "45"))
+    rs_2 = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, samples, "45"))
 
-        return rs_1, rs_2
-    finally
-        isnothing(prev_output_dir) ? delete!(ENV, "ADRIA_OUTPUT_DIR") :
-        (ENV["ADRIA_OUTPUT_DIR"] = prev_output_dir)
-    end
+    return rs_1, rs_2
 end
 
 @testset "Consecutive runs are deterministic" begin

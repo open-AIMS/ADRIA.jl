@@ -8,6 +8,7 @@ using Random
     joinpath(pkgdir(ADRIA), "..", "ADRIAinterfaces", "test", "MockSubmodels.jl")
 )
 using .MockSubmodels
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "output_sandbox.jl"))
 
 if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
@@ -175,7 +176,7 @@ end
     @testset "run_scenario equals the matching slice of run_scenarios" begin
         d1 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d1, ShrinkMock(0.1))
-        rs = ADRIA.run_scenarios(d1, scens, "45")
+        rs = with_temp_output_dir(() -> ADRIA.run_scenarios(d1, scens, "45"))
         single = ADRIA.run_scenario(d1, scens[3, :])
         @test _rel_cover(single) == rs.outcomes[:relative_cover][scenarios = 3].data
 

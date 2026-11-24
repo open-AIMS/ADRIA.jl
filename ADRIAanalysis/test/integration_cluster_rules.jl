@@ -12,7 +12,12 @@ else
         @testset "Integration: cluster_rules end-to-end" begin
             dom = ADRIA.load_domain(domain_path, "45")
             scens = ADRIA.sample(dom, 64)
-            rs = ADRIA.run_scenarios(dom, scens, "45")
+            # Keep the result store out of the repository. `run_scenarios` calls
+            # `setup()`, which would reset ADRIA_OUTPUT_DIR, so run it first.
+            ADRIA.setup()
+            rs = withenv("ADRIA_OUTPUT_DIR" => mktempdir()) do
+                ADRIA.run_scenarios(dom, scens, "45")
+            end
             s_tac = ADRIA.metrics.scenario_total_cover(rs)
             clusters_4 = ADRIA.analysis.cluster_scenarios(s_tac, 4)
             target = ADRIAanalysis.target_clusters(clusters_4, s_tac)

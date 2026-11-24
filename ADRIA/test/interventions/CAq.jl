@@ -5,6 +5,8 @@ using ADRIA.Distributions
 using ADRIA: distribute_CAq_corals, location_k, update_tolerance_distribution!
 using ADRIA: At
 
+@isdefined(with_temp_output_dir) || include(joinpath(@__DIR__, "..", "output_sandbox.jl"))
+
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
@@ -176,7 +178,7 @@ end
 
     num_samples = 4
     scens = ADRIA.sample_guided(dom, num_samples)
-    rs = ADRIA.run_scenarios(dom, scens, "45")
+    rs = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
 
     # Total coral aquaculture requested per scenario (sum across all coral species)
     CAq_cols = names(scens, contains.(names(scens), "iv_CAq_N"))
