@@ -416,6 +416,38 @@ function _source_logspec(rs::ADRIAResultSet, group::Symbol, log::Symbol)::LogSpe
 end
 
 """
+    _merged_logspec(result_sets, group::Symbol, log::Symbol)::LogSpec
+
+`LogSpec` of log `log` of submodel `group` in a merged result set: that of the first source
+holding the log. Every source holding it must give it the same axes and shape (a
+`DimensionMismatch` is thrown otherwise) and the same axis labels and units (an
+`ArgumentError` otherwise). The description is taken from the first source.
+"""
+function _merged_logspec(result_sets, group::Symbol, log::Symbol)::LogSpec
+    specs = [
+        _source_logspec(rs, group, log) for rs in result_sets if _has_log(rs, group, log)
+    ]
+    s1 = first(specs)
+    for s in specs[2:end]
+        (s.dims == s1.dims && s.size == s1.size) || throw(
+            DimensionMismatch(
+                "Log `$group.$log` has axes $(s1.dims) of size $(s1.size) in one source " *
+                "and axes $(s.dims) of size $(s.size) in another, so the sources cannot " *
+                "be merged"
+            )
+        )
+        (s.labels == s1.labels && s.units == s1.units) || throw(
+            ArgumentError(
+                "Log `$group.$log` has different axis labels or units in different " *
+                "sources, so the sources cannot be merged"
+            )
+        )
+    end
+
+    return s1
+end
+
+"""
     _check_sources(rs::ADRIAResultSet)::Nothing
 
 Check that the sources of `rs` account for its scenarios: `rs.source_sizes` adds up to the
@@ -605,9 +637,7 @@ function combine_results(result_sets...)::ResultSet
     sub_specs = Pair{Symbol,Vector{LogSpec}}[]
     for g in unique(first.(sub_pairs))
         specs = LogSpec[
-            _source_logspec(
-                result_sets[findfirst(rs -> _has_log(rs, g, l), result_sets)], g, l
-            ) for (g2, l) in sub_pairs if g2 == g
+            _merged_logspec(result_sets, g, l) for (g2, l) in sub_pairs if g2 == g
         ]
         push!(sub_specs, g => specs)
     end

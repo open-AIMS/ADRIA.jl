@@ -436,6 +436,36 @@ end
         @test all(isnan, x_b[scenarios = (2n + 1):(3n)].data)
     end
 
+    @testset "merge: a log must have the same shape, labels and units in all sources" begin
+        a = with_x([:sub_a], 1)
+
+        # Log `x` of `sub_a` declared by `spec` instead, filled with 2
+        function with_spec(spec)
+            return store_with_logs() do log_fn, n
+                logs = ADRIA._setup_submodel_logs(log_fn, [:sub_a => [spec]], ids, n, n)
+                arr = logs.sub_a.x
+                arr[fill(Colon(), ndims(arr))...] = fill(Float32(2), size(arr))
+            end
+        end
+
+        combine(x, y) = with_temp_output_dir(() -> ADRIA.combine_results(x, y))
+        wider = with_spec(LogSpec(:x, [:timesteps, :stage], [tf, 2]; units="u"))
+        @test_throws DimensionMismatch combine(a, wider)
+        @test_throws "sub_a.x" combine(wider, a)
+
+        other_units = with_spec(LogSpec(:x, [:timesteps], [tf]; units="v"))
+        @test_throws ArgumentError combine(a, other_units)
+        years = Dict(:timesteps => string.(1:tf))
+        labelled = with_spec(LogSpec(:x, [:timesteps], [tf]; units="u", labels=years))
+        @test_throws ArgumentError combine(a, labelled)
+
+        # The same declaration with other values merges as usual
+        n = size(a.inputs, 1)
+        merged = combine(a, with_spec(xspec))
+        @test all(==(1.0), merged.logs.sub_a.x[scenarios = 1:n].data)
+        @test all(==(2.0), merged.logs.sub_a.x[scenarios = (n + 1):(2n)].data)
+    end
+
     @testset "per-scenario byte budget keeps the sum and adds submodel logs" begin
         tf = length(ADRIA.timesteps(TEST_DOM))
         nl = TEST_DOM.coral_growth.n_locs
