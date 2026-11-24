@@ -24,6 +24,78 @@ end
     @test combined_rs isa ADRIA.ResultSet
 end
 
+@testset "Combine result sets with different scenario columns" begin
+    using ADRIA: DataFrames
+
+    # A source without two of the factors (as from a run of another model version)
+    dropped = [:cots_on, :cots_juvenile_predation]
+    rs_a = let r = TEST_RS
+        ADRIA.@set! r.inputs = DataFrames.select(r.inputs, DataFrames.Not(dropped))
+        r
+    end
+    @test !(:cots_on in propertynames(rs_a.inputs))
+
+    for (a, b) in ((TEST_RS, rs_a), (rs_a, TEST_RS))
+        combined = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
+        n_a, n_b = size(a.inputs, 1), size(b.inputs, 1)
+        @test size(combined.inputs, 1) == n_a + n_b
+
+        # Union of the columns, in order of first appearance, all Float64
+        @test names(combined.inputs) ==
+            names(DataFrames.vcat(a.inputs, b.inputs; cols=:union))
+        @test all(eltype(c) == Float64 for c in eachcol(combined.inputs))
+
+        # Missing factors are NaN for the source lacking them, values kept elsewhere
+        lacking = a === rs_a ? (1:n_a) : ((n_a + 1):(n_a + n_b))
+        has = a === rs_a ? ((n_a + 1):(n_a + n_b)) : (1:n_a)
+        for col in dropped
+            @test all(isnan, combined.inputs[lacking, col])
+            @test combined.inputs[has, col] == TEST_RS.inputs[:, col]
+        end
+
+        # One model specification per source, in order, and the source of each scenario
+        @test length(ADRIA.model_specs(combined)) == 2
+        @test ADRIA.scenario_sources(combined) == [fill(1, n_a); fill(2, n_b)]
+    end
+
+    # The union specification lists every factor once
+    combined = with_temp_output_dir(() -> ADRIA.combine_results(rs_a, TEST_RS))
+    ms = ADRIA.model_spec(combined)
+    @test allunique(zip(ms.component, ms.fieldname))
+    @test issubset(TEST_RS.model_spec.fieldname, ms.fieldname)
+
+    # Sets that are not merged have a single source
+    @test length(ADRIA.model_specs(TEST_RS)) == 1
+    @test ADRIA.scenario_sources(TEST_RS) == fill(1, size(TEST_RS.inputs, 1))
+end
+
+@testset "Loading rejects inconsistent merged stores" begin
+    n = size(TEST_RS.inputs, 1)
+
+    """
+        edited_store(edit!)
+
+    Copy of the fixture store with its scenario-table attributes edited by `edit!`.
+    """
+    function edited_store(edit!)
+        dir = mktempdir()
+        cp(TEST_RS.env_layer_md.dpkg_path, dir; force=true)
+        fn = joinpath(dir, ADRIA.INPUTS, ".zattrs")
+        attrs = ADRIA.JSON.parsefile(fn)
+        edit!(attrs)
+        write(fn, ADRIA.JSON.json(attrs))
+        return dir
+    end
+
+    # Source sizes must add up to the number of scenarios
+    dir = edited_store(a -> a["source_sizes"] = [n + 1])
+    @test_throws "inconsistent" ADRIA.load_results(dir)
+
+    # A multi-source store needs one model specification file per source
+    dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
+    @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
+end
+
 @testset "Auxiliary logs" begin
     using ADRIA: Zarr
 
@@ -54,6 +126,32 @@ end
             :structure => ("timesteps", "locations", "scenarios"),
             :unique_loc_ids => ids
         )
+    end
+
+    @testset "aux LogSpec round-trips through a store, merged attrs equal the source's" begin
+        spec = ADRIA.LogSpec(
+            :synthetic_log, [:timesteps, :stage, :locations], [2, 2, 3];
+            labels=Dict(:stage => ["a", "b"]), units="u", description="d"
+        )
+        ids = ["x", "y", "z"]
+
+        dir = mktempdir()
+        Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
+        log_fn = joinpath(dir, ADRIA.LOG_GRP)
+        ADRIA._setup_aux_logs(log_fn, [spec], ids, 4, 2; fill=Float32(NaN))
+        grp = Zarr.zopen(log_fn)
+        spec2 = ADRIA._aux_logspec_from_store(grp, :synthetic_log)
+        @test all(getfield(spec2, f) == getfield(spec, f) for f in fieldnames(typeof(spec)))
+
+        # A merged store builds its aux arrays from the rebuilt spec: same attributes
+        dir2 = mktempdir()
+        Zarr.zgroup(Zarr.DirectoryStore(dir2), ADRIA.LOG_GRP)
+        log_fn2 = joinpath(dir2, ADRIA.LOG_GRP)
+        ADRIA._setup_aux_logs(log_fn2, [spec2], ids, 8, 2; fill=Float32(NaN))
+
+        a1 = Zarr.zopen(log_fn)["synthetic_log"].attrs
+        a2 = Zarr.zopen(log_fn2)["synthetic_log"].attrs
+        @test a1 == a2
     end
 
     @testset "load_results discovers aux logs, old fog/shade arrays stay core" begin

@@ -3,7 +3,7 @@ using Dates: now
 using Zarr
 
 using Setfield: @set!
-using DataFrames: DataFrame, colmetadata!
+using DataFrames: DataFrame, colmetadata!, nrow
 using ADRIA: Domain, EnvLayer
 
 const CONNECTIVITY = "connectivity"
@@ -42,6 +42,8 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,AX,DF} <: ResultSet
     inputs::G
     sim_constants::D1
     model_spec::DF
+    model_specs::Vector{DF}  # model spec of each source result set (one if not merged)
+    source_sizes::Vector{Int}  # number of scenarios taken from each source, in order
 
     # raw::AbstractArray
     outcomes::D2
@@ -82,6 +84,14 @@ give `nothing` when the log is absent, as the former fields did.
     name in LEGACY_AUX_NAMES && return nothing
     error("ADRIAResultSet has no property or auxiliary log `$name`")
 end
+
+"""
+    Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
+
+The fields and the auxiliary logs of the result set. This lists more names than there are
+fields when aux logs exist, so Setfield's `@set!` on such a set may fail; rebuild the set
+through its constructor instead.
+"""
 function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
     return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
 end
@@ -177,7 +187,9 @@ function ResultSet(
     wave_stats_set::Dict,
     conn_data::Dict,
     loc_data::DataFrame,
-    model_spec::DataFrame
+    model_spec::DataFrame,
+    model_specs::Vector{DataFrame}=[model_spec],
+    source_sizes::Vector{Int}=[nrow(inputs_used)]
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
 
@@ -200,6 +212,8 @@ function ResultSet(
         inputs_used,
         input_set.attrs["sim_constants"],
         model_spec,
+        model_specs,
+        source_sizes,
         outcomes,
         map(Float64, _rankings_data(log_set["rankings"])),
         let arr = log_set["larval_methods"]
@@ -289,6 +303,37 @@ function _copy_env_data(
 end
 
 """
+    _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
+
+Stack scenario tables over the union of their columns (order of first appearance). The
+stored scenario table is all `Float64`, so columns a table lacks are filled with `NaN`,
+never `missing`: the result has only `Float64` columns, and an absent factor is found with
+`isnan`, not `ismissing`.
+"""
+function _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
+    length(inputs) == 1 && return copy(inputs[1])
+
+    all_inputs = reduce((a, b) -> vcat(a, b; cols=:union), inputs)
+    for col in names(all_inputs)
+        all_inputs[!, col] = Float64.(coalesce.(all_inputs[!, col], NaN))
+    end
+    return all_inputs
+end
+
+"""
+    _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
+
+Union of model specifications: the rows of the first, then rows of later specs whose
+(`component`, `fieldname`) it does not have yet.
+"""
+function _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
+    length(specs) == 1 && return specs[1]
+
+    all_specs = reduce((a, b) -> vcat(a, b; cols=:union), specs)
+    return unique(all_specs, [:component, :fieldname])
+end
+
+"""
     combine_results(result_sets...)::ResultSet
     combine_results(result_set_locs::Array{String})::ResultSet
 
@@ -296,6 +341,32 @@ Combine arbitrary number of ADRIA result sets into a single data store.
 
 Note: Results are stored in Zarr format. Combining data sets can be
   expected to double total disk space requirement.
+
+# Sources with different factors or logs
+
+- Scenario tables are combined over the union of their columns, in order of first
+  appearance. A factor a source does not have is filled with `NaN` for its scenarios. The
+  fill value is always `NaN`, never `missing`: the stored scenario table is all `Float64`,
+  so the merged table keeps `Float64` columns and an absent factor is found with `isnan`.
+- Auxiliary (submodel) logs are concatenated along scenarios. Scenarios from a source that
+  has no such log are filled with `NaN`, which tells them apart from scenarios that ran
+  with the model off (zeros). If every source has every log, the logs are zero-filled as
+  usual. The fill value is chosen once for all logs: if any source lacks any log, every aux
+  array is created with a `NaN` fill value, which only affects scenarios never written.
+- The model specification of each source is kept (`ADRIA.model_specs(rs)`), with
+  `ADRIA.scenario_sources(rs)` giving the source of each scenario. `ADRIA.model_spec(rs)` is the
+  union of the specifications, the first source winning for a parameter several share.
+  The previous behaviour of keeping only the first set's specification is gone.
+
+!!! warning
+    A merged scenario table can hold `NaN` columns. `ADRIAanalysis` functions that take
+    scenario inputs do not handle them: `rsa` (Mann-Whitney path), `pawn` and `tsa` throw an
+    `ArgumentError`, while `rsa` with `method=:cramers_v` or on unordered categorical columns
+    silently treats `NaN` as a level, and a constant `NaN` column is not treated as constant.
+    `find_pareto_optimal`, `find_robust` and `data_envelopment_analysis` also take the
+    scenario table and should be checked likewise. Subset the table (and matching outcomes)
+    to the factors all sources share, or to the scenarios of one source
+    (`scenario_sources`), first.
 """
 function combine_results(result_sets...)::ResultSet
     # ── Validation ────────────────────────────────────────────────────────────
@@ -337,7 +408,9 @@ function combine_results(result_sets...)::ResultSet
         dirname(envlayer.wave_fn),
         envlayer.timeframe
     )
-    all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
+    all_inputs = _union_inputs([getfield(rs, :inputs) for rs in result_sets])
+    source_sizes = reduce(vcat, [rs.source_sizes for rs in result_sets])
+    source_specs = reduce(vcat, [rs.model_specs for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(
         canonical_name,
@@ -352,6 +425,8 @@ function combine_results(result_sets...)::ResultSet
         rs1.loc_centroids
     )
 
+    length(source_sizes) > 1 && (attrs[:source_sizes] = source_sizes)
+
     # ── Copy spatial data and model spec ──────────────────────────────────────
     mkdir(joinpath(new_loc, SPATIAL_DATA))
     cp(
@@ -360,7 +435,16 @@ function combine_results(result_sets...)::ResultSet
         force=true
     )
     mkdir(joinpath(new_loc, MODEL_SPEC))
-    CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec.csv"), rs1.model_spec)
+    CSV.write(
+        joinpath(new_loc, MODEL_SPEC, "model_spec.csv"),
+        _union_model_specs([rs.model_spec for rs in result_sets])
+    )
+
+    if length(source_sizes) > 1
+        for (i, ms) in enumerate(source_specs)
+            CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec_source_$(i).csv"), ms)
+        end
+    end
 
     # ── Write inputs Zarr + compute chunk size ────────────────────────────────
     input_loc::String = joinpath(z_store.folder, INPUTS)
@@ -390,18 +474,20 @@ function combine_results(result_sets...)::ResultSet
     n_tf = size(rs1.iv_CAq_log, :timesteps)
     n_loc = size(rs1.iv_CAq_log, :locations)
 
-    # Auxiliary logs present in any source set (only the COTS logs have known specs here)
-    aux_specs = filter(
-        sp -> any(rs -> haskey(rs.aux, sp.name), result_sets), cots_log_specs(n_tf, n_loc)
-    )
-
-    known = Set(sp.name for sp in cots_log_specs(n_tf, n_loc))
-    for rs in result_sets, k in keys(rs.aux)
-        k in known ||
-            error(
-                "Cannot combine result sets holding auxiliary log `$k` (merging aux logs other than COTS is not supported yet)"
+    # Auxiliary logs present in any source set, with specs rebuilt from the first source
+    # holding each log. Sources lacking a log are filled with NaN, so the fill value is
+    # NaN only when some source lacks one.
+    aux_names = sort!(unique(reduce(vcat, [collect(keys(rs.aux)) for rs in result_sets])))
+    aux_specs = LogSpec[
+        let i = findfirst(rs -> haskey(rs.aux, k), result_sets)
+            _aux_logspec_from_store(
+                zopen(joinpath(result_sets[i].env_layer_md.dpkg_path, LOG_GRP)), k
             )
-    end
+        end for k in aux_names
+    ]
+    aux_fill =
+        any(rs -> !all(k -> haskey(rs.aux, k), aux_names), result_sets) ? Float32(NaN) :
+        Float32(0)
     logs = (;
         zip(
             [
@@ -422,7 +508,8 @@ function combine_results(result_sets...)::ResultSet
                 size(rs1.iv_CAq_log, :coral_id),
                 size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.iv_CAq_log, :coral_id),
                 batch_size;
-                aux_specs=aux_specs
+                aux_specs=aux_specs,
+                aux_fill=aux_fill
             )
         )...
     )
@@ -723,9 +810,30 @@ Extract model specification from Result Set.
 function model_spec(rs::ResultSet)::DataFrame
     return rs.model_spec
 end
+
 function model_spec(rs::ResultSet, param_names::Vector{Symbol})::DataFrame
     return rs.model_spec[rs.model_spec.fieldname .∈ Ref(param_names), :]
 end
+
+"""
+    model_specs(rs::ADRIAResultSet)::Vector{DataFrame}
+
+A result set made by [`combine_results`](@ref) keeps the model specification of every source
+(`model_specs`, in the order the sources were given); [`model_spec`](@ref) is then their
+union (first source wins for a parameter that several have). A result set that is not
+merged has one source.
+"""
+model_specs(rs::ADRIAResultSet)::Vector{DataFrame} = rs.model_specs
+
+"""
+    scenario_sources(rs::ADRIAResultSet)::Vector{Int}
+
+For each scenario of the result set, the index of the source it came from (see
+[`model_specs`](@ref)). All ones for a result set that is not merged.
+"""
+scenario_sources(rs::ADRIAResultSet)::Vector{Int} = reduce(
+    vcat, [fill(i, n) for (i, n) in enumerate(rs.source_sizes)]; init=Int[]
+)
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
