@@ -238,8 +238,10 @@ end
     cots_log_specs(domain::Domain)::Vector{LogSpec}
 
 The output logs of the COTS submodel, as `LogSpec`s: `cots_pop_log` (COTS density by age
-class, per hectare) and `cots_condition_log` (body condition). The result store names are
-unchanged. Core function until COTS is a submodel that declares its own `log_specs`.
+class, per hectare) and `cots_condition_log` (body condition). In a result set they are
+`rs.logs.cots.pop` and `rs.logs.cots.condition`, stored as `logs/cots/pop` and
+`logs/cots/condition` (see `COTS_LOG_NAMES` and [`cots_group_log_specs`](@ref)). Core
+function until COTS is a submodel that declares its own `log_specs`.
 """
 function cots_log_specs(tf::Int, n_locs::Int)::Vector{ADRIAinterfaces.LogSpec}
     return [

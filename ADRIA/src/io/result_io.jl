@@ -823,6 +823,13 @@ Result sets produced before the intervention-parameter rename (`seed` -> `CAq`,
 `iv_<abbrev>_` prefix pass) are not supported -- an `ADRIA_VERSION` older than `0.19.0`
 raises an error rather than attempting to translate old names. Load those result sets
 with an ADRIA version before `0.19.0` instead.
+
+Submodel logs load as `rs.logs.<submodel>.<log>`, from the subgroups of the log group; the
+flat COTS logs of stores written before logs were grouped load as `rs.logs.cots.pop` and
+`rs.logs.cots.condition`. An inconsistent merged store (source sizes that do not add up
+to its scenarios: `DimensionMismatch`; a missing per-source model specification or a
+provenance record count that does not match its sources: `ArgumentError`) or a log stored
+twice or without a `structure` attribute (`ArgumentError`) is rejected.
 """
 function load_results(result_loc::String)::ResultSet
     return _load_results(result_loc)
