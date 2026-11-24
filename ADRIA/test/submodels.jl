@@ -44,10 +44,19 @@ function ADRIAinterfaces.log_specs(::DupLogMock, ctx::ADRIAinterfaces.SubmodelCo
     ]
 end
 
-# Relative cover (timesteps x locations) of a run_model/run_scenario result, as stored
+"""
+    _rel_cover(res)
+
+Relative cover (timesteps x locations) of a run_model/run_scenario result as the result
+store holds it: values below `ENV["ADRIA_THRESHOLD"]` set to zero, then converted to
+Float32 (as in `_collect_scenario_results`), so it can be compared exactly with
+`rs.outcomes`.
+"""
 function _rel_cover(res)
     x = ADRIA.relative_cover(res.raw)
-    return Float32.(hasproperty(x, :data) ? x.data : x)
+    vals = copy(hasproperty(x, :data) ? x.data : x)
+    vals[vals .< parse(Float32, ENV["ADRIA_THRESHOLD"])] .= 0.0
+    return Float32.(vals)
 end
 
 """
