@@ -223,8 +223,17 @@ same domain) into one store. The sources need not have the same factors or logs:
   revisions and tree hashes, and parameter overrides, which are always empty today; `nothing` for a source
   stored before provenance was recorded) and
   `ADRIA.scenario_sources(rs)` the source of each scenario. `ADRIA.model_spec(rs)`
-  is the union of the specifications, the first source winning for a parameter that several
-  share. A result set that was not merged has a single source.
+  is the union of the specifications. The first source wins for the value, distribution and
+  description of a parameter that several share; the bounds span those of every source
+  holding the parameter, and a parameter is constant (`is_constant`) only if its bounds are
+  equal and it holds at most one value in the merged scenario table (`NaN` not counted), so
+  a factor that varies across sources is never marked constant. A result set that was not
+  merged has a single source.
+- **Sets that cannot be merged:** `combine_results` throws before writing anything when a
+  source is inconsistent (its source sizes do not add up to its scenarios, or it lacks one
+  model specification and one provenance record per source: `DimensionMismatch`), and while
+  setting up the logs when sources declare a log differently: a different shape or different
+  axes give a `DimensionMismatch`, different axis labels or units an `ArgumentError`.
 
 !!! warning "Subset merged tables before analysis"
     Analysis functions do not handle the `NaN` columns of a union table. `ADRIAanalysis.rsa`
