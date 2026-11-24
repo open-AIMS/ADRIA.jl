@@ -63,6 +63,107 @@ end
         @test isempty(ADRIA.attached_submodels(dom))
     end
 
+    @testset "provenance record lists attached submodels in order" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        calls = Any[]
+        ADRIA._attach_submodel!(d2, RecordingMock(:b, calls))
+        ADRIA._attach_submodel!(d2, NoOpMock())
+        rec = ADRIA._provenance_record(d2, scens)
+        @test [m["name"] for m in rec["models"]] == ["RecordingMock", "NoOpMock"]
+        @test all(m["module"] == "Main.MockSubmodels" for m in rec["models"])
+        @test [m["type"] for m in rec["models"]] ==
+            ["Main.MockSubmodels.RecordingMock", "Main.MockSubmodels.NoOpMock"]
+        @test all(isnothing(m["version"]) for m in rec["models"])  # not a package
+        @test rec["interface_version"] == string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION)
+        @test rec["adria_version"] == "v" * string(pkgversion(ADRIA))
+        @test rec["julia_version"] == string(VERSION)
+        @test isempty(rec["overrides"])
+
+        # COTS is listed (after attached submodels) only when a scenario has it on
+        @test !any(m["name"] == "COTS" for m in rec["models"])
+        on = copy(scens)
+        on.cots_on[1] = 1
+        rec_on = ADRIA._provenance_record(d2, on)
+        @test [m["name"] for m in rec_on["models"]] ==
+            ["RecordingMock", "NoOpMock", "COTS"]
+        @test rec_on == ADRIA._provenance_record(d2, on)  # deterministic
+
+        cots = rec_on["models"][end]
+        @test cots["module"] == "COTSMod"
+        @test cots["version"] == string(pkgversion(ADRIA.COTSMod))
+
+        # Revision and tree hash are those the active manifest records for COTSMod
+        manifest = Base.project_file_manifest_path(Base.active_project())
+        entry = only(ADRIA.TOML.parsefile(manifest)["deps"]["COTSMod"])
+        @test cots["revision"] == get(entry, "repo-rev", nothing)
+        @test cots["tree_hash"] == get(entry, "git-tree-sha1", nothing)
+        @test !isnothing(cots["tree_hash"])  # COTSMod is installed from git, not dev'ed
+    end
+
+    @testset "package revision and tree hash are read from the active manifest" begin
+        dir = mktempdir()
+        write(joinpath(dir, "Project.toml"), "")
+        write(
+            joinpath(dir, "Manifest.toml"),
+            """
+            manifest_format = "2.0"
+
+            [[deps.FromGit]]
+            git-tree-sha1 = "474a1ccc0cea802731c176a659cc0eb1b54f9aea"
+            repo-rev = "main"
+            repo-url = "https://example.invalid/FromGit.jl"
+            uuid = "00000000-0000-0000-0000-000000000001"
+            version = "0.1.0"
+
+            [[deps.Registered]]
+            git-tree-sha1 = "0123456789abcdef0123456789abcdef01234567"
+            uuid = "00000000-0000-0000-0000-000000000002"
+            version = "1.0.0"
+            """
+        )
+
+        old = Base.ACTIVE_PROJECT[]
+        try
+            Base.ACTIVE_PROJECT[] = joinpath(dir, "Project.toml")
+            @test ADRIA._pkg_revision("FromGit") == "main"  # a branch name, not a SHA
+            @test ADRIA._pkg_tree_hash("FromGit") ==
+                "474a1ccc0cea802731c176a659cc0eb1b54f9aea"
+            @test isnothing(ADRIA._pkg_revision("Registered"))
+            @test ADRIA._pkg_tree_hash("Registered") ==
+                "0123456789abcdef0123456789abcdef01234567"
+            @test isnothing(ADRIA._pkg_revision("NotInManifest"))
+            @test isnothing(ADRIA._pkg_tree_hash("NotInManifest"))
+        finally
+            Base.ACTIVE_PROJECT[] = old
+        end
+    end
+
+    @testset "attached submodels are written to the store and read back" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, NoOpMock())
+        rs = with_temp_output_dir(() -> ADRIA.run_scenarios(d2, scens[1:2, :], "45"))
+        models = ADRIA.provenance(rs)[1]["models"]
+        @test [m["name"] for m in models] == ["NoOpMock"]
+        @test models[1]["type"] == "Main.MockSubmodels.NoOpMock"
+    end
+
+    @testset "COTS provenance is written to the store and read back" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, NoOpMock())
+        on = scens[1:1, :]
+        on.cots_on .= 1
+        rs = with_temp_output_dir(() -> ADRIA.run_scenarios(d2, on, "45"))
+        prov = only(ADRIA.provenance(rs))
+        @test prov == ADRIA._provenance_record(d2, on)
+        @test prov["models"][end]["name"] == "COTS"
+
+        # Null fields of a model that is not a package reload as `nothing`
+        mock = prov["models"][1]
+        @test mock["name"] == "NoOpMock"
+        @test isnothing(mock["version"]) && isnothing(mock["revision"]) &&
+            isnothing(mock["tree_hash"])
+    end
+
     @testset "a submodel that does nothing leaves the run bit-identical" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d2, NoOpMock())

@@ -92,8 +92,52 @@ end
     @test_throws "inconsistent" ADRIA.load_results(dir)
 
     # A multi-source store needs one model specification file per source
-    dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
+    dir = edited_store(a -> (a["source_sizes"]=[1, n - 1]; delete!(a, "provenance")))
     @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
+
+    # Provenance records must match the sources (absent provenance is fine)
+    dir = edited_store(a -> a["source_sizes"] = [1, n - 1])
+    @test_throws "provenance records" ADRIA.load_results(dir)
+end
+
+@testset "Provenance is stored, loaded, merged and optional" begin
+    prov = ADRIA.provenance(TEST_RS)
+    @test length(prov) == 1
+    @test prov[1]["adria_version"] == "v" * string(pkgversion(ADRIA))
+    @test prov[1]["models"] == []  # COTS off, nothing attached
+    @test prov[1]["overrides"] == []
+
+    # A merged set keeps one record per source, in source order (read back from its store)
+    merged = with_temp_output_dir(() -> ADRIA.combine_results(TEST_RS, TEST_RS))
+    @test ADRIA.provenance(merged) == [prov[1], prov[1]]
+    @test length(ADRIA.provenance(merged)) == length(merged.source_sizes)
+
+    # Records of different sources stay distinct and re-merging flattens them
+    other = Dict{String,Any}(prov[1]..., "adria_version" => "v0.0.0")
+    rs_other = let r = TEST_RS
+        ADRIA.@set! r.provenance = Any[other]
+        r
+    end
+    remerged = with_temp_output_dir(() -> ADRIA.combine_results(rs_other, merged))
+    @test ADRIA.provenance(remerged) == [other, prov[1], prov[1]]
+    @test length(ADRIA.provenance(remerged)) == length(ADRIA.model_specs(remerged))
+
+    # A store written without provenance loads with `nothing`; merging it keeps alignment
+    old_dir = mktempdir()
+    cp(TEST_RS.env_layer_md.dpkg_path, old_dir; force=true)
+    fn = joinpath(old_dir, ADRIA.INPUTS, ".zattrs")
+    attrs = ADRIA.JSON.parsefile(fn)
+    delete!(attrs, "provenance")
+    write(fn, ADRIA.JSON.json(attrs))
+    old_rs = ADRIA.load_results(old_dir)
+    @test ADRIA.provenance(old_rs) == [nothing]
+
+    mixed = with_temp_output_dir(() -> ADRIA.combine_results(old_rs, TEST_RS))
+    @test ADRIA.provenance(mixed) == [nothing, prov[1]]
+
+    # Merging only sources without provenance stores none and loads as `nothing` per source
+    none = with_temp_output_dir(() -> ADRIA.combine_results(old_rs, old_rs))
+    @test ADRIA.provenance(none) == [nothing, nothing]
 end
 
 @testset "Auxiliary logs" begin

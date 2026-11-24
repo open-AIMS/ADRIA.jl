@@ -3,6 +3,7 @@
 # COTS does not go through this path. With no submodel attached, none of this runs and the
 # run is unchanged (no extra RNG draws, no extra allocations).
 
+using TOML: TOML
 using ADRIAinterfaces: ADRIAinterfaces
 using ADRIAinterfaces: Submodel, SubmodelContext, CoralStepView, AfterDisturbances, LogSpec
 
@@ -213,4 +214,110 @@ the hook path the same input would raise here instead.
         end
     end
     return nothing
+end
+
+"""
+    _manifest_field(name::AbstractString, field::AbstractString)::Union{String,Nothing}
+
+Value of `field` in the entry of package `name` in the active environment's manifest, or
+`nothing` when the package or the field is not recorded there or the manifest cannot be
+read. Uses only `TOML`, already a dependency.
+"""
+function _manifest_field(name::AbstractString, field::AbstractString)::Union{String,Nothing}
+    try
+        manifest = Base.project_file_manifest_path(Base.active_project())
+        isnothing(manifest) && return nothing
+        entries = get(TOML.parsefile(manifest), "deps", Dict())
+        haskey(entries, name) || return nothing
+        val = get(first(entries[name]), field, nothing)
+        return isnothing(val) ? nothing : String(val)
+    catch
+        return nothing
+    end
+end
+
+"""
+    _pkg_revision(name::AbstractString)::Union{String,Nothing}
+
+Revision of package `name` that was asked for, as recorded in the active environment's
+manifest (`repo-rev`): a commit SHA, or a branch or tag name if that is what was added (so
+it does not pin the code by itself; see `_pkg_tree_hash`). `nothing` when it is
+not recorded (registered or path packages) or the manifest cannot be read.
+"""
+_pkg_revision(name::AbstractString)::Union{String,Nothing} =
+    _manifest_field(name, "repo-rev")
+
+"""
+    _pkg_tree_hash(name::AbstractString)::Union{String,Nothing}
+
+Git tree hash of the installed source of package `name` (`git-tree-sha1` in the active
+environment's manifest), which identifies the code exactly; `nothing` when it is not
+recorded (path or `dev`ed packages) or the manifest cannot be read.
+"""
+_pkg_tree_hash(name::AbstractString)::Union{String,Nothing} =
+    _manifest_field(name, "git-tree-sha1")
+
+"""
+    _model_provenance(model::Submodel)::Dict{String,Any}
+
+Provenance of one attached submodel: its name, its type as `<module>.<TypeName>` (without
+type parameters, so it does not depend on what the session imported), the module that
+defines the type and that module's package version (`nothing` when the module is not a
+package, e.g. `Main`; note that `pkgversion` of a package *extension* module may also be
+`nothing`, so a model living in an extension reports no version). `revision` and
+`tree_hash` are the manifest `repo-rev` and `git-tree-sha1` of the package the module
+belongs to (that of its root module, so a submodule of a package resolves to the
+package), if any.
+"""
+function _model_provenance(model::Submodel)::Dict{String,Any}
+    T = typeof(model)
+    mod = parentmodule(T)
+    ver = pkgversion(mod)
+    pkg = string(nameof(Base.moduleroot(mod)))
+    return Dict{String,Any}(
+        "name" => string(ADRIAinterfaces.submodel_name(model)),
+        "type" => string(mod) * "." * string(nameof(T)),
+        "module" => string(mod),
+        "version" => isnothing(ver) ? nothing : string(ver),
+        "revision" => isnothing(ver) ? nothing : _pkg_revision(pkg),
+        "tree_hash" => isnothing(ver) ? nothing : _pkg_tree_hash(pkg)
+    )
+end
+
+"""
+    _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
+
+What produced a run, written to the result store: ADRIA (with a leading `v`, like the
+`ADRIA_VERSION` attr; other versions are plain), Julia and submodel interface versions;
+`models`, the attached submodels in attach order followed by the built-in COTS model
+(`COTSMod`, with its package version, manifest revision and tree hash) when any scenario
+has `cots_on = 1`; and `overrides` (always empty: there is no mechanism to override
+submodel parameters except the scenario table, which is stored in `inputs`).
+Deterministic for a given run apart from the versions.
+"""
+function _provenance_record(domain::Domain, scens::DataFrame)::Dict{String,Any}
+    models = Dict{String,Any}[
+        _model_provenance(a.model) for a in attached_submodels(domain)
+    ]
+
+    if "cots_on" in names(scens) && any(==(1), scens.cots_on)
+        cots_ver = pkgversion(COTSMod)
+        push!(
+            models,
+            Dict{String,Any}(
+                "name" => "COTS", "type" => "builtin", "module" => "COTSMod",
+                "version" => isnothing(cots_ver) ? nothing : string(cots_ver),
+                "revision" => _pkg_revision("COTSMod"),
+                "tree_hash" => _pkg_tree_hash("COTSMod")
+            )
+        )
+    end
+
+    return Dict{String,Any}(
+        "adria_version" => "v" * string(pkgversion(@__MODULE__)),
+        "julia_version" => string(VERSION),
+        "interface_version" => string(ADRIAinterfaces.SUBMODEL_INTERFACE_VERSION),
+        "models" => models,
+        "overrides" => Any[]
+    )
 end
