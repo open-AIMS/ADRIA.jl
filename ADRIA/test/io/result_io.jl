@@ -102,6 +102,76 @@ end
     @test ADRIA.scenario_sources(TEST_RS) == fill(1, size(TEST_RS.inputs, 1))
 end
 
+@testset "Union spec: bounds span the sources, a varying factor is not constant" begin
+    ms = TEST_RS.model_spec
+    row_of(spec, f) = only(eachrow(spec[spec.fieldname .== f, :]))
+    col_vals(rs, f) = rs.inputs[!, string(f)]
+
+    # A factor that varies in TEST_RS, and one that is constant in it
+    in_table(f) = string(f) in names(TEST_RS.inputs)
+    spread(f) = in_table(f) && length(unique(col_vals(TEST_RS, f))) > 1
+    varying = first(filter(spread, ms.fieldname[.!ms.is_constant]))
+    constant = :cots_on
+    @test row_of(ms, constant).is_constant
+
+    # A source in which `varying` is held at a value outside its bounds in TEST_RS and
+    # `constant` is held at another value
+    v = row_of(ms, varying).upper_bound + 1.0
+    c = row_of(ms, constant).upper_bound + 1.0
+    spec_b = copy(ms)
+    for (f, x) in ((varying, v), (constant, c))
+        i = findfirst(==(f), spec_b.fieldname)
+        spec_b[i, :val] = spec_b[i, :lower_bound] = spec_b[i, :upper_bound] = x
+        spec_b[i, :is_constant] = true
+    end
+    inputs_b = copy(TEST_RS.inputs)
+    inputs_b[!, string(varying)] .= v
+    inputs_b[!, string(constant)] .= c
+    rs_b = let r = TEST_RS
+        ADRIA.@set! r.inputs = inputs_b
+        ADRIA.@set! r.model_spec = spec_b
+        ADRIA.@set! r.model_specs = [spec_b]
+        r
+    end
+
+    for (x, y) in ((rs_b, TEST_RS), (TEST_RS, rs_b))
+        merged = with_temp_output_dir(() -> ADRIA.combine_results(x, y))
+        ums = ADRIA.model_spec(merged)
+        for (f, held) in ((varying, v), (constant, c))
+            r = row_of(ums, f)
+            @test !r.is_constant
+            @test r.lower_bound == min(row_of(ms, f).lower_bound, held)
+            @test r.upper_bound == max(row_of(ms, f).upper_bound, held)
+        end
+
+        # A factor constant at the same value in both sources stays constant
+        others = filter(f -> f != constant && in_table(f), ms.fieldname[ms.is_constant])
+        same = first(others)
+        @test row_of(ums, same).is_constant
+    end
+
+    # Bounds equal in both sources, but the merged column holds two values: not constant;
+    # NaN (a source lacking the factor) is not a value
+    DF = ADRIA.DataFrames.DataFrame
+    spec(lb, ub) = DF(;
+        component=["C"], fieldname=[:f], val=[lb], lower_bound=[lb], upper_bound=[ub],
+        is_constant=[lb == ub]
+    )
+    union_row(specs, col) = only(eachrow(ADRIA._union_model_specs(specs, DF(; f=col))))
+    @test !union_row([spec(1.0, 1.0), spec(1.0, 1.0)], [1.0, 2.0]).is_constant
+    @test union_row([spec(1.0, 1.0), spec(1.0, 1.0)], [1.0, NaN]).is_constant
+    @test !union_row([spec(1.0, 1.0), spec(2.0, 2.0)], [1.0, 1.0]).is_constant
+
+    # Specifications without bounds, in one source or all, merge without error
+    no_bounds = DF(; component=["C"], fieldname=[:f], val=[3.0])
+    r = union_row([spec(1.0, 2.0), no_bounds], [1.0, 3.0])
+    @test (r.val, r.lower_bound, r.upper_bound, r.is_constant) == (1.0, 1.0, 2.0, false)
+    r = union_row([no_bounds, spec(1.0, 2.0)], [3.0, 1.0])
+    @test r.val == 3.0 && (r.lower_bound, r.upper_bound) == (1.0, 2.0)
+    @test ADRIA._union_model_specs([no_bounds, no_bounds], DF(; f=[3.0, 3.0])) ==
+        no_bounds
+end
+
 @testset "Combining rejects result sets whose sources do not match their scenarios" begin
     n = size(TEST_RS.inputs, 1)
     combine(a, b) = with_temp_output_dir(() -> ADRIA.combine_results(a, b))

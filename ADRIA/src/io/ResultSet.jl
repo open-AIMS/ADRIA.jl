@@ -376,16 +376,42 @@ function _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
 end
 
 """
-    _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
+    _union_model_specs(specs::Vector{<:DataFrame}, inputs::DataFrame)::DataFrame
 
 Union of model specifications: the rows of the first, then rows of later specs whose
-(`component`, `fieldname`) it does not have yet.
+(`component`, `fieldname`) it does not have yet. The first source wins for the value,
+distribution and description of a factor several share. The bounds and `is_constant` are
+recomputed over the sources, so that no factor that varies in the merged scenario table
+`inputs` is marked constant: `lower_bound` and `upper_bound` are the smallest and largest
+bound of the sources holding the factor, and a factor is constant only if these are equal
+and its column in `inputs` holds at most one value (`NaN`, for sources lacking the factor,
+is not counted). Specifications without these columns, or a factor without bounds in any
+source (`missing` after the union), are left as the first source has them.
 """
-function _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
+function _union_model_specs(specs::Vector{<:DataFrame}, inputs::DataFrame)::DataFrame
     length(specs) == 1 && return specs[1]
 
     all_specs = reduce((a, b) -> vcat(a, b; cols=:union), specs)
-    return unique(all_specs, [:component, :fieldname])
+    merged = unique(all_specs, [:component, :fieldname])
+    all(in(names(merged)), ("lower_bound", "upper_bound", "is_constant")) || return merged
+
+    for (i, row) in enumerate(eachrow(merged))
+        key = (row.component, row.fieldname)
+        holding = [k == key for k in zip(all_specs.component, all_specs.fieldname)]
+        lbs = collect(skipmissing(all_specs.lower_bound[holding]))
+        ubs = collect(skipmissing(all_specs.upper_bound[holding]))
+        (isempty(lbs) || isempty(ubs)) && continue
+
+        lb, ub = minimum(lbs), maximum(ubs)
+        merged[i, :lower_bound] = lb
+        merged[i, :upper_bound] = ub
+
+        col = string(row.fieldname)
+        n_vals = col in names(inputs) ? length(unique(filter(!isnan, inputs[!, col]))) : 0
+        merged[i, :is_constant] = lb == ub && n_vals <= 1
+    end
+
+    return merged
 end
 
 """
@@ -499,8 +525,11 @@ Note: Results are stored in Zarr format. Combining data sets can be
   a `NaN` fill value, which only affects scenarios never written.
 - The model specification of each source is kept (`ADRIA.model_specs(rs)`), with
   `ADRIA.scenario_sources(rs)` giving the source of each scenario. `ADRIA.model_spec(rs)` is the
-  union of the specifications, the first source winning for a parameter several share.
-  The previous behaviour of keeping only the first set's specification is gone.
+  union of the specifications, the first source winning for a parameter several share,
+  except for the bounds and `is_constant`: the bounds span those of every source, and a
+  factor that varies in the merged scenario table is never marked constant (see
+  `_union_model_specs`). The previous behaviour of keeping only the first set's
+  specification is gone.
 - The provenance record of each source is kept as well (`ADRIA.provenance(rs)`, aligned
   with `ADRIA.model_specs(rs)`; `nothing` for a source stored without one).
 
@@ -589,7 +618,7 @@ function combine_results(result_sets...)::ResultSet
     mkdir(joinpath(new_loc, MODEL_SPEC))
     CSV.write(
         joinpath(new_loc, MODEL_SPEC, "model_spec.csv"),
-        _union_model_specs([rs.model_spec for rs in result_sets])
+        _union_model_specs([rs.model_spec for rs in result_sets], all_inputs)
     )
 
     if length(source_sizes) > 1
