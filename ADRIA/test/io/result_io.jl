@@ -190,6 +190,14 @@ end
     end
     @test_throws DimensionMismatch combine(TEST_RS, split_sizes)
     @test_throws "2 sources but 1 model specifications" combine(split_sizes, TEST_RS)
+
+    # A provenance record too many, with sizes and specifications consistent
+    extra_record = let r = TEST_RS
+        ADRIA.@set! r.provenance = Any[nothing, nothing]
+        r
+    end
+    @test_throws DimensionMismatch combine(TEST_RS, extra_record)
+    @test_throws "2 provenance records" combine(extra_record, TEST_RS)
 end
 
 @testset "Loading rejects inconsistent merged stores" begin
@@ -269,7 +277,7 @@ end
 @testset "Submodel logs" begin
     using ADRIA: Zarr, LogSpec
 
-    # Copy of the fixture store with its log group changed by `edit!(log_fn, n_scens)`
+    """Copy of the fixture store with its log group changed by `edit!(log_fn, n_scens)`."""
     function store_with_logs(edit!)
         dir = mktempdir()
         cp(TEST_RS.env_layer_md.dpkg_path, dir; force=true)
@@ -277,22 +285,30 @@ end
         return ADRIA.load_results(dir)
     end
 
-    ids = TEST_RS.loc_ids
+    rs_ids = TEST_RS.loc_ids
     NO_LOGS = Pair{Symbol,Vector{LogSpec}}[]
     tf = length(ADRIA.timesteps(TEST_DOM))
     xspec = LogSpec(:x, [:timesteps], [tf]; units="u")
 
-    # A store whose scenarios hold `val` in log `x` of each submodel in `groups`
+    """A store whose scenarios hold `val` in log `x` of each submodel in `groups`."""
     function with_x(groups, val)
         return store_with_logs() do log_fn, n
             logs = ADRIA._setup_submodel_logs(
-                log_fn, [g => [xspec] for g in groups], ids, n, n
+                log_fn, [g => [xspec] for g in groups], rs_ids, n, n
             )
             for g in groups
                 logs[g].x[:, :] = fill(Float32(val), tf, n)
             end
         end
     end
+
+    """`combine_results` of `x` and `y`, written to a temporary output directory."""
+    combine(x, y) = with_temp_output_dir(() -> ADRIA.combine_results(x, y))
+
+    # Stores and merges shared by the merge tests below (each takes a copy of the fixture)
+    n = size(TEST_RS.inputs, 1)
+    src_a1, src_a5, src_b2 = with_x([:sub_a], 1), with_x([:sub_a], 5), with_x([:sub_b], 2)
+    merged_ab = combine(src_a1, src_b2)
 
     @testset "no submodel logs without COTS" begin
         @test TEST_RS.logs == NamedTuple()
@@ -402,14 +418,13 @@ end
 
     @testset "stores of the old flat layout load as logs.cots.pop / .condition" begin
         specs = ADRIA.cots_log_specs(TEST_DOM)
-        n = size(TEST_RS.inputs, 1)
 
-        # Flat arrays under the LogSpec names, as written before logs were grouped
-        function write_flat(log_fn, n)
+        """Flat arrays under the LogSpec names, as written before logs were grouped."""
+        function write_flat(log_fn, n; specs=specs)
             for (k, spec) in enumerate(specs)
                 arr = Zarr.zcreate(
                     Float32, spec.size..., n; name=String(spec.name), path=log_fn,
-                    attrs=ADRIA._log_attrs(spec, ids)
+                    attrs=ADRIA._log_attrs(spec, rs_ids)
                 )
                 vals = fill(Float32(k), spec.size..., n)
                 arr[fill(Colon(), ndims(vals))...] = vals
@@ -428,20 +443,39 @@ end
         @test old.cots_pop_log === old.logs.cots.pop
         @test old.cots_condition_log === old.logs.cots.condition
 
+        # A store holding only one of the two flat COTS arrays loads that one
+        pop_only = store_with_logs((fn, n) -> write_flat(fn, n; specs=specs[1:1]))
+        @test keys(pop_only.logs) == (:cots,) && keys(pop_only.logs.cots) == (:pop,)
+        @test all(==(1.0), pop_only.cots_pop_log.data)
+        @test isnothing(pop_only.cots_condition_log)
+
         # A flat array that is not a known log is not mistaken for one, nor are core logs
         custom = store_with_logs(
             (fn, n) -> Zarr.zcreate(Float32, 2, 2; name="zz_custom_log", path=fn)
         )
         @test keys(custom.logs) == ()
 
+        # A log stored both flat and in its subgroup is rejected, naming both (a bare log
+        # group, so no copy of the fixture store is needed)
+        dir = mktempdir()
+        Zarr.zgroup(Zarr.DirectoryStore(dir), ADRIA.LOG_GRP)
+        log_fn = joinpath(dir, ADRIA.LOG_GRP)
+        write_flat(log_fn, 1; specs=specs[1:1])
+        ADRIA._setup_submodel_logs(
+            log_fn, [:cots => ADRIA.cots_group_log_specs(TEST_DOM)[1:1]], rs_ids, 1, 1
+        )
+        both = () -> ADRIA._load_submodel_logs(Zarr.zopen(log_fn))
+        @test_throws ArgumentError both()
+        @test_throws "as `cots/pop` and as the flat array `cots_pop_log`" both()
+
         # Merging an old store with a new-layout one keeps the log values, in the new layout
         new = store_with_logs() do log_fn, n
             logs = ADRIA._setup_submodel_logs(
-                log_fn, [:cots => ADRIA.cots_group_log_specs(TEST_DOM)], ids, n, n
+                log_fn, [:cots => ADRIA.cots_group_log_specs(TEST_DOM)], rs_ids, n, n
             )
             logs.cots.pop[:, :, :, :] = fill(Float32(7), specs[1].size..., n)
         end
-        merged = with_temp_output_dir(() -> ADRIA.combine_results(old, new))
+        merged = combine(old, new)
         @test keys(merged.logs.cots) == (:condition, :pop)
         @test all(==(1.0), merged.logs.cots.pop[scenarios = 1:n].data)
         @test all(==(7.0), merged.logs.cots.pop[scenarios = (n + 1):(2n)].data)
@@ -453,43 +487,47 @@ end
     end
 
     @testset "merge: same log name in different submodels stays separate" begin
-        n = size(TEST_RS.inputs, 1)
-        a = with_x([:sub_a], 1)
-        b = with_x([:sub_b], 2)
-        m = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
-        @test keys(m.logs) == (:sub_a, :sub_b)
-        @test all(==(1.0), m.logs.sub_a.x[scenarios = 1:n].data)
-        @test all(isnan, m.logs.sub_a.x[scenarios = (n + 1):(2n)].data)
-        @test all(isnan, m.logs.sub_b.x[scenarios = 1:n].data)
-        @test all(==(2.0), m.logs.sub_b.x[scenarios = (n + 1):(2n)].data)
+        @test keys(merged_ab.logs) == (:sub_a, :sub_b)
+        @test all(==(1.0), merged_ab.logs.sub_a.x[scenarios = 1:n].data)
+        @test all(isnan, merged_ab.logs.sub_a.x[scenarios = (n + 1):(2n)].data)
+        @test all(isnan, merged_ab.logs.sub_b.x[scenarios = 1:n].data)
+        @test all(==(2.0), merged_ab.logs.sub_b.x[scenarios = (n + 1):(2n)].data)
 
         # Same submodels in all sources: no NaN
-        m2 = with_temp_output_dir(() -> ADRIA.combine_results(a, with_x([:sub_a], 5)))
+        m2 = combine(src_a1, src_a5)
         @test keys(m2.logs) == (:sub_a,)
         @test m2.logs.sub_a.x.data == hcat(fill(1.0, tf, n), fill(5.0, tf, n))
     end
 
     @testset "merge: a source lacking a submodel is filled with NaN" begin
-        n = size(TEST_RS.inputs, 1)
-        a = with_x([:sub_a], 1)
-        cases = ((a, TEST_RS, 1:n, (n + 1):(2n)), (TEST_RS, a, (n + 1):(2n), 1:n))
+        cases = ((src_a1, TEST_RS, 1:n, (n + 1):(2n)), (TEST_RS, src_a1, (n + 1):(2n), 1:n))
         for (x, y, has, lacks) in cases
-            m = with_temp_output_dir(() -> ADRIA.combine_results(x, y))
+            m = combine(x, y)
             @test keys(m.logs) == (:sub_a,)
             @test all(==(1.0), m.logs.sub_a.x[scenarios = has].data)
             @test all(isnan, m.logs.sub_a.x[scenarios = lacks].data)
         end
     end
 
-    @testset "re-merge: logs, NaN fill and sources carry through" begin
-        n = size(TEST_RS.inputs, 1)
-        a = with_x([:sub_a], 1)
-        b = with_x([:sub_b], 2)
-        ab = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
+    @testset "merge: a source lacking one log of a submodel is filled with NaN for it" begin
+        yspec = LogSpec(:y, [:timesteps], [tf]; units="u")
+        xy = store_with_logs() do log_fn, n
+            specs = [:sub_a => [xspec, yspec]]
+            logs = ADRIA._setup_submodel_logs(log_fn, specs, rs_ids, n, n)
+            logs.sub_a.x[:, :] = fill(Float32(3), tf, n)
+            logs.sub_a.y[:, :] = fill(Float32(4), tf, n)
+        end
 
+        m = combine(src_a1, xy)
+        @test keys(m.logs) == (:sub_a,) && keys(m.logs.sub_a) == (:x, :y)
+        @test m.logs.sub_a.x.data == hcat(fill(1.0, tf, n), fill(3.0, tf, n))
+        @test all(isnan, m.logs.sub_a.y[scenarios = 1:n].data)
+        @test all(==(4.0), m.logs.sub_a.y[scenarios = (n + 1):(2n)].data)
+    end
+
+    @testset "re-merge: logs, NaN fill and sources carry through" begin
         # Merging the merged set with a third source: three sources, aligned records
-        c = with_x([:sub_a], 3)
-        abc = with_temp_output_dir(() -> ADRIA.combine_results(ab, c))
+        abc = combine(merged_ab, src_a5)
         @test abc.source_sizes == [n, n, n]
         @test length(ADRIA.model_specs(abc)) == 3
         @test length(ADRIA.provenance(abc)) == 3
@@ -500,40 +538,31 @@ end
         x_a, x_b = abc.logs.sub_a.x, abc.logs.sub_b.x
         @test all(==(1.0), x_a[scenarios = 1:n].data)
         @test all(isnan, x_a[scenarios = (n + 1):(2n)].data)
-        @test all(==(3.0), x_a[scenarios = (2n + 1):(3n)].data)
+        @test all(==(5.0), x_a[scenarios = (2n + 1):(3n)].data)
         @test all(isnan, x_b[scenarios = 1:n].data)
         @test all(==(2.0), x_b[scenarios = (n + 1):(2n)].data)
         @test all(isnan, x_b[scenarios = (2n + 1):(3n)].data)
     end
 
     @testset "merge: a log must have the same shape, labels and units in all sources" begin
-        a = with_x([:sub_a], 1)
-
-        # Log `x` of `sub_a` declared by `spec` instead, filled with 2
+        """A store with log `x` of `sub_a` declared by `spec` instead, filled with 2."""
         function with_spec(spec)
             return store_with_logs() do log_fn, n
-                logs = ADRIA._setup_submodel_logs(log_fn, [:sub_a => [spec]], ids, n, n)
+                logs = ADRIA._setup_submodel_logs(log_fn, [:sub_a => [spec]], rs_ids, n, n)
                 arr = logs.sub_a.x
                 arr[fill(Colon(), ndims(arr))...] = fill(Float32(2), size(arr))
             end
         end
 
-        combine(x, y) = with_temp_output_dir(() -> ADRIA.combine_results(x, y))
         wider = with_spec(LogSpec(:x, [:timesteps, :stage], [tf, 2]; units="u"))
-        @test_throws DimensionMismatch combine(a, wider)
-        @test_throws "sub_a.x" combine(wider, a)
+        @test_throws DimensionMismatch combine(src_a1, wider)
+        @test_throws "sub_a.x" combine(wider, src_a1)
 
         other_units = with_spec(LogSpec(:x, [:timesteps], [tf]; units="v"))
-        @test_throws ArgumentError combine(a, other_units)
+        @test_throws ArgumentError combine(src_a1, other_units)
         years = Dict(:timesteps => string.(1:tf))
         labelled = with_spec(LogSpec(:x, [:timesteps], [tf]; units="u", labels=years))
-        @test_throws ArgumentError combine(a, labelled)
-
-        # The same declaration with other values merges as usual
-        n = size(a.inputs, 1)
-        merged = combine(a, with_spec(xspec))
-        @test all(==(1.0), merged.logs.sub_a.x[scenarios = 1:n].data)
-        @test all(==(2.0), merged.logs.sub_a.x[scenarios = (n + 1):(2n)].data)
+        @test_throws ArgumentError combine(src_a1, labelled)
     end
 
     @testset "per-scenario byte budget keeps the sum and adds submodel logs" begin
