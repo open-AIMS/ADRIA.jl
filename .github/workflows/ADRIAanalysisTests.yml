@@ -3,6 +3,14 @@ on:
   push:
     tags:
       - 'v*'
+    # Runs on main so the cache is saved on the default branch: GitHub only lets a PR
+    # restore caches saved on its own ref or on main, so without this every PR starts cold.
+    branches:
+      - main
+    paths:
+      - 'ADRIAanalysis/**'
+      - 'ADRIA/src/**'
+      - '.github/workflows/ADRIAanalysisTests.yml'
   pull_request:
     paths:
       - 'ADRIAanalysis/**'
