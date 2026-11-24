@@ -84,8 +84,14 @@ give `nothing` when the log is absent, as the former fields did.
     name in LEGACY_AUX_NAMES && return nothing
     error("ADRIAResultSet has no property or auxiliary log `$name`")
 end
-# Note: this lists more names than there are fields when aux logs exist, so Setfield's
-# `@set!` on such a set may fail; rebuild the set through its constructor instead.
+
+"""
+    Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
+
+The fields and the auxiliary logs of the result set. This lists more names than there are
+fields when aux logs exist, so Setfield's `@set!` on such a set may fail; rebuild the set
+through its constructor instead.
+"""
 function Base.propertynames(rs::ADRIAResultSet, private::Bool=false)
     return (fieldnames(ADRIAResultSet)..., keys(getfield(rs, :aux))...)
 end
@@ -300,8 +306,9 @@ end
     _union_inputs(inputs::Vector{DataFrame})::DataFrame
 
 Stack scenario tables over the union of their columns (order of first appearance). The
-stored scenario table is all `Float64`, so columns a table lacks are filled with `NaN`
-rather than `missing`.
+stored scenario table is all `Float64`, so columns a table lacks are filled with `NaN`,
+never `missing`: the result has only `Float64` columns, and an absent factor is found with
+`isnan`, not `ismissing`.
 """
 function _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
     length(inputs) == 1 && return copy(inputs[1])
@@ -338,8 +345,9 @@ Note: Results are stored in Zarr format. Combining data sets can be
 # Sources with different factors or logs
 
 - Scenario tables are combined over the union of their columns, in order of first
-  appearance. A factor a source does not have is filled with `NaN` for its scenarios (the
-  stored scenario table is all `Float64`, so `NaN` stands in for `missing`).
+  appearance. A factor a source does not have is filled with `NaN` for its scenarios. The
+  fill value is always `NaN`, never `missing`: the stored scenario table is all `Float64`,
+  so the merged table keeps `Float64` columns and an absent factor is found with `isnan`.
 - Auxiliary (submodel) logs are concatenated along scenarios. Scenarios from a source that
   has no such log are filled with `NaN`, which tells them apart from scenarios that ran
   with the model off (zeros). If every source has the log it is filled with zeros as usual.

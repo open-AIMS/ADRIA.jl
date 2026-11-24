@@ -294,7 +294,8 @@ Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 - `aux_specs` : `LogSpec`s of the auxiliary (submodel) logs to create, e.g. from
   [`cots_log_specs`](@ref). They are returned as a `NamedTuple` of Zarr arrays (empty when
   there are none) in the last position.
-- `aux_fill` : fill value of the auxiliary logs (zero; `combine_results` uses `NaN`).
+- `aux_fill` : fill value of the auxiliary logs (zero; `combine_results` uses `NaN` when
+  a source lacks a log, so those scenarios are told apart from model-off zeros).
 
 Note: This setup relies on hardcoded values for number of species represented and deployed
 via coral aquaculture.
@@ -887,6 +888,7 @@ function _load_results(result_loc::String)::ResultSet
                 "Result set at $(result_loc) has $(length(source_sizes)) sources but " *
                 "$(fn) is missing"
             )
+
             ms = CSV.read(fn, DataFrame; comment="#")
             ms.fieldname .= Symbol.(ms.fieldname)
             ms

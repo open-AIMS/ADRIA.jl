@@ -208,8 +208,9 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 same domain) into one store. The sources need not have the same factors or logs:
 
 - **Scenario table:** the union of the columns, in order of first appearance. A factor a source
-  does not have is `NaN` for its scenarios (the stored table is all `Float64`, so `NaN`
-  stands in for `missing`).
+  does not have is `NaN` for its scenarios. The fill value is always `NaN`, never `missing`:
+  the stored scenario table is all `Float64`, so the merged table keeps `Float64` columns.
+  Find absent factors with `isnan`, not `ismissing`.
 - **Auxiliary (submodel) logs**, such as the COTS logs: any log held by a source is
   concatenated along scenarios. Scenarios from a source without the log are `NaN`, which tells
   them apart from scenarios that ran with the model off (zeros).
