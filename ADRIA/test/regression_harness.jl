@@ -92,6 +92,43 @@ end
             @test quiet(() -> RC.main([ref])) == 2
         end
 
+        @testset "flat and grouped submodel log layouts match by contents" begin
+            """A run folder with a COTS log, flat (`logs/cots_pop_log`) or grouped."""
+            function with_log(name; grouped, vals=Float32[1, 2])
+                d = write_run(joinpath(tmp, name))
+                logs = RC.Zarr.zopen(joinpath(d, "c1", "store.zarr", "logs"), "w")
+                grp = grouped ? RC.Zarr.zgroup(logs, "cots") : logs
+                z = RC.Zarr.zcreate(
+                    Float32, grp, grouped ? "pop" : "cots_pop_log", 2; chunks=(2,)
+                )
+                z[:] = vals
+                return d
+            end
+
+            flat = with_log("flat"; grouped=false)
+            @test code(flat, with_log("grouped"; grouped=true)) == 0
+            other = with_log("grouped_diff"; grouped=true, vals=Float32[1, 3])
+            @test code(flat, other) == 1
+
+            # A log missing from the candidate is still a difference
+            @test code(flat, write_run(joinpath(tmp, "no_log"))) == 1
+
+            # A store holding a log both flat and grouped is a difference, not a pick
+            both = with_log("both"; grouped=true)
+            logs = RC.Zarr.zopen(joinpath(both, "c1", "store.zarr", "logs"), "w")
+            z = RC.Zarr.zcreate(Float32, logs, "cots_pop_log", 2; chunks=(2,))
+            z[:] = Float32[1, 2]
+            @test code(flat, both) == 1
+            clashes = String[]
+            RC.find_arrays(joinpath(both, "c1", "store.zarr"), clashes)
+            @test startswith(only(clashes), "two arrays map to logs/cots/pop: ")
+            @test occursin("logs/cots_pop_log", only(clashes))
+
+            @test RC.canonical_path("logs/cots_condition_log") == "logs/cots/condition"
+            @test RC.canonical_path("logs/rankings") == "logs/rankings"
+            @test RC.is_submodel_group("logs/cots") && !RC.is_submodel_group("logs")
+        end
+
         @testset "the failure names the differing array" begin
             d = write_run(joinpath(tmp, "named"); cover=[9.0 2.0; 3.0 NaN])
             out = joinpath(tmp, "out.txt")

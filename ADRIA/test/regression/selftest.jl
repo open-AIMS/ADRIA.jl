@@ -132,6 +132,51 @@ mktempdir() do tmp
     cp(s1, s1 * "_copy")
     expect("two stores in a case (compare.jl crash)", d, CRASH)
 
+    # 4e. the grouped log layout (`logs/cots/pop`) and the flat one (`logs/cots_pop_log`)
+    # match by decoded contents, whichever layout the reference has; a value changed in
+    # the other layout is still a difference, and a store holding both is one too
+    function other_layout(name)
+        local d = fresh(name)
+        local logs = joinpath(store(d, "mixed"), "logs")
+        local flat = ["cots_pop_log", "cots_condition_log"]
+        local grouped = [joinpath("cots", "pop"), joinpath("cots", "condition")]
+        if isdir(joinpath(logs, flat[1]))
+            mkpath(joinpath(logs, "cots"))
+            write(joinpath(logs, "cots", ".zgroup"), JSON.json(Dict("zarr_format" => 2)))
+            write(joinpath(logs, "cots", ".zattrs"), "{}")
+            foreach((f, g) -> mv(joinpath(logs, f), joinpath(logs, g)), flat, grouped)
+            return d, joinpath(logs, grouped[1])
+        end
+
+        isdir(joinpath(logs, grouped[1])) || return nothing, ""
+        foreach((f, g) -> mv(joinpath(logs, g), joinpath(logs, f)), flat, grouped)
+        rm(joinpath(logs, "cots"); recursive=true)
+        return d, joinpath(logs, flat[1])
+    end
+
+    d, pop = other_layout("other_layout")
+    if isnothing(d)
+        push!(results, false)
+        println("FAIL the reference has no COTS logs (logs/cots_pop_log or logs/cots/pop)")
+    else
+        expect("submodel logs in the other layout", d, PASS)
+
+        d, pop = other_layout("other_layout_value")
+        z = zopen(pop, "w")
+        z[ntuple(_ -> 1, ndims(z))...] += 1
+        expect("submodel log value perturbed in the other layout", d, DIFF)
+
+        # Both layouts in one store: the source in the other layout is made first, then a
+        # fresh copy of the reference receives its array
+        d2, pop2 = other_layout("both_layouts_src")
+        d = fresh("both_layouts")
+        logs = joinpath(store(d, "mixed"), "logs")
+        rel = relpath(pop2, joinpath(store(d2, "mixed"), "logs"))
+        mkpath(dirname(joinpath(logs, rel)))
+        cp(pop2, joinpath(logs, rel))
+        expect("a log stored both flat and grouped", d, DIFF)
+    end
+
     # 5. --tol must still require exact inputs table and intervention logs
     for p in ("inputs", joinpath("logs", "shading_log"), joinpath("logs", "rankings"))
         d = fresh("tol_" * replace(p, "/" => "_", "\\" => "_"))
