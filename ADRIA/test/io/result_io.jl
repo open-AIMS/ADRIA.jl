@@ -72,7 +72,11 @@ end
 @testset "Loading rejects inconsistent merged stores" begin
     n = size(TEST_RS.inputs, 1)
 
-    # Copy of the fixture store with its scenario-table attributes edited
+    """
+        edited_store(edit!)
+
+    Copy of the fixture store with its scenario-table attributes edited by `edit!`.
+    """
     function edited_store(edit!)
         dir = mktempdir()
         cp(TEST_RS.env_layer_md.dpkg_path, dir; force=true)

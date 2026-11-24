@@ -215,7 +215,9 @@ function _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
 end
 
 """
-    _setup_aux_logs(log_fn, specs, unique_loc_ids, n_scens, batch_size)::NamedTuple
+    _setup_aux_logs(
+        log_fn, specs, unique_loc_ids, n_scens, batch_size; fill::Float32=Float32(0)
+    )::NamedTuple
 
 Create one Float32 Zarr array per `LogSpec` in the log group at `log_fn`, with the scenario
 axis appended, chunked as one batch of scenarios per chunk. Zero-filled unless `fill` is

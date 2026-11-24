@@ -303,7 +303,7 @@ function _copy_env_data(
 end
 
 """
-    _union_inputs(inputs::Vector{DataFrame})::DataFrame
+    _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
 
 Stack scenario tables over the union of their columns (order of first appearance). The
 stored scenario table is all `Float64`, so columns a table lacks are filled with `NaN`,
@@ -321,7 +321,7 @@ function _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
 end
 
 """
-    _union_model_specs(specs::Vector{DataFrame})::DataFrame
+    _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
 
 Union of model specifications: the rows of the first, then rows of later specs whose
 (`component`, `fieldname`) it does not have yet.
@@ -350,9 +350,11 @@ Note: Results are stored in Zarr format. Combining data sets can be
   so the merged table keeps `Float64` columns and an absent factor is found with `isnan`.
 - Auxiliary (submodel) logs are concatenated along scenarios. Scenarios from a source that
   has no such log are filled with `NaN`, which tells them apart from scenarios that ran
-  with the model off (zeros). If every source has the log it is filled with zeros as usual.
+  with the model off (zeros). If every source has every log, the logs are zero-filled as
+  usual. The fill value is chosen once for all logs: if any source lacks any log, every aux
+  array is created with a `NaN` fill value, which only affects scenarios never written.
 - The model specification of each source is kept (`ADRIA.model_specs(rs)`), with
-  `ADRIA.scenario_sources(rs)` giving the source of each scenario. `model_spec(rs)` is the
+  `ADRIA.scenario_sources(rs)` giving the source of each scenario. `ADRIA.model_spec(rs)` is the
   union of the specifications, the first source winning for a parameter several share.
   The previous behaviour of keeping only the first set's specification is gone.
 
