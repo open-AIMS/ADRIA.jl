@@ -303,6 +303,7 @@ rather than `missing`.
 """
 function _union_inputs(inputs::Vector{<:DataFrame})::DataFrame
     length(inputs) == 1 && return copy(inputs[1])
+
     all_inputs = reduce((a, b) -> vcat(a, b; cols=:union), inputs)
     for col in names(all_inputs)
         all_inputs[!, col] = Float64.(coalesce.(all_inputs[!, col], NaN))
@@ -318,6 +319,7 @@ Union of model specifications: the rows of the first, then rows of later specs w
 """
 function _union_model_specs(specs::Vector{<:DataFrame})::DataFrame
     length(specs) == 1 && return specs[1]
+
     all_specs = reduce((a, b) -> vcat(a, b; cols=:union), specs)
     return unique(all_specs, [:component, :fieldname])
 end
@@ -406,6 +408,7 @@ function combine_results(result_sets...)::ResultSet
         rs1.loc_max_coral_cover,
         rs1.loc_centroids
     )
+
     length(source_sizes) > 1 && (attrs[:source_sizes] = source_sizes)
 
     # ── Copy spatial data and model spec ──────────────────────────────────────
@@ -420,6 +423,7 @@ function combine_results(result_sets...)::ResultSet
         joinpath(new_loc, MODEL_SPEC, "model_spec.csv"),
         _union_model_specs([rs.model_spec for rs in result_sets])
     )
+
     if length(source_sizes) > 1
         for (i, ms) in enumerate(source_specs)
             CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec_source_$(i).csv"), ms)
@@ -791,24 +795,29 @@ function model_spec(rs::ResultSet)::DataFrame
     return rs.model_spec
 end
 
-"""
-    model_specs(rs::ResultSet)::Vector{DataFrame}
-    scenario_sources(rs::ResultSet)::Vector{Int}
-
-A result set made by [`combine_results`](@ref) keeps the model specification of every source
-(`model_specs`, in the order the sources were given); [`model_spec`](@ref) is then their
-union (first source wins for a parameter that several have). `scenario_sources` gives, for
-each scenario of the result set, the index of the source it came from. A result set that is
-not merged has one source.
-"""
-model_specs(rs::ResultSet)::Vector{DataFrame} = rs.model_specs
-scenario_sources(rs::ResultSet)::Vector{Int} = reduce(
-    vcat, [fill(i, n) for (i, n) in enumerate(rs.source_sizes)]; init=Int[]
-)
-
 function model_spec(rs::ResultSet, param_names::Vector{Symbol})::DataFrame
     return rs.model_spec[rs.model_spec.fieldname .∈ Ref(param_names), :]
 end
+
+"""
+    model_specs(rs::ResultSet)::Vector{DataFrame}
+
+A result set made by [`combine_results`](@ref) keeps the model specification of every source
+(`model_specs`, in the order the sources were given); [`model_spec`](@ref) is then their
+union (first source wins for a parameter that several have). A result set that is not
+merged has one source.
+"""
+model_specs(rs::ResultSet)::Vector{DataFrame} = rs.model_specs
+
+"""
+    scenario_sources(rs::ResultSet)::Vector{Int}
+
+For each scenario of the result set, the index of the source it came from (see
+[`model_specs`](@ref)). All ones for a result set that is not merged.
+"""
+scenario_sources(rs::ResultSet)::Vector{Int} = reduce(
+    vcat, [fill(i, n) for (i, n) in enumerate(rs.source_sizes)]; init=Int[]
+)
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION

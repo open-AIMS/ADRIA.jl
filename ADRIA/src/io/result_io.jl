@@ -251,11 +251,13 @@ function _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
     arr = log_set[String(name)]
     dims = Symbol.(collect(arr.attrs["structure"]))
     pop!(dims)  # scenario axis
+
     labels = Dict{Symbol,Vector{String}}()
     for d in dims
         key = string(_label_attr_key(d))
         haskey(arr.attrs, key) && (labels[d] = string.(arr.attrs[key]))
     end
+
     return LogSpec(
         name, dims, collect(size(arr))[1:length(dims)];
         labels=labels, units=get(arr.attrs, "units", ""),
@@ -872,6 +874,7 @@ function _load_results(result_loc::String)::ResultSet
     source_sizes::Vector{Int} = Int.(
         get(input_set.attrs, "source_sizes", [nrow(inputs_used)])
     )
+
     spec_dir = joinpath(result_loc, MODEL_SPEC)
     model_specs = if length(source_sizes) > 1
         map(1:length(source_sizes)) do i
