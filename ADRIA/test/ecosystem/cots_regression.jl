@@ -77,17 +77,17 @@ const EXPECTED = Dict{String,NTuple{3,Float64}}(
     rs = run_in_scratch(dom, scens)
 
     @testset "Test_domain, derived seeds" begin
-        @test !isnothing(rs.cots_pop_log)
-        @test all(rs.cots_pop_log[scenarios = 1].data .== 0.0)
-        @test all(rs.cots_pop_log[scenarios = 2].data .== 0.0)
+        @test haskey(rs.logs, :cots)
+        @test all(rs.logs.cots.pop[scenarios = 1].data .== 0.0)
+        @test all(rs.logs.cots.pop[scenarios = 2].data .== 0.0)
         check("td_cover_off1", summary_of(cover(rs, 1)))
         check("td_cover_off2", summary_of(cover(rs, 2)))
         check("td_cover_on1", summary_of(cover(rs, 3)))
         check("td_cover_on2", summary_of(cover(rs, 4)))
-        check("td_pop_on1", summary_of(rs.cots_pop_log[scenarios = 3].data))
-        check("td_pop_on2", summary_of(rs.cots_pop_log[scenarios = 4].data))
-        check("td_cond_on1", summary_of(rs.cots_condition_log[scenarios = 3].data))
-        check("td_cond_on2", summary_of(rs.cots_condition_log[scenarios = 4].data))
+        check("td_pop_on1", summary_of(rs.logs.cots.pop[scenarios = 3].data))
+        check("td_pop_on2", summary_of(rs.logs.cots.pop[scenarios = 4].data))
+        check("td_cond_on1", summary_of(rs.logs.cots.condition[scenarios = 3].data))
+        check("td_cond_on2", summary_of(rs.logs.cots.condition[scenarios = 4].data))
     end
 
     @testset "COTS lowers coral cover" begin
@@ -103,7 +103,7 @@ const EXPECTED = Dict{String,NTuple{3,Float64}}(
         end
         check("td_cover_off1_seed123", summary_of(cover(rs_seed, 1)))
         check("td_cover_on1_seed123", summary_of(cover(rs_seed, 2)))
-        check("td_pop_on1_seed123", summary_of(rs_seed.cots_pop_log[scenarios = 2].data))
+        check("td_pop_on1_seed123", summary_of(rs_seed.logs.cots.pop[scenarios = 2].data))
     end
 
     @testset "data package inputs: forcing modes, derived and fixed larval seeds" begin
@@ -122,11 +122,11 @@ const EXPECTED = Dict{String,NTuple{3,Float64}}(
         pscens.cots_larval_conn_seed[4] = 20260930  # row 5 (COTS off) also has the package
         prs = run_in_scratch(pkg_dom, pscens)
         for i in 1:4
-            check("pkg_pop$i", summary_of(prs.cots_pop_log[scenarios = i].data))
+            check("pkg_pop$i", summary_of(prs.logs.cots.pop[scenarios = i].data))
             check("pkg_cover$i", summary_of(cover(prs, i)))
         end
         check("pkg_cover_off", summary_of(cover(prs, 5)))
-        @test all(prs.cots_pop_log[scenarios = 5].data .== 0.0)
+        @test all(prs.logs.cots.pop[scenarios = 5].data .== 0.0)
         # COTS lowers cover with the package inputs too (row 5 is row 1 with COTS off)
         @test total_cover(prs, 1) < total_cover(prs, 5)
     end

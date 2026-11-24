@@ -100,7 +100,10 @@ submodel's logs. The names inside the group drop the model prefix; the mapping f
 `rs.logs.cots.condition`.
 
 `rs.cots_pop_log` and `rs.cots_condition_log` are deprecated aliases of these logs (`nothing`
-when absent).
+when absent). They emit a deprecation warning (shown when Julia runs with
+`--depwarn=yes`, as in the tests); use `rs.logs.cots.pop` and `rs.logs.cots.condition`, and
+`haskey(rs.logs, :cots)` to check whether COTS ran (`propertynames(rs)` and
+`hasproperty(rs, :cots_pop_log)` no longer list the deprecated names).
 
 ## Optional data-package inputs
 

@@ -87,21 +87,38 @@ const DEPRECATED_LOG_ACCESSORS = LEGACY_LOG_NAMES
     Base.getproperty(rs::ADRIAResultSet, name::Symbol)
 
 Fields, and the deprecated accessors of COTS logs (`rs.cots_pop_log`, `nothing` when
-absent as the former fields were). Logs are otherwise reached through `rs.logs`.
+absent as the former fields were; they emit a deprecation warning, see
+[`_deprecated_log`](@ref)). Logs are otherwise reached through `rs.logs`.
 """
 @inline function Base.getproperty(rs::ADRIAResultSet, name::Symbol)
     hasfield(ADRIAResultSet, name) && return getfield(rs, name)
-    if haskey(DEPRECATED_LOG_ACCESSORS, name)
-        group, log = DEPRECATED_LOG_ACCESSORS[name]
-        logs = getfield(rs, :logs)
-        return haskey(logs, group) && haskey(logs[group], log) ? logs[group][log] : nothing
-    end
+    haskey(DEPRECATED_LOG_ACCESSORS, name) && return _deprecated_log(rs, name)
 
     throw(
         ArgumentError(
             "ADRIAResultSet has no property `$name` (submodel logs are in `rs.logs`)"
         )
     )
+end
+
+"""
+    _deprecated_log(rs::ADRIAResultSet, name::Symbol)
+
+The log behind the deprecated accessor `rs.<name>` (see `DEPRECATED_LOG_ACCESSORS`), or
+`nothing` when the result set does not hold it. Emits a deprecation warning pointing to
+`rs.logs.<submodel>.<log>`, once per call site (shown when Julia runs with
+`--depwarn=yes`, as in the tests).
+"""
+@noinline function _deprecated_log(rs::ADRIAResultSet, name::Symbol)
+    group, log = DEPRECATED_LOG_ACCESSORS[name]
+    Base.depwarn(
+        "`rs.$name` is deprecated, use `rs.logs.$group.$log` instead (`rs.logs` has no " *
+        "`$group` entry when no scenario ran the submodel)",
+        :getproperty
+    )
+
+    logs = getfield(rs, :logs)
+    return haskey(logs, group) && haskey(logs[group], log) ? logs[group][log] : nothing
 end
 
 """

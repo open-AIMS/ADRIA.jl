@@ -312,8 +312,14 @@ end
 
     @testset "no submodel logs without COTS" begin
         @test TEST_RS.logs == NamedTuple()
-        @test isnothing(TEST_RS.cots_pop_log)  # deprecated accessors give nothing
-        @test isnothing(TEST_RS.cots_condition_log)
+        # The deprecated accessors warn and give nothing when absent (their values cannot
+        # be read under --depwarn=error, where the warning is an error)
+        @test_deprecated TEST_RS.cots_pop_log
+        @test_deprecated TEST_RS.cots_condition_log
+        if Base.JLOptions().depwarn != 2
+            @test isnothing(TEST_RS.cots_pop_log)
+            @test isnothing(TEST_RS.cots_condition_log)
+        end
         @test_throws ArgumentError TEST_RS.not_a_log
         @test propertynames(TEST_RS) == fieldnames(typeof(TEST_RS))
     end
@@ -440,14 +446,18 @@ end
         @test all(==(2.0), old.logs.cots.condition.data)
 
         # The deprecated accessors see them
-        @test old.cots_pop_log === old.logs.cots.pop
-        @test old.cots_condition_log === old.logs.cots.condition
+        @test_deprecated old.cots_pop_log
+        @test_deprecated old.cots_condition_log
+        if Base.JLOptions().depwarn != 2
+            @test old.cots_pop_log === old.logs.cots.pop
+            @test old.cots_condition_log === old.logs.cots.condition
+        end
 
         # A store holding only one of the two flat COTS arrays loads that one
         pop_only = store_with_logs((fn, n) -> write_flat(fn, n; specs=specs[1:1]))
         @test keys(pop_only.logs) == (:cots,) && keys(pop_only.logs.cots) == (:pop,)
-        @test all(==(1.0), pop_only.cots_pop_log.data)
-        @test isnothing(pop_only.cots_condition_log)
+        @test all(==(1.0), pop_only.logs.cots.pop.data)
+        @test !haskey(pop_only.logs.cots, :condition)
 
         # A flat array that is not a known log is not mistaken for one, nor are core logs
         custom = store_with_logs(
