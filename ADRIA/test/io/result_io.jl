@@ -69,6 +69,26 @@ end
     @test ADRIA.scenario_sources(TEST_RS) == fill(1, size(TEST_RS.inputs, 1))
 end
 
+@testset "Combining rejects result sets whose sources do not match their scenarios" begin
+    n = size(TEST_RS.inputs, 1)
+    combine(a, b) = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
+
+    too_many = let r = TEST_RS
+        ADRIA.@set! r.source_sizes = [n + 1]
+        r
+    end
+    @test_throws DimensionMismatch combine(TEST_RS, too_many)
+    @test_throws "sources hold $(n + 1) scenarios" combine(too_many, TEST_RS)
+
+    # One model specification and one provenance record per source
+    split_sizes = let r = TEST_RS
+        ADRIA.@set! r.source_sizes = [1, n - 1]
+        r
+    end
+    @test_throws DimensionMismatch combine(TEST_RS, split_sizes)
+    @test_throws "2 sources but 1 model specifications" combine(split_sizes, TEST_RS)
+end
+
 @testset "Loading rejects inconsistent merged stores" begin
     n = size(TEST_RS.inputs, 1)
 

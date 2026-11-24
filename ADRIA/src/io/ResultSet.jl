@@ -416,6 +416,34 @@ function _source_logspec(rs::ADRIAResultSet, group::Symbol, log::Symbol)::LogSpe
 end
 
 """
+    _check_sources(rs::ADRIAResultSet)::Nothing
+
+Check that the sources of `rs` account for its scenarios: `rs.source_sizes` adds up to the
+number of rows of the scenario table, with one model specification and one provenance
+record per source. Throws a `DimensionMismatch` otherwise, before anything is written.
+"""
+function _check_sources(rs::ADRIAResultSet)::Nothing
+    n = nrow(rs.inputs)
+    sum(rs.source_sizes) == n || throw(
+        DimensionMismatch(
+            "Result set `$(rs.name)` is inconsistent: its sources hold " *
+            "$(sum(rs.source_sizes)) scenarios but the scenario table has $n"
+        )
+    )
+
+    n_src = length(rs.source_sizes)
+    (length(rs.model_specs) == n_src && length(rs.provenance) == n_src) || throw(
+        DimensionMismatch(
+            "Result set `$(rs.name)` has $n_src sources but " *
+            "$(length(rs.model_specs)) model specifications and " *
+            "$(length(rs.provenance)) provenance records"
+        )
+    )
+
+    return nothing
+end
+
+"""
     combine_results(result_sets...)::ResultSet
     combine_results(result_set_locs::Array{String})::ResultSet
 
@@ -466,6 +494,8 @@ function combine_results(result_sets...)::ResultSet
         @warn "Results were created with different versions of ADRIA so errors may occur!"
         @warn "Results from model runs < 0.9 are no longer compatible!"
     end
+
+    foreach(_check_sources, result_sets)
 
     # ── Store init + inputs ───────────────────────────────────────────────────
     # Collect scalar fields from all result sets up front to avoid repeated
