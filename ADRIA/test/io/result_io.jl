@@ -24,6 +24,51 @@ end
     @test combined_rs isa ADRIA.ResultSet
 end
 
+@testset "Combine result sets with different scenario columns" begin
+    using ADRIA: DataFrames
+
+    # A source without two of the factors (as from a run of another model version)
+    dropped = [:cots_on, :cots_juvenile_predation]
+    rs_a = let r = TEST_RS
+        ADRIA.@set! r.inputs = DataFrames.select(r.inputs, DataFrames.Not(dropped))
+        r
+    end
+    @test !(:cots_on in propertynames(rs_a.inputs))
+
+    for (a, b) in ((TEST_RS, rs_a), (rs_a, TEST_RS))
+        combined = with_temp_output_dir(() -> ADRIA.combine_results(a, b))
+        n_a, n_b = size(a.inputs, 1), size(b.inputs, 1)
+        @test size(combined.inputs, 1) == n_a + n_b
+
+        # Union of the columns, in order of first appearance, all Float64
+        @test names(combined.inputs) ==
+            names(DataFrames.vcat(a.inputs, b.inputs; cols=:union))
+        @test all(eltype(c) == Float64 for c in eachcol(combined.inputs))
+
+        # Missing factors are NaN for the source lacking them, values kept elsewhere
+        lacking = a === rs_a ? (1:n_a) : ((n_a + 1):(n_a + n_b))
+        has = a === rs_a ? ((n_a + 1):(n_a + n_b)) : (1:n_a)
+        for col in dropped
+            @test all(isnan, combined.inputs[lacking, col])
+            @test combined.inputs[has, col] == TEST_RS.inputs[:, col]
+        end
+
+        # One model specification per source, in order, and the source of each scenario
+        @test length(ADRIA.model_specs(combined)) == 2
+        @test ADRIA.scenario_sources(combined) == [fill(1, n_a); fill(2, n_b)]
+    end
+
+    # The union specification lists every factor once
+    combined = with_temp_output_dir(() -> ADRIA.combine_results(rs_a, TEST_RS))
+    ms = ADRIA.model_spec(combined)
+    @test allunique(zip(ms.component, ms.fieldname))
+    @test issubset(TEST_RS.model_spec.fieldname, ms.fieldname)
+
+    # Sets that are not merged have a single source
+    @test length(ADRIA.model_specs(TEST_RS)) == 1
+    @test ADRIA.scenario_sources(TEST_RS) == fill(1, size(TEST_RS.inputs, 1))
+end
+
 @testset "Auxiliary logs" begin
     using ADRIA: Zarr
 
