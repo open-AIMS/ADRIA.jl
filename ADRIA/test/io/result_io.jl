@@ -92,7 +92,7 @@ end
     @test_throws "inconsistent" ADRIA.load_results(dir)
 
     # A multi-source store needs one model specification file per source
-    dir = edited_store(a -> (a["source_sizes"] = [1, n - 1]; delete!(a, "provenance")))
+    dir = edited_store(a -> (a["source_sizes"]=[1, n - 1]; delete!(a, "provenance")))
     @test_throws "model_spec_source_1.csv is missing" ADRIA.load_results(dir)
 
     # Provenance records must match the sources (absent provenance is fine)
