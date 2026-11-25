@@ -41,7 +41,8 @@ coral cover. Its results do not depend on the number of threads. To record new r
 values after a deliberate change in results, run it with `COTS_REGRESSION_PRINT=true`.
 
 Each prints a `Test Summary` table. Any `Fail` or `Error` column means something broke.
-When this guide was written (November 2026) the files ran 71, 37, 60 and 29 checks.
+When this guide was last updated (November 2026) the files ran 34, 37, 60, 52 and 27
+checks, in the order listed above.
 
 The scenario tests write their result stores to temporary folders (see
 `with_temp_output_dir` in `test/output_sandbox.jl`), which are removed when Julia exits, so
@@ -57,15 +58,15 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 It runs five tiers in order and stops at the first tier that fails. Results when this guide
-was written:
+was last updated:
 
 | Tier | Passed |
 | --- | --- |
-| 1: Pre-Smoke | 217 |
-| 2: I/O Smokescreen | 152 |
-| 3: Spec & Domain Loads | 325, plus 2 "Broken" |
+| 1: Pre-Smoke | 185 |
+| 2: I/O Smokescreen | 254 |
+| 3: Spec & Domain Loads | 3670, plus 2 "Broken" |
 | 4: Simulation Gate | 10 |
-| 5: Simulation-Dependent | 555 |
+| 5: Simulation-Dependent | 961 |
 
 The 2 "Broken" results in Tier 3 are deliberate skips (`@test_skip` in `decisions/mcda.jl`
 and `sampling.jl`), not failures.
