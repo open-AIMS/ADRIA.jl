@@ -1323,50 +1323,104 @@ function run_model(
 
     # State used by the growth phase (arrays are mutated in place by `_grow_corals!`)
     growth_state = (;
-        habitable_locs, habitable_loc_areas, habitable_loc_areas′, habitable_loc_idxs,
-        vec_abs_k, agg_cover_above_threshold_mask, _recruitment_col_sum_2d,
-        _recruitment_col_sum, habitable_max_projected_cover,
-        cache_habitable_max_projected_cover, relative_habitable_cover_cache,
-        growth_threshold_mask_cache, cover_threshold_mask, growth_constraints,
-        cb_calib_group_masks, n_cb_calib_groups, biogrp_lin_ext, biogrp_survival, _le_cache,
-        growth_acc_height, growth_acc_midpoint, growth_acc_steepness, cover_transition_lb,
-        cover_transition_ub, loc_cb_calib_group_idxs, net_growth_rates, functional_groups
+        # Habitable locations and their areas
+        habitable_locs, habitable_loc_idxs, habitable_loc_areas, habitable_loc_areas′,
+        vec_abs_k,
+
+        # Carrying capacity (maximum projected cover)
+        habitable_max_projected_cover, cache_habitable_max_projected_cover,
+
+        # Recruitment scratch space
+        _recruitment_col_sum_2d, _recruitment_col_sum,
+
+        # Growth-constraint masks and caches
+        agg_cover_above_threshold_mask, growth_threshold_mask_cache, cover_threshold_mask,
+        relative_habitable_cover_cache, growth_constraints, net_growth_rates,
+
+        # Cover thresholds for the growth transition
+        cover_transition_lb, cover_transition_ub,
+
+        # Calibration groups (per-location masks and indices) and their scaled rates
+        cb_calib_group_masks, n_cb_calib_groups, loc_cb_calib_group_idxs, biogrp_lin_ext,
+        biogrp_survival, _le_cache,
+
+        # Growth acceleration curve parameters
+        growth_acc_height, growth_acc_midpoint, growth_acc_steepness,
+
+        # Functional group definitions
+        functional_groups
     )
 
     # State used by the reproduction phase (arrays are mutated in place by `_reproduce!`)
     reproduction_state = (;
-        c_mean_pre_CAq, fec_scope, fecundity_per_m², habitable_areas, prop_fecundity,
-        n_locs, _loc_coral_cover, leftover_space_m², vec_abs_k, potential_settlers, conn,
-        sim_params, basal_area_per_settler, habitable_loc_idxs, _recruitment_col_sum_2d,
-        _recruitment_col_sum
+        # Locations and areas
+        n_locs, habitable_loc_idxs, habitable_areas, vec_abs_k, _loc_coral_cover,
+
+        # Fecundity and settlement
+        fec_scope, fecundity_per_m², prop_fecundity, potential_settlers,
+        basal_area_per_settler, conn, sim_params,
+
+        # Space and recruitment scratch space
+        leftover_space_m², _recruitment_col_sum_2d, _recruitment_col_sum,
+
+        # Heat tolerance snapshot taken before coral aquaculture
+        c_mean_pre_CAq
     )
 
     # State shared by the intervention phases and per-intervention constants; arrays are
     # mutated in place by the phases
     intervention_state = (;
-        domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
-        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
-        iv_CAq_last_deployment, rng
+        # Domain, run mode and random numbers
+        domain, is_guided, MCDA_approach, rng,
+
+        # Projections and current state
+        current_loc_cover, dhw_projection, wave_projection, leftover_space_m²,
+
+        # Intervention tracking
+        recent_cover_losses, log_location_ranks, iv_CAq_last_deployment
     )
     lvm_state = (;
-        LvM_strategy, LvM_pref, LvM_decision_mat, last_LvM_deployment, LvM_min_iv_locs,
-        iv_LvM_N_settlers, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria, YLvM
+        # Strategy and location selection
+        LvM_strategy, LvM_pref, LvM_decision_mat, LvM_min_iv_locs, depth_criteria,
+
+        # Deployment settings and tracking
+        iv_LvM_N_settlers, last_LvM_deployment, YLvM,
+
+        # Colony sizes and areas
+        colony_areas, _CAq_size_groups, vec_abs_k
     )
     caq_state = (;
-        CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, CAq_volume,
-        CAq_devices_per_m2, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
-        YCAq, c_mean_reference, c_std, a_adapt, c_mean_tol_ceil
+        # Strategy and location selection
+        CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, depth_criteria,
+
+        # Deployment settings and tracking
+        CAq_volume, CAq_devices_per_m2, YCAq,
+
+        # Colony sizes and areas
+        colony_areas, _CAq_size_groups, vec_abs_k,
+
+        # Heat tolerance of the outplanted corals
+        c_mean_reference, c_std, a_adapt, c_mean_tol_ceil
     )
     fog_state = (;
-        Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
-        min_iv_locs
+        # Strategy and location selection
+        Fog_strategy, Fog_pref, Fog_decision_mat, min_iv_locs,
+
+        # Deployment settings and tracking
+        fogging, last_Fog_deployment, Yfog
     )
 
     # State used by the disturbance phase
     disturbance_state = (;
-        loc_data, eff_dhw_base, eff_dhw_mix, c_std, bleach_dhw, c_mean_tol_ceil,
-        low_dhw_bleach_reduction, low_dhw_bleach_threshold, a_adapt_ref, c_mean_reference,
-        c_mean_pre_CAq, cyclone_mortality_scen
+        # Location data and cyclone mortality
+        loc_data, cyclone_mortality_scen,
+
+        # DHW and bleaching
+        eff_dhw_base, eff_dhw_mix, bleach_dhw, low_dhw_bleach_reduction,
+        low_dhw_bleach_threshold,
+
+        # Heat tolerance
+        c_std, c_mean_tol_ceil, c_mean_reference, c_mean_pre_CAq, a_adapt_ref
     )
 
     for tstep::Int64 = 2:tf
@@ -1604,14 +1658,32 @@ in place, nothing is rebound).
 """
 function _grow_corals!(C_cover, C_cover_t, recruitment, gs, tstep::Int64)
     (;
-        habitable_locs, habitable_loc_areas, habitable_loc_areas′, habitable_loc_idxs,
-        vec_abs_k, agg_cover_above_threshold_mask, _recruitment_col_sum_2d,
-        _recruitment_col_sum, habitable_max_projected_cover,
-        cache_habitable_max_projected_cover, relative_habitable_cover_cache,
-        growth_threshold_mask_cache, cover_threshold_mask, growth_constraints,
-        cb_calib_group_masks, n_cb_calib_groups, biogrp_lin_ext, biogrp_survival, _le_cache,
-        growth_acc_height, growth_acc_midpoint, growth_acc_steepness, cover_transition_lb,
-        cover_transition_ub, loc_cb_calib_group_idxs, net_growth_rates, functional_groups
+        # Habitable locations and their areas
+        habitable_locs, habitable_loc_idxs, habitable_loc_areas, habitable_loc_areas′,
+        vec_abs_k,
+
+        # Carrying capacity (maximum projected cover)
+        habitable_max_projected_cover, cache_habitable_max_projected_cover,
+
+        # Recruitment scratch space
+        _recruitment_col_sum_2d, _recruitment_col_sum,
+
+        # Growth-constraint masks and caches
+        agg_cover_above_threshold_mask, growth_threshold_mask_cache, cover_threshold_mask,
+        relative_habitable_cover_cache, growth_constraints, net_growth_rates,
+
+        # Cover thresholds for the growth transition
+        cover_transition_lb, cover_transition_ub,
+
+        # Calibration groups (per-location masks and indices) and their scaled rates
+        cb_calib_group_masks, n_cb_calib_groups, loc_cb_calib_group_idxs, biogrp_lin_ext,
+        biogrp_survival, _le_cache,
+
+        # Growth acceleration curve parameters
+        growth_acc_height, growth_acc_midpoint, growth_acc_steepness,
+
+        # Functional group definitions
+        functional_groups
     ) = gs
 
     # Convert cover to absolute values to use within CoralBlox model
@@ -1790,10 +1862,18 @@ function _reproduce!(
     recruitment, C_cover_t, c_mean_t, rs, rng, apply_allee_effect::Bool
 )
     (;
-        c_mean_pre_CAq, fec_scope, fecundity_per_m², habitable_areas, prop_fecundity,
-        n_locs, _loc_coral_cover, leftover_space_m², vec_abs_k, potential_settlers, conn,
-        sim_params, basal_area_per_settler, habitable_loc_idxs, _recruitment_col_sum_2d,
-        _recruitment_col_sum
+        # Locations and areas
+        n_locs, habitable_loc_idxs, habitable_areas, vec_abs_k, _loc_coral_cover,
+
+        # Fecundity and settlement
+        fec_scope, fecundity_per_m², prop_fecundity, potential_settlers,
+        basal_area_per_settler, conn, sim_params,
+
+        # Space and recruitment scratch space
+        leftover_space_m², _recruitment_col_sum_2d, _recruitment_col_sum,
+
+        # Heat tolerance snapshot taken before coral aquaculture
+        c_mean_pre_CAq
     ) = rs
 
     # Snapshot juvenile tolerance after natural adaptation, before coral aquaculture modifies it.
@@ -1925,11 +2005,23 @@ phases (both built before the time loop). In and out connectivity are `nothing` 
 the scenario is guided.
 """
 function _apply_fogging!(fog, ivs, in_conn, out_conn, dhw_t, tstep::Int64)
-    (; Fog_strategy, Fog_pref, Fog_decision_mat, last_Fog_deployment, Yfog, fogging,
-        min_iv_locs) = fog
-    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
-        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
-        iv_CAq_last_deployment, rng) = ivs
+    (;
+        # Strategy and location selection
+        Fog_strategy, Fog_pref, Fog_decision_mat, min_iv_locs,
+
+        # Deployment settings and tracking
+        fogging, last_Fog_deployment, Yfog
+    ) = fog
+    (;
+        # Domain, run mode and random numbers
+        domain, is_guided, MCDA_approach, rng,
+
+        # Projections and current state
+        current_loc_cover, dhw_projection, wave_projection, leftover_space_m²,
+
+        # Intervention tracking
+        recent_cover_losses, log_location_ranks, iv_CAq_last_deployment
+    ) = ivs
 
     # Fog location selection
     if !isnothing(Fog_strategy)
@@ -2012,11 +2104,26 @@ intervention phases (both built before the time loop). In and out connectivity a
 function _apply_larval_methods!(
     lvm, ivs, in_conn, out_conn, recruitment, prop_fecundity, param_set, tstep::Int64
 )
-    (; LvM_strategy, LvM_pref, LvM_decision_mat, last_LvM_deployment, LvM_min_iv_locs,
-        iv_LvM_N_settlers, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
-        YLvM) = lvm
-    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
-        dhw_projection, wave_projection, leftover_space_m², log_location_ranks, rng) = ivs
+    (;
+        # Strategy and location selection
+        LvM_strategy, LvM_pref, LvM_decision_mat, LvM_min_iv_locs, depth_criteria,
+
+        # Deployment settings and tracking
+        iv_LvM_N_settlers, last_LvM_deployment, YLvM,
+
+        # Colony sizes and areas
+        colony_areas, _CAq_size_groups, vec_abs_k
+    ) = lvm
+    (;
+        # Domain, run mode and random numbers
+        domain, is_guided, MCDA_approach, rng,
+
+        # Projections and current state
+        current_loc_cover, dhw_projection, wave_projection, leftover_space_m²,
+
+        # Intervention tracking
+        recent_cover_losses, log_location_ranks
+    ) = ivs
 
     # Larval methods intervention
     if !isnothing(LvM_strategy)
@@ -2152,12 +2259,29 @@ intervention phases (both built before the time loop). In and out connectivity a
 function _apply_coral_aquaculture!(
     caq, ivs, in_conn, out_conn, recruitment, C_cover_t, c_mean_t, param_set, tstep::Int64
 )
-    (; CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, CAq_volume,
-        CAq_devices_per_m2, colony_areas, _CAq_size_groups, vec_abs_k, depth_criteria,
-        YCAq, c_mean_reference, c_std, a_adapt, c_mean_tol_ceil) = caq
-    (; domain, is_guided, MCDA_approach, current_loc_cover, recent_cover_losses,
-        dhw_projection, wave_projection, leftover_space_m², log_location_ranks,
-        iv_CAq_last_deployment, rng) = ivs
+    (;
+        # Strategy and location selection
+        CAq_strategy, CAq_pref, CAq_decision_mat, min_iv_locs, depth_criteria,
+
+        # Deployment settings and tracking
+        CAq_volume, CAq_devices_per_m2, YCAq,
+
+        # Colony sizes and areas
+        colony_areas, _CAq_size_groups, vec_abs_k,
+
+        # Heat tolerance of the outplanted corals
+        c_mean_reference, c_std, a_adapt, c_mean_tol_ceil
+    ) = caq
+    (;
+        # Domain, run mode and random numbers
+        domain, is_guided, MCDA_approach, rng,
+
+        # Projections and current state
+        current_loc_cover, dhw_projection, wave_projection, leftover_space_m²,
+
+        # Intervention tracking
+        recent_cover_losses, log_location_ranks, iv_CAq_last_deployment
+    ) = ivs
 
     # Coral aquaculture location selection
     if !isnothing(CAq_strategy)
@@ -2308,9 +2432,17 @@ depth-attenuated DHW), the tolerance reference update and cyclone mortality.
 function _apply_disturbances!(
     ds, C_cover_t, ΔC_cover_t, c_mean_t, c_mean_t_1, dhw_t, eff_dhw_t, tstep::Int64
 )
-    (; loc_data, eff_dhw_base, eff_dhw_mix, c_std, bleach_dhw, c_mean_tol_ceil,
-        low_dhw_bleach_reduction, low_dhw_bleach_threshold, a_adapt_ref, c_mean_reference,
-        c_mean_pre_CAq, cyclone_mortality_scen) = ds
+    (;
+        # Location data and cyclone mortality
+        loc_data, cyclone_mortality_scen,
+
+        # DHW and bleaching
+        eff_dhw_base, eff_dhw_mix, bleach_dhw, low_dhw_bleach_reduction,
+        low_dhw_bleach_threshold,
+
+        # Heat tolerance
+        c_std, c_mean_tol_ceil, c_mean_reference, c_mean_pre_CAq, a_adapt_ref
+    ) = ds
 
     # Apply disturbances
 
