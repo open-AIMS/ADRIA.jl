@@ -14,8 +14,8 @@ already compiled; the first `using ADRIA` in a new checkout takes 5 to 10 minute
 | --- | --- | --- |
 | COTS factors or the adapter (`ecosystem/cots/cots_factors.jl`, `ecosystem/cots/cots_dynamics.jl`) | `test/ecosystem/cots.jl` | about 30 seconds |
 | Data-package loading (`ecosystem/cots/cots_inputs.jl`, `Domain.jl`) | `test/io/cots_inputs.jl` | about 1 minute |
-| Calibration-file loading or the low-DHW bleaching reduction (`calib_params.jl`, `growth.jl`) | `test/calib_params_loading.jl` | about 4 minutes |
-| The COTS step in `run_model` (`scenario.jl`) or the COTS result logs | `test/ecosystem/cots_scenarios.jl` | about 3 minutes |
+| Calibration-file loading or the low-DHW bleaching reduction (`calib_params.jl`, `thermal_tolerance.jl`) | `test/calib_params_loading.jl` | about 4 minutes |
+| The COTS step in `run_model` (`model_phases.jl`) or the COTS result logs | `test/ecosystem/cots_scenarios.jl` | about 3 minutes |
 | Anything that could change COTS results (on or off) | `test/ecosystem/cots_regression.jl` | about 40 seconds |
 | Anything that could change results with COTS off | the comparison with `main` | about 10 minutes |
 | Anything, before pushing | the full test suite and the formatter | 20 to 30 minutes |
