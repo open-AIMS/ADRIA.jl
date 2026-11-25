@@ -11,6 +11,10 @@
 # Compared, per case directory and per Zarr array: relative path set, dtype, shape, chunks,
 # fill_value and every value (NaN-aware exact equality, `isequal`), and attrs against an
 # allow-list. `model_spec/model_spec.csv` is compared as text. The geopackage is ignored.
+# Arrays are matched by canonical path: the flat COTS logs of stores written before logs
+# were grouped by submodel (`logs/cots_pop_log`) match `logs/cots/pop` of the grouped
+# layout, and the `logs/<submodel>` groups are left out of the group-set check (their attrs
+# and arrays are still compared).
 # Ranks, intervention logs (rankings, coral_aquaculture, larval_methods, shading_log) and the inputs table are ALWAYS exact; `--tol`
 # only relaxes the other arrays (outcomes, other logs) to a max abs difference.
 #
@@ -59,13 +63,62 @@ mutable struct Report
     n_arrays::Int
 end
 
-function find_arrays(root::String)
-    found = String[]
+"""
+Store-relative paths of the submodel logs that stores written before logs were grouped by
+submodel hold flat in the log group, mapped to their path in the grouped layout
+(`logs/<submodel>/<log>`). Arrays are matched by these canonical paths, so a store of
+either layout compares with one of the other by decoded contents.
+"""
+const LEGACY_LOG_PATHS = Dict(
+    "logs/cots_pop_log" => "logs/cots/pop",
+    "logs/cots_condition_log" => "logs/cots/condition"
+)
+
+"""
+    canonical_path(rel::String)::String
+
+The path array `rel` (store-relative, `/`-separated) is compared under: its grouped-layout
+path for a legacy flat submodel log (see `LEGACY_LOG_PATHS`), else `rel` itself.
+"""
+canonical_path(rel::String)::String = get(LEGACY_LOG_PATHS, rel, rel)
+
+"""
+    find_arrays(root::String, clashes::Vector{String}=String[])::Dict{String,String}
+
+The arrays of the store at `root`, as canonical path (see [`canonical_path`](@ref)) =>
+store-relative path on disk. When two arrays map to the same canonical path (a store
+holding a log both flat and grouped), the first found is kept and a message naming both is
+pushed to `clashes`.
+"""
+function find_arrays(root::String, clashes::Vector{String}=String[])::Dict{String,String}
+    found = Dict{String,String}()
     for (dir, dirs, files) in walkdir(root)
-        rel = relpath(dir, root)
-        ".zarray" in files && !is_ignored(rel) && push!(found, rel)
+        rel = join(splitpath(relpath(dir, root)), "/")
+        (".zarray" in files && !is_ignored(rel)) || continue
+
+        canon = canonical_path(rel)
+        if haskey(found, canon)
+            push!(clashes, "two arrays map to $canon: $(found[canon]) and $rel")
+            continue
+        end
+
+        found[canon] = rel
     end
-    return sort!(found)
+
+    return found
+end
+
+"""
+    is_submodel_group(rel::String)::Bool
+
+Whether the store-relative group `rel` is the log group of one submodel (`logs/<name>`).
+Stores written before logs were grouped do not have these groups, so they are left out of
+the group-set comparison; their attrs are compared where both sides have them, and their
+arrays are compared as any other.
+"""
+function is_submodel_group(rel::String)::Bool
+    parts = splitpath(rel)
+    return length(parts) == 2 && parts[1] == "logs"
 end
 
 function normalize_attr(key::String, val)
@@ -124,15 +177,22 @@ end
 spec_lines(f) = filter(l -> !startswith(l, "#"), readlines(f))
 
 function compare_store!(rep, name, ref, cand, tol)
-    ra, rb = find_arrays(ref), find_arrays(cand)
-    for p in setdiff(ra, rb)
+    clash_a, clash_b = String[], String[]
+    ra, rb = find_arrays(ref, clash_a), find_arrays(cand, clash_b)
+    for (side, clashes) in (("reference", clash_a), ("candidate", clash_b)), c in clashes
+        push!(rep.diffs, "$name ($side): $c")
+    end
+
+    for p in sort!(collect(setdiff(keys(ra), keys(rb))))
         push!(rep.diffs, "$name/$p: missing in candidate")
     end
-    for p in setdiff(rb, ra)
+    for p in sort!(collect(setdiff(keys(rb), keys(ra))))
         push!(rep.diffs, "$name/$p: extra in candidate")
     end
-    for p in intersect(ra, rb)
-        compare_array!(rep, "$name/$p", p, joinpath(ref, p), joinpath(cand, p), tol)
+    for p in sort!(collect(intersect(keys(ra), keys(rb))))
+        compare_array!(
+            rep, "$name/$p", p, joinpath(ref, ra[p]), joinpath(cand, rb[p]), tol
+        )
     end
 
     # Group-level attrs (store root, logs/, ...)
@@ -143,7 +203,8 @@ function compare_store!(rep, name, ref, cand, tol)
     ]
     )
     ga, gb = groups(ref), groups(cand)
-    ga == gb || push!(rep.diffs, "$name: group sets differ: $ga vs $gb")
+    sa, sb = filter(!is_submodel_group, ga), filter(!is_submodel_group, gb)
+    sa == sb || push!(rep.diffs, "$name: group sets differ: $sa vs $sb")
     for g in intersect(ga, gb)
         compare_attrs!(rep, "$name/$g (group)", joinpath(ref, g), joinpath(cand, g))
     end

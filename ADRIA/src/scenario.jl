@@ -179,8 +179,8 @@ function run_scenarios(
     # Cap the chunk size so that the per-thread batch buffers stay within a working budget
     # and every Zarr chunk file stays below the 2 GB limit enforced by BloscCompressor
     # (see `_max_chunk_by_size`).
-    aux_specs = _aux_log_specs(dom, scens)
-    _max_chunk_by_size::Int = _max_chunk_by_size_for(dom, aux_specs)
+    sub_specs = _submodel_log_specs(dom, scens)
+    _max_chunk_by_size::Int = _max_chunk_by_size_for(dom, sub_specs)
 
     env_chunk = parse(Int, get(ENV, "ADRIA_CHUNK_SIZE", "0"))
     chunk_size::Int = if env_chunk > 0
@@ -450,21 +450,22 @@ function _collect_scenario_results(
         CAq_log=CAq_vals,
         coral_dhw_log=dhw_vals,
         coral_cover_log=cover_vals,
-        aux=_aux_results(result_set)
+        submodel_logs=_cots_log_results(result_set)
     )
 end
 
 """
-    _log_bytes_per_scen(domain::Domain, aux_specs)::NamedTuple
+    _log_bytes_per_scen(domain::Domain, sub_specs)::NamedTuple
 
 Uncompressed bytes one scenario adds to the result store, assuming 4 bytes per value:
-`total` is the sum over the always-present arrays plus the auxiliary logs in `aux_specs`
+`total` is the sum over the always-present arrays plus the submodel logs in `sub_specs`
+(`LogSpec`s by submodel, see [`_submodel_log_specs`](@ref))
 (the per-thread batch budget; the optional coral_dhw_log / coral_cover_log arrays are not
 counted, so it is a lower bound) and `largest` is the largest single array, including the
 optional logs when enabled by environment variable.
 """
 function _log_bytes_per_scen(
-    domain::Domain, aux_specs::AbstractVector{LogSpec}
+    domain::Domain, sub_specs::AbstractVector{<:Pair{Symbol,<:AbstractVector{LogSpec}}}
 )::NamedTuple
     n_locs = domain.coral_growth.n_locs
     n_groups = domain.coral_growth.n_groups
@@ -480,12 +481,13 @@ function _log_bytes_per_scen(
         tf * n_groups * n_locs,                  # LvM_log
         tf * n_groups * n_locs                   # CAq_log
     ]
-    aux = [prod(s.size) for s in aux_specs]
-    total = 4 * (sum(arrays) + sum(aux; init=0))
+    sub_sizes = [prod(s.size) for (_, specs) in sub_specs for s in specs]
+    total = 4 * (sum(arrays) + sum(sub_sizes; init=0))
 
     # Largest single array, with the element sizes actually stored: Float32 for the
-    # outcome and aux logs, UInt16 ranks, Float16 shading, and the optional DHW (Float16)
-    # and cover (UInt16) logs, which hold a single location unless enabled by env var.
+    # outcome and submodel logs, UInt16 ranks, Float16 shading, and the optional DHW
+    # (Float16) and cover (UInt16) logs, which hold a single location unless enabled by
+    # env var.
     sized = [
         4 * tf * n_locs * length(LOC_METRIC_NAMES),
         4 * tf * n_groups,
@@ -494,7 +496,7 @@ function _log_bytes_per_scen(
         4 * tf * n_groups * n_locs,
         4 * tf * n_groups * n_locs
     ]
-    aux_bytes = [4 * prod(s.size) for s in aux_specs]
+    sub_bytes = [4 * n for n in sub_sizes]
 
     dhw_locs = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) ? n_locs : 1
     cover_locs = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) ? n_locs : 1
@@ -502,19 +504,21 @@ function _log_bytes_per_scen(
         2 * tf * n_groups * n_sizes * dhw_locs,
         2 * tf * n_groups * n_sizes * cover_locs
     ]
-    largest = maximum(vcat(sized, aux_bytes, optional))
+    largest = maximum(vcat(sized, sub_bytes, optional))
 
     return (; total, largest)
 end
 
 """
-    _max_chunk_by_size_for(domain::Domain, aux_specs)::Int
+    _max_chunk_by_size_for(domain::Domain, sub_specs)::Int
 
 Largest number of scenarios per chunk (and per in-memory batch) within a 1.8 GB working
 budget, below the hard 2 GB limit per array: see [`_chunk_cap_by_bytes`](@ref).
 """
-function _max_chunk_by_size_for(domain::Domain, aux_specs::AbstractVector{LogSpec})::Int
-    b = _log_bytes_per_scen(domain, aux_specs)
+function _max_chunk_by_size_for(
+    domain::Domain, sub_specs::AbstractVector{<:Pair{Symbol,<:AbstractVector{LogSpec}}}
+)::Int
+    b = _log_bytes_per_scen(domain, sub_specs)
     return _chunk_cap_by_bytes(b.total, b.largest)
 end
 
@@ -532,16 +536,23 @@ function _chunk_cap_by_bytes(total::Int, largest::Int)::Int
 end
 
 """
-    _aux_results(result_set)::NamedTuple
+    _cots_log_results(result_set)::NamedTuple
 
-Auxiliary (submodel) logs of a model run as Float32 arrays keyed by log name (the names of
-the `LogSpec`s, see [`cots_log_specs`](@ref)). Until COTS is a submodel its two logs are
-taken from the run's COTS buffers.
+Submodel logs of a model run as Float32 arrays, grouped by submodel and named as in the
+result set: `(cots = (pop = ..., condition = ...),)` (see `COTS_LOG_NAMES`). Until COTS is a
+submodel its two logs are taken from the run's COTS buffers.
+
+This is the `submodel_logs` entry of the collected scenario results, which is written to
+the result store. It is not the `submodel_logs` that `run_model` returns: those are the
+log buffers of the attached (hook) submodels (see [`_submodel_logs`](@ref)), which are not
+stored yet.
 """
-function _aux_results(result_set)::NamedTuple
-    return (
-        cots_pop_log=Float32.(result_set.cots_log),
-        cots_condition_log=Float32.(result_set.cots_condition_log)
+function _cots_log_results(result_set)::NamedTuple
+    return (;
+        COTS_LOG_GROUP => (
+            pop=Float32.(result_set.cots_log),
+            condition=Float32.(result_set.cots_condition_log)
+        )
     )
 end
 
@@ -630,15 +641,15 @@ function _write_batch!(
         end
     end
 
-    # Auxiliary logs (those declared for this run; scenarios axis is last)
-    for (name, arr) in pairs(data_store.aux)
-        r1 = getfield(results[1].aux, name)
-        aux_batch = Array{Float32}(undef, size(r1)..., n)
+    # Submodel logs (those declared for this run; scenarios axis is last)
+    for (group, arrs) in pairs(data_store.submodel_logs), (name, arr) in pairs(arrs)
+        r1 = results[1].submodel_logs[group][name]
+        batch = Array{Float32}(undef, size(r1)..., n)
         lead = ntuple(_ -> Colon(), ndims(r1))
         for (i, r) in enumerate(results)
-            aux_batch[lead..., i] .= getfield(r.aux, name)
+            batch[lead..., i] .= r.submodel_logs[group][name]
         end
-        arr[lead..., idx_range] .= aux_batch
+        arr[lead..., idx_range] .= batch
     end
 
     return nothing
@@ -2119,6 +2130,6 @@ function run_model(
         coral_dhw_final=copy(c_mean_t),
         cots_log=Ycots,
         cots_condition_log=Ycots_bc,
-        aux_logs=_aux_logs(submodel_slots)
+        submodel_logs=_submodel_logs(submodel_slots)
     )
 end

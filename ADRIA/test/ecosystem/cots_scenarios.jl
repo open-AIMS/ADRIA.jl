@@ -15,9 +15,15 @@ end
 
     @testset "no COTS logs when every scenario has COTS off" begin
         rs_off = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens[1:2, :], "45"))
-        @test isnothing(rs_off.cots_pop_log)
-        @test isnothing(rs_off.cots_condition_log)
-        @test rs_off.aux == NamedTuple()
+        @test rs_off.logs == NamedTuple()
+
+        # The deprecated accessors still work (`nothing` when absent) and warn; their values
+        # cannot be read under --depwarn=error, where the warning is an error
+        @test_deprecated r"rs\.logs\.cots\.pop" rs_off.cots_pop_log
+        @test_deprecated r"rs\.logs\.cots\.condition" rs_off.cots_condition_log
+        if Base.JLOptions().depwarn != 2
+            @test isnothing(rs_off.cots_pop_log) && isnothing(rs_off.cots_condition_log)
+        end
     end
 
     # Scenarios 1 and 2 run COTS (with juvenile predation on in scenario 2); 3 and 4 do not
@@ -26,8 +32,8 @@ end
     rs = with_temp_output_dir(() -> ADRIA.run_scenarios(dom, scens, "45"))
 
     @testset "COTS logs are written for COTS scenarios only" begin
-        @test !isnothing(rs.cots_pop_log)
-        pop = rs.cots_pop_log
+        @test haskey(rs.logs, :cots)
+        pop = rs.logs.cots.pop
         @test size(pop, :scenarios) == 4
         @test size(pop, :age_class) == 3
         @test any(pop[scenarios = 1].data .> 0.0)
@@ -35,20 +41,26 @@ end
         @test all(pop[scenarios = 3].data .== 0.0)
         @test all(pop[scenarios = 4].data .== 0.0)
         @test all(isfinite, pop.data)
-        @test all(rs.cots_condition_log[scenarios = 3].data .== 0.0)
+        @test all(rs.logs.cots.condition[scenarios = 3].data .== 0.0)
 
-        # The logs are auxiliary logs of the result set, also reachable as properties
-        @test keys(rs.aux) == (:cots_condition_log, :cots_pop_log)
-        @test rs.aux.cots_pop_log === rs.cots_pop_log
-        @test rs.aux.cots_condition_log === rs.cots_condition_log
+        # The logs are submodel logs of the result set; the old properties are deprecated
+        # aliases of them
+        @test keys(rs.logs) == (:cots,)
+        @test keys(rs.logs.cots) == (:condition, :pop)
+        @test_deprecated rs.cots_pop_log
+        @test_deprecated rs.cots_condition_log
+        if Base.JLOptions().depwarn != 2
+            @test rs.cots_pop_log === rs.logs.cots.pop
+            @test rs.cots_condition_log === rs.logs.cots.condition
+        end
     end
 
     @testset "result sets with COTS logs combine" begin
         combined = with_temp_output_dir(() -> ADRIA.combine_results(rs, rs))
-        @test size(combined.cots_pop_log, :scenarios) == 8
-        @test size(combined.cots_condition_log, :scenarios) == 8
-        @test combined.cots_pop_log[scenarios = 5].data ==
-            rs.cots_pop_log[scenarios = 1].data
+        @test size(combined.logs.cots.pop, :scenarios) == 8
+        @test size(combined.logs.cots.condition, :scenarios) == 8
+        @test combined.logs.cots.pop[scenarios = 5].data ==
+            rs.logs.cots.pop[scenarios = 1].data
     end
 
     @testset "COTS runs from the data package's inputs" begin
@@ -73,7 +85,7 @@ end
         pkg_scens.cots_larval_conn_seed[6] = 20260930
         pkg_rs = with_temp_output_dir(() -> ADRIA.run_scenarios(pkg_dom, pkg_scens, "45"))
 
-        pop = pkg_rs.cots_pop_log
+        pop = pkg_rs.logs.cots.pop
         for i in 4:6
             @test any(pop[scenarios = i].data .> 0.0)
         end
@@ -86,7 +98,7 @@ end
         @test all(isfinite, pop.data)
         @test all(pop[scenarios = 1].data .== 0.0)
         @test any(pop[scenarios = 3].data .> 0.0)
-        @test pop[scenarios = 2].data != rs.cots_pop_log[scenarios = 1].data
+        @test pop[scenarios = 2].data != rs.logs.cots.pop[scenarios = 1].data
         @test pop[scenarios = 3].data != pop[scenarios = 2].data
         # COTS inputs leave coral-only scenarios unchanged
         for (name, cube) in pairs(pkg_rs.outcomes)

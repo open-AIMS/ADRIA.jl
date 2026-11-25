@@ -14,10 +14,49 @@ if !@isdefined(TEST_DOMAIN_PATH)
     const TEST_DOMAIN_PATH = joinpath(pkgdir(ADRIA), "test", "data", "Test_domain")
 end
 
-# Relative cover (timesteps x locations) of a run_model/run_scenario result, as stored
+# Mocks for the submodel name and log checks
+
+"""
+Submodel that does nothing, named by its `name` field.
+"""
+struct NamedMock <: ADRIAinterfaces.Submodel
+    name::Symbol
+end
+
+ADRIAinterfaces.submodel_name(m::NamedMock) = m.name
+
+"""
+Submodel whose `submodel_name` returns a `String` instead of a `Symbol`.
+"""
+struct StringNamedMock <: ADRIAinterfaces.Submodel end
+
+ADRIAinterfaces.submodel_name(::StringNamedMock) = "named"
+
+"""
+Submodel that declares two logs with the same name.
+"""
+struct DupLogMock <: ADRIAinterfaces.Submodel end
+
+function ADRIAinterfaces.log_specs(::DupLogMock, ctx::ADRIAinterfaces.SubmodelContext)
+    return [
+        ADRIAinterfaces.LogSpec(:same, [:timesteps], [ctx.tf]),
+        ADRIAinterfaces.LogSpec(:same, [:timesteps], [ctx.tf])
+    ]
+end
+
+"""
+    _rel_cover(res)
+
+Relative cover (timesteps x locations) of a run_model/run_scenario result as the result
+store holds it: values below `ENV["ADRIA_THRESHOLD"]` set to zero, then converted to
+Float32 (as in `_collect_scenario_results`), so it can be compared exactly with
+`rs.outcomes`.
+"""
 function _rel_cover(res)
     x = ADRIA.relative_cover(res.raw)
-    return Float32.(hasproperty(x, :data) ? x.data : x)
+    vals = copy(hasproperty(x, :data) ? x.data : x)
+    vals[vals .< parse(Float32, ENV["ADRIA_THRESHOLD"])] .= 0.0
+    return Float32.(vals)
 end
 
 """
@@ -52,7 +91,27 @@ end
     end
 
     base = ADRIA.run_scenario(dom, row)
-    @test base.aux_logs == (;)
+    @test base.submodel_logs == (;)
+
+    @testset "submodel names are checked at attach time" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, NamedMock(:one))
+        ADRIA._attach_submodel!(d2, NamedMock(:two))  # same type, distinct names
+        @test length(ADRIA.attached_submodels(d2)) == 2
+        @test_throws "already attached" ADRIA._attach_submodel!(d2, NamedMock(:one))
+        @test_throws "reserved" ADRIA._attach_submodel!(d2, NamedMock(:core))
+        @test_throws "reserved" ADRIA._attach_submodel!(d2, NamedMock(:cots))
+        @test_throws "reserved" ADRIA._attach_submodel!(d2, NamedMock(:coral_cover_log))
+        @test_throws "must return a Symbol" ADRIA._attach_submodel!(d2, StringNamedMock())
+        @test_throws ArgumentError ADRIA._attach_submodel!(d2, NamedMock(Symbol("a b")))
+        @test length(ADRIA.attached_submodels(d2)) == 2  # nothing was attached
+    end
+
+    @testset "log names must be unique within a submodel" begin
+        d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+        ADRIA._attach_submodel!(d2, DupLogMock())
+        @test_throws "same name" ADRIA.run_scenario(d2, row)
+    end
 
     @testset "attached submodels are copied with the domain's spec store" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
@@ -69,7 +128,7 @@ end
         ADRIA._attach_submodel!(d2, RecordingMock(:b, calls))
         ADRIA._attach_submodel!(d2, NoOpMock())
         rec = ADRIA._provenance_record(d2, scens)
-        @test [m["name"] for m in rec["models"]] == ["RecordingMock", "NoOpMock"]
+        @test [m["name"] for m in rec["models"]] == ["b", "NoOpMock"]
         @test all(m["module"] == "Main.MockSubmodels" for m in rec["models"])
         @test [m["type"] for m in rec["models"]] ==
             ["Main.MockSubmodels.RecordingMock", "Main.MockSubmodels.NoOpMock"]
@@ -85,7 +144,7 @@ end
         on.cots_on[1] = 1
         rec_on = ADRIA._provenance_record(d2, on)
         @test [m["name"] for m in rec_on["models"]] ==
-            ["RecordingMock", "NoOpMock", "COTS"]
+            ["b", "NoOpMock", "COTS"]
         @test rec_on == ADRIA._provenance_record(d2, on)  # deterministic
 
         cots = rec_on["models"][end]
@@ -138,6 +197,62 @@ end
         end
     end
 
+    @testset "a model type in a submodule of a package resolves to the package" begin
+        # Fake package `FakeModelPkg` with an empty submodule `Models`, loaded from a path
+        # but recorded in the manifest with a revision and tree hash as if from git
+        dir = mktempdir()
+        pkg_dir = joinpath(dir, "FakeModelPkg")
+        mkpath(joinpath(pkg_dir, "src"))
+        uuid = "00000000-0000-0000-0000-0000000000f1"
+        write(
+            joinpath(pkg_dir, "Project.toml"),
+            "name = \"FakeModelPkg\"\nuuid = \"$uuid\"\nversion = \"0.3.1\"\n"
+        )
+        write(
+            joinpath(pkg_dir, "src", "FakeModelPkg.jl"),
+            "__precompile__(false)\nmodule FakeModelPkg\nmodule Models end\nend\n"
+        )
+        write(joinpath(dir, "Project.toml"), "[deps]\nFakeModelPkg = \"$uuid\"\n")
+        write(
+            joinpath(dir, "Manifest.toml"),
+            """
+            manifest_format = "2.0"
+
+            [[deps.FakeModelPkg]]
+            git-tree-sha1 = "1111111111111111111111111111111111111111"
+            path = "$(escape_string(pkg_dir))"
+            repo-rev = "v0.3.1"
+            uuid = "$uuid"
+            version = "0.3.1"
+            """
+        )
+
+        # The package is found through the temporary environment, pushed onto LOAD_PATH
+        # (not through "@", which need not be in LOAD_PATH); the active project is set to
+        # it as well because the manifest lookup reads the active environment's manifest
+        old = Base.ACTIVE_PROJECT[]
+        env = joinpath(dir, "Project.toml")
+        try
+            push!(LOAD_PATH, env)
+            Base.ACTIVE_PROJECT[] = env
+            fake = Base.require(Main, :FakeModelPkg)
+
+            # The model type lives in the submodule, not the package's root module
+            models = Base.invokelatest(getproperty, fake, :Models)
+            Core.eval(models, :(struct FakeModel <: $(ADRIAinterfaces.Submodel) end))
+            model = Base.invokelatest(() -> models.FakeModel())
+            prov = ADRIA._model_provenance(model)
+            @test prov["module"] == "FakeModelPkg.Models"
+            @test prov["type"] == "FakeModelPkg.Models.FakeModel"
+            @test prov["version"] == "0.3.1"
+            @test prov["revision"] == "v0.3.1"
+            @test prov["tree_hash"] == "1111111111111111111111111111111111111111"
+        finally
+            filter!(!=(env), LOAD_PATH)
+            Base.ACTIVE_PROJECT[] = old
+        end
+    end
+
     @testset "attached submodels are written to the store and read back" begin
         d2 = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         ADRIA._attach_submodel!(d2, NoOpMock())
@@ -169,7 +284,7 @@ end
         ADRIA._attach_submodel!(d2, NoOpMock())
         res = ADRIA.run_scenario(d2, row)
         @test isequal(res.raw, base.raw)
-        @test res.aux_logs == (;)
+        @test res.submodel_logs == (;)
     end
 
     @testset "hooks are called in order, once per timestep" begin
@@ -234,9 +349,10 @@ end
         @test obs.seen[1] ≈ (1 - frac) * obs0.seen[1] rtol = 1e-6
 
         # Logs of the reducer are returned among the results
-        @test keys(r1.aux_logs) == (:mock_cover, :mock_calls)
-        @test r1.aux_logs.mock_calls[2:tf] == collect(1.0:(tf - 1))
-        @test r1.aux_logs.mock_cover[2:tf] == collect(2.0:tf)
+        @test keys(r1.submodel_logs) == (:shrink_mock,)  # the observer logs nothing
+        @test keys(r1.submodel_logs.shrink_mock) == (:mock_cover, :mock_calls)
+        @test r1.submodel_logs.shrink_mock.mock_calls[2:tf] == collect(1.0:(tf - 1))
+        @test r1.submodel_logs.shrink_mock.mock_cover[2:tf] == collect(2.0:tf)
     end
 
     @testset "a submodel that adds cover trips the survival assertion" begin
@@ -327,7 +443,7 @@ end
         ADRIA._attach_submodel!(d2, ShrinkMock(0.1))
         res = ADRIA.run_scenario(d2, sc[2, :])
         @test all(isfinite, res.raw)
-        @test res.aux_logs.mock_calls[tf] == tf - 1
+        @test res.submodel_logs.shrink_mock.mock_calls[tf] == tf - 1
     end
 
     @testset "the submodel phase allocates nothing per step after warm-up" begin

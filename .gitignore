@@ -41,3 +41,6 @@ ADRIA/test/.testenv/
 ADRIA/test/logs/
 ADRIA/test/outputs/
 ADRIA/test/Outputs/
+
+# Result sets written by running tests/examples from the package dir
+ADRIA/Outputs/

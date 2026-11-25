@@ -80,21 +80,30 @@ does not change the seed, or the results, of any coral-only scenario. The one ex
 
 ## Outputs
 
-When at least one scenario has `cots_on = 1`, the result set holds two extra logs:
+When at least one scenario has `cots_on = 1`, the result set holds two extra logs, in the
+`cots` group of its submodel logs (`rs.logs.cots`):
 
-- `cots_pop_log`: COTS density by age class (recruits, juveniles, adults), with dimensions
+- `rs.logs.cots.pop`: COTS density by age class (recruits, juveniles, adults), with dimensions
   timesteps x age class x locations x scenarios, in COTS per hectare;
-- `cots_condition_log`: COTS body condition, with dimensions timesteps x locations x
+- `rs.logs.cots.condition`: COTS body condition, with dimensions timesteps x locations x
   scenarios.
 
-Scenarios with COTS off hold zeros in these logs. The logs are auxiliary logs of the result
-set: they are found in `rs.aux` (a `NamedTuple` keyed by log name) and as `rs.cots_pop_log`
-and `rs.cots_condition_log`. When no scenario runs COTS, the logs are not created, `rs.aux`
-is empty and both properties are `nothing`.
+Scenarios with COTS off hold zeros in these logs. When no scenario runs COTS, the logs are
+not created and `rs.logs` is empty.
 
-The store names are unchanged. When a result set is loaded, every array of the `logs` group
-that is not one of the core logs (rankings, intervention logs, shading, DHW tolerance and
-cover) is loaded as an auxiliary log, so stores written before this change load as before.
+The logs are stored in a Zarr subgroup of the `logs` group (`logs/cots/pop`,
+`logs/cots/condition`): every subgroup of `logs` is a submodel and its arrays are that
+submodel's logs. The names inside the group drop the model prefix; the mapping from the
+`LogSpec` names of `ADRIA.cots_log_specs` (`cots_pop_log`, `cots_condition_log`) is
+`ADRIA.COTS_LOG_NAMES`. Stores written before logs were grouped, which hold flat
+`cots_pop_log` and `cots_condition_log` arrays, load as `rs.logs.cots.pop` and
+`rs.logs.cots.condition`.
+
+`rs.cots_pop_log` and `rs.cots_condition_log` are deprecated aliases of these logs (`nothing`
+when absent). They emit a deprecation warning (shown when Julia runs with
+`--depwarn=yes`, as in the tests); use `rs.logs.cots.pop` and `rs.logs.cots.condition`, and
+`haskey(rs.logs, :cots)` to check whether COTS ran (`propertynames(rs)` and
+`hasproperty(rs, :cots_pop_log)` no longer list the deprecated names).
 
 ## Optional data-package inputs
 

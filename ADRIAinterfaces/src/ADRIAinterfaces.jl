@@ -183,7 +183,10 @@ end
 
 Declaration of one per-scenario output log of a submodel. The host allocates a
 `Float64` array of `size` for it, passes it to [`record!`](@ref) and returns it among the
-run results under `name`. A scenario axis is appended by the host when results are stored.
+run results, grouped by submodel: `submodel_logs.<submodel_name>.<name>`, so `name` only
+needs to be unique within the submodel. When the host stores logs in a result set (today
+only the built-in COTS logs; the logs of attached submodels are returned by a run but not
+stored yet), it appends a scenario axis.
 
 `dims` names each axis (e.g. `[:timesteps, :age_class, :locations]`); `labels` optionally
 maps a dim to its labels.
@@ -283,7 +286,12 @@ location_k(v::CoralStepView) = v.location_k
 """
     submodel_name(sm::Submodel)::Symbol
 
-Short identifier, used in messages. Default: the type name.
+Name of the submodel. It identifies the submodel in messages and provenance records and
+names the group of its logs: `submodel_logs.<name>` among the results of a run and
+`rs.logs.<name>` in a result set. It must be a `Symbol` that is a valid identifier, unique
+among the submodels attached to a domain (define it per instance to attach two instances
+of one type), and not `core`, `cots` or the name of a core log array; the host checks this
+when the submodel is attached. Default: the type name.
 """
 submodel_name(sm::Submodel)::Symbol = nameof(typeof(sm))
 
@@ -356,7 +364,8 @@ seed_excluded(::Submodel)::Vector{Symbol} = Symbol[]
 """
     log_specs(sm::Submodel, ctx::SubmodelContext)::Vector{LogSpec}
 
-Output logs the submodel wants. Default: none.
+Output logs the submodel wants. Their names must be unique within the submodel (logs are
+grouped by [`submodel_name`](@ref)). Default: none.
 """
 log_specs(::Submodel, ::SubmodelContext)::Vector{LogSpec} = LogSpec[]
 

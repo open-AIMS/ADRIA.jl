@@ -196,12 +196,12 @@ of existing stores (`:age_class` -> `:age_classes`), else `<dim>_labels`.
 _label_attr_key(dim::Symbol)::Symbol = get(LEGACY_LABEL_ATTRS, dim, Symbol(dim, "_labels"))
 
 """
-    _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
+    _log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
 
-Zarr attributes of an auxiliary log: its axes (with the scenario axis appended), axis
+Zarr attributes of a submodel log: its axes (with the scenario axis appended), axis
 labels, units, description and location ids. `units` and `description` are omitted when empty.
 """
-function _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
+function _log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
     attrs = Dict{Symbol,Any}(
         :structure => (string.(spec.dims)..., "scenarios"),
         :unique_loc_ids => unique_loc_ids
@@ -215,42 +215,67 @@ function _aux_log_attrs(spec::LogSpec, unique_loc_ids)::Dict{Symbol,Any}
 end
 
 """
-    _setup_aux_logs(
-        log_fn, specs, unique_loc_ids, n_scens, batch_size; fill::Float32=Float32(0)
+    _setup_submodel_logs(
+        log_fn, sub_specs, unique_loc_ids, n_scens, batch_size; fill::Float32=Float32(0)
     )::NamedTuple
 
-Create one Float32 Zarr array per `LogSpec` in the log group at `log_fn`, with the scenario
-axis appended, chunked as one batch of scenarios per chunk. Zero-filled unless `fill` is
-given (merged result sets use `NaN` for scenarios from sources lacking the log).
+Create the logs of each submodel in `sub_specs` (`submodel name => LogSpecs`): one Float32
+Zarr array per `LogSpec`, with the scenario axis appended, chunked as one batch of scenarios
+per chunk, in a Zarr subgroup named after the submodel of the log group at `log_fn`
+(`logs/cots/pop`). Zero-filled unless `fill` is given (merged result sets use `NaN` for
+scenarios from sources lacking the log). Returns `(submodel = (log = array, ...), ...)`.
+The names of the submodels must be valid and not reserved (`core` and the names of the core
+logs, `CORE_LOG_NAMES`) and the log names of a submodel unique: an `ArgumentError` is
+thrown otherwise.
 """
-function _setup_aux_logs(
-    log_fn::String, specs::AbstractVector{LogSpec}, unique_loc_ids, n_scens::Int,
-    batch_size::Int; fill::Float32=Float32(0)
+function _setup_submodel_logs(
+    log_fn::String, sub_specs::AbstractVector{<:Pair{Symbol,<:AbstractVector{LogSpec}}},
+    unique_loc_ids, n_scens::Int, batch_size::Int; fill::Float32=Float32(0)
 )::NamedTuple
-    arrs = map(specs) do spec
-        dims = (spec.size..., n_scens)
-        zcreate(
-            Float32,
-            dims...;
-            name=String(spec.name),
-            fill_value=fill,
-            fill_as_missing=false,
-            path=log_fn,
-            chunks=(spec.size..., batch_size),
-            attrs=_aux_log_attrs(spec, unique_loc_ids)
+    groups = [g for (g, _) in sub_specs]
+    length(unique(groups)) == length(groups) ||
+        throw(ArgumentError("Submodel names are not unique: $groups"))
+    for g in groups
+        Base.isidentifier(g) ||
+            throw(ArgumentError("Submodel name `$g` is not a valid identifier"))
+        (g == :core || String(g) in CORE_LOG_NAMES) && throw(
+            ArgumentError(
+                "Submodel name `$g` is reserved (`core` and the names of the core logs)"
+            )
         )
     end
-    return NamedTuple{Tuple(s.name for s in specs)}(Tuple(arrs))
+
+    store = DirectoryStore(log_fn)
+    per_group = map(sub_specs) do (group, specs)
+        _check_unique_log_names(group, specs)
+        zgroup(store, String(group))
+        arrs = map(specs) do spec
+            dims = (spec.size..., n_scens)
+            zcreate(
+                Float32,
+                dims...;
+                name=String(spec.name),
+                fill_value=fill,
+                fill_as_missing=false,
+                path=joinpath(log_fn, String(group)),
+                chunks=(spec.size..., batch_size),
+                attrs=_log_attrs(spec, unique_loc_ids)
+            )
+        end
+        NamedTuple{Tuple(s.name for s in specs)}(Tuple(arrs))
+    end
+
+    return NamedTuple{Tuple(groups)}(Tuple(per_group))
 end
 
 """
-    _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
+    _logspec_from_store(group::Zarr.ZGroup, name::Symbol)::LogSpec
 
-Rebuild the `LogSpec` of the auxiliary log `name` in a stored log group from its `structure`
-attribute, shape, axis labels, units and description (the inverse of `_aux_log_attrs`).
+Rebuild the `LogSpec` of the log array `name` in a Zarr group from its `structure`
+attribute, shape, axis labels, units and description (the inverse of `_log_attrs`).
 """
-function _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
-    arr = log_set[String(name)]
+function _logspec_from_store(group::Zarr.ZGroup, name::Symbol)::LogSpec
+    arr = group[String(name)]
     dims = Symbol.(collect(arr.attrs["structure"]))
     pop!(dims)  # scenario axis
 
@@ -268,20 +293,27 @@ function _aux_logspec_from_store(log_set::Zarr.ZGroup, name::Symbol)::LogSpec
 end
 
 """
-    _aux_log_specs(domain::Domain, scen_spec::DataFrame)::Vector{LogSpec}
+    _submodel_log_specs(
+        domain::Domain, scen_spec::DataFrame
+    )::Vector{Pair{Symbol,Vector{LogSpec}}}
 
-The auxiliary logs a run needs: today the COTS logs, when at least one scenario has
-`cots_on = 1`.
+The submodel logs a run needs, as `submodel name => LogSpecs` with the log names used in the
+result set: today the COTS logs (group `cots`, logs `pop` and `condition`, see
+[`cots_group_log_specs`](@ref)), when at least one scenario has `cots_on = 1`.
 """
-function _aux_log_specs(domain::Domain, scen_spec::DataFrame)::Vector{LogSpec}
+function _submodel_log_specs(
+    domain::Domain, scen_spec::DataFrame
+)::Vector{Pair{Symbol,Vector{LogSpec}}}
     log_cots = "cots_on" in names(scen_spec) && any(==(1), scen_spec.cots_on)
-    return log_cots ? cots_log_specs(domain) : LogSpec[]
+    return log_cots ? [COTS_LOG_GROUP => cots_group_log_specs(domain)] :
+           Pair{Symbol,Vector{LogSpec}}[]
 end
 
 """
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
+Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log, and the logs
+of submodels.
 
 # Arguments
 - `z_store` : ZArray
@@ -293,10 +325,11 @@ Setup logs for ranks, CAq_log, Shd_log, coral_dhw_log, and coral_cover_log.
 - `n_sizes` : number of size classes
 - `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
   that each batch write lands in exactly one chunk file per array.
-- `aux_specs` : `LogSpec`s of the auxiliary (submodel) logs to create, e.g. from
-  [`cots_log_specs`](@ref). They are returned as a `NamedTuple` of Zarr arrays (empty when
-  there are none) in the last position.
-- `aux_fill` : fill value of the auxiliary logs (zero; `combine_results` uses `NaN` when
+- `sub_specs` : `LogSpec`s of the submodel logs to create, by submodel name, e.g.
+  `[:cots => cots_group_log_specs(domain)]`. Each submodel's logs are created in a subgroup
+  of the log group named after the submodel. They are returned as a `NamedTuple` of
+  `NamedTuple`s of Zarr arrays (empty when there are none) in the last position.
+- `sub_fill` : fill value of the submodel logs (zero; `combine_results` uses `NaN` when
   a source lacks a log, so those scenarios are told apart from model-off zeros).
 
 Note: This setup relies on hardcoded values for number of species represented and deployed
@@ -304,7 +337,10 @@ via coral aquaculture.
 """
 function setup_logs(
     z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1;
-    aux_specs::AbstractVector{LogSpec}=LogSpec[], aux_fill::Float32=Float32(0)
+    sub_specs::AbstractVector{<:Pair{Symbol,<:AbstractVector{LogSpec}}}=Pair{
+        Symbol,Vector{LogSpec}
+    }[],
+    sub_fill::Float32=Float32(0)
 )
     # Set up logs for location ranks, coral aquaculture/fog log
     zgroup(z_store, LOG_GRP)
@@ -471,12 +507,12 @@ function setup_logs(
         )
     end
 
-    # Auxiliary (submodel) logs, only those declared for this run
-    aux = _setup_aux_logs(
-        log_fn, aux_specs, unique_loc_ids, n_scens, batch_size; fill=aux_fill
+    # Submodel logs, only those declared for this run
+    submodel_logs = _setup_submodel_logs(
+        log_fn, sub_specs, unique_loc_ids, n_scens, batch_size; fill=sub_fill
     )
 
-    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, aux
+    return ranks, LvM_log, CAq_log, Shd_log, coral_dhw_log, coral_cover_log, submodel_logs
 end
 
 """
@@ -696,7 +732,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
             n_groups,
             domain.coral_growth.n_sizes,
             batch_size;
-            aux_specs=_aux_log_specs(domain, scen_spec)
+            sub_specs=_submodel_log_specs(domain, scen_spec)
         )...
     ]
 
@@ -714,7 +750,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :Shd_log,
                 :coral_dhw_log,
                 :coral_cover_log,
-                :aux
+                :submodel_logs
             ),
             stores
         )...
@@ -787,6 +823,13 @@ Result sets produced before the intervention-parameter rename (`seed` -> `CAq`,
 `iv_<abbrev>_` prefix pass) are not supported -- an `ADRIA_VERSION` older than `0.19.0`
 raises an error rather than attempting to translate old names. Load those result sets
 with an ADRIA version before `0.19.0` instead.
+
+Submodel logs load as `rs.logs.<submodel>.<log>`, from the subgroups of the log group; the
+flat COTS logs of stores written before logs were grouped load as `rs.logs.cots.pop` and
+`rs.logs.cots.condition`. An inconsistent merged store (source sizes that do not add up
+to its scenarios: `DimensionMismatch`; a missing per-source model specification or a
+provenance record count that does not match its sources: `ArgumentError`) or a log stored
+twice or without a `structure` attribute (`ArgumentError`) is rejected.
 """
 function load_results(result_loc::String)::ResultSet
     return _load_results(result_loc)
@@ -888,25 +931,32 @@ function _load_results(result_loc::String)::ResultSet
     end
     if length(provenance) != length(source_sizes)
         # Only a store without provenance may lack records; anything else is inconsistent
-        isnothing(prov) || error(
-            "Result set at $(result_loc) has $(length(provenance)) provenance records " *
-            "for $(length(source_sizes)) sources"
+        isnothing(prov) || throw(
+            ArgumentError(
+                "Result set at $(result_loc) has $(length(provenance)) provenance " *
+                "records for $(length(source_sizes)) sources"
+            )
         )
         provenance = fill(nothing, length(source_sizes))
     end
 
-    sum(source_sizes) == nrow(inputs_used) || error(
-        "Result set at $(result_loc) is inconsistent: its sources hold $(sum(source_sizes)) " *
-        "scenarios but the scenario table has $(nrow(inputs_used))"
+    sum(source_sizes) == nrow(inputs_used) || throw(
+        DimensionMismatch(
+            "Result set at $(result_loc) is inconsistent: its sources hold " *
+            "$(sum(source_sizes)) scenarios but the scenario table has " *
+            "$(nrow(inputs_used))"
+        )
     )
 
     spec_dir = joinpath(result_loc, MODEL_SPEC)
     model_specs = if length(source_sizes) > 1
         map(1:length(source_sizes)) do i
             fn = joinpath(spec_dir, "model_spec_source_$(i).csv")
-            isfile(fn) || error(
-                "Result set at $(result_loc) has $(length(source_sizes)) sources but " *
-                "$(fn) is missing"
+            isfile(fn) || throw(
+                ArgumentError(
+                    "Result set at $(result_loc) has $(length(source_sizes)) sources " *
+                    "but $(fn) is missing"
+                )
             )
 
             ms = CSV.read(fn, DataFrame; comment="#")
