@@ -53,6 +53,7 @@ include("factors/const_params.jl")
 
 include("ecosystem/corals/coral_factors.jl")
 include("ecosystem/corals/growth.jl")
+include("ecosystem/corals/thermal_tolerance.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/DepthAttenuation.jl")
@@ -102,6 +103,8 @@ include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
 include("scenario.jl")
+include("io/scenario_results.jl")
+include("model_phases.jl")
 include("analysis/analysis.jl")
 
 # Depends on metrics, so it is loaded after metrics/metrics.jl.
