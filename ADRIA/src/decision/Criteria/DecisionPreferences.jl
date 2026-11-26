@@ -121,7 +121,7 @@ function solve(
 ) where {T<:DecisionPreference}
     # `mcdm(..., MooraMethod())` ignores the method stored in `MooraMethod` and runs
     # JMcDM's default `:reference` form, so the ratio form is requested explicitly.
-    return JMcDM.MOORA.moora(dm.data, dp.weights, dp.directions; method=:ratio)
+    return JMcDM.MOORA.moora(Matrix(dm.data), dp.weights, dp.directions; method=:ratio)
 end
 function solve(
     dp::T, dm::YAXArray, method::Function
