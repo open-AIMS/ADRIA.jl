@@ -101,6 +101,7 @@ function rank_locations(
     in_conn, out_conn, network = connectivity_strength(
         area_weighted_conn, sum_cover, conn_cache
     )
+    out_spread_scores = location_out_spread(dom)
     # strong_pred = strongest_source(g, network)
 
     scens = DataCube(
@@ -180,6 +181,7 @@ function rank_locations(
                 depth=loc_data.depth_med[valid_CAq_locs],
                 in_connectivity=in_conn[valid_CAq_locs],
                 out_connectivity=out_conn[valid_CAq_locs],
+                out_spread=out_spread_scores[valid_CAq_locs],
                 heat_stress=dhw_projection[valid_CAq_locs],
                 wave_stress=wave_projection[valid_CAq_locs],
                 coral_cover=sum_cover[valid_CAq_locs]
@@ -213,6 +215,7 @@ function rank_locations(
                 depth=loc_data.depth_med[valid_Fog_locs],
                 in_connectivity=in_conn[valid_Fog_locs],
                 out_connectivity=out_conn[valid_Fog_locs],
+                out_spread=out_spread_scores[valid_Fog_locs],
                 heat_stress=dhw_projection[valid_Fog_locs],
                 wave_stress=wave_projection[valid_Fog_locs],
                 coral_cover=sum_cover[valid_Fog_locs]

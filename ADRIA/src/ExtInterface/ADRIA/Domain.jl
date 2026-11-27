@@ -234,6 +234,7 @@ function Domain(
 
     dist_matrix = distance_matrix(location_data)
     location_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
+    location_data[!, :out_spread] = out_spread(connectivity.conn.data)
 
     n_locs::Int64 = nrow(location_data)
     coral_growth::CoralGrowth = CoralGrowth(n_locs)

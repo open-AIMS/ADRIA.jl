@@ -207,10 +207,10 @@ if hasmethod(
         CAq_decision_mat = ADRIA.decision.decision_matrix(
             ADRIA_DOM_45.loc_ids,
             CAq_pref.names;
-            iv_CAq_in_connectivity=in_conn,
-            iv_CAq_out_connectivity=out_conn,
-            iv_CAq_heat_stress=dhw_projection,
-            iv_CAq_coral_cover=sum_cover
+            in_connectivity=in_conn,
+            out_connectivity=out_conn,
+            heat_stress=dhw_projection,
+            coral_cover=sum_cover
         )
 
         # Get results from applying MCDA algorithm

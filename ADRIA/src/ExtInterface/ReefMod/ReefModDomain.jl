@@ -127,6 +127,7 @@ function load_domain(
 
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, location_ids)
+    spatial_data[!, :out_spread] = out_spread(conn_data.data)
 
     spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])

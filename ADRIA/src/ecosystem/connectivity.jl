@@ -316,3 +316,82 @@ function strongest_source(g, indegree)::Vector{Int64}
 
     return strong_src
 end
+
+"""Fraction of its upper limit (1 / spectral radius) used for the attenuation factor of `out_spread`."""
+const OUT_SPREAD_FRACTION = 0.5
+
+function _spectral_radius(C::SparseMatrixCSC{Float64,Int64})::Float64
+    n = size(C, 1)
+    if n <= 200
+        return maximum(abs, eigvals(Matrix(C)))
+    end
+
+    return try
+        vals, _ = Graphs.LinAlg.eigs(
+            C; which=Graphs.LinAlg.LM(), nev=1, v1=ones(n)
+        )
+        abs(first(vals))
+    catch
+        @warn "out_spread: the eigen-solver failed, using the row/column sum bound of the spectral radius"
+        min(maximum(sum(C; dims=1)), maximum(sum(C; dims=2)))
+    end
+end
+
+"""
+    out_spread(conn::AbstractMatrix{<:Real}; fraction::Float64=OUT_SPREAD_FRACTION)::Vector{Float64}
+
+How much each location spreads larvae through the connectivity network: Katz centrality of
+the raw transfer matrix without self links, ``x = 1 + \alpha C x`` with
+``\alpha = fraction / \rho(C)``, minus the baseline of 1 and divided by its maximum.
+
+Unlike `out_conn` of [`connectivity_strength`](@ref), the score does not depend on coral cover
+or area, so it is the same in every timestep and scenario. Walks of `k` links count
+`fraction^k` as much as a single link, so with the default `fraction` only the first few links
+matter, and locations that only send larvae to themselves score 0.
+
+# Arguments
+- `conn` : Transfer matrix, where `conn[i, j]` is the larval transfer from source `i` to sink `j`.
+- `fraction` : Attenuation factor as a fraction of its upper limit `1 / ρ(C)`, in (0, 1).
+
+# Returns
+Score in [0, 1] for each location. All zeros if no location sends larvae to another location.
+"""
+function out_spread(
+    conn::AbstractMatrix{<:Real}; fraction::Float64=OUT_SPREAD_FRACTION
+)::Vector{Float64}
+    n = size(conn, 1)
+    C = sparse(Float64.(conn))
+    C = dropzeros!(C - spdiagm(0 => diag(C)))
+    nnz(C) == 0 && return zeros(n)
+
+    # The row/column sum bound is used if the matrix is nilpotent (no cycles, spectral radius 0)
+    # or the eigen-solver fails; any attenuation factor is valid in the nilpotent case.
+    bound = min(maximum(sum(C; dims=1)), maximum(sum(C; dims=2)))
+    rho = _spectral_radius(C)
+    scale = rho > 1e-8 * bound ? rho : bound
+
+    alpha = fraction / scale
+    score = ((sparse(I, n, n) - alpha * C) \ ones(n)) .- 1.0
+
+    return score ./ maximum(score)
+end
+
+"""
+    location_out_spread(domain)::Vector{Float64}
+
+[`out_spread`](@ref) of each location of `domain`. Uses the value stored in `domain.loc_data`
+when the domain was loaded with it, and computes it otherwise.
+
+# Arguments
+- `domain` : `Domain` holding the connectivity data.
+
+# Returns
+Score in [0, 1] for each location, in the order of `domain.loc_ids`.
+"""
+function location_out_spread(domain)::Vector{Float64}
+    if hasproperty(domain.loc_data, :out_spread)
+        return domain.loc_data.out_spread
+    end
+
+    return out_spread(domain.conn.data)
+end

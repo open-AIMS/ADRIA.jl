@@ -55,6 +55,15 @@ const CRITERIA_CATALOG = Dict{Symbol,NamedTuple}(
         name="Outgoing Connectivity",
         description="Importance of outgoing connectivity (i.e., providing larvae to other locations)."
     ),
+    :out_spread => (
+        val=1.0,
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=maximum,
+        name="Outgoing Spread",
+        description="Importance of how far larvae spread from a location through the connectivity network, ignoring self links and coral cover."
+    ),
     :depth => (
         val=1.0,
         ptype="continuous",

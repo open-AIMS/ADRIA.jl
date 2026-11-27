@@ -11,6 +11,7 @@ using ADRIA:
     n_locations,
     loc_area,
     loc_k_area,
+    location_out_spread,
     timesteps
 
 using ADRIA:

@@ -382,6 +382,7 @@ function setup_guided_intervention(
         domain.loc_ids[valid_locs_mask],
         pref.names;
         depth=domain.loc_data.depth_med[valid_locs_mask],
+        out_spread=location_out_spread(domain)[valid_locs_mask],
         cluster_diversity=diversity_scores[valid_locs_mask],
         geographic_separation=separation_scores[valid_locs_mask]
     )
