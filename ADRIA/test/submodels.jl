@@ -500,16 +500,17 @@ end
         # Test_domain RCP 45 (75 timesteps). Generated from the current code (7490170f
         # plus Stage 0): a change here means simulation results changed, which needs a
         # deliberate decision; update the value only for an intended result change.
-        # Not exact on purpose: the last digits differ across Julia versions (1.11.9 and
-        # 1.12.7 give 163.98244844000132, 1.13.4 gives 163.9824484400013); rtol 1e-10 is
-        # far above that and far below any real result change. The regression harness
-        # (test/regression) is the exact, same-version gate.
+        # Not exact on purpose: the last digits can differ across Julia versions (the previous
+        # value differed in the last digit between 1.12.7 and 1.13.4); rtol 1e-10 is far above
+        # that and far below any real result change. The regression harness (test/regression)
+        # is the exact, same-version gate. Regenerated (1.13.4) when the criteria weights gained
+        # the `out_spread` factors, which changed the seeded sample, not the model results.
         old_rng = copy(Random.default_rng())
         Random.seed!(42)
         s42 = ADRIA.sample(dom, 4)
         copy!(Random.default_rng(), old_rng)
         res = ADRIA.run_scenario(dom, s42[2, :])
         @test size(res.raw) == (75, 5, 7, 10)
-        @test isapprox(sum(res.raw), 163.9824484400013; rtol=1e-10)
+        @test isapprox(sum(res.raw), 147.92167157590535; rtol=1e-10)
     end
 end

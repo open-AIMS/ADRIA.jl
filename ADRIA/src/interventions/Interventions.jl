@@ -356,7 +356,7 @@ function setup_guided_intervention(
     domain::Domain,
     param_set::YAXArray,
     depth_criteria::BitVector,
-    preference,
+    weights_type::Type{<:decision.DecisionWeights},
     target_locs::Vector{String},
     is_intervention::Bool,
     build_strategy::Function
@@ -366,7 +366,7 @@ function setup_guided_intervention(
     valid_locs_mask =
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
-    pref = preference(domain, param_set)
+    pref = DecisionPreferences(weights_type, domain, param_set)
 
     # No locations meet the criteria (e.g. depth bounds exclude all candidates for this
     # scenario/year) - skip deployment rather than build an empty decision matrix
@@ -382,6 +382,7 @@ function setup_guided_intervention(
         domain.loc_ids[valid_locs_mask],
         pref.names;
         depth=domain.loc_data.depth_med[valid_locs_mask],
+        out_spread=location_out_spread(domain)[valid_locs_mask],
         cluster_diversity=diversity_scores[valid_locs_mask],
         geographic_separation=separation_scores[valid_locs_mask]
     )

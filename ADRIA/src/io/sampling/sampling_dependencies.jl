@@ -166,20 +166,14 @@ const _GROUP_MEMBERS = Dict{Symbol,Vector{Symbol}}(
         :reactive_min_cover_remaining, :reactive_response_delay,
         :iv_CAq_revisit_cadence, :iv_Fog_revisit_cadence, :iv_LvM_revisit_cadence
     ],
-    :criteria_weights => [
-        :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
-        :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
-        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation,
-        :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
-        :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
-        :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation,
-        :iv_LvM_heat_stress, :iv_LvM_wave_stress, :iv_LvM_in_connectivity,
-        :iv_LvM_out_connectivity, :iv_LvM_depth, :iv_LvM_coral_cover,
-        :iv_LvM_cluster_diversity, :iv_LvM_geographic_separation
-        # NOTE: iv_Shd_* criteria weights are deliberately excluded — ShdCriteriaWeights is
-        # not currently included in the module (see DecisionWeights.jl), so these columns
-        # don't exist in model_spec today. Add them here if/when that's revived.
-    ], :depth_thresholds => [:depth_min, :depth_offset],
+    # NOTE: iv_Shd_* criteria weights are deliberately excluded — ShdCriteriaWeights is
+    # not currently included in the module (see DecisionWeights.jl), so these columns
+    # don't exist in model_spec today. Add them here if/when that's revived.
+    :criteria_weights => vcat(
+        decision.criterion_fields(decision.CAqCriteriaWeights),
+        decision.criterion_fields(decision.FogCriteriaWeights),
+        decision.criterion_fields(decision.LvMCriteriaWeights)
+    ), :depth_thresholds => [:depth_min, :depth_offset],
     :strategy_group => [:iv_CAq_strategy, :iv_Fog_strategy, :iv_LvM_strategy]
 )
 

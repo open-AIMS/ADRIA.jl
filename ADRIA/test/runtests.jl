@@ -108,6 +108,7 @@ if _in_shard("spec")
         _timed_include("growth_limits.jl")
         _timed_include("decisions/mcda.jl")
         _timed_include("decisions/location_spread.jl")
+        _timed_include("decisions/criteria.jl")
         _timed_include("decisions/revisit_cadence.jl")
     end
     _abort_if_failed(tier3, "Tier 3 (Spec & Domain Loads)")

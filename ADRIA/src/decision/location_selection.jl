@@ -101,6 +101,7 @@ function rank_locations(
     in_conn, out_conn, network = connectivity_strength(
         area_weighted_conn, sum_cover, conn_cache
     )
+    out_spread_scores = location_out_spread(dom)
     # strong_pred = strongest_source(g, network)
 
     scens = DataCube(
@@ -109,9 +110,9 @@ function rank_locations(
         factors=names(scenarios)
     )
 
-    CAq_pref = CAqPreferences(dom, scens[1, :])
-    Fog_pref = FogPreferences(dom, scens[1, :])
-    LvM_pref = LvMPreferences(dom, scens[1, :])
+    CAq_pref = DecisionPreferences(CAqCriteriaWeights, dom, scens[1, :])
+    Fog_pref = DecisionPreferences(FogCriteriaWeights, dom, scens[1, :])
+    LvM_pref = DecisionPreferences(LvMCriteriaWeights, dom, scens[1, :])
 
     loc_data = dom.loc_data
     coral_habitable_locs = loc_data.k .> 0.0
@@ -146,9 +147,9 @@ function rank_locations(
 
         MCDA_approach = mcda_methods()[Int64(scen[factors = At("mcda_method")][1])]
 
-        CAq_pref = CAqPreferences(dom, scen)
-        Fog_pref = FogPreferences(dom, scen)
-        LvM_pref = LvMPreferences(dom, scen)
+        CAq_pref = DecisionPreferences(CAqCriteriaWeights, dom, scen)
+        Fog_pref = DecisionPreferences(FogCriteriaWeights, dom, scen)
+        LvM_pref = DecisionPreferences(LvMCriteriaWeights, dom, scen)
 
         # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors = At("dhw_scenario")][1])
@@ -180,6 +181,7 @@ function rank_locations(
                 depth=loc_data.depth_med[valid_CAq_locs],
                 in_connectivity=in_conn[valid_CAq_locs],
                 out_connectivity=out_conn[valid_CAq_locs],
+                out_spread=out_spread_scores[valid_CAq_locs],
                 heat_stress=dhw_projection[valid_CAq_locs],
                 wave_stress=wave_projection[valid_CAq_locs],
                 coral_cover=sum_cover[valid_CAq_locs]
@@ -209,10 +211,11 @@ function rank_locations(
         if count(valid_Fog_locs) > 0
             Fog_decision_mat = decision_matrix(
                 dom.loc_ids[valid_Fog_locs],
-                CAq_pref.names;
+                Fog_pref.names;
                 depth=loc_data.depth_med[valid_Fog_locs],
                 in_connectivity=in_conn[valid_Fog_locs],
                 out_connectivity=out_conn[valid_Fog_locs],
+                out_spread=out_spread_scores[valid_Fog_locs],
                 heat_stress=dhw_projection[valid_Fog_locs],
                 wave_stress=wave_projection[valid_Fog_locs],
                 coral_cover=sum_cover[valid_Fog_locs]

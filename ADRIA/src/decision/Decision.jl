@@ -11,11 +11,13 @@ using ADRIA:
     n_locations,
     loc_area,
     loc_k_area,
+    location_out_spread,
     timesteps
 
 using ADRIA:
     DiscreteOrderedUniformDist,
-    Factor
+    Factor,
+    _factor_spec
 
 using
     Combinatorics,
@@ -23,17 +25,19 @@ using
     JMcDM
 
 include("dMCDA.jl")
-include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
+include("Criteria/DecisionPreferences.jl")
 include("location_selection.jl")
 include("strategies/strategies.jl")
 
 export
     # Intervention preferences
-    CAqPreferences,
-    FogPreferences,
-    LvMPreferences,
+    DecisionPreferences,
     # ShdPreferences,
+    # Criteria definitions
+    Criterion,
+    criterion_names,
+    criterion_fields,
     # Helper Methods
     decision_matrix,
     filter_criteria,

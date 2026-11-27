@@ -2,7 +2,7 @@ using Test
 using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision:
-    CAqPreferences,
+    DecisionPreferences,
     cluster_diversity,
     geographic_separation,
     decision_matrix,
@@ -47,18 +47,18 @@ end
         ADRIA.fix_factor!(dom; iv_CAq_cluster_diversity=1.0)
         # ADRIA.fix_factor!(dom, iv_CAq_geographic_separation=1.0)
 
-        sp = ADRIA.decision.CAqPreferences(dom)
+        sp = DecisionPreferences(ADRIA.CAqCriteriaWeights, dom)
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            iv_CAq_depth=loc_data.depth_med,
-            iv_CAq_in_connectivity=zeros(n_locs),
-            iv_CAq_out_connectivity=zeros(n_locs),
-            iv_CAq_heat_stress=zeros(n_locs),
-            iv_CAq_wave_stress=zeros(n_locs),
-            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
-            iv_CAq_cluster_diversity=diversity_scores,
-            iv_CAq_geographic_separation=separation_scores
+            depth=loc_data.depth_med,
+            in_connectivity=zeros(n_locs),
+            out_connectivity=zeros(n_locs),
+            heat_stress=zeros(n_locs),
+            wave_stress=zeros(n_locs),
+            coral_cover=Float64.(rand(1:100, n_locs)),
+            cluster_diversity=diversity_scores,
+            geographic_separation=separation_scores
         )
 
         # When only cluster diversity matters, should select from underrepresented clusters
@@ -93,18 +93,18 @@ end
 
         method = first(ADRIA.mcda_methods())
 
-        sp = CAqPreferences(dom)
+        sp = DecisionPreferences(ADRIA.CAqCriteriaWeights, dom)
         dm = decision_matrix(
             dom.loc_ids,
             sp.names;
-            iv_CAq_depth=loc_data.depth_med,
-            iv_CAq_in_connectivity=zeros(n_locs),
-            iv_CAq_out_connectivity=zeros(n_locs),
-            iv_CAq_heat_stress=zeros(n_locs),
-            iv_CAq_wave_stress=zeros(n_locs),
-            iv_CAq_coral_cover=Float64.(rand(1:100, n_locs)),
-            iv_CAq_cluster_diversity=diversity_scores,
-            iv_CAq_geographic_separation=separation_scores
+            depth=loc_data.depth_med,
+            in_connectivity=zeros(n_locs),
+            out_connectivity=zeros(n_locs),
+            heat_stress=zeros(n_locs),
+            wave_stress=zeros(n_locs),
+            coral_cover=Float64.(rand(1:100, n_locs)),
+            cluster_diversity=diversity_scores,
+            geographic_separation=separation_scores
         )
 
         # If geographic separation is preferred, then should select locations that are

@@ -328,21 +328,9 @@ end
 # ---------------------------------------------------------------------------
 
 const _CRITERIA_WEIGHT_GROUPS = Dict{Symbol,Vector{Symbol}}(
-    :CAq_weights => [
-        :iv_CAq_heat_stress, :iv_CAq_wave_stress, :iv_CAq_in_connectivity,
-        :iv_CAq_out_connectivity, :iv_CAq_depth, :iv_CAq_coral_cover,
-        :iv_CAq_cluster_diversity, :iv_CAq_geographic_separation
-    ],
-    :Fog_weights => [
-        :iv_Fog_heat_stress, :iv_Fog_wave_stress, :iv_Fog_in_connectivity,
-        :iv_Fog_out_connectivity, :iv_Fog_depth, :iv_Fog_coral_cover,
-        :iv_Fog_cluster_diversity, :iv_Fog_geographic_separation
-    ],
-    :LvM_weights => [
-        :iv_LvM_heat_stress, :iv_LvM_wave_stress, :iv_LvM_in_connectivity,
-        :iv_LvM_out_connectivity, :iv_LvM_depth, :iv_LvM_coral_cover,
-        :iv_LvM_cluster_diversity, :iv_LvM_geographic_separation
-    ]
+    :CAq_weights => decision.criterion_fields(decision.CAqCriteriaWeights),
+    :Fog_weights => decision.criterion_fields(decision.FogCriteriaWeights),
+    :LvM_weights => decision.criterion_fields(decision.LvMCriteriaWeights)
 )
 
 const _TRANSFORM_CALLS = [

@@ -12,6 +12,41 @@ struct DecisionPreferences <: DecisionPreference
 end
 
 """
+    DecisionPreferences(W::Type{<:DecisionWeights}, dom)
+    DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::YAXArray)
+    DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::DataFrameRow)
+
+Decision preferences of the intervention with criteria weights `W`, using the default weights
+of the model spec of `dom`, or those of one scenario.
+
+# Arguments
+- `W` : Weights type defined with [`_define_criteria_weights!`](@ref), e.g. `CAqCriteriaWeights`.
+- `dom` : Domain, which holds the model spec.
+- `params` : Parameters of one scenario: a `YAXArray` with a `factors` dimension, or a row of a
+    scenario table.
+
+# Returns
+`DecisionPreferences` with bare criterion names (e.g. `:heat_stress`), as used in the decision
+matrix.
+"""
+function DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::YAXArray)
+    w::DataFrame = component_params(dom, W)
+    return DecisionPreferences(
+        criterion_names(W), params[factors = At(string.(w.fieldname))], w.direction
+    )
+end
+function DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::DataFrameRow)
+    w::DataFrame = component_params(dom, W)
+    return DecisionPreferences(
+        criterion_names(W), Float64.(collect(params[w.fieldname])), w.direction
+    )
+end
+function DecisionPreferences(W::Type{<:DecisionWeights}, dom)
+    w::DataFrame = component_params(dom, W)
+    return DecisionPreferences(criterion_names(W), w.val, w.direction)
+end
+
+"""
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T}, criteria_vals::Matrix)::YAXArray where {T<:Union{String,Symbol}}
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
 
@@ -219,6 +254,58 @@ function select_locations(
 
     min_locs = min(min_locs, length(dm.location[rank_idx]))
     return collect(dm.location[rank_idx][1:min_locs]).data
+end
+
+"""
+    select_locations(
+        dp::T,
+        dm::YAXArray,
+        method::Union{Function,DataType},
+        considered_locs::Vector{<:Union{Int64,String,Symbol}},
+        min_locs::Int64
+    )::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
+
+Select locations as above, returning no locations if `considered_locs` is empty. The ranking
+is of all locations in `dm`; `considered_locs` is not used to filter them.
+
+# Example
+```julia
+caq_pref = DecisionPreferences(CAqCriteriaWeights, domain, param_set)
+decision_mat = decision_matrix(domain.loc_ids, caq_pref.names, criteria_values)
+mcda_method = mcda_methods()[1]  # Use first method from available MCDA methods
+valid_locs = domain.loc_ids
+
+selected_locs = select_locations(
+    caq_pref,
+    decision_mat,
+    mcda_method,
+    valid_locs,
+    5  # Select at least 5 locations
+)
+```
+
+# Arguments
+- `dp` : DecisionPreferences
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
+- `considered_locs` : Locations to consider for selection
+- `min_locs` : Minimum number of locations to select
+
+# Returns
+Name of selected locations ordered by their rank
+"""
+function select_locations(
+    dp::T,
+    dm::YAXArray,
+    method::Union{Function,DataType},
+    considered_locs::Vector{<:Union{Int64,String,Symbol}},
+    min_locs::Int64
+)::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
+    if length(considered_locs) == 0
+        return String[]
+    end
+
+    return select_locations(dp, dm, method, min_locs)
 end
 
 """

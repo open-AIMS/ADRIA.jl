@@ -242,6 +242,8 @@ function load_domain(
         RMEDomain, data_files, loc_ids; force_single_reef=single_reef_idx
     )
 
+    spatial_data[!, :out_spread] = out_spread(conn_data.data)
+
     # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
     # Ensure column is of float type
