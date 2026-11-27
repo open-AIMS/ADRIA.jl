@@ -143,6 +143,14 @@ function sample_pairwise(
     return sample_pairwise(dom, n, sample_guided; sample_method=sample_method)
 end
 
+function _mcda_method_index(name::Union{Symbol,AbstractString})::Int64
+    idx = decision.decision_method_encoding(string(name))
+    idx >= 1 || throw(
+        ArgumentError("'$(name)' is not an MCDA method, got encoding $(idx)")
+    )
+    return idx
+end
+
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
@@ -223,6 +231,10 @@ fix_factor!(dom, :guided, 1)
 # Fix `mcda_method` to a specific MCDA method (only relevant when `guided > 0`)
 fix_factor!(dom, :mcda_method, 3)
 
+# ... or by name (case-insensitive), see `ADRIA.decision.mcda_method_names()`
+fix_factor!(dom, :mcda_method, :moora)
+fix_factor!(dom; mcda_method=:moora)
+
 # Fix a set of factors to their default values
 fix_factor!(dom, [:guided, :iv_CAq_N_TA])
 
@@ -252,6 +264,14 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     update!(d, params)
     return nothing
 end
+function fix_factor!(
+    d::Domain, factor::Symbol, val::Union{Symbol,AbstractString}
+)::Nothing
+    factor == :mcda_method || throw(
+        ArgumentError("Only :mcda_method can be fixed by name, got :$(factor)")
+    )
+    return fix_factor!(d, factor, _mcda_method_index(val))
+end
 function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
     params = model_spec(d)
     factor_rows = findall(in(factors), params.fieldname)
@@ -276,7 +296,12 @@ function fix_factor!(d::Domain; factors...)::Nothing
     # `factors`, which is fine here since this only runs a handful of times at setup.
     Base.@nospecialize factors
     factor_names = keys(factors)
-    factor_vals = collect(values(factors))
+    factor_vals = Any[values(factors)...]
+    for (i, name) in enumerate(factor_names)
+        if name == :mcda_method && factor_vals[i] isa Union{Symbol,AbstractString}
+            factor_vals[i] = _mcda_method_index(factor_vals[i])
+        end
+    end
 
     params = model_spec(d)
 
