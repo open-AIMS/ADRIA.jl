@@ -28,10 +28,9 @@ Base.@kwdef struct DepthThresholds <: DecisionThresholds
     )
 end
 
+include("CriteriaCatalog.jl")
 include("CriteriaRegistry.jl")
-include("CAqCriteria.jl")
-include("FogCriteria.jl")
-include("LvMCriteria.jl")
+include("InterventionCriteria.jl")
 # ShdCriteria.jl (formerly SRMCriteria.jl) is deliberately NOT included here — it has
 # never been wired into the module (ShdPreferences is commented out of decision/Decision.jl's
 # export list), so its criteria-weights component does not currently exist in model_spec.

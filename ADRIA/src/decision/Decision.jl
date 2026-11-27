@@ -24,8 +24,8 @@ using
     JMcDM
 
 include("dMCDA.jl")
-include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
+include("Criteria/DecisionPreferences.jl")
 include("location_selection.jl")
 include("strategies/strategies.jl")
 

@@ -12,6 +12,33 @@ struct DecisionPreferences <: DecisionPreference
 end
 
 """
+    DecisionPreferences(W::Type{<:DecisionWeights}, dom)
+    DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::YAXArray)
+
+Decision preferences of the intervention with criteria weights `W`, using the default weights
+of the model spec of `dom`, or those of one scenario.
+
+# Arguments
+- `W` : Weights type defined with [`_define_criteria_weights!`](@ref), e.g. `CAqCriteriaWeights`.
+- `dom` : Domain, which holds the model spec.
+- `params` : Parameters of one scenario, with a `factors` dimension.
+
+# Returns
+`DecisionPreferences` with bare criterion names (e.g. `:heat_stress`), as used in the decision
+matrix.
+"""
+function DecisionPreferences(W::Type{<:DecisionWeights}, dom, params::YAXArray)
+    w::DataFrame = component_params(dom, W)
+    return DecisionPreferences(
+        criterion_names(W), params[factors = At(string.(w.fieldname))], w.direction
+    )
+end
+function DecisionPreferences(W::Type{<:DecisionWeights}, dom)
+    w::DataFrame = component_params(dom, W)
+    return DecisionPreferences(criterion_names(W), w.val, w.direction)
+end
+
+"""
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T}, criteria_vals::Matrix)::YAXArray where {T<:Union{String,Symbol}}
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
 
