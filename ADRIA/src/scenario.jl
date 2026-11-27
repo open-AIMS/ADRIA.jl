@@ -787,15 +787,15 @@ function run_model(
 
     if is_guided
         CAq_pref, CAq_decision_mat, CAq_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, CAqPreferences, CAq_t_locs, is_CAq,
+            domain, param_set, depth_criteria, CAqCriteriaWeights, CAq_t_locs, is_CAq,
             build_CAq_strategy
         )
         Fog_pref, Fog_decision_mat, Fog_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, FogPreferences, domain.Fog_target_locations,
+            domain, param_set, depth_criteria, FogCriteriaWeights, domain.Fog_target_locations,
             is_fogging, build_Fog_strategy
         )
         LvM_pref, LvM_decision_mat, LvM_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, LvMPreferences, LvM_t_locs,
+            domain, param_set, depth_criteria, LvMCriteriaWeights, LvM_t_locs,
             is_LvM, build_LvM_strategy
         )
     else

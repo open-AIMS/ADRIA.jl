@@ -146,7 +146,7 @@ scens = ADRIA.sample_guided(dom, 2^2)
 scen = scens[1, :]
 
 ## Get coral aquaculture preferences
-CAq_pref = ADRIA.decision.CAqPreferences(dom, scen)
+CAq_pref = ADRIA.decision.DecisionPreferences(ADRIA.CAqCriteriaWeights, dom, scen)
 
 ## Calculate criteria vectors
 sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)

@@ -518,7 +518,7 @@ check("criteria_spatial_plots") do
     guided_scens = ADRIA.sample_guided(example_dom, 2^2)
     scen = guided_scens[1, :]
 
-    CAq_pref = ADRIA.decision.CAqPreferences(example_dom, scen)
+    CAq_pref = ADRIA.decision.DecisionPreferences(ADRIA.CAqCriteriaWeights, example_dom, scen)
 
     sum_cover = vec(sum(example_dom.init_coral_cover; dims=1).data)
     dhw_scens = example_dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]

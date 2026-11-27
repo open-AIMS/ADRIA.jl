@@ -181,7 +181,7 @@ if hasmethod(
         scen = scens[1, :]
 
         # Get coral aquaculture preferences
-        CAq_pref = ADRIA.decision.CAqPreferences(ADRIA_DOM_45, scen)
+        CAq_pref = ADRIA.decision.DecisionPreferences(ADRIA.CAqCriteriaWeights, ADRIA_DOM_45, scen)
 
         # Calculate criteria vectors
         # Cover

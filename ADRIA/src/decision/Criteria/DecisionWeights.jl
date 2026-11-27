@@ -28,6 +28,7 @@ Base.@kwdef struct DepthThresholds <: DecisionThresholds
     )
 end
 
+include("CriteriaRegistry.jl")
 include("CAqCriteria.jl")
 include("FogCriteria.jl")
 include("LvMCriteria.jl")

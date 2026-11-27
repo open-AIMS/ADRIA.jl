@@ -15,7 +15,8 @@ using ADRIA:
 
 using ADRIA:
     DiscreteOrderedUniformDist,
-    Factor
+    Factor,
+    _factor_spec
 
 using
     Combinatorics,
@@ -30,10 +31,12 @@ include("strategies/strategies.jl")
 
 export
     # Intervention preferences
-    CAqPreferences,
-    FogPreferences,
-    LvMPreferences,
+    DecisionPreferences,
     # ShdPreferences,
+    # Criteria definitions
+    Criterion,
+    criterion_names,
+    criterion_fields,
     # Helper Methods
     decision_matrix,
     filter_criteria,

@@ -222,6 +222,58 @@ function select_locations(
 end
 
 """
+    select_locations(
+        dp::T,
+        dm::YAXArray,
+        method::Union{Function,DataType},
+        considered_locs::Vector{<:Union{Int64,String,Symbol}},
+        min_locs::Int64
+    )::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
+
+Select locations as above, returning no locations if `considered_locs` is empty. The ranking
+is of all locations in `dm`; `considered_locs` is not used to filter them.
+
+# Example
+```julia
+caq_pref = DecisionPreferences(CAqCriteriaWeights, domain, param_set)
+decision_mat = decision_matrix(domain.loc_ids, caq_pref.names, criteria_values)
+mcda_method = mcda_methods()[1]  # Use first method from available MCDA methods
+valid_locs = domain.loc_ids
+
+selected_locs = select_locations(
+    caq_pref,
+    decision_mat,
+    mcda_method,
+    valid_locs,
+    5  # Select at least 5 locations
+)
+```
+
+# Arguments
+- `dp` : DecisionPreferences
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
+- `considered_locs` : Locations to consider for selection
+- `min_locs` : Minimum number of locations to select
+
+# Returns
+Name of selected locations ordered by their rank
+"""
+function select_locations(
+    dp::T,
+    dm::YAXArray,
+    method::Union{Function,DataType},
+    considered_locs::Vector{<:Union{Int64,String,Symbol}},
+    min_locs::Int64
+)::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
+    if length(considered_locs) == 0
+        return String[]
+    end
+
+    return select_locations(dp, dm, method, min_locs)
+end
+
+"""
     apply_threshold(criteria_name::Symbol, threshold::Tuple, dm::YAXArray}
 
 Apply a threshold filter to a given decision matrix, filtering out locations that are
